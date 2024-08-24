@@ -1,12 +1,10 @@
 import React, { useState } from "react";
 
 function PlayerButton({ player }) {
-  const [isDisabled, setIsDisabled] = useState(false);
-  const [isVisible, setIsVisible] = useState(true);
+  const [isDisabled] = useState(false);
 
   const handleClick = () => {
     // Update state to hide the button
-    setIsVisible(false);
 
     // Hide all buttons with the same Overall Rank
     document

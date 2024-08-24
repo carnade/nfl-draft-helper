@@ -114,6 +114,7 @@ function App() {
       const interval = setInterval(handleFetchDraftData, reloadInterval * 1000);
       return () => clearInterval(interval);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoReload, reloadInterval]);
 
   return (
