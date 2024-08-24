@@ -12,7 +12,6 @@
     animation: App-logo-spin infinite 20s linear;
   }
 }
-
 .App-header {
   background-color: #282c34;
   min-height: 100vh;
@@ -34,5 +33,263 @@
   }
   to {
     transform: rotate(360deg);
+  }
+}
+
+.app {
+  font-family: Arial, sans-serif;
+  padding: 20px;
+}
+
+.lists-container {
+  display: flex;
+  justify-content: space-between;
+}
+
+.player-list {
+  width: 18%;
+}
+
+.player-list h2 {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.tier-group {
+  margin-bottom: 20px;
+}
+
+.tier-group h3 {
+  margin-bottom: 10px;
+  font-size: 18px;
+  text-align: center;
+  border-bottom: 2px solid #ccc;
+  padding-bottom: 5px;
+}
+
+.player-button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  margin-bottom: 5px;
+  border: none;
+  color: white;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  width: 100%; /* Ensure buttons are of equal width */
+  pointer-events: auto;
+}
+
+/* Container for the input and button */
+.input-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+/* Style the input field */
+.input-container input {
+  padding: 10px 15px;
+  font-size: 16px;
+  border: 2px solid #ddd;
+  border-radius: 25px;
+  width: 300px;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  outline: none;
+}
+
+/* Focus state for the input */
+.input-container input:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
+}
+
+/* Style the button */
+.input-container button {
+  padding: 10px 20px;
+  font-size: 16px;
+  color: white;
+  background-color: #007bff;
+  border: none;
+  border-radius: 25px;
+  margin-left: 10px;
+  cursor: pointer;
+  transition: background-color 0.3s, box-shadow 0.3s;
+  outline: none;
+}
+
+/* Hover state for the button */
+.input-container button:hover {
+  background-color: #0056b3;
+  box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
+}
+
+/* Active state for the button */
+.input-container button:active {
+  background-color: #003f7f;
+  box-shadow: 0 0 8px rgba(0, 63, 127, 0.3);
+}
+
+.button-content {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.overall-rank {
+  width: 23%;
+  text-align: left;
+}
+
+.name {
+  width: 59f%;
+  text-align: center;
+}
+
+.team {
+  width: 11%;
+  text-align: left;
+}
+
+.bye {
+  width: 7%;
+  text-align: right;
+}
+
+.player-button.disabled {
+  background-color: gray !important;
+  cursor: not-allowed;
+}
+
+/* Styles for the Start Page */
+.start-page {
+  text-align: center;
+  margin-top: 50px;
+}
+
+.file-input-container {
+  margin-bottom: 20px;
+}
+
+.file-input-label button {
+  padding: 10px 20px;
+  font-size: 16px;
+  border-radius: 25px;
+  border: none;
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.file-input-label button:hover {
+  background-color: #0056b3;
+}
+
+/* Load CSV button styling */
+.load-csv-button {
+  padding: 10px 20px;
+  font-size: 16px;
+  border-radius: 25px;
+  border: none;
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.load-csv-button:hover {
+  background-color: #0056b3;
+}
+
+.file-name {
+  margin-left: 10px;
+  font-size: 16px;
+  color: #333;
+}
+
+.action-buttons button {
+  padding: 10px 20px;
+  font-size: 16px;
+  margin: 10px;
+  border-radius: 25px;
+  border: none;
+  background-color: #28a745;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.action-buttons button:hover {
+  background-color: #218838;
+}
+
+/* Disabled button styling */
+.disabled-button {
+  background-color: gray !important;
+  color: white;
+  cursor: not-allowed;
+}
+
+.checkbox-container {
+  margin-top: 20px;
+  font-size: 16px;
+}
+
+/* Container for reload options (checkbox and interval input) */
+.reload-container {
+  position: relative;
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  max-width: fit-content;
+  margin: 0 auto; /* Center the reload-container in the parent */
+}
+
+/* Adjusting the checkbox size */
+.reload-container input[type="checkbox"] {
+  transform: scale(1.5);
+  margin-right: 10px;
+}
+
+/* Styling the interval input */
+.reload-container .reload-interval-input {
+  width: 60px;
+  padding: 8px;
+  border-radius: 5px;
+  border: 1px solid #ddd;
+  text-align: center;
+  font-size: 16px;
+  margin-right: 5px;
+}
+
+/* Styling for labels */
+.reload-container label {
+  font-size: 16px;
+  color: #333;
+}
+
+.flash-text {
+  font-size: 16px;
+  color: green;
+  position: absolute;
+  right: -80px; /* Place it at the right edge of the container */
+  top: 50%;
+  transform: translateY(-50%);
+  animation: flashAnimation 0.7s ease-in-out;
+  white-space: nowrap;
+}
+
+@keyframes flashAnimation {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
   }
 }
