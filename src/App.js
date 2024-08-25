@@ -19,7 +19,7 @@ function App() {
   // New state for reloading functionality
   const [autoReload, setAutoReload] = useState(false);
   const [reloadInterval, setReloadInterval] = useState(30); // Default 30 seconds
-  const [isFlashing, setIsFlashing] = useState(false); // State for flash text
+  const [setIsFlashing] = useState(false); // State for flash text
 
   const handleStartWithCSV = (csvData) => {
     Papa.parse(csvData, {
@@ -59,17 +59,6 @@ function App() {
       });
   };
 
-  const fixTeamNames = (team) => {
-    switch (team) {
-      case "WAS":
-        return "WSH";
-      case "JAX":
-        return "JAC";
-      default:
-        return team;
-    }
-  };
-
   // Frontend validation for the reload interval
   const handleReloadIntervalChange = (e) => {
     const value = parseInt(e.target.value, 10);
@@ -86,6 +75,16 @@ function App() {
   };
 
   const handleFetchDraftData = useCallback(async () => {
+    const fixTeamNames = (team) => {
+      switch (team) {
+        case "WAS":
+          return "WSH";
+        case "JAX":
+          return "JAC";
+        default:
+          return team;
+      }
+    };
     try {
       const response = await fetch(
         `https://api.sleeper.app/v1/draft/${draftId}/picks`
@@ -132,7 +131,7 @@ function App() {
     } catch (error) {
       console.error("Error fetching draft data:", error);
     }
-  });
+  }, [draftId, players, setIsFlashing]);
 
   useEffect(() => {
     if (autoReload) {

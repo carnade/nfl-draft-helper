@@ -17,7 +17,6 @@ function StartPage({
       const reader = new FileReader();
       reader.onload = (e) => {
         const csvData = e.target.result;
-        console.log("useTierForOverall", useTierForOverall);
         onStartWithCSV(csvData, useTierForOverall);
       };
       reader.readAsText(selectedFile);
@@ -27,7 +26,6 @@ function StartPage({
   };
 
   const handleStartDefault = () => {
-    console.log("useTierForOverall", useTierForOverall);
     onStartDefault(useTierForOverall);
   };
 
@@ -76,6 +74,19 @@ function StartPage({
         <label htmlFor="use-tier-checkbox">
           Use own tier for overall list (add OverallTier column to your CSV)
         </label>
+      </div>
+      <p></p>
+      <div>
+        CSV uses format same as www.cheatsheetking.com. It has the following
+        headers
+      </div>
+      <div>
+        Overall Rank,Name,Position,Team,Bye,Position Rank,Tier,OverallTier
+      </div>
+      <p></p>
+      <div>
+        The last column(OverallTier) is optional but can be used if one wants to
+        manually set tiers for the overall list.{" "}
       </div>
     </div>
   );
