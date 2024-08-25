@@ -49,7 +49,8 @@ function PlayerButton({ player }) {
     >
       <div className="button-content">
         <span className="overall-rank">
-          {player["Overall Rank"]} ({player["Position Rank"]})
+          {player["Overall Rank"]}: {player["Position"]}
+          {player["Position Rank"]}
         </span>
         <span className="name">{player.Name}</span>
         <span className="team">{player.Team}</span>
