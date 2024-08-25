@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 
-function PlayerButton({ player }) {
+function PlayerButton({ player, setPlayers, setRemovedPlayers }) {
   const [isDisabled] = useState(false);
 
   const handleClick = () => {
+    const playerId = player["Overall Rank"];
     // Update state to hide the button
 
     // Hide all buttons with the same Overall Rank
@@ -12,13 +13,18 @@ function PlayerButton({ player }) {
       .forEach((button) => {
         button.style.display = "none"; // Hides the button
       });
-    /*setIsDisabled(true);
-    document
-      .querySelectorAll(`[data-id='${player["Overall Rank"]}']`)
-      .forEach((button) => {
-        button.disabled = true;
-        button.classList.add("disabled");
-      });*/
+
+    // Add the player to the removedPlayers set
+    setRemovedPlayers((prevRemovedPlayers) => {
+      const newSet = new Set(prevRemovedPlayers);
+      newSet.add(player.Name);
+      return newSet;
+    });
+
+    // Remove the player from the players list
+    setPlayers((prevPlayers) =>
+      prevPlayers.filter((p) => p["Overall Rank"] !== playerId)
+    );
   };
 
   const getButtonStyle = () => {
@@ -27,14 +33,23 @@ function PlayerButton({ player }) {
       case "WR":
         color = "blue";
         break;
+      case "RB":
+        color = "green";
+        break;
       case "TE":
         color = "orange";
         break;
       case "QB":
         color = "red";
         break;
+      case "D/ST":
+        color = "brown";
+        break;
+      case "K":
+        color = "purple";
+        break;
       default:
-        color = "green";
+        color = "Gray";
     }
     return { backgroundColor: color };
   };

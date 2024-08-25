@@ -88,10 +88,11 @@
   justify-content: center;
   align-items: center;
   margin-bottom: 20px;
+  gap: 10px; /* Controls the space between each item */
 }
 
 /* Style the input field */
-.input-container input {
+.input-container input[type="text"] {
   padding: 10px 15px;
   font-size: 16px;
   border: 2px solid #ddd;
@@ -102,7 +103,7 @@
 }
 
 /* Focus state for the input */
-.input-container input:focus {
+.input-container input[type="text"]:focus {
   border-color: #007bff;
   box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
 }
@@ -115,7 +116,6 @@
   background-color: #007bff;
   border: none;
   border-radius: 25px;
-  margin-left: 10px;
   cursor: pointer;
   transition: background-color 0.3s, box-shadow 0.3s;
   outline: none;
@@ -131,6 +131,27 @@
 .input-container button:active {
   background-color: #003f7f;
   box-shadow: 0 0 8px rgba(0, 63, 127, 0.3);
+}
+
+/* Style the checkbox and label */
+.input-container input[type="checkbox"] {
+  margin-left: 10px; /* Adjust spacing to move closer to the buttons */
+}
+
+.input-container label {
+  margin-left: 5px; /* Keep the label close to the checkbox */
+  font-size: 16px;
+}
+
+/* Style the select dropdown */
+.input-container select {
+  padding: 8px;
+  font-size: 16px;
+  border: 2px solid #ddd;
+  border-radius: 5px;
+  background-color: white;
+  cursor: pointer;
+  outline: none;
 }
 
 .button-content {

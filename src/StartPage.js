@@ -1,8 +1,12 @@
 import React, { useState } from "react";
 
-function StartPage({ onStartWithCSV, onStartDefault }) {
+function StartPage({
+  onStartWithCSV,
+  onStartDefault,
+  useTierForOverall,
+  setUseTierForOverall,
+}) {
   const [selectedFile, setSelectedFile] = useState(null);
-  const [useTierForOverall, setUseTierForOverall] = useState(false);
 
   const handleFileChange = (event) => {
     setSelectedFile(event.target.files[0]);
@@ -13,6 +17,7 @@ function StartPage({ onStartWithCSV, onStartDefault }) {
       const reader = new FileReader();
       reader.onload = (e) => {
         const csvData = e.target.result;
+        console.log("useTierForOverall", useTierForOverall);
         onStartWithCSV(csvData, useTierForOverall);
       };
       reader.readAsText(selectedFile);
@@ -22,6 +27,7 @@ function StartPage({ onStartWithCSV, onStartDefault }) {
   };
 
   const handleStartDefault = () => {
+    console.log("useTierForOverall", useTierForOverall);
     onStartDefault(useTierForOverall);
   };
 
