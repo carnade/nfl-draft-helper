@@ -1,12 +1,24 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 function StartPage({
-  onStartWithCSV,
-  onStartDefault,
+  setCsvData,
+  setCsvFileName,
   useTierForOverall,
   setUseTierForOverall,
 }) {
   const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedOption, setSelectedOption] = useState("original.csv"); // Set default value
+  const navigate = useNavigate();
+
+  const handleLoadCsvClick = () => {
+    document.getElementById("file-input").click(); // Trigger the file input click
+  };
+
+  const handleDropdownChange = (event) => {
+    console.log(event.target.value);
+    setSelectedOption(event.target.value);
+  };
 
   const handleFileChange = (event) => {
     setSelectedFile(event.target.files[0]);
@@ -17,7 +29,8 @@ function StartPage({
       const reader = new FileReader();
       reader.onload = (e) => {
         const csvData = e.target.result;
-        onStartWithCSV(csvData, useTierForOverall);
+        setCsvData(csvData); // Passing CSV data
+        navigate("/draft"); // Navigate to /draft
       };
       reader.readAsText(selectedFile);
     } else {
@@ -26,17 +39,28 @@ function StartPage({
   };
 
   const handleStartDefault = () => {
-    onStartDefault(useTierForOverall);
-  };
-
-  const handleButtonClick = () => {
-    document.getElementById("file-input").click(); // Trigger the file input click
+    setCsvFileName(selectedOption); // Use default CSV data
+    navigate("/draft"); // Navigate to /draft
   };
 
   return (
     <div className="start-page">
       <h1>Welcome to the Draft Helper App</h1>
+
       <div className="file-input-container">
+      <div className="file-input-button">
+        <button
+          onClick={handleStartWithCSV}
+          disabled={!selectedFile} // Disable button until a file is selected
+        >
+          Start with CSV
+        </button>
+        </div>
+        <label htmlFor="file-input" className="file-input-label">
+          <button type="button" onClick={handleLoadCsvClick}>
+            Load CSV
+          </button>
+        </label>
         <input
           type="file"
           accept=".csv"
@@ -44,24 +68,24 @@ function StartPage({
           style={{ display: "none" }}
           onChange={handleFileChange}
         />
-        <button
-          type="button"
-          onClick={handleButtonClick}
-          className="load-csv-button"
-        >
-          Load CSV
-        </button>
+
         {selectedFile && <span className="file-name">{selectedFile.name}</span>}
       </div>
       <div className="action-buttons">
-        <button
-          onClick={handleStartWithCSV}
-          disabled={!selectedFile}
-          className={!selectedFile ? "disabled-button" : ""}
+        <button onClick={handleStartDefault}>Start preset ranks</button>
+        <select
+          value={selectedOption}
+          onChange={handleDropdownChange}
+          className="modern-dropdown"
         >
-          Start with CSV
-        </button>
-        <button onClick={handleStartDefault}>Start Default</button>
+          <option value="original.csv">Cheatsheet king rankings</option>
+          <option value="redraft_ppr_adp.csv">Sleeper PPR</option>
+          <option value="redraft_sf_adp.csv">Sleeper SF</option>
+          <option value="redraft_half_ppr_adp.csv">Sleeper half-PPR</option>
+          <option value="dynasty_ppr_adp.csv">Sleeper Dynasy PPR</option>
+          <option value="dynasty_sf_adp.csv">Sleeper Dynasy SF</option>
+          <option value="dynasty_half_ppr_adp.csv">Sleeper Dynasty half-PPR</option>
+        </select>
       </div>
 
       <div className="checkbox-container">
