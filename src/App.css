@@ -85,6 +85,7 @@
 /* Container for the input and button */
 .input-container {
   display: flex;
+  position: relative;
   justify-content: center;
   align-items: center;
   margin-bottom: 20px;
@@ -192,6 +193,9 @@
 }
 
 .file-input-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
   margin-bottom: 20px;
 }
 
@@ -208,6 +212,28 @@
 
 .file-input-label button:hover {
   background-color: #0056b3;
+}
+
+.file-input-button button {
+  padding: 10px 20px;
+  font-size: 16px;
+  margin: 10px;
+  border-radius: 25px;
+  border: none;
+  background-color: #28a745;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.file-input-button button:hover {
+  background-color: #218838;
+}
+
+.file-input-button button:disabled {
+  background-color: gray !important;
+  color: white;
+  cursor: not-allowed;
 }
 
 /* Load CSV button styling */
@@ -246,6 +272,12 @@
 
 .action-buttons button:hover {
   background-color: #218838;
+}
+
+.action-buttons button:disabled {
+  background-color: gray !important;
+  color: white;
+  cursor: not-allowed;
 }
 
 /* Disabled button styling */
@@ -299,9 +331,8 @@
   font-size: 16px;
   color: green;
   position: absolute;
-  right: -80px; /* Place it at the right edge of the container */
-  top: 50%;
-  transform: translateY(-50%);
+  top : 50px; /* Place it at the right edge of the container */
+
   animation: flashAnimation 0.7s ease-in-out;
   white-space: nowrap;
 }
@@ -313,4 +344,85 @@
   to {
     opacity: 0;
   }
+}
+.backButton-container {
+  display: flex;
+  position: absolute;
+  right: 20px;
+  top: 30px;
+}
+
+.backButton-container button {
+  padding: 10px 20px;
+  font-size: 16px;
+  border-radius: 25px;
+  border: none;
+  background-color: grey;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.backButton-container button:hover {
+  background-color: rgb(65, 65, 65);
+}
+
+h1 span {
+  display: block;
+  font-size: 0.5em;
+  line-height: 1.3;
+}
+h1 em {
+  font-style: normal;
+  font-weight: 600;
+}
+
+.draftname {
+  text-align: center; /* Center the h1 within its parent container */
+}
+
+.draftname h1 {
+  display: inline-flex;
+  align-items: center;
+  font-size: 30px;
+  font-weight: 300;
+  color: #222;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin: 30px; /* Remove default margins */
+}
+
+.draftname h1:before, .draftname h1:after {
+  content: " ";
+  display: block;
+  width: 50px; /* Set the width to 50px */
+  border-bottom: 1px solid #c50000;
+  border-top: 1px solid #c50000;
+  height: 5px;
+  background-color: #f8f8f8;
+}
+
+.draftname h1:before {
+  margin-right: 10px; /* Adjust the space between the text and the line */
+}
+
+.draftname h1:after {
+  margin-left: 10px; /* Adjust the space between the text and the line */
+}
+
+.modern-dropdown {
+  padding: 10px;
+  font-size: 16px;
+  border: 2px solid #ddd;
+  border-radius: 25px;
+  background-color: #f8f8f8;
+  margin-left: 10px;
+  cursor: pointer;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  outline: none;
+}
+
+.modern-dropdown:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
 }
