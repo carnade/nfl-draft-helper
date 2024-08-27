@@ -1,10 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faExternalLinkAlt } from "@fortawesome/free-solid-svg-icons";
+import { useNavigate } from "react-router-dom";
+import { faArrowLeft, faSyncAlt } from "@fortawesome/free-solid-svg-icons";
 
 function DraftPage({ userName }) {
   const [userId, setUserId] = useState(null);
   const [drafts, setDrafts] = useState([]);
+  const navigate = useNavigate();
 
   const formatMilliseconds = (milliseconds) => {
     const totalSeconds = Math.floor(milliseconds / 1000);
@@ -30,7 +33,7 @@ function DraftPage({ userName }) {
     return formattedTime.trim();
   };
 
-  const calcPicksToDraft = (picksCount, draftPosition, teams, type, reversalRound) => {
+  const calcPicksToDraft = (picksCount, draftPosition, teams, type, reversalRound, max_rounds) => {
     let picksToDraft;
     if (type !== "snake") {
       // If not a snake draft, we'll assume a simple linear draft for now
@@ -82,8 +85,13 @@ function DraftPage({ userName }) {
   
     // Calculate how many picks are left until it's the user's turn
     const picksInCurrentRound = ((picksCount - 1) % teams) + 1;
-
-    if (picksInCurrentRound > draftPositionInRound) {
+    console.log("round", round); 
+    console.log("picksInCurrentRound", picksInCurrentRound);
+    console.log("draftPositionInRound", draftPositionInRound);
+    if (picksInCurrentRound >= draftPositionInRound) {
+      if (round === max_rounds) {
+        return -99;
+      }
       const nextPos = draftPositionInRound === draftPosition ? reverseDraftPosition : draftPosition;
       picksToDraft = teams - picksInCurrentRound + nextPos - 1;
     } else {
@@ -93,8 +101,8 @@ function DraftPage({ userName }) {
     return picksToDraft;
   };
 
-  useEffect(() => {
-    const fetchUserData = async () => {
+
+    const fetchUserData = useCallback(async () => {
       try {
         // First API request to get user data
         const userResponse = await fetch(
@@ -134,7 +142,7 @@ function DraftPage({ userName }) {
               const picksData = await picksResponse.json();
               const picksCount = picksData.length;
 
-              const picksToDraft = calcPicksToDraft(picksCount, draftPosition, teams, draft.type, reversal_round);
+              const picksToDraft = calcPicksToDraft(picksCount, draftPosition, teams, draft.type, reversal_round, draftDetails.settings.rounds);
               const currentClock = formatMilliseconds((pick_timer * 1000) - (Date.now() - draftDetails.last_picked));
 
               return {
@@ -167,16 +175,36 @@ function DraftPage({ userName }) {
       } catch (error) {
         console.error("Error fetching data:", error);
       }
-    };
+    }, [userName]);
 
-    fetchUserData();
-  }, [userName]);
+    const handleBack = () => {
+      navigate(-1); // Navigate to the previous page
+    };
+  
+    const handleRefresh = () => {
+      // Re-fetch the data without changing the username
+      fetchUserData();
+    };
+  
+    useEffect(() => {
+      fetchUserData();
+    }, [userName, fetchUserData]);
+  
+    
 
   return (
     <div className="draft-container">
       <div className="draftname">
         <h1>Drafts Overview</h1>
         <span>{userName}</span>
+      </div>
+      <div className="button-container">
+        <button onClick={handleBack} className="back-button">
+          <FontAwesomeIcon icon={faArrowLeft} /> Back
+        </button>
+        <button onClick={handleRefresh} className="refresh-button">
+          <FontAwesomeIcon icon={faSyncAlt} /> Refresh
+        </button>
       </div>
       <div className="draft-grid">
         <div className="draft-grid-header">Name</div>
@@ -191,9 +219,11 @@ function DraftPage({ userName }) {
               <div className="draft-grid-item">
                 {draft.picksToDraft === 0 ? (
                   <span className="highlight-green">It's your turn to pick!</span>
+                ) : (draft.picksToDraft === -99 ? (
+                  <span className="highlight-red">Your last pick is made!</span>
                 ) : (
                   draft.picksToDraft
-                )}
+                ))}
               </div>
               <div className="draft-grid-item">{Math.floor((draft.picksCount-1) / draft.teams) + 1}</div>
               <div className="draft-grid-item">

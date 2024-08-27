@@ -573,3 +573,41 @@ h1 em {
   color: red;
   font-weight: bold;
 }
+
+.button-container {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.back-button,
+.refresh-button {
+  padding: 10px 20px;
+  font-size: 16px;
+  color: white;
+  background-color: #007bff;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: background-color 0.3s, box-shadow 0.3s;
+  outline: none;
+  display: flex;
+  align-items: center;
+}
+
+.back-button:hover,
+.refresh-button:hover {
+  background-color: #0056b3;
+  box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
+}
+
+.back-button:active,
+.refresh-button:active {
+  background-color: #003f7f;
+  box-shadow: 0 0 8px rgba(0, 63, 127, 0.3);
+}
+
+.back-button svg,
+.refresh-button svg {
+  margin-right: 8px;
+}
