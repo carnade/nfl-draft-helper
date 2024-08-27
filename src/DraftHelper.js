@@ -150,6 +150,7 @@ function DraftHelper({
       <div className="draftname">
         <h1>{draftName}</h1>
       </div>
+      <p></p>
       <div className="backButton-container">        
         <button
           onClick={() => navigate("/")}

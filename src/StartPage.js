@@ -6,6 +6,8 @@ function StartPage({
   setCsvFileName,
   useTierForOverall,
   setUseTierForOverall,
+  userName,
+  setUserName
 }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [selectedOption, setSelectedOption] = useState("original.csv"); // Set default value
@@ -16,12 +18,30 @@ function StartPage({
   };
 
   const handleDropdownChange = (event) => {
-    console.log(event.target.value);
     setSelectedOption(event.target.value);
   };
 
   const handleFileChange = (event) => {
     setSelectedFile(event.target.files[0]);
+  };
+
+  const handleCheckDrafts = () => {
+    navigate("/drafts")
+  };
+
+  const handleDownloadCSV = () => {
+    if (!selectedOption.endsWith(".csv")) {
+      alert("Please select a valid CSV file.");
+      return;
+    }
+  
+    const link = document.createElement("a");
+    link.href = `/path/to/your/csv/files/${selectedOption}`; // Replace with the actual path to your files
+    link.download = selectedOption;
+  
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleStartWithCSV = () => {
@@ -30,7 +50,7 @@ function StartPage({
       reader.onload = (e) => {
         const csvData = e.target.result;
         setCsvData(csvData); // Passing CSV data
-        navigate("/draft"); // Navigate to /draft
+        navigate("/drafthelper"); // Navigate to /draft
       };
       reader.readAsText(selectedFile);
     } else {
@@ -40,7 +60,7 @@ function StartPage({
 
   const handleStartDefault = () => {
     setCsvFileName(selectedOption); // Use default CSV data
-    navigate("/draft"); // Navigate to /draft
+    navigate("/drafthelper"); // Navigate to /draft
   };
 
   return (
@@ -86,8 +106,10 @@ function StartPage({
           <option value="dynasty_sf_adp.csv">Sleeper Dynasy SF</option>
           <option value="dynasty_half_ppr_adp.csv">Sleeper Dynasty half-PPR</option>
         </select>
+        <button onClick={handleDownloadCSV}>
+          Download CSV
+        </button>
       </div>
-
       <div className="checkbox-container">
         <input
           type="checkbox"
@@ -112,6 +134,24 @@ function StartPage({
         The last column(OverallTier) is optional but can be used if one wants to
         manually set tiers for the overall list.{" "}
       </div>
+      <hr className="separator" />
+
+      <div className="base-container">
+        <input
+          type="text"
+          value={userName}
+          onChange={(e) => setUserName(e.target.value)} // Update userName state
+          placeholder="Name"
+          className="modern-input"
+        />
+        <button
+          onClick={handleCheckDrafts}
+          className="modern-button"
+        >
+          Check Drafts
+        </button>
+      </div>
+
     </div>
   );
 }

@@ -2,12 +2,14 @@ import React, { useState } from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import StartPage from "./StartPage";
 import DraftHelper from "./DraftHelper";
+import DraftsList from "./DraftsList";
 import "./App.css";
 
 function App() {
   const [csvData, setCsvData] = useState("");  // Manage CSV data in App.js
   const [csvFileName, setCsvFileName] = useState("");  // Manage CSV data in App.js
   const [useTierForOverall, setUseTierForOverall] = useState(false);
+  const [userName, setUserName] = useState("");
 
   return (
     <Router>
@@ -21,13 +23,15 @@ function App() {
               setCsvFileName={setCsvFileName}
               useTierForOverall={useTierForOverall}
               setUseTierForOverall={setUseTierForOverall}
+              userName={userName}
+              setUserName={setUserName}
             />
           }
         />
 
         {/* Route for the draft helper page */}
         <Route
-          path="/draft"
+          path="/drafthelper"
           element={
             <DraftHelper
               csvData={csvData}
@@ -35,6 +39,10 @@ function App() {
               useTierForOverall={useTierForOverall}
             />
           }
+        />
+        <Route
+          path="/drafts"
+          element={<DraftsList userName={userName} />} // Pass userName to DraftPage component
         />
       </Routes>
     </Router>
