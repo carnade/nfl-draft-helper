@@ -7,7 +7,7 @@ function StartPage({
   useTierForOverall,
   setUseTierForOverall,
   userName,
-  setUserName
+  setUserName,
 }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [selectedOption, setSelectedOption] = useState("original.csv"); // Set default value
@@ -26,7 +26,11 @@ function StartPage({
   };
 
   const handleCheckDrafts = () => {
-    navigate("/drafts")
+    navigate("/drafts");
+  };
+
+  const handleCheckLeagues = () => {
+    navigate("/leagues"); // Navigate to /leagues
   };
 
   const handleDownloadCSV = () => {
@@ -34,11 +38,11 @@ function StartPage({
       alert("Please select a valid CSV file.");
       return;
     }
-  
+
     const link = document.createElement("a");
     link.href = `/path/to/your/csv/files/${selectedOption}`; // Replace with the actual path to your files
     link.download = selectedOption;
-  
+
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -66,15 +70,16 @@ function StartPage({
   return (
     <div className="start-page">
       <h1>Welcome to the Draft Helper App</h1>
-
+      <hr className="separator" />
+      <h2>Tier based draft tool</h2>
       <div className="file-input-container">
-      <div className="file-input-button">
-        <button
-          onClick={handleStartWithCSV}
-          disabled={!selectedFile} // Disable button until a file is selected
-        >
-          Start with CSV
-        </button>
+        <div className="file-input-button">
+          <button
+            onClick={handleStartWithCSV}
+            disabled={!selectedFile} // Disable button until a file is selected
+          >
+            Start with CSV
+          </button>
         </div>
         <label htmlFor="file-input" className="file-input-label">
           <button type="button" onClick={handleLoadCsvClick}>
@@ -104,11 +109,11 @@ function StartPage({
           <option value="redraft_half_ppr_adp.csv">Sleeper half-PPR</option>
           <option value="dynasty_ppr_adp.csv">Sleeper Dynasy PPR</option>
           <option value="dynasty_sf_adp.csv">Sleeper Dynasy SF</option>
-          <option value="dynasty_half_ppr_adp.csv">Sleeper Dynasty half-PPR</option>
+          <option value="dynasty_half_ppr_adp.csv">
+            Sleeper Dynasty half-PPR
+          </option>
         </select>
-        <button onClick={handleDownloadCSV}>
-          Download CSV
-        </button>
+        <button onClick={handleDownloadCSV}>Download CSV</button>
       </div>
       <div className="checkbox-container">
         <input
@@ -135,7 +140,7 @@ function StartPage({
         manually set tiers for the overall list.{" "}
       </div>
       <hr className="separator" />
-
+      <h2>Draft list with pick timers</h2>
       <div className="base-container">
         <input
           type="text"
@@ -144,14 +149,13 @@ function StartPage({
           placeholder="Name"
           className="modern-input"
         />
-        <button
-          onClick={handleCheckDrafts}
-          className="modern-button"
-        >
+        <button onClick={handleCheckDrafts} className="modern-button">
           Check Drafts
         </button>
+        <button onClick={handleCheckLeagues} className="modern-button">
+          Check Leagues
+        </button>
       </div>
-
     </div>
   );
 }
