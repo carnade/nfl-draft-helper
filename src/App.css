@@ -614,21 +614,15 @@ h1 em {
 }
 
 .league-container {
-  max-width: 1200px;
-  margin-left: 20px;
+  max-width: 1400px;
+  margin-left: 10em;
   margin-right: auto;
+  margin-top: 2em;
 }
 
 .league-header {
   text-align: center;
   margin-bottom: 20px;
-}
-
-.league-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 15px;
-  padding: 20px;
 }
 
 .league-grid-header {
@@ -665,31 +659,25 @@ h1 em {
   margin-bottom: 5px;
 }
 
-.roster-grid {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr;
-  gap: 10px;
-  align-items: center;
-  margin-bottom: 5px;
-}
-
 .roster-grid-header {
   font-weight: bold;
-  font-size: 14px;
+  font-size: 16px;
   text-align: left;
 }
 
 .roster-grid-item {
-  font-size: 14px;
+  font-size: 16px;
   padding: 2px 0;
 }
 
 .league-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: 3fr 1fr 1fr 1fr 1fr 1fr;
   gap: 10px;
-  max-width: 1200px;
-  margin: 0 auto;
+  max-width: 1800px;
+
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .league-grid-header,
@@ -708,4 +696,38 @@ h1 em {
   grid-column: 1 / -1; /* Spans all columns */
   padding: 10px 0;
   margin-left: 20px;
+}
+
+/* Injury status colors */
+.injury {
+    color: red;
+    font-weight: bold;
+}
+
+.injury-questionable {
+    color: orange;
+    font-weight: bold;
+}
+
+/* Tightening up the expanded rows */
+.roster-grid {
+    display: grid;
+    grid-template-columns: 0.55fr 0.2fr 0.5fr 0.5fr .5fr;
+    grid-gap: 8px;
+    align-items: center;
+    padding: 4px 0;
+}
+
+/* Adjusting the overall width of the expanded row */
+.league-details {
+    padding-left: 20px; /* Adding some padding */
+    max-width: 80%; /* Control the width of the expanded content */
+}
+
+
+
+/* Ensure the toggle button aligns correctly */
+.toggle-button {
+    cursor: pointer;
+    margin-right: 5px;
 }
