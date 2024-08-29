@@ -3,11 +3,12 @@ import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import StartPage from "./StartPage";
 import DraftHelper from "./DraftHelper";
 import DraftsList from "./DraftsList";
+import LeagueList from "./LeagueList";
 import "./App.css";
 
 function App() {
-  const [csvData, setCsvData] = useState("");  // Manage CSV data in App.js
-  const [csvFileName, setCsvFileName] = useState("");  // Manage CSV data in App.js
+  const [csvData, setCsvData] = useState(""); // Manage CSV data in App.js
+  const [csvFileName, setCsvFileName] = useState(""); // Manage CSV data in App.js
   const [useTierForOverall, setUseTierForOverall] = useState(false);
   const [userName, setUserName] = useState("");
 
@@ -44,6 +45,7 @@ function App() {
           path="/drafts"
           element={<DraftsList userName={userName} />} // Pass userName to DraftPage component
         />
+        <Route path="/leagues" element={<LeagueList userName={userName} />} />
       </Routes>
     </Router>
   );

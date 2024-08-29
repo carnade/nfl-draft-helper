@@ -331,7 +331,7 @@
   font-size: 16px;
   color: green;
   position: absolute;
-  top : 50px; /* Place it at the right edge of the container */
+  top: 50px; /* Place it at the right edge of the container */
 
   animation: flashAnimation 0.7s ease-in-out;
   white-space: nowrap;
@@ -392,7 +392,8 @@ h1 em {
   margin: 10px; /* Remove default margins */
 }
 
-.draftname h1:before, .draftname h1:after {
+.draftname h1:before,
+.draftname h1:after {
   content: " ";
   display: block;
   width: 50px; /* Set the width to 50px */
@@ -548,7 +549,7 @@ h1 em {
 
 .draft-grid-name {
   text-align: left;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-size: 18px;
   font-weight: 500;
   font-stretch: normal;
@@ -610,4 +611,123 @@ h1 em {
 .back-button svg,
 .refresh-button svg {
   margin-right: 8px;
+}
+
+.league-container {
+  max-width: 1400px;
+  margin-left: 10em;
+  margin-right: auto;
+  margin-top: 2em;
+}
+
+.league-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.league-grid-header {
+  font-weight: bold;
+  border-bottom: 2px solid #ccc;
+  padding-bottom: 10px;
+}
+
+.league-grid-item {
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.league-name {
+  text-align: left;
+  font-family: "Poppins", sans-serif;
+  font-size: 18px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+}
+
+.toggle-button {
+  cursor: pointer;
+  margin-right: 5px;
+}
+
+.roster-group {
+  margin-bottom: 10px;
+}
+
+.roster-header {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.roster-grid-header {
+  font-weight: bold;
+  font-size: 16px;
+  text-align: left;
+}
+
+.roster-grid-item {
+  font-size: 16px;
+  padding: 2px 0;
+}
+
+.league-grid {
+  display: grid;
+  grid-template-columns: 3fr 1fr 1fr 1fr 1fr 1fr;
+  gap: 10px;
+  max-width: 1800px;
+
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.league-grid-header,
+.league-grid-item {
+  padding: 10px;
+  border-bottom: 1px solid #ccc;
+}
+
+.league-name {
+  font-family: "Poppins", sans-serif;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.league-details {
+  grid-column: 1 / -1; /* Spans all columns */
+  padding: 10px 0;
+  margin-left: 20px;
+}
+
+/* Injury status colors */
+.injury {
+    color: red;
+    font-weight: bold;
+}
+
+.injury-questionable {
+    color: orange;
+    font-weight: bold;
+}
+
+/* Tightening up the expanded rows */
+.roster-grid {
+    display: grid;
+    grid-template-columns: 0.55fr 0.2fr 0.5fr 0.5fr .5fr;
+    grid-gap: 8px;
+    align-items: center;
+    padding: 4px 0;
+}
+
+/* Adjusting the overall width of the expanded row */
+.league-details {
+    padding-left: 20px; /* Adding some padding */
+    max-width: 80%; /* Control the width of the expanded content */
+}
+
+
+
+/* Ensure the toggle button aligns correctly */
+.toggle-button {
+    cursor: pointer;
+    margin-right: 5px;
 }
