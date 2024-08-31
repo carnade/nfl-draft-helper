@@ -614,9 +614,8 @@ h1 em {
 }
 
 .league-container {
-  max-width: 1400px;
-  margin-left: 10em;
-  margin-right: auto;
+  margin-left: 5em;
+  margin-right: 5em;
   margin-top: 2em;
 }
 
@@ -674,7 +673,6 @@ h1 em {
   display: grid;
   grid-template-columns: 3fr 1fr 1fr 1fr 1fr 1fr;
   gap: 10px;
-  max-width: 1800px;
 
   margin-left: auto;
   margin-right: auto;
@@ -700,34 +698,445 @@ h1 em {
 
 /* Injury status colors */
 .injury {
-    color: red;
-    font-weight: bold;
+  color: red;
+  font-weight: bold;
 }
 
 .injury-questionable {
-    color: orange;
-    font-weight: bold;
+  color: orange;
+  font-weight: bold;
 }
 
 /* Tightening up the expanded rows */
 .roster-grid {
-    display: grid;
-    grid-template-columns: 0.55fr 0.2fr 0.5fr 0.5fr .5fr;
-    grid-gap: 8px;
-    align-items: center;
-    padding: 4px 0;
+  display: grid;
+  grid-template-columns: 0.55fr 0.2fr 0.5fr 0.5fr 0.5fr;
+  grid-gap: 8px;
+  align-items: center;
+  padding: 4px 0;
 }
 
 /* Adjusting the overall width of the expanded row */
 .league-details {
-    padding-left: 20px; /* Adding some padding */
-    max-width: 80%; /* Control the width of the expanded content */
+  padding-left: 20px; /* Adding some padding */
+  max-width: 80%; /* Control the width of the expanded content */
 }
-
-
 
 /* Ensure the toggle button aligns correctly */
 .toggle-button {
-    cursor: pointer;
-    margin-right: 5px;
+  cursor: pointer;
+  margin-right: 5px;
+}
+
+/* Container for the league grid and injury report */
+.content-wrapper {
+  display: flex;
+  justify-content: space-between;
+}
+
+/* League Grid Styling */
+.league-container {
+  padding: 20px;
+  font-family: Arial, sans-serif;
+}
+
+.league-grid-header {
+  font-weight: bold;
+  background-color: #f1f1f1;
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+}
+
+.league-grid-item {
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+}
+
+.roster-group {
+  margin-top: 10px;
+}
+
+.roster-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  padding: 10px 0;
+}
+
+.roster-header {
+  font-weight: bold;
+  background-color: #f1f1f1;
+}
+
+/* Toggle button for expanding/collapsing sections */
+.toggle-button {
+  cursor: pointer;
+  margin-right: 5px;
+}
+
+/* Injury Report Section */
+.injury-report {
+  width: 30%; /* Adjust to your layout */
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-left: 1px solid #ddd;
+}
+
+.injury-report h2 {
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+
+.injury-report-search {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.injury-teams {
+  margin-top: 15px;
+}
+
+.injury-team {
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+.injury-players {
+  margin-left: 20px;
+  margin-top: 5px;
+}
+
+.injury-player {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+}
+
+.injury {
+  color: red;
+}
+
+.injury-questionable {
+  color: orange;
+}
+
+/* Styling for Links */
+.roster-grid-item a img {
+  filter: grayscale(100%);
+  margin-right: 5px;
+  cursor: default;
+}
+
+.roster-grid-item a img.enabled {
+  filter: none;
+  cursor: pointer;
+}
+
+/* Ensure the icons for Yahoo and Rotowire are spaced apart */
+.roster-grid-item span img {
+  margin-right: 5px;
+}
+
+.roster-grid-item span a {
+  margin-right: 5px;
+}
+
+.dashboard-container {
+  display: flex;
+  justify-content: space-between;
+  padding: 20px;
+  flex-wrap: wrap;
+}
+
+.header-container {
+  width: 100%;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.page-header {
+  margin: 0;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.header-username {
+  display: block;
+  font-size: 14px;
+  color: #666;
+  margin-top: 5px;
+}
+
+.league-list-container {
+  width: 65%; /* Adjusted width */
+  overflow-y: auto;
+}
+
+.injury-report-container {
+  width: 30%; /* Adjusted width */
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-left: 1px solid #ddd;
+  overflow-y: auto;
+}
+.injury-report-container h2 {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.injury-report-search {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 20px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.injury-report-teams {
+  margin-top: 20px;
+}
+
+.injury-team {
+  display: flex;
+  align-items: center;
+  padding: 5px 0;
+  border-bottom: 1px solid #ccc;
+  flex-wrap: wrap; /* Allows wrapping of children */
+}
+
+.team-injury-icons {
+  margin-left: auto;
+  display: inline-block;
+}
+
+.team-injury-list {
+  width: 100%; /* Forces the list to take up the full width */
+  margin-top: 5px; /* Adds space between the team name and the expanded list */
+  padding-left: 20px; /* Optional: Indent the player list */
+  display: block;
+}
+
+.injury-icon {
+  margin-right: 10px;
+  display: inline-block;
+}
+
+.team-injury-list {
+  margin-top: 10px;
+  padding-left: 20px;
+}
+
+.injury-player {
+  margin-bottom: 5px;
+}
+
+.injury-status {
+  font-weight: bold;
+}
+
+.injury-status.PUP,
+.injury-status.NA,
+.injury-status.IR,
+.injury-status.Sus {
+  color: red;
+}
+
+.injury-status.Questionable {
+  color: orange;
+}
+
+.selected-player {
+  border: 2px solid red; /* Red outline for the selected player */
+  border-radius: 5px;
+}
+.dashboard-container {
+  display: flex;
+  justify-content: space-between;
+  padding: 20px;
+}
+
+.header-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.search-container {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px; /* Space between search input and league list */
+}
+
+.search-label {
+  margin-right: 10px;
+  font-weight: bold;
+}
+
+.page-header {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.header-username {
+  font-size: 16px;
+  color: #555;
+}
+
+.back-button {
+  position: absolute;
+  left: 20px;
+  top: 20px;
+}
+
+.league-list-container {
+  width: 65%;
+}
+
+.league-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+}
+
+.league-grid-header {
+  font-weight: bold;
+  text-align: left;
+}
+
+.league-grid-item {
+  padding: 10px;
+  background-color: #f9f9f9;
+  border-radius: 5px;
+}
+
+.highlighted-league {
+  background-color: #ffb97c;
+}
+
+.injury-report-container {
+  width: 30%;
+  margin-left: 20px;
+  border-left: 2px solid #ccc;
+  padding-left: 20px;
+}
+
+.injury-report-search {
+  width: 100%;
+  padding: 5px;
+  margin-bottom: 10px;
+}
+
+.injury-report-teams {
+  display: flex;
+  flex-direction: column;
+}
+
+.injury-team {
+  display: flex;
+  align-items: center;
+  padding: 5px 0;
+}
+
+.team-name {
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.team-injury-icons {
+  margin-left: auto;
+  display: inline-block;
+}
+
+.team-injury-list {
+  display: block;
+  margin-top: 5px;
+  padding-left: 20px;
+}
+
+.injury-player {
+  cursor: pointer;
+  margin: 5px 0;
+}
+
+.selected-player {
+  border: 2px solid red;
+  border-radius: 5px;
+  padding: 5px;
+  background-color: #ffe5e5;
+}
+
+.injury-status.Questionable {
+  color: orange;
+}
+
+.injury-status.injury {
+  color: red;
+}
+
+.injury-report-search {
+  margin-left: 20px;
+  padding: 5px;
+}
+.dashboard-container {
+  padding: 20px;
+}
+
+.header-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.search-container {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  justify-content: flex-start; /* Align to the left */
+}
+
+.search-label {
+  margin-right: 10px;
+  font-weight: bold;
+}
+
+.injury-report-search {
+  padding: 5px;
+  margin-right: 20px; /* Adds some space between the input and list */
+}
+
+.main-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.league-list-container {
+  flex: 1;
+}
+
+.league-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+}
+
+.league-grid-header {
+  font-weight: bold;
+}
+
+.injury-report-container {
+  width: 35%;
+  padding-left: 20px;
+  border-left: 1px solid #ccc;
+}
+
+.injury-report-teams {
+  overflow-y: auto;
 }
