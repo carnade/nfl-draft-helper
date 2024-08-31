@@ -130,9 +130,10 @@ function LeagueList({ userName }) {
     }
   };
 
-  const fetchPlayerData = useCallback(
-    async (leagues) => {
-      const requests = leagues.map((league) => {
+  const fetchPlayerData = useCallback(async () => {
+    const requests = {
+      username: userName,
+      leagues: leagues.map((league) => {
         const leagueId = league.league_id;
         const playerlist = [
           ...league.userRoster.starters,
@@ -142,46 +143,43 @@ function LeagueList({ userName }) {
         ];
 
         return {
-          username: userName,
           league_id: leagueId,
           playerlist,
         };
-      });
-
-      try {
-        let response;
-        if (mock) {
-          response = await fetch("http://localhost:5000/getplayers", {
+      }),
+    };
+    try {
+      let response;
+      if (mock) {
+        response = await fetch("http://localhost:5000/getplayers", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requests),
+        });
+      } else {
+        response = await fetch(
+          "https://silent-dew-3400.ploomberapp.io/getplayers",
+          {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
             body: JSON.stringify(requests),
-          });
-        } else {
-          response = await fetch(
-            "https://silent-dew-3400.ploomberapp.io/getplayers",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(requests),
-            }
-          );
-        }
-        const data = await response.json();
-        const playerDataMap = {};
-        data.forEach((leagueData) => {
-          playerDataMap[leagueData.league_id] = leagueData;
-        });
-        setPlayerData(playerDataMap);
-      } catch (error) {
-        console.error("Error fetching player data:", error);
+          }
+        );
       }
-    },
-    [mock, userName]
-  );
+      const data = await response.json();
+      const playerDataMap = {};
+      data.forEach((leagueData) => {
+        playerDataMap[leagueData.league_id] = leagueData;
+      });
+      setPlayerData(playerDataMap);
+    } catch (error) {
+      console.error("Error fetching player data:", error);
+    }
+  }, [mock, userName, leagues]);
 
   const fetchLeagueData = useCallback(async () => {
     try {
