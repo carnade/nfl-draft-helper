@@ -13,7 +13,11 @@ function LeagueList({ userName }) {
   const [leagues, setLeagues] = useState([]);
   const [expandedLeagueIds, setExpandedLeagueIds] = useState(new Set());
   const [playerData, setPlayerData] = useState({});
+  const [injuryReport, setInjuryReport] = useState({});
+  const [expandedTeams, setExpandedTeams] = useState(new Set());
   const navigate = useNavigate();
+
+  const mock = true;
 
   const handleBackClick = () => {
     navigate(-1); // Navigate to the previous page
@@ -31,38 +35,71 @@ function LeagueList({ userName }) {
     });
   };
 
-  const fetchPlayerData = async (leagues) => {
-    const requests = leagues.map((league) => {
-      const leagueId = league.league_id;
-      const playerlist = [
-        ...league.userRoster.starters,
-        ...league.userRoster.reserve,
-        ...league.userRoster.taxi,
-        ...league.userRoster.uniquePlayers,
-      ];
-
-      return {
-        league_id: leagueId,
-        playerlist,
-      };
+  const handleTeamToggle = (teamAbbreviation) => {
+    setExpandedTeams((prevIds) => {
+      const newIds = new Set(prevIds);
+      if (newIds.has(teamAbbreviation)) {
+        newIds.delete(teamAbbreviation);
+      } else {
+        newIds.add(teamAbbreviation);
+      }
+      return newIds;
     });
+  };
 
-    try {
-      const response = await fetch("https://silent-dew-3400.ploomberapp.io/getplayers", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requests),
+  const fetchPlayerData = async (leagues) => {
+    if (mock) {
+      try {
+        const response = await fetch("/sleeper_data_trimmed.json");
+        const data = await response.json();
+        const playerDataMap = {};
+        leagues.forEach((league) => {
+          playerDataMap[league.league_id] = {
+            league_id: league.league_id,
+            players: data,
+          };
+        });
+        setPlayerData(playerDataMap);
+        console.log("playerDataMap", JSON.stringify(playerDataMap, null, 2));
+      } catch (error) {
+        console.error("Error fetching player data:", error);
+      }
+    } else {
+      const requests = leagues.map((league) => {
+        const leagueId = league.league_id;
+        const playerlist = [
+          ...league.userRoster.starters,
+          ...league.userRoster.reserve,
+          ...league.userRoster.taxi,
+          ...league.userRoster.uniquePlayers,
+        ];
+
+        return {
+          league_id: leagueId,
+          playerlist,
+        };
       });
-      const data = await response.json();
-      const playerDataMap = {};
-      data.forEach((leagueData) => {
-        playerDataMap[leagueData.league_id] = leagueData;
-      });
-      setPlayerData(playerDataMap);
-    } catch (error) {
-      console.error("Error fetching player data:", error);
+
+      try {
+        const response = await fetch(
+          "https://silent-dew-3400.ploomberapp.io/getplayers",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(requests),
+          }
+        );
+        const data = await response.json();
+        const playerDataMap = {};
+        data.forEach((leagueData) => {
+          playerDataMap[leagueData.league_id] = leagueData;
+        });
+        setPlayerData(playerDataMap);
+      } catch (error) {
+        console.error("Error fetching player data:", error);
+      }
     }
   };
 
@@ -141,9 +178,20 @@ function LeagueList({ userName }) {
     }
   }, [userName]);
 
+  const fetchInjuryReport = useCallback(async () => {
+    try {
+      const response = await fetch("/injury_report.json");
+      const data = await response.json();
+      setInjuryReport(data);
+    } catch (error) {
+      console.error("Error fetching injury report:", error);
+    }
+  }, []);
+
   useEffect(() => {
     fetchLeagueData();
-  }, [fetchLeagueData]);
+    fetchInjuryReport();
+  }, [fetchLeagueData, fetchInjuryReport]);
 
   const renderPlayerInfo = (playerId, leagueId) => {
     const player = playerData[leagueId]?.players[playerId];
@@ -184,17 +232,19 @@ function LeagueList({ userName }) {
       <>
         <span
           style={{
-            display: 'inline-block',
-            marginRight: '5px',
-            filter: yahooId ? 'none' : 'grayscale(100%)',
-            pointerEvents: yahooId ? 'auto' : 'none'
+            display: "inline-block",
+            marginRight: "5px",
+            filter: yahooId ? "none" : "grayscale(100%)",
+            pointerEvents: yahooId ? "auto" : "none",
           }}
         >
           <a
-            href={yahooId ? `https://sports.yahoo.com/nfl/players/${yahooId}` : '#'}
+            href={
+              yahooId ? `https://sports.yahoo.com/nfl/players/${yahooId}` : "#"
+            }
             target="_blank"
             rel="noopener noreferrer"
-            style={{ display: yahooId ? 'inline' : 'none' }}
+            style={{ display: yahooId ? "inline" : "none" }}
           >
             <img
               src="/yahoo.png"
@@ -206,22 +256,30 @@ function LeagueList({ userName }) {
             <img
               src="/yahoo.png"
               alt="Yahoo"
-              style={{ width: "20px", height: "20px", filter: 'grayscale(100%)' }}
+              style={{
+                width: "20px",
+                height: "20px",
+                filter: "grayscale(100%)",
+              }}
             />
           )}
         </span>
         <span
           style={{
-            display: 'inline-block',
-            filter: rotowireId ? 'none' : 'grayscale(100%)',
-            pointerEvents: rotowireId ? 'auto' : 'none'
+            display: "inline-block",
+            filter: rotowireId ? "none" : "grayscale(100%)",
+            pointerEvents: rotowireId ? "auto" : "none",
           }}
         >
           <a
-            href={rotowireId ? `https://www.rotowire.com/football/player/${firstName}-${lastName}-${rotowireId}` : '#'}
+            href={
+              rotowireId
+                ? `https://www.rotowire.com/football/player/${firstName}-${lastName}-${rotowireId}`
+                : "#"
+            }
             target="_blank"
             rel="noopener noreferrer"
-            style={{ display: rotowireId ? 'inline' : 'none' }}
+            style={{ display: rotowireId ? "inline" : "none" }}
           >
             <img
               src="/rotowire.png"
@@ -233,14 +291,17 @@ function LeagueList({ userName }) {
             <img
               src="/rotowire.png"
               alt="Rotowire"
-              style={{ width: "20px", height: "20px", filter: 'grayscale(100%)' }}
+              style={{
+                width: "20px",
+                height: "20px",
+                filter: "grayscale(100%)",
+              }}
             />
           )}
         </span>
       </>
     );
-};
-
+  };
 
   const sortPlayersByPosition = (playerIds, leagueId) => {
     const positionOrder = { QB: 1, RB: 2, WR: 3, TE: 4, DEF: 5 };
@@ -256,7 +317,8 @@ function LeagueList({ userName }) {
     let orangeCount = 0;
 
     starters.forEach((playerId) => {
-      const injuryStatus = playerData[leagueId]?.players[playerId]?.injury_status;
+      const injuryStatus =
+        playerData[leagueId]?.players[playerId]?.injury_status;
       if (injuryStatus) {
         if (injuryStatus === "Questionable") {
           orangeCount += 1;
@@ -269,6 +331,41 @@ function LeagueList({ userName }) {
     return { redCount, orangeCount };
   };
 
+  const teamNames = {
+    ARI: "Arizona Cardinals",
+    ATL: "Atlanta Falcons",
+    BAL: "Baltimore Ravens",
+    BUF: "Buffalo Bills",
+    CAR: "Carolina Panthers",
+    CHI: "Chicago Bears",
+    CIN: "Cincinnati Bengals",
+    CLE: "Cleveland Browns",
+    DAL: "Dallas Cowboys",
+    DEN: "Denver Broncos",
+    DET: "Detroit Lions",
+    GB: "Green Bay Packers",
+    HOU: "Houston Texans",
+    IND: "Indianapolis Colts",
+    JAX: "Jacksonville Jaguars",
+    KC: "Kansas City Chiefs",
+    LV: "Las Vegas Raiders",
+    LAC: "Los Angeles Chargers",
+    LAR: "Los Angeles Rams",
+    MIA: "Miami Dolphins",
+    MIN: "Minnesota Vikings",
+    NE: "New England Patriots",
+    NO: "New Orleans Saints",
+    NYG: "New York Giants",
+    NYJ: "New York Jets",
+    PHI: "Philadelphia Eagles",
+    PIT: "Pittsburgh Steelers",
+    SEA: "Seattle Seahawks",
+    SF: "San Francisco 49ers",
+    TB: "Tampa Bay Buccaneers",
+    TEN: "Tennessee Titans",
+    WAS: "Washington Commanders",
+  };
+
   return (
     <div className="league-container">
       <button onClick={handleBackClick} className="back-button">
@@ -278,134 +375,179 @@ function LeagueList({ userName }) {
         <h1>Leagues Overview (W.I.P)</h1>
         <span>{userName}</span>
       </div>
-      <div className="league-grid">
-        <div className="league-grid-header">League Name</div>
-        <div className="league-grid-header">Record</div>
-        <div className="league-grid-header">FPTS</div>
-        <div className="league-grid-header">Used Waiver Budget</div>
-        <div className="league-grid-header">Injuries on starters</div>
-        <div className="league-grid-header">Links</div>
+      <div className="content-wrapper">
+        <div className="league-grid">
+          <div className="league-grid-header">League Name</div>
+          <div className="league-grid-header">Record</div>
+          <div className="league-grid-header">FPTS</div>
+          <div className="league-grid-header">Used Waiver Budget</div>
+          <div className="league-grid-header">Injuries on starters</div>
+          <div className="league-grid-header">Links</div>
 
-        {leagues.length > 0 ? (
-          leagues.map((league, index) => {
-            const { redCount, orangeCount } = countInjuries(
-              league.userRoster?.starters || [],
-              league.league_id
-            );
-            return (
-              <React.Fragment key={index}>
-                <div className="league-grid-item league-name">
-                  <span
-                    className="toggle-button"
-                    onClick={() => handleToggle(league.league_id)}
-                  >
-                    {expandedLeagueIds.has(league.league_id) ? "▼" : "►"}{" "}
-                  </span>
-                  {league.name}
-                </div>
-                <div className="league-grid-item">
-                  {league.userRoster?.settings?.wins}-
-                  {league.userRoster?.settings?.losses}-
-                  {league.userRoster?.settings?.ties}
-                </div>
-                <div className="league-grid-item">
-                  {league.userRoster?.settings?.fpts}
-                </div>
-                <div className="league-grid-item">
-                  {league.userRoster?.settings?.waiver_budget_used}/
-                  {league.settings.waiver_budget}
-                </div>
-                <div className="league-grid-item">
-                  {redCount > 0 && (
-                    <>
-                      <FontAwesomeIcon
-                        icon={faUserInjured}
-                        style={{ color: "red" }}
-                      />{" "}
-                      {redCount}{" "}
-                    </>
-                  )}
-                  {orangeCount > 0 && (
-                    <>
-                      <FontAwesomeIcon
-                        icon={faQuestion}
-                        style={{ color: "orange" }}
-                      />{" "}
-                      {orangeCount}
-                    </>
-                  )}
-                </div>
-                <div className="league-grid-item">
-                  <a
-                    href={`https://sleeper.app/leagues/${league.league_id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <FontAwesomeIcon icon={faExternalLinkAlt} />
-                  </a>
-                </div>
-                {expandedLeagueIds.has(league.league_id) && (
-                  <div className="league-details">
-                    {["starters", "uniquePlayers", "reserve", "taxi"].map(
-                      (group, idx) =>
-                        (league.userRoster[group] || []).length > 0 && (
-                          <div key={idx} className="roster-group">
-                            <div className="roster-grid">
-                              <div className="roster-grid-item roster-header">
-                                {group === "uniquePlayers"
-                                  ? "Bench"
-                                  : group.charAt(0).toUpperCase() +
-                                    group.slice(1)}
-                              </div>
-                              <div className="roster-grid-item roster-header">
-                                Position
-                              </div>
-                              <div className="roster-grid-item roster-header">
-                                Status
-                              </div>
-                              <div className="roster-grid-item roster-header">
-                                Links
-                              </div>
-                            </div>
-                            {sortPlayersByPosition(
-                              league.userRoster[group],
-                              league.league_id
-                            )?.map((player, index) => (
-                              <div key={index} className="roster-grid">
-                                <div className="roster-grid-item">
-                                  {renderPlayerInfo(player, league.league_id)}
-                                </div>
-                                <div className="roster-grid-item">
-                                  {playerData[league.league_id]?.players[player]
-                                    ?.position || ""}
-                                </div>
-                                <div className="roster-grid-item">
-                                  {renderInjuryStatus(
-                                    player,
-                                    league.league_id
-                                  )}
-                                </div>
-                                <div className="roster-grid-item">
-                                  {renderPlayerLinks(
-                                    player,
-                                    league.league_id
-                                  )}                          
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )
+          {leagues.length > 0 ? (
+            leagues.map((league, index) => {
+              const { redCount, orangeCount } = countInjuries(
+                league.userRoster?.starters || [],
+                league.league_id
+              );
+              return (
+                <React.Fragment key={index}>
+                  <div className="league-grid-item league-name">
+                    <span
+                      className="toggle-button"
+                      onClick={() => handleToggle(league.league_id)}
+                    >
+                      {expandedLeagueIds.has(league.league_id) ? "▼" : "►"}{" "}
+                    </span>
+                    {league.name}
+                  </div>
+                  <div className="league-grid-item">
+                    {league.userRoster?.settings?.wins}-
+                    {league.userRoster?.settings?.losses}-
+                    {league.userRoster?.settings?.ties}
+                  </div>
+                  <div className="league-grid-item">
+                    {league.userRoster?.settings?.fpts}
+                  </div>
+                  <div className="league-grid-item">
+                    {league.userRoster?.settings?.waiver_budget_used}/
+                    {league.settings.waiver_budget}
+                  </div>
+                  <div className="league-grid-item">
+                    {redCount > 0 && (
+                      <>
+                        <FontAwesomeIcon
+                          icon={faUserInjured}
+                          style={{ color: "red" }}
+                        />{" "}
+                        {redCount}{" "}
+                      </>
+                    )}
+                    {orangeCount > 0 && (
+                      <>
+                        <FontAwesomeIcon
+                          icon={faQuestion}
+                          style={{ color: "orange" }}
+                        />{" "}
+                        {orangeCount}
+                      </>
                     )}
                   </div>
+                  <div className="league-grid-item">
+                    <a
+                      href={`https://sleeper.app/leagues/${league.league_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <FontAwesomeIcon icon={faExternalLinkAlt} />
+                    </a>
+                  </div>
+                  {expandedLeagueIds.has(league.league_id) && (
+                    <div className="league-details">
+                      {["starters", "uniquePlayers", "reserve", "taxi"].map(
+                        (group, idx) =>
+                          (league.userRoster[group] || []).length > 0 && (
+                            <div key={idx} className="roster-group">
+                              <div className="roster-grid">
+                                <div className="roster-grid-item roster-header">
+                                  {group === "uniquePlayers"
+                                    ? "Bench"
+                                    : group.charAt(0).toUpperCase() +
+                                      group.slice(1)}
+                                </div>
+                                <div className="roster-grid-item roster-header">
+                                  Position
+                                </div>
+                                <div className="roster-grid-item roster-header">
+                                  Status
+                                </div>
+                                <div className="roster-grid-item roster-header">
+                                  Links
+                                </div>
+                              </div>
+                              {sortPlayersByPosition(
+                                league.userRoster[group],
+                                league.league_id
+                              )?.map((player, index) => (
+                                <div key={index} className="roster-grid">
+                                  <div className="roster-grid-item">
+                                    {renderPlayerInfo(player, league.league_id)}
+                                  </div>
+                                  <div className="roster-grid-item">
+                                    {playerData[league.league_id]?.players[
+                                      player
+                                    ]?.position || ""}
+                                  </div>
+                                  <div className="roster-grid-item">
+                                    {renderInjuryStatus(
+                                      player,
+                                      league.league_id
+                                    )}
+                                  </div>
+                                  <div className="roster-grid-item">
+                                    {renderPlayerLinks(
+                                      player,
+                                      league.league_id
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )
+                      )}
+                    </div>
+                  )}
+                </React.Fragment>
+              );
+            })
+          ) : (
+            <div className="league-grid-item">No leagues found.</div>
+          )}
+        </div>
+
+        {/* Injury Report Section */}
+        <div className="injury-report">
+          <h2>Injury Report</h2>
+          <input
+            type="text"
+            placeholder="Player Name"
+            className="injury-report-search"
+          />
+          <div className="injury-teams">
+            {Object.keys(injuryReport).map((teamAbbr) => (
+              <div key={teamAbbr} className="injury-team">
+                <span
+                  className="toggle-button"
+                  onClick={() => handleTeamToggle(teamAbbr)}
+                >
+                  {expandedTeams.has(teamAbbr) ? "▼" : "►"}{" "}
+                </span>
+                {teamNames[teamAbbr] || teamAbbr}
+                {expandedTeams.has(teamAbbr) && (
+                  <div className="injury-players">
+                    {injuryReport[teamAbbr].map((player, index) => (
+                      <div key={index} className="injury-player">
+                        <span>
+                          {player.first_name} {player.last_name}
+                        </span>
+                        <span
+                          className={
+                            player.injury_status === "Questionable"
+                              ? "injury-questionable"
+                              : "injury"
+                          }
+                        >
+                          {player.injury_status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 )}
-              </React.Fragment>
-            );
-          })
-        ) : (
-          <div className="league-grid-item">No leagues found.</div>
-        )}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
-      <span hidden>{userId}</span>
     </div>
   );
 }

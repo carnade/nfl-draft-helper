@@ -614,9 +614,8 @@ h1 em {
 }
 
 .league-container {
-  max-width: 1400px;
-  margin-left: 10em;
-  margin-right: auto;
+  margin-left: 5em;
+  margin-right: 5em;
   margin-top: 2em;
 }
 
@@ -674,7 +673,6 @@ h1 em {
   display: grid;
   grid-template-columns: 3fr 1fr 1fr 1fr 1fr 1fr;
   gap: 10px;
-  max-width: 1800px;
 
   margin-left: auto;
   margin-right: auto;
@@ -700,34 +698,185 @@ h1 em {
 
 /* Injury status colors */
 .injury {
-    color: red;
-    font-weight: bold;
+  color: red;
+  font-weight: bold;
 }
 
 .injury-questionable {
-    color: orange;
-    font-weight: bold;
+  color: orange;
+  font-weight: bold;
 }
 
 /* Tightening up the expanded rows */
 .roster-grid {
-    display: grid;
-    grid-template-columns: 0.55fr 0.2fr 0.5fr 0.5fr .5fr;
-    grid-gap: 8px;
-    align-items: center;
-    padding: 4px 0;
+  display: grid;
+  grid-template-columns: 0.55fr 0.2fr 0.5fr 0.5fr 0.5fr;
+  grid-gap: 8px;
+  align-items: center;
+  padding: 4px 0;
 }
 
 /* Adjusting the overall width of the expanded row */
 .league-details {
-    padding-left: 20px; /* Adding some padding */
-    max-width: 80%; /* Control the width of the expanded content */
+  padding-left: 20px; /* Adding some padding */
+  max-width: 80%; /* Control the width of the expanded content */
 }
-
-
 
 /* Ensure the toggle button aligns correctly */
 .toggle-button {
-    cursor: pointer;
-    margin-right: 5px;
+  cursor: pointer;
+  margin-right: 5px;
+}
+
+/* Container for the league grid and injury report */
+.content-wrapper {
+  display: flex;
+  justify-content: space-between;
+}
+
+/* League Grid Styling */
+.league-container {
+  padding: 20px;
+  font-family: Arial, sans-serif;
+}
+
+/* Grid for leagues */
+.league-grid {
+  width: 65%; /* Adjust to your layout */
+}
+
+.league-grid-header {
+  font-weight: bold;
+  background-color: #f1f1f1;
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+}
+
+.league-grid-item {
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+}
+
+.roster-group {
+  margin-top: 10px;
+}
+
+.roster-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  padding: 10px 0;
+}
+
+.roster-header {
+  font-weight: bold;
+  background-color: #f1f1f1;
+}
+
+/* Toggle button for expanding/collapsing sections */
+.toggle-button {
+  cursor: pointer;
+  margin-right: 5px;
+}
+
+/* Back Button */
+.back-button {
+  background-color: #f1f1f1;
+  border: none;
+  color: #333;
+  padding: 10px 15px;
+  font-size: 14px;
+  cursor: pointer;
+  margin-bottom: 15px;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+.back-button:hover {
+  background-color: #ddd;
+}
+
+/* Injury Report Section */
+.injury-report {
+  width: 30%; /* Adjust to your layout */
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-left: 1px solid #ddd;
+}
+
+.injury-report h2 {
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+
+.injury-report-search {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.injury-teams {
+  margin-top: 15px;
+}
+
+.injury-team {
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+.injury-players {
+  margin-left: 20px;
+  margin-top: 5px;
+}
+
+.injury-player {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+}
+
+.injury {
+  color: red;
+}
+
+.injury-questionable {
+  color: orange;
+}
+
+/* Styling for Links */
+.roster-grid-item a img {
+  filter: grayscale(100%);
+  margin-right: 5px;
+  cursor: default;
+}
+
+.roster-grid-item a img.enabled {
+  filter: none;
+  cursor: pointer;
+}
+
+/* Ensure the icons for Yahoo and Rotowire are spaced apart */
+.roster-grid-item span img {
+  margin-right: 5px;
+}
+
+.roster-grid-item span a {
+  margin-right: 5px;
+}
+.dashboard-container {
+  display: flex;
+  justify-content: space-between;
+  padding: 20px;
+}
+
+.league-list-container {
+  width: 60%;
+  overflow-y: auto;
+}
+
+.injury-report-container {
+  width: 35%;
+  overflow-y: auto;
 }
