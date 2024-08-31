@@ -142,7 +142,7 @@ function LeagueList({ userName }) {
         ];
 
         return {
-          user_name: userName,
+          username: userName,
           league_id: leagueId,
           playerlist,
         };
@@ -180,7 +180,7 @@ function LeagueList({ userName }) {
         console.error("Error fetching player data:", error);
       }
     },
-    [mock]
+    [mock, userName]
   );
 
   const fetchLeagueData = useCallback(async () => {
