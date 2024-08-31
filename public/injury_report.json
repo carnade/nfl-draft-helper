@@ -1,0 +1,535 @@
+{
+	"ARI": [
+		{
+			"first_name": "Zay",
+			"injury_status": "Sus",
+			"last_name": "Jones"
+		},
+		{
+			"first_name": "Sage",
+			"injury_status": "Questionable",
+			"last_name": "Surratt"
+		}
+	],
+	"ATL": [
+		{
+			"first_name": "Robert",
+			"injury_status": "PUP",
+			"last_name": "Burns"
+		}
+	],
+	"BAL": [
+		{
+			"first_name": "Keaton",
+			"injury_status": "PUP",
+			"last_name": "Mitchell"
+		},
+		{
+			"first_name": "Rasheen",
+			"injury_status": "Questionable",
+			"last_name": "Ali"
+		},
+		{
+			"first_name": "Mark",
+			"injury_status": "Questionable",
+			"last_name": "Andrews"
+		}
+	],
+	"BUF": [
+		{
+			"first_name": "Curtis",
+			"injury_status": "Questionable",
+			"last_name": "Samuel"
+		},
+		{
+			"first_name": "Quintin",
+			"injury_status": "Questionable",
+			"last_name": "Morris"
+		},
+		{
+			"first_name": "Mitchell",
+			"injury_status": "Questionable",
+			"last_name": "Trubisky"
+		},
+		{
+			"first_name": "Frank",
+			"injury_status": "Questionable",
+			"last_name": "Gore"
+		},
+		{
+			"first_name": "Marquez",
+			"injury_status": "Questionable",
+			"last_name": "Valdes-Scantling"
+		}
+	],
+	"CAR": [
+		{
+			"first_name": "Tommy",
+			"injury_status": "Questionable",
+			"last_name": "Tremble"
+		},
+		{
+			"first_name": "Eddy",
+			"injury_status": "Questionable",
+			"last_name": "Pineiro"
+		},
+		{
+			"first_name": "Jonathon",
+			"injury_status": "PUP",
+			"last_name": "Brooks"
+		},
+		{
+			"first_name": "Ian",
+			"injury_status": "Questionable",
+			"last_name": "Thomas"
+		},
+		{
+			"first_name": "Ihmir",
+			"injury_status": "Questionable",
+			"last_name": "Smith-Marsette"
+		}
+	],
+	"CHI": [],
+	"CIN": [
+		{
+			"first_name": "Jake",
+			"injury_status": "Questionable",
+			"last_name": "Browning"
+		}
+	],
+	"CLE": [
+		{
+			"first_name": "Pierre",
+			"injury_status": "Questionable",
+			"last_name": "Strong"
+		},
+		{
+			"first_name": "Dustin",
+			"injury_status": "Questionable",
+			"last_name": "Hopkins"
+		},
+		{
+			"first_name": "Nyheim",
+			"injury_status": "PUP",
+			"last_name": "Hines"
+		},
+		{
+			"first_name": "Nick",
+			"injury_status": "PUP",
+			"last_name": "Chubb"
+		},
+		{
+			"first_name": "Zaire",
+			"injury_status": "Questionable",
+			"last_name": "Mitchell-Paden"
+		},
+		{
+			"first_name": "David",
+			"injury_status": "Questionable",
+			"last_name": "Bell"
+		},
+		{
+			"first_name": "David",
+			"injury_status": "Questionable",
+			"last_name": "Njoku"
+		}
+	],
+	"DAL": [
+		{
+			"first_name": "CeeDee",
+			"injury_status": "NA",
+			"last_name": "Lamb"
+		},
+		{
+			"first_name": "Brandin",
+			"injury_status": "Questionable",
+			"last_name": "Cooks"
+		}
+	],
+	"DEN": [
+		{
+			"first_name": "Josh",
+			"injury_status": "Questionable",
+			"last_name": "Reynolds"
+		},
+		{
+			"first_name": "Dwayne",
+			"injury_status": "Questionable",
+			"last_name": "Washington"
+		}
+	],
+	"DET": [
+		{
+			"first_name": "Sam",
+			"injury_status": "Questionable",
+			"last_name": "LaPorta"
+		},
+		{
+			"first_name": "Craig",
+			"injury_status": "Questionable",
+			"last_name": "Reynolds"
+		},
+		{
+			"first_name": "Jahmyr",
+			"injury_status": "Questionable",
+			"last_name": "Gibbs"
+		}
+	],
+	"GB": [
+		{
+			"first_name": "Tucker",
+			"injury_status": "Questionable",
+			"last_name": "Kraft"
+		},
+		{
+			"first_name": "MarShawn",
+			"injury_status": "Questionable",
+			"last_name": "Lloyd"
+		}
+	],
+	"HOU": [
+		{
+			"first_name": "Jawhar",
+			"injury_status": "Questionable",
+			"last_name": "Jordan"
+		},
+		{
+			"first_name": "Noah",
+			"injury_status": "Questionable",
+			"last_name": "Brown"
+		}
+	],
+	"IND": [
+		{
+			"first_name": "Trey",
+			"injury_status": "Questionable",
+			"last_name": "Sermon"
+		},
+		{
+			"first_name": "Josh",
+			"injury_status": "Questionable",
+			"last_name": "Downs"
+		}
+	],
+	"JAX": [
+		{
+			"first_name": "C.J.",
+			"injury_status": "Questionable",
+			"last_name": "Beathard"
+		},
+		{
+			"first_name": "Christian",
+			"injury_status": "Questionable",
+			"last_name": "Kirk"
+		},
+		{
+			"first_name": "Patrick",
+			"injury_status": "Questionable",
+			"last_name": "Murtagh"
+		}
+	],
+	"KC": [
+		{
+			"first_name": "Clyde",
+			"injury_status": "Questionable",
+			"last_name": "Edwards-Helaire"
+		},
+		{
+			"first_name": "Hollywood",
+			"injury_status": "Questionable",
+			"last_name": "Brown"
+		}
+	],
+	"LAC": [
+		{
+			"first_name": "Justin",
+			"injury_status": "Questionable",
+			"last_name": "Herbert"
+		},
+		{
+			"first_name": "DJ",
+			"injury_status": "Questionable",
+			"last_name": "Chark"
+		}
+	],
+	"LAR": [
+		{
+			"first_name": "Jimmy",
+			"injury_status": "Sus",
+			"last_name": "Garoppolo"
+		},
+		{
+			"first_name": "Tyler",
+			"injury_status": "PUP",
+			"last_name": "Higbee"
+		},
+		{
+			"first_name": "Puka",
+			"injury_status": "Questionable",
+			"last_name": "Nacua"
+		}
+	],
+	"LV": [
+		{
+			"first_name": "Davante",
+			"injury_status": "Questionable",
+			"last_name": "Adams"
+		},
+		{
+			"first_name": "Brock",
+			"injury_status": "Questionable",
+			"last_name": "Bowers"
+		}
+	],
+	"MIA": [
+		{
+			"first_name": "Chris",
+			"injury_status": "Questionable",
+			"last_name": "Brooks"
+		},
+		{
+			"first_name": "Jaylen",
+			"injury_status": "Questionable",
+			"last_name": "Waddle"
+		},
+		{
+			"first_name": "Tyreek",
+			"injury_status": "Questionable",
+			"last_name": "Hill"
+		},
+		{
+			"first_name": "Odell",
+			"injury_status": "PUP",
+			"last_name": "Beckham"
+		},
+		{
+			"first_name": "Allen",
+			"injury_status": "Questionable",
+			"last_name": "Hurns"
+		},
+		{
+			"first_name": "Braylon",
+			"injury_status": "Questionable",
+			"last_name": "Sanders"
+		}
+	],
+	"MIN": [
+		{
+			"first_name": "T.J.",
+			"injury_status": "PUP",
+			"last_name": "Hockenson"
+		},
+		{
+			"first_name": "Nick",
+			"injury_status": "Questionable",
+			"last_name": "Muse"
+		},
+		{
+			"first_name": "Malik",
+			"injury_status": "Questionable",
+			"last_name": "Knowles"
+		},
+		{
+			"first_name": "Jordan",
+			"injury_status": "Questionable",
+			"last_name": "Addison"
+		}
+	],
+	"NE": [
+		{
+			"first_name": "Hunter",
+			"injury_status": "Questionable",
+			"last_name": "Henry"
+		},
+		{
+			"first_name": "Kendrick",
+			"injury_status": "PUP",
+			"last_name": "Bourne"
+		},
+		{
+			"first_name": "Jacoby",
+			"injury_status": "Questionable",
+			"last_name": "Brissett"
+		}
+	],
+	"NO": [
+		{
+			"first_name": "Dallin",
+			"injury_status": "Questionable",
+			"last_name": "Holker"
+		},
+		{
+			"first_name": "Mason",
+			"injury_status": "Questionable",
+			"last_name": "Tipton"
+		},
+		{
+			"first_name": "Rashid",
+			"injury_status": "Questionable",
+			"last_name": "Shaheed"
+		},
+		{
+			"first_name": "Charlie",
+			"injury_status": "Questionable",
+			"last_name": "Smyth"
+		}
+	],
+	"NYG": [
+		{
+			"first_name": "Drew",
+			"injury_status": "Questionable",
+			"last_name": "Lock"
+		},
+		{
+			"first_name": "Gunner",
+			"injury_status": "Questionable",
+			"last_name": "Olszewski"
+		},
+		{
+			"first_name": "Tyrone",
+			"injury_status": "Questionable",
+			"last_name": "Tracy"
+		}
+	],
+	"NYJ": [
+		{
+			"first_name": "Jordan",
+			"injury_status": "PUP",
+			"last_name": "Travis"
+		},
+		{
+			"first_name": "Irvin",
+			"injury_status": "Questionable",
+			"last_name": "Charles"
+		},
+		{
+			"first_name": "Mike",
+			"injury_status": "Questionable",
+			"last_name": "Williams"
+		}
+	],
+	"PHI": [
+		{
+			"first_name": "Johnny",
+			"injury_status": "Questionable",
+			"last_name": "Wilson"
+		},
+		{
+			"first_name": "Jacob",
+			"injury_status": "Questionable",
+			"last_name": "Harris"
+		},
+		{
+			"first_name": "Joseph",
+			"injury_status": "Questionable",
+			"last_name": "Ngata"
+		},
+		{
+			"first_name": "Dallas",
+			"injury_status": "Questionable",
+			"last_name": "Goedert"
+		}
+	],
+	"PIT": [
+		{
+			"first_name": "Roman",
+			"injury_status": "Questionable",
+			"last_name": "Wilson"
+		},
+		{
+			"first_name": "Jaylen",
+			"injury_status": "Questionable",
+			"last_name": "Warren"
+		}
+	],
+	"SEA": [
+		{
+			"first_name": "Pharaoh",
+			"injury_status": "Questionable",
+			"last_name": "Brown"
+		},
+		{
+			"first_name": "Tyler",
+			"injury_status": "Questionable",
+			"last_name": "Lockett"
+		},
+		{
+			"first_name": "Noah",
+			"injury_status": "Questionable",
+			"last_name": "Fant"
+		},
+		{
+			"first_name": "Jack",
+			"injury_status": "Questionable",
+			"last_name": "Westover"
+		},
+		{
+			"first_name": "Zach",
+			"injury_status": "Questionable",
+			"last_name": "Charbonnet"
+		}
+	],
+	"SF": [
+		{
+			"first_name": "Jauan",
+			"injury_status": "Questionable",
+			"last_name": "Jennings"
+		},
+		{
+			"first_name": "Ricky",
+			"injury_status": "Questionable",
+			"last_name": "Pearsall"
+		},
+		{
+			"first_name": "Christian",
+			"injury_status": "Questionable",
+			"last_name": "McCaffrey"
+		},
+		{
+			"first_name": "Trent",
+			"injury_status": "Questionable",
+			"last_name": "Taylor"
+		},
+		{
+			"first_name": "Danny",
+			"injury_status": "Questionable",
+			"last_name": "Gray"
+		}
+	],
+	"TB": [
+		{
+			"first_name": "Trey",
+			"injury_status": "Questionable",
+			"last_name": "Palmer"
+		}
+	],
+	"TEN": [
+		{
+			"first_name": "Colton",
+			"injury_status": "PUP",
+			"last_name": "Dowell"
+		},
+		{
+			"first_name": "Kyle",
+			"injury_status": "Questionable",
+			"last_name": "Philips"
+		},
+		{
+			"first_name": "Josh",
+			"injury_status": "Questionable",
+			"last_name": "Whyle"
+		},
+		{
+			"first_name": "DeAndre",
+			"injury_status": "Questionable",
+			"last_name": "Hopkins"
+		}
+	],
+	"WAS": [
+		{
+			"first_name": "Marcus",
+			"injury_status": "Questionable",
+			"last_name": "Mariota"
+		}
+	]
+}
