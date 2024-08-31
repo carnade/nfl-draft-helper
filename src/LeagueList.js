@@ -133,7 +133,7 @@ function LeagueList({ userName }) {
   const fetchPlayerData = useCallback(async () => {
     const requests = {
       username: userName,
-      leagues: leagues.map((league) => {
+      league: leagues.map((league) => {
         const leagueId = league.league_id;
         const playerlist = [
           ...league.userRoster.starters,
@@ -253,13 +253,26 @@ function LeagueList({ userName }) {
 
   const fetchInjuryReport = useCallback(async () => {
     try {
-      const response = await fetch("/injury_report.json");
+      let response;
+      if (mock) {
+        response = await fetch("https://silent-dew-3400.ploomberapp.io/teams");
+      } else {
+        response = await fetch(
+          "https://silent-dew-3400.ploomberapp.io/getplayers",
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      }
       const data = await response.json();
       setInjuryReport(data);
     } catch (error) {
       console.error("Error fetching injury report:", error);
     }
-  }, []);
+  }, [mock]);
 
   useEffect(() => {
     fetchLeagueData();
