@@ -130,56 +130,59 @@ function LeagueList({ userName }) {
     }
   };
 
-  const fetchPlayerData = useCallback(async () => {
-    const requests = {
-      username: userName,
-      league: leagues.map((league) => {
-        const leagueId = league.league_id;
-        const playerlist = [
-          ...league.userRoster.starters,
-          ...league.userRoster.reserve,
-          ...league.userRoster.taxi,
-          ...league.userRoster.uniquePlayers,
-        ];
+  const fetchPlayerData = useCallback(
+    async (leagues) => {
+      const requests = {
+        username: userName,
+        league: leagues.map((league) => {
+          const leagueId = league.league_id;
+          const playerlist = [
+            ...league.userRoster.starters,
+            ...league.userRoster.reserve,
+            ...league.userRoster.taxi,
+            ...league.userRoster.uniquePlayers,
+          ];
+          return {
+            league_id: leagueId,
+            playerlist,
+          };
+        }),
+      };
 
-        return {
-          league_id: leagueId,
-          playerlist,
-        };
-      }),
-    };
-    try {
-      let response;
-      if (mock) {
-        response = await fetch("http://localhost:5000/getplayers", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(requests),
-        });
-      } else {
-        response = await fetch(
-          "https://silent-dew-3400.ploomberapp.io/getplayers",
-          {
+      try {
+        let response;
+        if (mock) {
+          response = await fetch("http://localhost:5000/getplayers", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
             body: JSON.stringify(requests),
-          }
-        );
+          });
+        } else {
+          response = await fetch(
+            "https://silent-dew-3400.ploomberapp.io/getplayers",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(requests),
+            }
+          );
+        }
+        const data = await response.json();
+        const playerDataMap = {};
+        data.forEach((leagueData) => {
+          playerDataMap[leagueData.league_id] = leagueData;
+        });
+        setPlayerData(playerDataMap);
+      } catch (error) {
+        console.error("Error fetching player data:", error);
       }
-      const data = await response.json();
-      const playerDataMap = {};
-      data.forEach((leagueData) => {
-        playerDataMap[leagueData.league_id] = leagueData;
-      });
-      setPlayerData(playerDataMap);
-    } catch (error) {
-      console.error("Error fetching player data:", error);
-    }
-  }, [mock, userName, leagues]);
+    },
+    [userName, mock] // Add necessary dependencies here
+  );
 
   const fetchLeagueData = useCallback(async () => {
     try {
@@ -255,17 +258,14 @@ function LeagueList({ userName }) {
     try {
       let response;
       if (mock) {
-        response = await fetch("https://silent-dew-3400.ploomberapp.io/teams");
+        response = await fetch("/injury_report.json");
       } else {
-        response = await fetch(
-          "https://silent-dew-3400.ploomberapp.io/getplayers",
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
+        response = await fetch("https://silent-dew-3400.ploomberapp.io/teams", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
       }
       const data = await response.json();
       setInjuryReport(data);
