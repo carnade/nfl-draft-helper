@@ -60,7 +60,6 @@ function LeagueList({ userName }) {
           };
         });
         setPlayerData(playerDataMap);
-        console.log("playerDataMap", JSON.stringify(playerDataMap, null, 2));
       } catch (error) {
         console.error("Error fetching player data:", error);
       }
@@ -312,14 +311,14 @@ function LeagueList({ userName }) {
     });
   };
 
-  const countInjuries = (starters, leagueId) => {
+  const countInjuries = (teamInjuries) => {
     let redCount = 0;
     let orangeCount = 0;
 
-    starters.forEach((playerId) => {
-      const injuryStatus =
-        playerData[leagueId]?.players[playerId]?.injury_status;
+    teamInjuries.forEach((player) => {
+      const injuryStatus = player?.injury_status;
       if (injuryStatus) {
+        console.log(injuryStatus);
         if (injuryStatus === "Questionable") {
           orangeCount += 1;
         } else {
@@ -331,51 +330,54 @@ function LeagueList({ userName }) {
     return { redCount, orangeCount };
   };
 
-  const teamNames = {
-    ARI: "Arizona Cardinals",
-    ATL: "Atlanta Falcons",
-    BAL: "Baltimore Ravens",
-    BUF: "Buffalo Bills",
-    CAR: "Carolina Panthers",
-    CHI: "Chicago Bears",
-    CIN: "Cincinnati Bengals",
-    CLE: "Cleveland Browns",
-    DAL: "Dallas Cowboys",
-    DEN: "Denver Broncos",
-    DET: "Detroit Lions",
-    GB: "Green Bay Packers",
-    HOU: "Houston Texans",
-    IND: "Indianapolis Colts",
-    JAX: "Jacksonville Jaguars",
-    KC: "Kansas City Chiefs",
-    LV: "Las Vegas Raiders",
-    LAC: "Los Angeles Chargers",
-    LAR: "Los Angeles Rams",
-    MIA: "Miami Dolphins",
-    MIN: "Minnesota Vikings",
-    NE: "New England Patriots",
-    NO: "New Orleans Saints",
-    NYG: "New York Giants",
-    NYJ: "New York Jets",
-    PHI: "Philadelphia Eagles",
-    PIT: "Pittsburgh Steelers",
-    SEA: "Seattle Seahawks",
-    SF: "San Francisco 49ers",
-    TB: "Tampa Bay Buccaneers",
-    TEN: "Tennessee Titans",
-    WAS: "Washington Commanders",
+  const teamFullName = (abbreviation) => {
+    const teams = {
+      ARI: "Arizona Cardinals",
+      ATL: "Atlanta Falcons",
+      BAL: "Baltimore Ravens",
+      BUF: "Buffalo Bills",
+      CAR: "Carolina Panthers",
+      CHI: "Chicago Bears",
+      CIN: "Cincinnati Bengals",
+      CLE: "Cleveland Browns",
+      DAL: "Dallas Cowboys",
+      DEN: "Denver Broncos",
+      DET: "Detroit Lions",
+      GB: "Green Bay Packers",
+      HOU: "Houston Texans",
+      IND: "Indianapolis Colts",
+      JAX: "Jacksonville Jaguars",
+      KC: "Kansas City Chiefs",
+      LAC: "Los Angeles Chargers",
+      LAR: "Los Angeles Rams",
+      LV: "Las Vegas Raiders",
+      MIA: "Miami Dolphins",
+      MIN: "Minnesota Vikings",
+      NE: "New England Patriots",
+      NO: "New Orleans Saints",
+      NYG: "New York Giants",
+      NYJ: "New York Jets",
+      PHI: "Philadelphia Eagles",
+      PIT: "Pittsburgh Steelers",
+      SEA: "Seattle Seahawks",
+      SF: "San Francisco 49ers",
+      TB: "Tampa Bay Buccaneers",
+      TEN: "Tennessee Titans",
+      WAS: "Washington Commanders",
+    };
+    return teams[abbreviation] || abbreviation;
   };
 
   return (
-    <div className="league-container">
-      <button onClick={handleBackClick} className="back-button">
-        <FontAwesomeIcon icon={faArrowLeft} /> Back
-      </button>
-      <div className="league-header">
-        <h1>Leagues Overview (W.I.P)</h1>
-        <span>{userName}</span>
+    <div className="dashboard-container">
+      <div className="header-container">
+        <h1 className="page-header">Leagues Overview (W.I.P)</h1>
+        <span className="header-username">{userName}</span>
+        <button onClick={handleBackClick} className="back-button">
+          <FontAwesomeIcon icon={faArrowLeft} /> Back
+        </button>
       </div>
-      <div className="content-wrapper">
+      <div className="league-list-container">
         <div className="league-grid">
           <div className="league-grid-header">League Name</div>
           <div className="league-grid-header">Record</div>
@@ -504,38 +506,55 @@ function LeagueList({ userName }) {
             <div className="league-grid-item">No leagues found.</div>
           )}
         </div>
+      </div>
+      <div className="injury-report-container">
+        <h2>Injury Report</h2>
+        <input
+          type="text"
+          className="injury-report-search"
+          placeholder="Player Name"
+        />
+        <div className="injury-report-teams">
+          {Object.keys(injuryReport).map((teamAbbreviation) => {
+            const teamInjuries = injuryReport[teamAbbreviation];
+            const { redCount, orangeCount } = countInjuries(teamInjuries);
 
-        {/* Injury Report Section */}
-        <div className="injury-report">
-          <h2>Injury Report</h2>
-          <input
-            type="text"
-            placeholder="Player Name"
-            className="injury-report-search"
-          />
-          <div className="injury-teams">
-            {Object.keys(injuryReport).map((teamAbbr) => (
-              <div key={teamAbbr} className="injury-team">
+            return (
+              <div key={teamAbbreviation} className="injury-team">
                 <span
-                  className="toggle-button"
-                  onClick={() => handleTeamToggle(teamAbbr)}
+                  className="team-name"
+                  onClick={() => handleTeamToggle(teamAbbreviation)}
                 >
-                  {expandedTeams.has(teamAbbr) ? "▼" : "►"}{" "}
+                  {expandedTeams.has(teamAbbreviation) ? "▼" : "►"}{" "}
+                  {teamFullName(teamAbbreviation)}
                 </span>
-                {teamNames[teamAbbr] || teamAbbr}
-                {expandedTeams.has(teamAbbr) && (
-                  <div className="injury-players">
-                    {injuryReport[teamAbbr].map((player, index) => (
+                <div className="team-injury-icons">
+                  {redCount > 0 && (
+                    <span className="injury-icon">
+                      <FontAwesomeIcon
+                        icon={faUserInjured}
+                        style={{ color: "red" }}
+                      />{" "}
+                      {redCount}
+                    </span>
+                  )}
+                  {orangeCount > 0 && (
+                    <span className="injury-icon">
+                      <FontAwesomeIcon
+                        icon={faQuestion}
+                        style={{ color: "orange" }}
+                      />{" "}
+                      {orangeCount}
+                    </span>
+                  )}
+                </div>
+                {expandedTeams.has(teamAbbreviation) && (
+                  <div className="team-injury-list">
+                    {teamInjuries.map((player, index) => (
                       <div key={index} className="injury-player">
-                        <span>
-                          {player.first_name} {player.last_name}
-                        </span>
+                        {player.first_name} {player.last_name}
                         <span
-                          className={
-                            player.injury_status === "Questionable"
-                              ? "injury-questionable"
-                              : "injury"
-                          }
+                          className={`injury-status ${player.injury_status}`}
                         >
                           {player.injury_status}
                         </span>
@@ -544,8 +563,8 @@ function LeagueList({ userName }) {
                   </div>
                 )}
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
       </div>
     </div>
