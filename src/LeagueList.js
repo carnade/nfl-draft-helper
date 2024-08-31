@@ -142,6 +142,7 @@ function LeagueList({ userName }) {
         ];
 
         return {
+          user_name: userName,
           league_id: leagueId,
           playerlist,
         };
