@@ -64,6 +64,18 @@ function LeagueList({ userName }) {
     }
   };
 
+  const handlePlayerDoubleClick = (player) => {
+    const fullName = `${player.first_name} ${player.last_name}`;
+    navigator.clipboard.writeText(fullName).then(
+      () => {
+        console.log(`Copied ${fullName} to clipboard`);
+      },
+      (err) => {
+        console.error("Failed to copy to clipboard: ", err);
+      }
+    );
+  };
+
   const highlightLeaguesWithPlayer = (firstName, lastName) => {
     const highlightedLeaguesSet = new Set();
     leagues.forEach((league) => {
@@ -674,7 +686,14 @@ function LeagueList({ userName }) {
                 injuryReport[teamAbbreviation].map((player, index) => (
                   <div
                     key={`${teamAbbreviation}-${index}`}
-                    className="injury-grid-row"
+                    className={`injury-grid-row ${
+                      selectedPlayer ===
+                      `${player.first_name}-${player.last_name}`
+                        ? "selected-player"
+                        : ""
+                    }`}
+                    onClick={() => handlePlayerClick(player)}
+                    onDoubleClick={() => handlePlayerDoubleClick(player)}
                   >
                     <div className="injury-grid-column">
                       {player.first_name} {player.last_name}
