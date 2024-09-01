@@ -22,7 +22,7 @@ function LeagueList({ userName }) {
 
   const navigate = useNavigate();
   let searchTimeout;
-  const mock = true;
+  const mock = false;
 
   const handleBackClick = () => {
     navigate(-1); // Navigate to the previous page
