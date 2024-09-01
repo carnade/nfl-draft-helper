@@ -18,10 +18,11 @@ function LeagueList({ userName }) {
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [highlightedLeagues, setHighlightedLeagues] = useState(new Set());
   const [searchQuery, setSearchQuery] = useState("");
+  const [showAllInjuries, setShowAllInjuries] = useState(false);
 
   const navigate = useNavigate();
   let searchTimeout;
-  const mock = false;
+  const mock = true;
 
   const handleBackClick = () => {
     navigate(-1); // Navigate to the previous page
@@ -653,68 +654,105 @@ function LeagueList({ userName }) {
         </div>
         <div className="injury-report-container">
           <h2>Injury Report</h2>
-          <div className="injury-report-teams">
-            {Object.keys(injuryReport).map((teamAbbreviation) => {
-              const teamInjuries = injuryReport[teamAbbreviation];
-              const { redCount, orangeCount } =
-                countInjuriesForReport(teamInjuries);
-
-              return (
-                <div key={teamAbbreviation} className="injury-team">
-                  <span
-                    className="team-name"
-                    onClick={() => handleTeamToggle(teamAbbreviation)}
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={showAllInjuries}
+              onChange={() => setShowAllInjuries((prev) => !prev)}
+            />
+            <span className="slider"></span>
+          </label>
+          <label>Show all</label>
+          {showAllInjuries ? (
+            <div className="all-injuries-list">
+              <div className="injury-grid-header">
+                <div className="injury-grid-column">Player Name</div>
+                <div className="injury-grid-column">Team</div>
+                <div className="injury-grid-column">Status</div>
+              </div>
+              {Object.keys(injuryReport).flatMap((teamAbbreviation) =>
+                injuryReport[teamAbbreviation].map((player, index) => (
+                  <div
+                    key={`${teamAbbreviation}-${index}`}
+                    className="injury-grid-row"
                   >
-                    {expandedTeams.has(teamAbbreviation) ? "▼" : "►"}{" "}
-                    {teamFullName(teamAbbreviation)}
-                  </span>
-                  <div className="team-injury-icons">
-                    {redCount > 0 && (
-                      <span className="injury-icon">
-                        <FontAwesomeIcon
-                          icon={faUserInjured}
-                          style={{ color: "red" }}
-                        />{" "}
-                        {redCount}
+                    <div className="injury-grid-column">
+                      {player.first_name} {player.last_name}
+                    </div>
+                    <div className="injury-grid-column">{teamAbbreviation}</div>
+                    <div className="injury-grid-column">
+                      <span className={`injury-status ${player.injury_status}`}>
+                        {player.injury_status}
                       </span>
-                    )}
-                    {orangeCount > 0 && (
-                      <span className="injury-icon">
-                        <FontAwesomeIcon
-                          icon={faQuestion}
-                          style={{ color: "orange" }}
-                        />{" "}
-                        {orangeCount}
-                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          ) : (
+            <div className="injury-report-teams">
+              {Object.keys(injuryReport).map((teamAbbreviation) => {
+                const teamInjuries = injuryReport[teamAbbreviation];
+                const { redCount, orangeCount } =
+                  countInjuriesForReport(teamInjuries);
+
+                return (
+                  <div key={teamAbbreviation} className="injury-team">
+                    <span
+                      className="team-name"
+                      onClick={() => handleTeamToggle(teamAbbreviation)}
+                    >
+                      {expandedTeams.has(teamAbbreviation) ? "▼" : "►"}{" "}
+                      {teamFullName(teamAbbreviation)}
+                    </span>
+                    <div className="team-injury-icons">
+                      {redCount > 0 && (
+                        <span className="injury-icon">
+                          <FontAwesomeIcon
+                            icon={faUserInjured}
+                            style={{ color: "red" }}
+                          />{" "}
+                          {redCount}
+                        </span>
+                      )}
+                      {orangeCount > 0 && (
+                        <span className="injury-icon">
+                          <FontAwesomeIcon
+                            icon={faQuestion}
+                            style={{ color: "orange" }}
+                          />{" "}
+                          {orangeCount}
+                        </span>
+                      )}
+                    </div>
+                    {expandedTeams.has(teamAbbreviation) && (
+                      <div className="team-injury-list">
+                        {teamInjuries.map((player, index) => (
+                          <div
+                            key={index}
+                            className={`injury-player ${
+                              selectedPlayer ===
+                              `${player.first_name}-${player.last_name}`
+                                ? "selected-player"
+                                : ""
+                            }`}
+                            onClick={() => handlePlayerClick(player)}
+                          >
+                            {player.first_name} {player.last_name}
+                            <span
+                              className={`injury-status ${player.injury_status}`}
+                            >
+                              {player.injury_status}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
-                  {expandedTeams.has(teamAbbreviation) && (
-                    <div className="team-injury-list">
-                      {teamInjuries.map((player, index) => (
-                        <div
-                          key={index}
-                          className={`injury-player ${
-                            selectedPlayer ===
-                            `${player.first_name}-${player.last_name}`
-                              ? "selected-player"
-                              : ""
-                          }`}
-                          onClick={() => handlePlayerClick(player)}
-                        >
-                          {player.first_name} {player.last_name}
-                          <span
-                            className={`injury-status ${player.injury_status}`}
-                          >
-                            {player.injury_status}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
       <span hidden>{userId}</span>
