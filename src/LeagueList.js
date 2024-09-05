@@ -212,7 +212,7 @@ function LeagueList({ userName }) {
       const leaguesData = await leaguesResponse.json();
 
       const filteredLeagues = leaguesData.filter(
-        (league) => league.settings.best_ball === 0
+        (league) => league.settings.best_ball === 0 || league.settings.best_ball == null
       );
 
       const leagueDetailsPromises = filteredLeagues.map(async (league) => {
