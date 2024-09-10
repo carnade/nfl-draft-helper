@@ -47,6 +47,9 @@ function StartPage({
     link.click();
     document.body.removeChild(link);
   };
+  const handleBestBall = () => {
+    navigate(`/bestball/${userName}`);
+  };
 
   const handleStartWithCSV = () => {
     if (selectedFile) {
@@ -154,6 +157,9 @@ function StartPage({
         </button>
         <button onClick={handleCheckLeagues} className="modern-button">
           Check Leagues
+        </button>
+        <button className="modern-button" onClick={handleBestBall}>
+          Bestball Leagues
         </button>
       </div>
     </div>

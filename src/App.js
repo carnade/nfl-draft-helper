@@ -4,6 +4,7 @@ import StartPage from "./StartPage";
 import DraftHelper from "./DraftHelper";
 import DraftsList from "./DraftsList";
 import LeagueList from "./LeagueList";
+import BestballList from "./BestballList";
 import "./App.css";
 
 function App() {
@@ -46,6 +47,8 @@ function App() {
           element={<DraftsList userName={userName} />} // Pass userName to DraftPage component
         />
         <Route path="/leagues" element={<LeagueList userName={userName} />} />
+
+        <Route path="/bestball/:userName" element={<BestballList />} />
       </Routes>
     </Router>
   );
