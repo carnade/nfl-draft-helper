@@ -174,7 +174,7 @@ function LeagueList({ userName }) {
           });
         } else {
           response = await fetch(
-            "https://silent-dew-3400.ploomberapp.io/getplayers",
+            "https://shaggy-latashia-carnade-2ea2054a.koyeb.app/getplayers",
             {
               method: "POST",
               headers: {
@@ -212,7 +212,8 @@ function LeagueList({ userName }) {
       const leaguesData = await leaguesResponse.json();
 
       const filteredLeagues = leaguesData.filter(
-        (league) => league.settings.best_ball === 0 || league.settings.best_ball == null
+        (league) =>
+          league.settings.best_ball === 0 || league.settings.best_ball == null
       );
 
       const leagueDetailsPromises = filteredLeagues.map(async (league) => {
@@ -273,12 +274,15 @@ function LeagueList({ userName }) {
       if (mock) {
         response = await fetch("/injury_report.json");
       } else {
-        response = await fetch("https://silent-dew-3400.ploomberapp.io/teams", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
+        response = await fetch(
+          "https://shaggy-latashia-carnade-2ea2054a.koyeb.app/teams",
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
       }
       const data = await response.json();
       setInjuryReport(data);
