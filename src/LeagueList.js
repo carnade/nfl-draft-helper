@@ -22,7 +22,7 @@ function LeagueList({ userName }) {
 
   const navigate = useNavigate();
   let searchTimeout;
-  const mock = true;
+  const mock = false;
 
   const handleBackClick = () => {
     navigate(-1); // Navigate to the previous page
@@ -332,41 +332,42 @@ function LeagueList({ userName }) {
 
     return (
       <>
-    {yahooId ? (
-      <a
-        href={`https://sports.yahoo.com/nfl/players/${yahooId}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{
-          display: "inline-block",
-          marginRight: "5px",
-          cursor: "pointer", // Add cursor pointer style
-        }}
-      >
-        <img
-          src="/yahoo.png"
-          alt="Yahoo"
-          style={{ width: "20px", height: "20px" }}
-        />
-      </a>
-    ) : (
-      <span
-        style={{
-          display: "inline-block",
-          marginRight: "5px",
-          filter: "grayscale(100%)",
-        }}
-      >
-        <img
-          src="/yahoo.png"
-          alt="Yahoo"
+        <span
           style={{
-            width: "20px",
-            height: "20px",
+            display: "inline-block",
+            marginRight: "5px",
+            filter: yahooId ? "none" : "grayscale(100%)"
           }}
-        />
-      </span>
-    )}
+        >
+          <a
+            href={
+              yahooId ? `https://sports.yahoo.com/nfl/players/${yahooId}` : "#"
+            }
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ 
+              display: yahooId ? "inline" : "none",
+              pointerEvents: yahooId ? "auto" : "none"
+             }}
+
+          >
+            <img
+              src="/yahoo.png"
+              alt="Yahoo"
+              style={{ width: "20px", height: "20px" }}
+            />
+          </a>
+          {!yahooId && (
+            <img
+              src="/yahoo.png"
+              alt="Yahoo"
+              style={{
+                width: "20px",
+                height: "20px",
+              }}
+            />
+          )}
+        </span>
         <span
           style={{
             display: "inline-block",
