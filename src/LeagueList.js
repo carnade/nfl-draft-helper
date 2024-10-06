@@ -22,7 +22,7 @@ function LeagueList({ userName }) {
 
   const navigate = useNavigate();
   let searchTimeout;
-  const mock = false;
+  const mock = true;
 
   const handleBackClick = () => {
     navigate(-1); // Navigate to the previous page
@@ -165,12 +165,11 @@ function LeagueList({ userName }) {
       try {
         let response;
         if (mock) {
-          response = await fetch("http://localhost:5000/getplayers", {
-            method: "POST",
+          response = await fetch("/carnade_players.json", {
+            method: "GET",
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify(requests),
           });
         } else {
           response = await fetch(
@@ -333,40 +332,41 @@ function LeagueList({ userName }) {
 
     return (
       <>
-        <span
+    {yahooId ? (
+      <a
+        href={`https://sports.yahoo.com/nfl/players/${yahooId}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          display: "inline-block",
+          marginRight: "5px",
+          cursor: "pointer", // Add cursor pointer style
+        }}
+      >
+        <img
+          src="/yahoo.png"
+          alt="Yahoo"
+          style={{ width: "20px", height: "20px" }}
+        />
+      </a>
+    ) : (
+      <span
+        style={{
+          display: "inline-block",
+          marginRight: "5px",
+          filter: "grayscale(100%)",
+        }}
+      >
+        <img
+          src="/yahoo.png"
+          alt="Yahoo"
           style={{
-            display: "inline-block",
-            marginRight: "5px",
-            filter: yahooId ? "none" : "grayscale(100%)",
-            pointerEvents: yahooId ? "auto" : "none",
+            width: "20px",
+            height: "20px",
           }}
-        >
-          <a
-            href={
-              yahooId ? `https://sports.yahoo.com/nfl/players/${yahooId}` : "#"
-            }
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ display: yahooId ? "inline" : "none" }}
-          >
-            <img
-              src="/yahoo.png"
-              alt="Yahoo"
-              style={{ width: "20px", height: "20px" }}
-            />
-          </a>
-          {!yahooId && (
-            <img
-              src="/yahoo.png"
-              alt="Yahoo"
-              style={{
-                width: "20px",
-                height: "20px",
-                filter: "grayscale(100%)",
-              }}
-            />
-          )}
-        </span>
+        />
+      </span>
+    )}
         <span
           style={{
             display: "inline-block",
@@ -397,7 +397,6 @@ function LeagueList({ userName }) {
               style={{
                 width: "20px",
                 height: "20px",
-                filter: "grayscale(100%)",
               }}
             />
           )}
@@ -678,8 +677,8 @@ function LeagueList({ userName }) {
             />
             <span className="slider"></span>
           </label>
-          <label>Show all</label>
-          {showAllInjuries ? (
+          <label>Show by team</label>
+          {!showAllInjuries ? (
             <div className="all-injuries-list">
               <div className="injury-grid-header">
                 <div className="injury-grid-column">Player Name</div>

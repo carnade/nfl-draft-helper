@@ -825,6 +825,7 @@ h1 em {
 
 /* Styling for Links */
 .roster-grid-item a img {
+  filter: grayscale(100%);
   margin-right: 5px;
   cursor: default;
 }
@@ -839,6 +840,9 @@ h1 em {
   margin-right: 5px;
 }
 
+.roster-grid-item span a {
+  margin-right: 5px;
+}
 
 .dashboard-container {
   display: flex;
@@ -886,13 +890,10 @@ h1 em {
 
 .injury-report-search {
   width: 100%;
-  padding: 5px;
+  padding: 10px;
+  margin-bottom: 20px;
   border: 1px solid #ccc;
   border-radius: 5px;
-  margin-bottom: 0px;
-  margin-top: 0px;
-  margin-left: 0px;
-  margin-right: 20px; /* Adds some space between the input and list */  
 }
 
 .injury-report-teams {
@@ -1016,6 +1017,11 @@ h1 em {
   padding-left: 20px;
 }
 
+.injury-report-search {
+  width: 100%;
+  padding: 5px;
+  margin-bottom: 10px;
+}
 
 .injury-report-teams {
   display: flex;
@@ -1064,6 +1070,10 @@ h1 em {
   color: red;
 }
 
+.injury-report-search {
+  margin-left: 20px;
+  padding: 5px;
+}
 
 .header-container {
   display: flex;
@@ -1082,11 +1092,14 @@ h1 em {
 .search-label {
   margin-right: 10px;
   font-weight: bold;
-  width: 10em;
+}
+
+.injury-report-search {
+  padding: 5px;
+  margin-right: 20px; /* Adds some space between the input and list */
 }
 
 .main-content {
-  width: 100%;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
