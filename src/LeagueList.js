@@ -22,7 +22,7 @@ function LeagueList({ userName }) {
 
   const navigate = useNavigate();
   let searchTimeout;
-  const mock = false;
+  const mock = true;
 
   const handleBackClick = () => {
     navigate(-1); // Navigate to the previous page
@@ -336,7 +336,7 @@ function LeagueList({ userName }) {
           style={{
             display: "inline-block",
             marginRight: "5px",
-            filter: yahooId ? "none" : "grayscale(100%)"
+            filter: yahooId ? "none" : "grayscale(100%)",
           }}
         >
           <a
@@ -345,11 +345,10 @@ function LeagueList({ userName }) {
             }
             target="_blank"
             rel="noopener noreferrer"
-            style={{ 
+            style={{
               display: yahooId ? "inline" : "none",
-              pointerEvents: yahooId ? "auto" : "none"
-             }}
-
+              pointerEvents: yahooId ? "auto" : "none",
+            }}
           >
             <img
               src="/yahoo.png"

@@ -1,0 +1,67 @@
+/* LeftMenu.css */
+.left-menu {
+  width: 250px;
+  background-color: #282c34;
+  color: white;
+  height: 100vh;
+  position: fixed;
+  transition: width 0.3s;
+}
+
+.left-menu.collapsed {
+  width: 60px;
+}
+
+.menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px;
+  background-color: #333;
+}
+
+.menu-toggle {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.menu-content {
+  padding: 15px;
+}
+
+.user-input {
+  margin-bottom: 20px;
+}
+
+.user-input label {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.user-input input {
+  width: 100%;
+  padding: 5px;
+  border: none;
+  border-radius: 5px;
+}
+
+.menu-links {
+  list-style: none;
+  padding: 0;
+}
+
+.menu-links li {
+  margin: 10px 0;
+}
+
+.menu-links a {
+  color: white;
+  text-decoration: none;
+}
+
+.menu-links a:hover {
+  text-decoration: underline;
+}
