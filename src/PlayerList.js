@@ -1,5 +1,6 @@
 import React from "react";
 import PlayerButton from "./PlayerButton";
+import "./PlayerList.css";
 
 function PlayerList({
   title,

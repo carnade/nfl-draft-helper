@@ -7,6 +7,7 @@ import {
   faExternalLinkAlt,
 } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom";
+import "./LeagueList.css";
 
 function LeagueList({ userName }) {
   const [userId, setUserId] = useState(null);

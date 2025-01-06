@@ -6,6 +6,7 @@ import {
   faTrophy,
 } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate, useParams } from "react-router-dom";
+import "./BestballList.css";
 
 function BestballList() {
   const { userName } = useParams();

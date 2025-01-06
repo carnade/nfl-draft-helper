@@ -1,0 +1,117 @@
+/* BestballList.css */
+
+/* Page / container layout */
+.dashboard-container {
+  display: flex;
+  justify-content: space-between;
+  padding: 20px;
+  flex-wrap: wrap; /* allows items to wrap on smaller screens */
+}
+
+.header-container {
+  width: 100%;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+/* The back button */
+.back-button {
+  /* If you want it absolutely positioned in the header: 
+     position: absolute; 
+     left: 20px; 
+     top: 20px; 
+     BUT note that .header-container might need position: relative. 
+     Adjust as desired. */
+
+  /* Or if you prefer it just to be styled like a button: */
+  padding: 10px 20px;
+  font-size: 16px;
+  color: white;
+  background-color: #007bff;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: background-color 0.3s, box-shadow 0.3s;
+  outline: none;
+  display: inline-flex;
+  align-items: center;
+  /* needed for FontAwesome icon alignment */
+}
+
+.back-button:hover {
+  background-color: #0056b3;
+  box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
+}
+
+.back-button:active {
+  background-color: #003f7f;
+  box-shadow: 0 0 8px rgba(0, 63, 127, 0.3);
+}
+
+/* The grid containing league items */
+.bestball-grid {
+  width: 80%;
+  display: grid;
+  grid-template-columns: 6fr 2fr 2fr 2fr; /* 4 columns */
+  gap: 10px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.league-grid-header {
+  font-weight: bold;
+  background-color: #f1f1f1; /* optional */
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+  text-align: left;
+}
+
+.league-grid-item {
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+  background-color: #f9f9f9; /* optional for a subtle background */
+}
+
+/* Expand/collapse arrow for league details */
+.toggle-button {
+  cursor: pointer;
+  margin-right: 5px;
+}
+
+/* Extra info row that appears when expanded */
+.league-details {
+  grid-column: 1 / -1; /* spans all columns in the .bestball-grid */
+  padding: 10px 0;
+  margin-left: 20px; /* indent or pad the expanded area */
+}
+
+/* Team standings grid inside the expanded details */
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.team-grid-header {
+  font-weight: bold;
+  text-align: center;
+  padding: 10px;
+  background-color: #f0f0f0;
+  border-bottom: 1px solid #ccc;
+}
+
+.team-grid-item {
+  padding: 10px;
+  border-bottom: 1px solid #e0e0e0;
+  text-align: center;
+}
+
+/* Highlight the current user's row */
+.user-position {
+  background-color: #0480063e; /* a semi-transparent green? */
+  font-weight: bold;
+  color: #0b0c0b;
+  padding: 2px;
+  border-radius: 5px;
+}

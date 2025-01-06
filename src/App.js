@@ -6,7 +6,7 @@ import DraftHelper from "./DraftHelper";
 import DraftsList from "./DraftsList";
 import LeagueList from "./LeagueList";
 import BestballList from "./BestballList";
-import "./App.css";
+import "./Layout.css";
 import "./LeftMenu.css";
 
 function App() {

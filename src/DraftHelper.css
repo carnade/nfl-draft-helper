@@ -1,0 +1,91 @@
+.draftname {
+  text-align: center; /* Center the h1 within its parent container */
+}
+
+/* If you’re using the decorative lines around the .draftname h1: */
+.draftname h1 {
+  display: inline-flex;
+  align-items: center;
+  font-size: 30px;
+  font-weight: 300;
+  color: #222;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin: 10px;
+}
+
+.draftname h1:before,
+.draftname h1:after {
+  content: " ";
+  display: block;
+  width: 50px;
+  border-bottom: 1px solid #c50000;
+  border-top: 1px solid #c50000;
+  height: 5px;
+  background-color: #f8f8f8;
+}
+
+.draftname h1:before {
+  margin-right: 10px;
+}
+
+.draftname h1:after {
+  margin-left: 10px;
+}
+
+.backButton-container {
+  display: flex;
+  position: absolute;
+  right: 20px;
+  top: 30px;
+}
+
+.backButton-container button {
+  padding: 10px 20px;
+  font-size: 16px;
+  border-radius: 25px;
+  border: none;
+  background-color: grey;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.backButton-container button:hover {
+  background-color: rgb(65, 65, 65);
+}
+
+.input-container {
+  display: flex;
+  position: relative; /* Needed if .flash-text is absolutely positioned */
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 10px;
+}
+
+/* You may already have these input/button styles in a shared form CSS.
+   If so, remove duplicates here. */
+
+.flash-text {
+  font-size: 16px;
+  color: green;
+  position: absolute; /* so it appears above or near the input */
+  top: 50px; /* adjust as needed for your layout */
+  animation: flashAnimation 0.7s ease-in-out;
+  white-space: nowrap;
+}
+
+@keyframes flashAnimation {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.lists-container {
+  display: flex;
+  justify-content: space-between;
+}

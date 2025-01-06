@@ -1,0 +1,19 @@
+.app-container {
+  display: flex;
+}
+
+.content {
+  margin-left: 250px;
+  padding: 20px;
+  flex: 1;
+  transition: margin-left 0.3s;
+}
+
+.left-menu.collapsed + .content {
+  margin-left: 60px;
+}
+
+.app {
+  font-family: Arial, sans-serif;
+  padding: 20px;
+}
