@@ -27,11 +27,15 @@ function StartPage({
   };
 
   const handleCheckDrafts = () => {
-    navigate("/drafts");
+    navigate(`/drafts/${userName}`);
   };
 
   const handleCheckLeagues = () => {
-    navigate("/leagues"); // Navigate to /leagues
+    navigate(`/leagues/${userName}`);
+  };
+
+  const handleBestBall = () => {
+    navigate(`/bestball/${userName}`);
   };
 
   const handleDownloadCSV = () => {
@@ -47,9 +51,6 @@ function StartPage({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
-  const handleBestBall = () => {
-    navigate(`/bestball/${userName}`);
   };
 
   const handleStartWithCSV = () => {

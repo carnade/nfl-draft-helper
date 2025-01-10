@@ -17,3 +17,17 @@
   font-family: Arial, sans-serif;
   padding: 20px;
 }
+
+/* Page / container layout */
+.dashboard-container {
+  display: flex;
+  justify-content: space-between;
+  padding: 20px;
+  flex-wrap: wrap; /* allows items to wrap on smaller screens */
+}
+
+.header-container {
+  width: 100%;
+  text-align: center;
+  margin-bottom: 20px;
+}

@@ -48,13 +48,10 @@ function App() {
               }
             />
             <Route
-              path="/drafts"
-              element={<DraftsList userName={userName} />} // Pass userName to DraftPage component
+              path="/drafts/:userName"
+              element={<DraftsList />} // Pass userName to DraftPage component
             />
-            <Route
-              path="/leagues"
-              element={<LeagueList userName={userName} />}
-            />
+            <Route path="/leagues/:userName" element={<LeagueList />} />
 
             <Route path="/bestball/:userName" element={<BestballList />} />
           </Routes>

@@ -6,10 +6,11 @@ import {
   faQuestion,
   faExternalLinkAlt,
 } from "@fortawesome/free-solid-svg-icons";
-import { useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import "./LeagueList.css";
 
-function LeagueList({ userName }) {
+function LeagueList() {
+  const { userName } = useParams();
   const [userId, setUserId] = useState(null);
   const [leagues, setLeagues] = useState([]);
   const [expandedLeagueIds, setExpandedLeagueIds] = useState(new Set());
@@ -55,6 +56,7 @@ function LeagueList({ userName }) {
 
   const handlePlayerClick = (player) => {
     const playerId = `${player.first_name}-${player.last_name}`;
+    console.log(`Player ${playerId} clicked`);
 
     if (selectedPlayer === playerId) {
       setSelectedPlayer(null);
@@ -78,6 +80,7 @@ function LeagueList({ userName }) {
   };
 
   const highlightLeaguesWithPlayer = (firstName, lastName) => {
+    console.log(`Highlighting leagues with player ${firstName} ${lastName}`);
     const highlightedLeaguesSet = new Set();
     leagues.forEach((league) => {
       Object.keys(playerData[league.league_id]?.players || {}).forEach((p) => {

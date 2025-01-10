@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faExternalLinkAlt } from "@fortawesome/free-solid-svg-icons";
-import { useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { faArrowLeft, faSyncAlt } from "@fortawesome/free-solid-svg-icons";
 import "./DraftsList.css";
 
-function DraftPage({ userName }) {
+function DraftPage() {
+  const { userName } = useParams();
   const [userId, setUserId] = useState(null);
   const [drafts, setDrafts] = useState([]);
   const navigate = useNavigate();
