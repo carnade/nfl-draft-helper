@@ -8,26 +8,6 @@
   font-family: Arial, sans-serif; /* if needed */
 }
 
-/* Title area for the page */
-.draftname {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-.draftname h1 {
-  font-size: 24px;
-  font-weight: bold;
-  margin: 0;
-  padding: 0;
-}
-
-.draftname span {
-  display: block;
-  font-size: 16px;
-  color: #666;
-  margin-top: 5px;
-}
-
 /* Container for buttons (Back, Refresh) */
 .button-container {
   display: flex;

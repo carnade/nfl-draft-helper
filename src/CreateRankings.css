@@ -54,3 +54,23 @@
   display: flex;
   justify-content: space-between;
 }
+
+.modern-button {
+  padding: 10px 20px;
+  font-size: 16px;
+  color: white;
+  background-color: #28a745;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: background-color 0.3s, box-shadow 0.3s;
+  outline: none;
+}
+.modern-button:hover {
+  background-color: #218838;
+  box-shadow: 0 0 8px rgba(33, 136, 56, 0.3);
+}
+.modern-button:active {
+  background-color: #1e7e34;
+  box-shadow: 0 0 8px rgba(30, 126, 52, 0.3);
+}

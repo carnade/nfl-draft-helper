@@ -98,10 +98,10 @@ function BestballList() {
   return (
     <div className="dashboard-container">
       <div className="header-container">
-        <h1>Bestball Leagues</h1>
-        <button onClick={handleBackClick} className="back-button">
-          <FontAwesomeIcon icon={faArrowLeft} /> Back
-        </button>
+        <div className="draftname">
+          <h1>Bestball Overview</h1>
+          <span>{userName}</span>
+        </div>
       </div>
       <div className="bestball-grid">
         <div className="league-grid-header">League Name</div>

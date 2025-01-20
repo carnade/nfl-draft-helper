@@ -3,7 +3,7 @@
 }
 
 .content {
-  margin-left: 250px;
+  margin-left: 15px;
   padding: 20px;
   flex: 1;
   transition: margin-left 0.3s;

@@ -26,10 +26,6 @@ function LeagueList() {
   let searchTimeout;
   const mock = true;
 
-  const handleBackClick = () => {
-    navigate(-1); // Navigate to the previous page
-  };
-
   const handleToggle = (leagueId) => {
     setExpandedLeagueIds((prevIds) => {
       const newIds = new Set(prevIds);
@@ -499,11 +495,6 @@ function LeagueList() {
         <div className="draftname">
           <h1>Leagues Overview</h1>
           <span>{userName}</span>
-        </div>
-        <div className="button-container">
-          <button onClick={handleBackClick} className="back-button">
-            <FontAwesomeIcon icon={faArrowLeft} /> Back
-          </button>
         </div>
       </div>
 

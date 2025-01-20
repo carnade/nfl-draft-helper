@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faExternalLinkAlt } from "@fortawesome/free-solid-svg-icons";
 import { useParams, useNavigate } from "react-router-dom";
 import { faArrowLeft, faSyncAlt } from "@fortawesome/free-solid-svg-icons";
+import { Link } from "react-router-dom";
 import "./DraftsList.css";
 
 function DraftPage() {
@@ -126,7 +127,7 @@ function DraftPage() {
       // Second API request to get draft data using user_id
       if (userId) {
         const draftsResponse = await fetch(
-          `https://api.sleeper.app/v1/user/${userId}/drafts/nfl/2024`
+          `https://api.sleeper.app/v1/user/${userId}/drafts/nfl/2025`
         );
         const draftsData = await draftsResponse.json();
 
@@ -200,10 +201,6 @@ function DraftPage() {
     }
   }, [userName]);
 
-  const handleBack = () => {
-    navigate(-1); // Navigate to the previous page
-  };
-
   const handleRefresh = () => {
     // Re-fetch the data without changing the username
     fetchUserData();
@@ -220,9 +217,6 @@ function DraftPage() {
         <span>{userName}</span>
       </div>
       <div className="button-container">
-        <button onClick={handleBack} className="back-button">
-          <FontAwesomeIcon icon={faArrowLeft} /> Back
-        </button>
         <button onClick={handleRefresh} className="refresh-button">
           <FontAwesomeIcon icon={faSyncAlt} /> Refresh
         </button>
@@ -268,11 +262,17 @@ function DraftPage() {
                 >
                   <FontAwesomeIcon icon={faExternalLinkAlt} />
                 </a>
-                <img
-                  src="/favicon.ico"
-                  alt="Icon"
-                  className="draft-grid-icon"
-                />
+                <Link
+                  to={`/drafthelper/${draft.draft_id}`}
+                  state={{ scoringType: draft.scoring_type }}
+                >
+                  <span>{draft.metadatascoring_type}</span>
+                  <img
+                    src="/favicon.ico"
+                    alt="Icon"
+                    className="draft-grid-icon"
+                  />
+                </Link>
                 <span hidden>{userId}</span>
               </div>
             </React.Fragment>

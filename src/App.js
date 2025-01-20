@@ -2,12 +2,15 @@ import React, { useState } from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import StartPage from "./StartPage";
 import LeftMenu from "./LeftMenu";
+import CreateRankings from "./CreateRankings";
+import DraftSetup from "./DraftSetup";
 import DraftHelper from "./DraftHelper";
 import DraftsList from "./DraftsList";
 import LeagueList from "./LeagueList";
 import BestballList from "./BestballList";
 import "./Layout.css";
 import "./LeftMenu.css";
+import "./GenericStyles.css";
 
 function App() {
   const [csvData, setCsvData] = useState(""); // Manage CSV data in App.js
@@ -25,18 +28,35 @@ function App() {
             <Route
               path="/"
               element={
-                <StartPage
+                <StartPage userName={userName} setUserName={setUserName} />
+              }
+            />
+            <Route
+              path="/draftsetup"
+              element={
+                <DraftSetup
                   setCsvData={setCsvData}
                   setCsvFileName={setCsvFileName}
                   useTierForOverall={useTierForOverall}
                   setUseTierForOverall={setUseTierForOverall}
                   userName={userName}
                   setUserName={setUserName}
+                  isRankingsPage={false}
                 />
               }
             />
 
             {/* Route for the draft helper page */}
+            <Route
+              path="/drafthelper/:draftId"
+              element={
+                <DraftHelper
+                  csvData={csvData}
+                  csvFileName={csvFileName} // Pass CSV data to DraftHelper
+                  useTierForOverall={useTierForOverall}
+                />
+              }
+            />
             <Route
               path="/drafthelper"
               element={
@@ -54,6 +74,30 @@ function App() {
             <Route path="/leagues/:userName" element={<LeagueList />} />
 
             <Route path="/bestball/:userName" element={<BestballList />} />
+            <Route
+              path="/rankingssetup"
+              element={
+                <DraftSetup
+                  setCsvData={setCsvData}
+                  setCsvFileName={setCsvFileName}
+                  useTierForOverall={useTierForOverall}
+                  setUseTierForOverall={setUseTierForOverall}
+                  userName={userName}
+                  setUserName={setUserName}
+                  isRankingsPage={true}
+                />
+              }
+            />
+            <Route
+              path="/rankings"
+              element={
+                <CreateRankings
+                  csvData={csvData}
+                  csvFileName={csvFileName} // Pass CSV data to DraftHelper
+                  useTierForOverall={useTierForOverall}
+                />
+              }
+            />
           </Routes>
         </div>
       </div>
