@@ -8,6 +8,7 @@ import DraftHelper from "./DraftHelper";
 import DraftsList from "./DraftsList";
 import LeagueList from "./LeagueList";
 import BestballList from "./BestballList";
+import Settings from "./Settings";
 import "./Layout.css";
 import "./LeftMenu.css";
 import "./GenericStyles.css";
@@ -98,6 +99,7 @@ function App() {
                 />
               }
             />
+            <Route path="/settings" element={<Settings />} />
           </Routes>
         </div>
       </div>

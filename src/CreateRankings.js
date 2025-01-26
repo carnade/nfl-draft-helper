@@ -146,13 +146,44 @@ function CreateRankings({ csvData, csvFileName, useTierForOverall }) {
     removed.Tier = closestPosTier;
     newArray.splice(newIndex, 0, removed);
     // Reassign OverallRank in ascending order
+    let qbCount = 0,
+      rbCount = 0,
+      wrCount = 0,
+      teCount = 0;
+
     newArray.forEach((p, i) => {
-      const newRank = i + 1;
-      p.OverallRank = newRank;
-      p["Overall Rank"] = newRank.toString();
+      p.OverallRank = i + 1;
+      p["Overall Rank"] = String(i + 1);
+      // If you want overallTier:
+      // p.OverallTier = Math.floor(i / 12) + 1;
+
+      switch (p.Position) {
+        case "QB":
+          qbCount++;
+          p.PositionRank = qbCount;
+          p["Position Rank"] = String(qbCount);
+          break;
+        case "RB":
+          rbCount++;
+          p.PositionRank = rbCount;
+          p["Position Rank"] = String(rbCount);
+          break;
+        case "WR":
+          wrCount++;
+          p.PositionRank = wrCount;
+          p["Position Rank"] = String(wrCount);
+          break;
+        case "TE":
+          teCount++;
+          p.PositionRank = teCount;
+          p["Position Rank"] = String(teCount);
+          break;
+        default:
+        // ...
+      }
     });
-    // Then recalc position ranks
-    return recalcPositionRanks(newArray);
+
+    return newArray;
   }
 
   /**

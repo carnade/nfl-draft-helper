@@ -77,11 +77,14 @@ function DraftHelper({ csvData, csvFileName, useTierForOverall }) {
     switch (type) {
       case "dynasty_2qb":
         return "dynasty_sf_adp.csv";
+      case "dynasty_ppr":
+        return "dynasty_ppr_adp.csv";
+      case "dynasty_half-ppr":
+        return "dynasty_half_ppradp.csv";
       case "ppr":
         return "redraft_ppr_adp.csv";
       case "2qb":
         return "redraft_sf_adp.csv";
-      case "half-ppr":
       case "half_ppr":
         return "redraft_half_ppr_adp.csv";
       default:

@@ -1,0 +1,124 @@
+/* You already have .start-page and .separator from your DraftSetup style, 
+   but here’s a sample if needed. */
+
+.start-page {
+  max-width: 600px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.start-page h1 {
+  margin-top: 40px;
+  font-size: 32px;
+}
+
+.separator {
+  border: none;
+  border-top: 2px solid #ddd;
+  margin: 20px 0;
+}
+
+.settings-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  /* optionally center or align differently */
+  align-items: flex-start;
+  max-width: 400px;
+  margin: 0 auto;
+  text-align: left; /* override the center of .start-page if you want */
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.separator-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+
+.settings-field label {
+  font-weight: bold;
+}
+
+.settings-field input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+/* Each row for your new rankings table */
+.rankings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 10px;
+}
+
+.ranking-row {
+  display: contents; /* or keep it as a row if you prefer */
+}
+
+.ranking-label {
+  font-weight: bold;
+  /* to align items center if you like: */
+  display: flex;
+  align-items: center;
+}
+
+.ranking-file {
+  display: flex;
+  align-items: center;
+  font-style: italic;
+  color: #666;
+}
+
+/* The container for your two bottom buttons */
+.settings-actions {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px; /* optional spacing */
+}
+
+.reset-button,
+.save-button {
+  padding: 10px 20px;
+  font-size: 16px;
+  margin: 10px;
+  border-radius: 25px;
+  border: none;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+/* The green or default 'save' button */
+.save-button {
+  background-color: #28a745; /* "bootstrap green" */
+  color: #fff;
+}
+
+.save-button button:hover {
+  background-color: #218838;
+}
+.save-button button:disabled {
+  background-color: gray !important;
+  color: white;
+  cursor: not-allowed;
+}
+
+/* The red 'reset' button */
+.reset-button {
+  background-color: #cc0000; /* or #f44336, #dc3545, etc. */
+  color: #fff;
+}
+
+/* optional hover states: */
+.reset-button:hover {
+  background-color: #b30000;
+}
