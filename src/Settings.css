@@ -21,7 +21,7 @@
 .settings-container {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 4px;
   /* optionally center or align differently */
   align-items: flex-start;
   max-width: 400px;
@@ -33,6 +33,11 @@
   display: flex;
   flex-direction: column;
   gap: 5px;
+}
+.settings-field label {
+  font-weight: bold;
+  font-size: larger;
+  margin-bottom: 4px;
 }
 
 .separator-field {
@@ -121,4 +126,15 @@
 /* optional hover states: */
 .reset-button:hover {
   background-color: #b30000;
+}
+
+.standard-username {
+  width: 100%;
+  padding: 8px;
+  font-size: 16px;
+  border: 2px solid #ddd;
+  border-radius: 5px;
+  background-color: white;
+  cursor: pointer;
+  outline: none;
 }

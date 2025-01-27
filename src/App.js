@@ -38,8 +38,6 @@ function App() {
                 <DraftSetup
                   setCsvData={setCsvData}
                   setCsvFileName={setCsvFileName}
-                  useTierForOverall={useTierForOverall}
-                  setUseTierForOverall={setUseTierForOverall}
                   userName={userName}
                   setUserName={setUserName}
                   isRankingsPage={false}
@@ -54,7 +52,6 @@ function App() {
                 <DraftHelper
                   csvData={csvData}
                   csvFileName={csvFileName} // Pass CSV data to DraftHelper
-                  useTierForOverall={useTierForOverall}
                 />
               }
             />
@@ -64,7 +61,6 @@ function App() {
                 <DraftHelper
                   csvData={csvData}
                   csvFileName={csvFileName} // Pass CSV data to DraftHelper
-                  useTierForOverall={useTierForOverall}
                 />
               }
             />

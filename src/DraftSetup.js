@@ -5,14 +5,12 @@ import "./DraftSetup.css";
 function DraftSetup({
   setCsvData,
   setCsvFileName,
-  useTierForOverall,
-  setUseTierForOverall,
   isRankingsPage,
   userName,
   setUserName,
 }) {
   const [selectedFile, setSelectedFile] = useState(null);
-  const [selectedOption, setSelectedOption] = useState("original.csv"); // Set default value
+  const [selectedOption, setSelectedOption] = useState("1qbdata.csv"); // Set default value
   const navigate = useNavigate();
 
   const handleLoadCsvClick = () => {
@@ -109,7 +107,8 @@ function DraftSetup({
           onChange={handleDropdownChange}
           className="modern-dropdown"
         >
-          <option value="original.csv">Cheatsheetasdf king rankings</option>
+          <option value="1qbdata.csv">Early FantasyPros 1qb</option>
+          <option value="2qbdata.csv">Early FantasyPros 2qb</option>
           <option value="redraft_ppr_adp.csv">Sleeper PPR</option>
           <option value="redraft_sf_adp.csv">Sleeper SF</option>
           <option value="redraft_half_ppr_adp.csv">Sleeper half-PPR</option>
@@ -121,30 +120,7 @@ function DraftSetup({
         </select>
         <button onClick={handleDownloadCSV}>Download CSV</button>
       </div>
-      <div className="checkbox-container">
-        <input
-          type="checkbox"
-          id="use-tier-checkbox"
-          checked={useTierForOverall}
-          onChange={() => setUseTierForOverall(!useTierForOverall)}
-        />
-        <label htmlFor="use-tier-checkbox">
-          Use own tier for overall list (add OverallTier column to your CSV)
-        </label>
-      </div>
       <p></p>
-      <div>
-        CSV uses format same as www.cheatsheetking.com. It has the following
-        headers
-      </div>
-      <div>
-        Overall Rank,Name,Position,Team,Bye,Position Rank,Tier,OverallTier
-      </div>
-      <p></p>
-      <div>
-        The last column(OverallTier) is optional but can be used if one wants to
-        manually set tiers for the overall list.{" "}
-      </div>
     </div>
   );
 }

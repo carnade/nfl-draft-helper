@@ -2,6 +2,10 @@ import React, { useState, useEffect } from "react";
 import "./Settings.css";
 
 function Settings() {
+  // New state for standard username
+  const [username, setUsername] = useState("");
+
+  // Existing states
   const [theme, setTheme] = useState("light");
   const [defaultRankings, setDefaultRankings] = useState({
     dynasty_sf: { name: "default", data: "" },
@@ -16,9 +20,15 @@ function Settings() {
     const saved = localStorage.getItem("FantasyHelperSettings");
     if (saved) {
       const parsed = JSON.parse(saved);
+      // Restore username if present
+      if (parsed.username) {
+        setUsername(parsed.username);
+      }
+      // Restore defaultRankings if present
       if (parsed.defaultRankings) {
         setDefaultRankings(parsed.defaultRankings);
       }
+      // Restore theme if present
       if (parsed.theme) {
         setTheme(parsed.theme);
       }
@@ -28,6 +38,7 @@ function Settings() {
   const handleFileChange = (rankingKey, event) => {
     if (!event.target.files || event.target.files.length === 0) return;
     const file = event.target.files[0];
+    // 1MB size limit
     if (file.size > 1_000_000) {
       alert("File exceeds 1MB limit. Please choose a smaller file.");
       return;
@@ -61,11 +72,13 @@ function Settings() {
       redraft_half_ppr: { name: "default", data: "" },
     });
     setTheme("light");
-    alert("Settings reset to defaults (not yet saved).");
+    setUsername("");
+    alert("Settings reset to defaults (REMEMBER to save).");
   };
 
   const handleSave = () => {
-    const settingsToSave = { defaultRankings, theme };
+    // Include the new username in the object
+    const settingsToSave = { username, defaultRankings, theme };
     localStorage.setItem(
       "FantasyHelperSettings",
       JSON.stringify(settingsToSave)
@@ -80,9 +93,23 @@ function Settings() {
       <hr className="separator" />
 
       <div className="settings-container">
-        <hr className="separator" />
+        {/* NEW: Standard Username Field */}
         <div className="settings-field">
-          <label htmlFor="theme-select">Default rankings</label>
+          <label htmlFor="standard-username">Standard username:</label>
+          <input
+            className="standard-username"
+            id="standard-username"
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Default username"
+          />
+        </div>
+        <div className="separator-field">
+          <hr className="separator" />
+        </div>
+        <div className="settings-field">
+          <label>Default rankings</label>
         </div>
 
         {/* Rankings grid */}
@@ -104,7 +131,6 @@ function Settings() {
               Choose
             </button>
           </div>
-
           {/* 2) Dynasty PPR */}
           <div className="ranking-row">
             <div className="ranking-label">Dynasty PPR</div>
@@ -122,7 +148,6 @@ function Settings() {
               Choose
             </button>
           </div>
-
           {/* 3) Dynasty Half-PPR */}
           <div className="ranking-row">
             <div className="ranking-label">Dynasty Half-PPR</div>
@@ -140,7 +165,6 @@ function Settings() {
               Choose
             </button>
           </div>
-
           {/* 4) Redraft SF */}
           <div className="ranking-row">
             <div className="ranking-label">Redraft SF</div>
@@ -158,7 +182,6 @@ function Settings() {
               Choose
             </button>
           </div>
-
           {/* 5) Redraft PPR */}
           <div className="ranking-row">
             <div className="ranking-label">Redraft PPR</div>
@@ -176,7 +199,6 @@ function Settings() {
               Choose
             </button>
           </div>
-
           {/* 6) Redraft Half-PPR */}
           <div className="ranking-row">
             <div className="ranking-label">Redraft Half-PPR</div>
@@ -198,7 +220,8 @@ function Settings() {
         <div className="separator-field">
           <hr className="separator" />
         </div>
-        <div className="settings-field">
+
+        <div className="settings-field" style={{ display: "none" }}>
           <label htmlFor="theme-select">Theme:</label>
           <select
             id="theme-select"

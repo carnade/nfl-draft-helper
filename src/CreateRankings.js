@@ -17,17 +17,19 @@ function CreateRankings({ csvData, csvFileName, useTierForOverall }) {
     (csv) => {
       Papa.parse(csv, {
         header: true,
+        skipEmptyLines: true,
         complete: (result) => {
+          const hasOverallTier = result?.meta?.fields?.includes("OverallTier");
           let data = result.data;
-          if (!useTierForOverall) {
-            // Make "OverallRank" = i+1 if we want to override the CSV's
+          if (!hasOverallTier) {
+            // Just always assign OverallTier yourself
             data = data.map((p, i) => ({
               ...p,
               OverallRank: i + 1,
               OverallTier: Math.floor(i / 12) + 1,
             }));
           } else {
-            // If you trust the CSV to have a correct "Overall Rank," parse to int
+            // If CSV has OverallTier, do nothing or parse OverallRank
             data = data.map((p, i) => ({
               ...p,
               OverallRank: parseInt(p["Overall Rank"] ?? i + 1, 10),
@@ -48,6 +50,7 @@ function CreateRankings({ csvData, csvFileName, useTierForOverall }) {
         .then((csv) => {
           Papa.parse(csv, {
             header: true,
+            skipEmptyLines: true,
             complete: (result) => {
               let data = result.data;
               if (!useTierForOverall) {

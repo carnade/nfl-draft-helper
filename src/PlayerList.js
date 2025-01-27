@@ -25,6 +25,7 @@ function PlayerList({
 
   // Group players into the appropriate tier
   players.forEach((player) => {
+    if (player === undefined || player === null || player === "") return;
     const tier = player[groupBy];
     groupedPlayers[tier].push(player);
   });

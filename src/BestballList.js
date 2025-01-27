@@ -42,7 +42,7 @@ function BestballList() {
       setUserId(userId);
 
       const leaguesResponse = await fetch(
-        `https://api.sleeper.app/v1/user/${userId}/leagues/nfl/2024`
+        `https://api.sleeper.app/v1/user/${userId}/leagues/nfl/2025`
       );
       const leaguesData = await leaguesResponse.json();
 

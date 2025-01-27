@@ -1,13 +1,28 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect } from "react";
 import "./StartPage.css";
 
 function StartPage({ userName, setUserName }) {
+  // On first render only, if userName is empty, load from localStorage
+  useEffect(() => {
+    // We only run this effect once (empty deps),
+    // so it won't overwrite changes after initial load.
+    if (!userName) {
+      const saved = localStorage.getItem("FantasyHelperSettings");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.username) {
+          setUserName(parsed.username);
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // <-- empty dependency array so it runs only on mount
+
   return (
     <div className="start-page">
       <h1>Welcome to the NFL Fantasy Helper</h1>
       <img
-        src="/nflhelper_logo.png"
+        src="/fantasy_football.jpg"
         alt="NFL Fantasy Helper Logo"
         className="logo"
       />
@@ -18,7 +33,7 @@ function StartPage({ userName, setUserName }) {
         <input
           type="text"
           value={userName}
-          onChange={(e) => setUserName(e.target.value)} // Update userName state
+          onChange={(e) => setUserName(e.target.value)}
           placeholder="Name"
           className="modern-input"
         />

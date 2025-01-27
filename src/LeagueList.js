@@ -24,7 +24,7 @@ function LeagueList() {
 
   const navigate = useNavigate();
   let searchTimeout;
-  const mock = true;
+  const mock = false;
 
   const handleToggle = (leagueId) => {
     setExpandedLeagueIds((prevIds) => {
@@ -206,7 +206,7 @@ function LeagueList() {
       setUserId(userId);
 
       const leaguesResponse = await fetch(
-        `https://api.sleeper.app/v1/user/${userId}/leagues/nfl/2024`
+        `https://api.sleeper.app/v1/user/${userId}/leagues/nfl/2025`
       );
       const leaguesData = await leaguesResponse.json();
 
