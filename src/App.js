@@ -16,7 +16,6 @@ import "./GenericStyles.css";
 function App() {
   const [csvData, setCsvData] = useState(""); // Manage CSV data in App.js
   const [csvFileName, setCsvFileName] = useState(""); // Manage CSV data in App.js
-  const [useTierForOverall, setUseTierForOverall] = useState(false);
   const [userName, setUserName] = useState("");
 
   return (
@@ -77,8 +76,6 @@ function App() {
                 <DraftSetup
                   setCsvData={setCsvData}
                   setCsvFileName={setCsvFileName}
-                  useTierForOverall={useTierForOverall}
-                  setUseTierForOverall={setUseTierForOverall}
                   userName={userName}
                   setUserName={setUserName}
                   isRankingsPage={true}
@@ -91,7 +88,6 @@ function App() {
                 <CreateRankings
                   csvData={csvData}
                   csvFileName={csvFileName} // Pass CSV data to DraftHelper
-                  useTierForOverall={useTierForOverall}
                 />
               }
             />

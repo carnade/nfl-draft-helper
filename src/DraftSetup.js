@@ -109,14 +109,15 @@ function DraftSetup({
         >
           <option value="1qbdata.csv">Early FantasyPros 1qb</option>
           <option value="2qbdata.csv">Early FantasyPros 2qb</option>
+          <option value="rookies_early.csv">Early Rookies</option>
+          {/* 
           <option value="redraft_ppr_adp.csv">Sleeper PPR</option>
           <option value="redraft_sf_adp.csv">Sleeper SF</option>
           <option value="redraft_half_ppr_adp.csv">Sleeper half-PPR</option>
           <option value="dynasty_ppr_adp.csv">Sleeper Dynasy PPR</option>
           <option value="dynasty_sf_adp.csv">Sleeper Dynasy SF</option>
-          <option value="dynasty_half_ppr_adp.csv">
-            Sleeper Dynasty half-PPR
-          </option>
+          <option value="dynasty_half_ppr_adp.csv">Sleeper Dynasty half-PPR</option>
+          */}
         </select>
         <button onClick={handleDownloadCSV}>Download CSV</button>
       </div>

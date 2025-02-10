@@ -322,6 +322,10 @@ function CreateRankings({ csvData, csvFileName, useTierForOverall }) {
     // Decide which property to use: OverallTier for "ALL", Tier for positions
     const tierProperty = type === "ALL" ? "OverallTier" : "Tier";
 
+    for (let i = 1; i < 16; i++) {
+      grouped[i] = [];
+    }
+
     players.forEach((player) => {
       const tierValue = player[tierProperty];
       // If the tierValue is null/undefined, you may want to handle that

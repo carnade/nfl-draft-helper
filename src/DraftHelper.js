@@ -45,6 +45,7 @@ function DraftHelper({ csvData, csvFileName }) {
       let finalCsvContent = null; // raw CSV text to parse
 
       if (csvData) {
+        console.log("Using direct CSV data");
         // A1) If direct CSV data was provided in props
         finalCsvContent = csvData;
       } else {
@@ -53,6 +54,8 @@ function DraftHelper({ csvData, csvFileName }) {
         let localFileName = csvFileName || ""; // might be empty
 
         const settingsStr = localStorage.getItem("FantasyHelperSettings");
+        console.log("settingsStr:", settingsStr);
+        console.log("scoringType:", scoringType);
         if (scoringType && settingsStr) {
           const parsed = JSON.parse(settingsStr);
           const dr = parsed.defaultRankings || {};
@@ -70,6 +73,7 @@ function DraftHelper({ csvData, csvFileName }) {
 
         // A3) If we did NOT use custom data, fallback to a local file from the server
         if (!usedCustomData) {
+          console.log("Using local file fallback", localFileName);
           if (!localFileName && scoringType) {
             localFileName = getDefaultFile(scoringType);
           }
@@ -166,7 +170,7 @@ function DraftHelper({ csvData, csvFileName }) {
       const fixTeamNames = (team) => {
         switch (team) {
           case "WAS":
-            return "WSH";
+            return "WAS";
           case "JAX":
             return "JAC";
           default:
@@ -177,7 +181,9 @@ function DraftHelper({ csvData, csvFileName }) {
       const playersToRemove = new Set();
       picksData.forEach((pick) => {
         const fetchedLastName = pick.metadata.last_name;
+
         let fetchedTeam = fixTeamNames(pick.metadata.team);
+        console.log("fetchedTeam:", fetchedTeam, "old:", pick.metadata.team);
         const fetchedPosition = pick.metadata.position;
 
         for (const p of playersArr) {
@@ -220,7 +226,8 @@ function DraftHelper({ csvData, csvFileName }) {
 
   // map scoringType -> localStorage key
   function mapScoringType(scoring) {
-    switch (scoring) {
+    console.log("mapScoringType:", scoring);
+    /*    switch (scoring) {
       case "dynasty_2qb":
         return "2qbdata";
       case "dynasty_ppr":
@@ -235,8 +242,8 @@ function DraftHelper({ csvData, csvFileName }) {
         return "1qbdata";
       default:
         return "dynasty_sf";
-    }
-    /*
+    }*/
+
     switch (scoring) {
       case "dynasty_2qb":
         return "dynasty_sf";
@@ -253,26 +260,25 @@ function DraftHelper({ csvData, csvFileName }) {
       default:
         return "dynasty_sf";
     }
-    */
   }
 
   // fallback for "default" files if userName => "default"
   function getDefaultFile(type) {
     switch (type) {
       case "dynasty_2qb":
-        return "dynasty_sf_adp.csv";
+        return "dynasty_sf.csv";
       case "dynasty_ppr":
-        return "dynasty_ppr_adp.csv";
+        return "dynasty_ppr.csv";
       case "dynasty_half-ppr":
-        return "dynasty_half_ppr_adp.csv";
+        return "dynasty_half_ppr.csv";
       case "ppr":
-        return "redraft_ppr_adp.csv";
+        return "redraft_ppr.csv";
       case "2qb":
-        return "redraft_sf_adp.csv";
+        return "redraft_sf.csv";
       case "half_ppr":
-        return "redraft_half_ppr_adp.csv";
+        return "redraft_half_ppr.csv";
       default:
-        return "dynasty_sf_adp.csv";
+        return "dynasty_sf.csv";
     }
   }
 
