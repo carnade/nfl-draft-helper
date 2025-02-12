@@ -1,12 +1,11 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faArrowLeft,
   faUserInjured,
   faQuestion,
   faExternalLinkAlt,
 } from "@fortawesome/free-solid-svg-icons";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import "./LeagueList.css";
 
 function LeagueList() {
@@ -22,7 +21,6 @@ function LeagueList() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showAllInjuries, setShowAllInjuries] = useState(false);
 
-  const navigate = useNavigate();
   let searchTimeout;
   const mock = false;
 

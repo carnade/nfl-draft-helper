@@ -15,7 +15,6 @@ function StartPage({ userName, setUserName }) {
         }
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // <-- empty dependency array so it runs only on mount
 
   return (

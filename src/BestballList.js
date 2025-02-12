@@ -1,11 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faArrowLeft,
-  faExternalLinkAlt,
-  faTrophy,
-} from "@fortawesome/free-solid-svg-icons";
-import { useNavigate, useParams } from "react-router-dom";
+import { faExternalLinkAlt, faTrophy } from "@fortawesome/free-solid-svg-icons";
+import { useParams } from "react-router-dom";
 import "./BestballList.css";
 
 function BestballList() {
@@ -13,12 +9,6 @@ function BestballList() {
   const [userId, setUserId] = useState(null);
   const [leagues, setLeagues] = useState([]);
   const [expandedLeagueIds, setExpandedLeagueIds] = useState(new Set());
-
-  const navigate = useNavigate();
-
-  const handleBackClick = () => {
-    navigate(-1); // Navigate back to the start page
-  };
 
   const handleToggle = (leagueId) => {
     setExpandedLeagueIds((prevIds) => {

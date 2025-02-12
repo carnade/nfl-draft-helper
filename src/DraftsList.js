@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faExternalLinkAlt } from "@fortawesome/free-solid-svg-icons";
-import { useParams, useNavigate } from "react-router-dom";
-import { faArrowLeft, faSyncAlt } from "@fortawesome/free-solid-svg-icons";
+import { useParams } from "react-router-dom";
+import { faSyncAlt } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "react-router-dom";
 import "./DraftsList.css";
 
@@ -10,7 +10,6 @@ function DraftPage() {
   const { userName } = useParams();
   const [userId, setUserId] = useState(null);
   const [drafts, setDrafts] = useState([]);
-  const navigate = useNavigate();
 
   const formatMilliseconds = (milliseconds) => {
     const totalSeconds = Math.floor(milliseconds / 1000);
@@ -236,7 +235,7 @@ function DraftPage() {
               <div className="draft-grid-item">
                 {draft.picksToDraft === 0 ? (
                   <span className="highlight-green">
-                    It's your turn to pick!
+                    It&apos;s your turn to pick!
                   </span>
                 ) : draft.picksToDraft === -99 ? (
                   <span className="highlight-red">Your last pick is made!</span>

@@ -2,13 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./DraftSetup.css";
 
-function DraftSetup({
-  setCsvData,
-  setCsvFileName,
-  isRankingsPage,
-  userName,
-  setUserName,
-}) {
+function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [selectedOption, setSelectedOption] = useState("1qbdata.csv"); // Set default value
   const navigate = useNavigate();

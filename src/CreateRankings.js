@@ -232,9 +232,6 @@ function CreateRankings({ csvData, csvFileName, useTierForOverall }) {
     const position = droppableId.split("-")[0]; // e.g. "WR"
     const newTier = droppableId.split("-")[2];
 
-    const subList = allPlayers
-      .filter((p) => p.Position === position)
-      .sort((a, b) => a.PositionRank - b.PositionRank);
     const positionPlayers = allPlayers.filter((p) => p.Position === position);
     const groupedPosition = groupByTier(positionPlayers, position);
     console.log("groupedPosition", groupedPosition);
