@@ -3,11 +3,10 @@ import PlayerList from "./PlayerList";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faRecycle } from "@fortawesome/free-solid-svg-icons";
 import Papa from "papaparse";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import "./DraftHelper.css";
 
 function DraftHelper({ csvData, csvFileName }) {
-  const navigate = useNavigate();
   const location = useLocation();
   const { draftId: routeDraftId } = useParams();
 
@@ -108,7 +107,6 @@ function DraftHelper({ csvData, csvFileName }) {
     }
 
     loadCsvAndRemovePicks();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [csvData, csvFileName, scoringType, routeDraftId]);
 
   /**
