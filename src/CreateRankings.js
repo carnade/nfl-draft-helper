@@ -13,35 +13,32 @@ function CreateRankings({ csvData, csvFileName, useTierForOverall }) {
   const [allPlayers, setAllPlayers] = useState([]);
 
   // 1. Parse CSV from either csvData or csvFileName
-  const handleStartWithCSV = useCallback(
-    (csv) => {
-      Papa.parse(csv, {
-        header: true,
-        skipEmptyLines: true,
-        complete: (result) => {
-          const hasOverallTier = result?.meta?.fields?.includes("OverallTier");
-          let data = result.data;
-          if (!hasOverallTier) {
-            // Just always assign OverallTier yourself
-            data = data.map((p, i) => ({
-              ...p,
-              OverallRank: i + 1,
-              OverallTier: Math.floor(i / 12) + 1,
-            }));
-          } else {
-            // If CSV has OverallTier, do nothing or parse OverallRank
-            data = data.map((p, i) => ({
-              ...p,
-              OverallRank: parseInt(p["Overall Rank"] ?? i + 1, 10),
-            }));
-          }
-          const finalAll = recalcPositionRanks(data);
-          setAllPlayers(finalAll);
-        },
-      });
-    },
-    [useTierForOverall]
-  );
+  const handleStartWithCSV = useCallback((csv) => {
+    Papa.parse(csv, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (result) => {
+        const hasOverallTier = result?.meta?.fields?.includes("OverallTier");
+        let data = result.data;
+        if (!hasOverallTier) {
+          // Just always assign OverallTier yourself
+          data = data.map((p, i) => ({
+            ...p,
+            OverallRank: i + 1,
+            OverallTier: Math.floor(i / 12) + 1,
+          }));
+        } else {
+          // If CSV has OverallTier, do nothing or parse OverallRank
+          data = data.map((p, i) => ({
+            ...p,
+            OverallRank: parseInt(p["Overall Rank"] ?? i + 1, 10),
+          }));
+        }
+        const finalAll = recalcPositionRanks(data);
+        setAllPlayers(finalAll);
+      },
+    });
+  }, []);
 
   const handleStartFile = useCallback(
     (fileName) => {

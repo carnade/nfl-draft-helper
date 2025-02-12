@@ -15,7 +15,7 @@ function StartPage({ userName, setUserName }) {
         }
       }
     }
-  }, []); // <-- empty dependency array so it runs only on mount
+  }, [userName, setUserName]); // <-- empty dependency array so it runs only on mount
 
   return (
     <div className="start-page">

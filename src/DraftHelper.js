@@ -107,7 +107,15 @@ function DraftHelper({ csvData, csvFileName }) {
     }
 
     loadCsvAndRemovePicks();
-  }, [csvData, csvFileName, scoringType, routeDraftId]);
+  }, [
+    csvData,
+    csvFileName,
+    scoringType,
+    routeDraftId,
+    fetchCsvFile,
+    parseCsvAndCheckTier,
+    removePickedPlayers,
+  ]);
 
   /**
    * parseCsvAndCheckTier(csvString):
