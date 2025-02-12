@@ -839,7 +839,6 @@ h1 em {
   margin-right: 5px;
 }
 
-
 .dashboard-container {
   display: flex;
   justify-content: space-between;
@@ -892,7 +891,7 @@ h1 em {
   margin-bottom: 0px;
   margin-top: 0px;
   margin-left: 0px;
-  margin-right: 20px; /* Adds some space between the input and list */  
+  margin-right: 20px; /* Adds some space between the input and list */
 }
 
 .injury-report-teams {
@@ -1016,7 +1015,6 @@ h1 em {
   padding-left: 20px;
 }
 
-
 .injury-report-teams {
   display: flex;
   flex-direction: column;
@@ -1063,7 +1061,6 @@ h1 em {
 .injury-status.injury {
   color: red;
 }
-
 
 .header-container {
   display: flex;
@@ -1217,4 +1214,19 @@ input:checked + .slider:before {
   color: #0b0c0b;
   padding: 2px;
   border-radius: 5px;
+}
+
+.app-container {
+  display: flex;
+}
+
+.content {
+  margin-left: 250px;
+  padding: 20px;
+  flex: 1;
+  transition: margin-left 0.3s;
+}
+
+.left-menu.collapsed + .content {
+  margin-left: 60px;
 }

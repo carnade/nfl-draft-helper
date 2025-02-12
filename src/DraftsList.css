@@ -1,0 +1,98 @@
+/* DraftsList.css */
+
+/* Container for the entire “Drafts Overview” page */
+.draft-container {
+  max-width: 1600px;
+  margin: 0 auto; /* center horizontally */
+  padding: 20px;
+  font-family: Arial, sans-serif; /* if needed */
+}
+
+/* Container for buttons (Back, Refresh) */
+.button-container {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.back-button,
+.refresh-button {
+  padding: 10px 20px;
+  font-size: 16px;
+  color: white;
+  background-color: #007bff;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: background-color 0.3s, box-shadow 0.3s;
+  outline: none;
+  display: flex; /* so icon + text align nicely */
+  align-items: center;
+}
+
+.back-button:hover,
+.refresh-button:hover {
+  background-color: #0056b3;
+  box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
+}
+
+.back-button:active,
+.refresh-button:active {
+  background-color: #003f7f;
+  box-shadow: 0 0 8px rgba(0, 63, 127, 0.3);
+}
+
+.back-button svg,
+.refresh-button svg {
+  margin-right: 8px;
+}
+
+/* The main grid for drafts data */
+.draft-grid {
+  display: grid;
+  grid-template-columns: 3fr 2fr 1fr 2fr 1fr; /* 5 columns to match 5 headers */
+  gap: 10px;
+  padding: 20px;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: left;
+}
+
+.draft-grid-header {
+  font-weight: bold;
+  border-bottom: 2px solid #ccc;
+  padding-bottom: 10px;
+  font-size: 16px;
+}
+
+.draft-grid-item {
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+}
+
+.draft-grid-name {
+  text-align: left;
+  font-family: "Poppins", sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+/* Optional icon styling in the last column */
+.draft-grid-icon {
+  width: 20px;
+  height: 20px;
+  margin-left: 10px;
+  vertical-align: middle;
+}
+
+/* Color-coded text for statuses or picks */
+.highlight-green {
+  color: green;
+  font-weight: bold;
+}
+
+.highlight-red {
+  color: red;
+  font-weight: bold;
+}

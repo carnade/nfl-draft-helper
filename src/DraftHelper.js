@@ -3,179 +3,370 @@ import PlayerList from "./PlayerList";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faRecycle } from "@fortawesome/free-solid-svg-icons";
 import Papa from "papaparse";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
+import "./DraftHelper.css";
 
-function DraftHelper({
-    csvData,
-    csvFileName,
-    useTierForOverall,
-  }) {
-    const navigate = useNavigate();
-    const [players, setPlayers] = useState([]);
-    const [draftId, setDraftId] = useState("");
-    const [draftName, setDraftName] = useState("New Draft");
-    const [removedPlayers, setRemovedPlayers] = useState(new Set());
-    const [initialPlayers, setInitialPlayers] = useState([]);
-    const [keepEmptyTiers, setKeepEmptyTiers] = useState(false);
-    const [autoReload, setAutoReload] = useState(false);
-    const [reloadInterval, setReloadInterval] = useState(30);
-    const [isFlashing ,setIsFlashing] = useState(false);
+function DraftHelper({ csvData, csvFileName }) {
+  const location = useLocation();
+  const { draftId: routeDraftId } = useParams();
 
- 
-    const handleStartWithCSV = useCallback((csvData) => {
-      Papa.parse(csvData, {
+  // If user navigated from DraftList with `state={{ scoringType: ... }}`
+  const scoringType = location.state?.scoringType;
+
+  // Basic local states
+  const [players, setPlayers] = useState([]);
+  const [initialPlayers, setInitialPlayers] = useState([]);
+  const [draftName, setDraftName] = useState("New Draft");
+  const [removedPlayers, setRemovedPlayers] = useState(new Set());
+  const [keepEmptyTiers, setKeepEmptyTiers] = useState(false);
+  const [autoReload, setAutoReload] = useState(false);
+  const [reloadInterval, setReloadInterval] = useState(30);
+  const [isFlashing, setIsFlashing] = useState(false);
+
+  // The final "draftId" we use (either from route or user input)
+  const [draftId, setDraftId] = useState("");
+
+  /**
+   * parseCsvAndCheckTier(csvString):
+   *  - parse CSV with Papa
+   *  - if no "OverallTier" column, assign it ourselves
+   */
+  const parseCsvAndCheckTier = useCallback((csvString) => {
+    return new Promise((resolve) => {
+      Papa.parse(csvString, {
         header: true,
+        skipEmptyLines: true,
         complete: (result) => {
+          console.log("reult:", result);
           let playersData = result.data;
-          if (!useTierForOverall) {
-            playersData = playersData.map((player, index) => {
-              return { ...player, OverallTier: Math.floor(index / 10) + 1 };
-            });
+          // Check if the data has ANY row with a "OverallTier" property
+          // e.g. if playersData[0] has "OverallTier" or if result.meta.fields includes "OverallTier"
+          const hasOverallTier = result?.meta?.fields?.includes("OverallTier");
+
+          if (!hasOverallTier) {
+            console.log(
+              "No OverallTier column found -> assigning it ourselves"
+            );
+            playersData = playersData.map((player, index) => ({
+              ...player,
+              OverallTier: Math.floor(index / 12) + 1,
+            }));
+          } else {
+            console.log("CSV already has OverallTier column -> using it as-is");
           }
-          setPlayers(playersData);
-          setInitialPlayers(playersData);
+          resolve(playersData);
         },
       });
-    }, [useTierForOverall]);
-  
-    const handleStartFile = useCallback((csvFileName) => {
-      fetch(csvFileName)
-        .then((response) => response.text())
-        .then((csvData) => {
-          Papa.parse(csvData, {
-            header: true,
-            complete: (result) => {
-              let playersData = result.data;
-              if (!useTierForOverall) {
-                playersData = playersData.map((player, index) => {
-                  return { ...player, OverallTier: Math.floor(index / 10) + 1 };
-                });
-              }
-              setPlayers(playersData);
-              setInitialPlayers(playersData);
-            },
-          });
-        });
-    }, [useTierForOverall]);
+    });
+  }, []);
 
-    useEffect(() => {
-        console.log("csvData: " + csvData + ", csvFileName: " + csvFileName);
-        if (csvData) {
-          handleStartWithCSV(csvData);  // Process CSV data when it's provided
-        } else {
-            handleStartFile(csvFileName);  // Handle default start
-        }
-      }, [csvData, csvFileName, handleStartWithCSV, handleStartFile]);
+  /**
+   * fetchCsvFile - fetch a local file from server, return its text
+   */
+  const fetchCsvFile = useCallback(async (fileName) => {
+    const absolutePath = `/${fileName}`;
+    const response = await fetch(absolutePath);
+    const csvString = await response.text();
+    return csvString;
+  }, []);
 
-    const handleReloadIntervalChange = (e) => {
-      const value = parseInt(e.target.value, 10);
-      if (value >= 10) {
-        setReloadInterval(value);
-      } else {
-        alert("Auto-refresh interval cannot be less than 10 seconds.");
-      }
-    };
-  
-    const handleResetDraft = () => {
-      setPlayers(initialPlayers);
-      setRemovedPlayers(new Set());
-    };
-  
-    const handleFetchDraftData = useCallback(async () => {
+  /**
+   * removePickedPlayers - fetch Sleeper picks for `draftIdParam`,
+   * remove from the given array "playersArr"
+   */
+  const removePickedPlayers = useCallback(async (draftIdParam, playersArr) => {
+    console.log("removePickedPlayers for draftId=", draftIdParam);
+    try {
+      const picksResp = await fetch(
+        `https://api.sleeper.app/v1/draft/${draftIdParam}/picks`
+      );
+      const picksData = await picksResp.json();
+
       const fixTeamNames = (team) => {
         switch (team) {
           case "WAS":
-            return "WSH";
+            return "WAS";
           case "JAX":
             return "JAC";
           default:
             return team;
         }
       };
-      try {
-        const response = await fetch(
-          `https://api.sleeper.app/v1/draft/${draftId}/picks`
-        );
-        const data = await response.json();
-  
-        const playersToRemove = new Set();
-  
-        data.forEach((pick) => {
-          const fetchedLastName = pick.metadata.last_name;
-          let fetchedTeam = pick.metadata.team;
-          fetchedTeam = fixTeamNames(fetchedTeam);
-          const fetchedPosition = pick.metadata.position;
-  
-          players.forEach((player) => {
-            const csvFullName = player.Name;
-            const csvTeam = player.Team;
-            const csvPosition = player.Position;
-  
-            if (
-              csvFullName &&
-              csvFullName.includes(fetchedLastName) &&
-              fetchedTeam === csvTeam &&
-              fetchedPosition === csvPosition
-            ) {
-              playersToRemove.add(csvFullName);
+
+      const playersToRemove = new Set();
+      picksData.forEach((pick) => {
+        const fetchedLastName = pick.metadata.last_name;
+
+        let fetchedTeam = fixTeamNames(pick.metadata.team);
+        console.log("fetchedTeam:", fetchedTeam, "old:", pick.metadata.team);
+        const fetchedPosition = pick.metadata.position;
+
+        for (const p of playersArr) {
+          if (
+            p.Name?.includes(fetchedLastName) &&
+            p.Team === fetchedTeam &&
+            p.Position === fetchedPosition
+          ) {
+            playersToRemove.add(p.Name);
+          }
+        }
+      });
+
+      console.log("Players to remove:", playersToRemove);
+      setRemovedPlayers(playersToRemove);
+
+      const filteredArr = playersArr.filter(
+        (p) => !playersToRemove.has(p.Name)
+      );
+
+      // Also fetch league data for the draftName
+      const leagueResp = await fetch(
+        `https://api.sleeper.app/v1/draft/${draftIdParam}`
+      );
+      const leagueData = await leagueResp.json();
+      if (leagueData && leagueData.metadata) {
+        setDraftName(leagueData.metadata.name || "Unknown Draft");
+      }
+
+      // Indicate "Refreshed"
+      setIsFlashing(true);
+      setTimeout(() => setIsFlashing(false), 700);
+
+      return filteredArr;
+    } catch (err) {
+      console.error("Error removing picks:", err);
+      return playersArr; // fallback, don't remove anything
+    }
+  }, []);
+
+  // map scoringType -> localStorage key
+  function mapScoringType(scoring) {
+    console.log("mapScoringType:", scoring);
+    /*    switch (scoring) {
+      case "dynasty_2qb":
+        return "2qbdata";
+      case "dynasty_ppr":
+        return "1qbdata";
+      case "dynasty_half_ppr":
+        return "1qbdata";
+      case "ppr":
+        return "1qbdata";
+      case "2qb":
+        return "2qbdata";
+      case "half_ppr":
+        return "1qbdata";
+      default:
+        return "dynasty_sf";
+    }*/
+
+    switch (scoring) {
+      case "dynasty_2qb":
+        return "dynasty_sf";
+      case "dynasty_ppr":
+        return "dynasty_ppr";
+      case "dynasty_half_ppr":
+        return "dynasty_half_ppr";
+      case "ppr":
+        return "redraft_ppr";
+      case "2qb":
+        return "redraft_sf";
+      case "half_ppr":
+        return "redraft_half_ppr";
+      default:
+        return "dynasty_sf";
+    }
+  }
+
+  // fallback for "default" files if userName => "default"
+  function getDefaultFile(type) {
+    switch (type) {
+      case "dynasty_2qb":
+        return "dynasty_sf.csv";
+      case "dynasty_ppr":
+        return "dynasty_ppr.csv";
+      case "dynasty_half-ppr":
+        return "dynasty_half_ppr.csv";
+      case "ppr":
+        return "redraft_ppr.csv";
+      case "2qb":
+        return "redraft_sf.csv";
+      case "half_ppr":
+        return "redraft_half_ppr.csv";
+      default:
+        return "dynasty_sf.csv";
+    }
+  }
+
+  // If user types a draftID or autoReload triggers, remove picks from current players
+  const handleFetchDraftData = useCallback(async () => {
+    if (!draftId) {
+      console.log("No draft ID to fetch");
+      return;
+    }
+    console.log("Manual fetch draft data for:", draftId);
+
+    // We'll remove picks from the current players
+    setPlayers((prev) => {
+      removePickedPlayers(draftId, prev).then((filteredArr) => {
+        setPlayers(filteredArr);
+      });
+      return prev; // immediate return, updated in .then
+    });
+  }, [draftId, removePickedPlayers]);
+
+  // autoReload effect
+  useEffect(() => {
+    if (autoReload) {
+      const interval = setInterval(handleFetchDraftData, reloadInterval * 1000);
+      return () => clearInterval(interval);
+    }
+  }, [autoReload, reloadInterval, handleFetchDraftData]);
+
+  // UI callbacks
+  const handleResetDraft = () => {
+    setPlayers(initialPlayers);
+    setRemovedPlayers(new Set());
+  };
+
+  const handleReloadIntervalChange = (e) => {
+    const val = parseInt(e.target.value, 10);
+    if (val >= 10) setReloadInterval(val);
+    else alert("Auto-refresh interval cannot be less than 10 seconds.");
+  };
+
+  // 1) If there's a :draftId param, store it in `draftId`
+  useEffect(() => {
+    if (routeDraftId) {
+      console.log("routeDraftId found =>", routeDraftId);
+      setDraftId(routeDraftId);
+    }
+  }, [routeDraftId]);
+
+  // -- CSV & picks loading in one effect --
+  useEffect(() => {
+    async function loadCsvAndRemovePicks() {
+      console.log("DraftHelper: loadCSV triggered");
+      console.log("csvData:", csvData, "csvFileName:", csvFileName);
+
+      // Step A) Figure out which CSV data we’ll parse
+      let finalCsvContent = null; // raw CSV text to parse
+
+      if (csvData) {
+        console.log("Using direct CSV data");
+        // A1) If direct CSV data was provided in props
+        finalCsvContent = csvData;
+      } else {
+        // A2) Possibly read from localStorage if scoringType is set
+        let usedCustomData = false;
+        let localFileName = csvFileName || ""; // might be empty
+
+        const settingsStr = localStorage.getItem("FantasyHelperSettings");
+        console.log("settingsStr:", settingsStr);
+        console.log("scoringType:", scoringType);
+        if (scoringType && settingsStr) {
+          const parsed = JSON.parse(settingsStr);
+          const dr = parsed.defaultRankings || {};
+
+          const localStorageKey = mapScoringType(scoringType);
+          const customFileEntry = dr[localStorageKey];
+          if (customFileEntry && customFileEntry.name !== "default") {
+            console.log("Using localStorage custom CSV for:", scoringType);
+            if (customFileEntry.data) {
+              finalCsvContent = customFileEntry.data;
+              usedCustomData = true;
             }
-          });
-        });
-  
-        const responseLeague = await fetch(
-          `https://api.sleeper.app/v1/draft/${draftId}`
-        );
-        const dataLeague = await responseLeague.json();
-        setDraftName(dataLeague.metadata.name);
-  
-        setRemovedPlayers(playersToRemove);
-        setPlayers((prevPlayers) =>
-          prevPlayers.filter((player) => !playersToRemove.has(player.Name))
-        );
-        setIsFlashing(true);
-        setTimeout(() => setIsFlashing(false), 700);
-      } catch (error) {
-        console.error("Error fetching draft data:", error);
+          }
+        }
+
+        // A3) If we did NOT use custom data, fallback to a local file from the server
+        if (!usedCustomData) {
+          console.log("Using local file fallback", localFileName);
+          if (!localFileName && scoringType) {
+            localFileName = getDefaultFile(scoringType);
+          }
+          if (localFileName) {
+            console.log("Using localFileName fallback:", localFileName);
+            finalCsvContent = await fetchCsvFile(localFileName);
+          } else {
+            console.log("No CSV file, no scoring type => no CSV to load");
+            // finalCsvContent remains null => means no data
+          }
+        }
       }
-    }, [draftId, players, setIsFlashing]);
-  
-    useEffect(() => {
-      if (autoReload) {
-        const interval = setInterval(handleFetchDraftData, reloadInterval * 1000);
-        return () => clearInterval(interval);
+
+      // Step B) Now parse CSV if we have any
+      let parsedPlayers = [];
+      if (finalCsvContent) {
+        parsedPlayers = await parseCsvAndCheckTier(finalCsvContent);
       }
-    }, [autoReload, reloadInterval, handleFetchDraftData]);
-    return (
+
+      // Step C) If we have a routeDraftId => fetch picks from Sleeper & remove from "parsedPlayers"
+      let finalPlayers = parsedPlayers;
+      if (routeDraftId && finalPlayers.length > 0) {
+        console.log(
+          "We have routeDraftId => auto remove picks from finalPlayers"
+        );
+        finalPlayers = await removePickedPlayers(routeDraftId, finalPlayers);
+      }
+
+      // Step D) Store finalPlayers into state
+      setPlayers(finalPlayers);
+      setInitialPlayers(finalPlayers);
+    }
+
+    loadCsvAndRemovePicks();
+  }, [
+    csvData,
+    csvFileName,
+    scoringType,
+    routeDraftId,
+    fetchCsvFile,
+    parseCsvAndCheckTier,
+    removePickedPlayers,
+  ]);
+
+  return (
     <div>
       <div className="draftname">
         <h1>{draftName}</h1>
       </div>
-      <p></p>
-      <div className="backButton-container">        
-        <button
-          onClick={() => navigate("/")}
-        >
-          Back
-        </button>  
-      </div>  
-      <div className="input-container">
+
+      {/* 
+        Wrap your inputs in "base-container" or similar, or individually
+        give them modern classes:
+      */}
+      <div className="base-container">
         <input
           type="text"
+          className="modern-input"
           value={draftId}
           onChange={(e) => setDraftId(e.target.value)}
           placeholder="Enter Draft ID"
         />
-        <button onClick={handleFetchDraftData}>Fetch Draft Results</button>
-        <button onClick={handleResetDraft}>
+
+        <button onClick={handleFetchDraftData} className="modern-button">
+          Fetch Draft Results
+        </button>
+        <button onClick={handleResetDraft} className="modern-button">
           <FontAwesomeIcon icon={faRecycle} /> Reset Draft
         </button>
-        <input
-          type="checkbox"
-          checked={autoReload}
-          onChange={() => setAutoReload(!autoReload)}
-        />
-        <label htmlFor="autoReload">Auto-Reload</label>
-        <select value={reloadInterval} onChange={handleReloadIntervalChange}>
+
+        {/* For the auto-reload checkbox, you can optionally style it, 
+            or just keep the default. A basic approach: */}
+        <label className="modern-checkbox">
+          <input
+            type="checkbox"
+            checked={autoReload}
+            onChange={() => setAutoReload(!autoReload)}
+          />
+          <span>Auto-Reload</span>
+        </label>
+
+        <select
+          className="modern-dropdown"
+          value={reloadInterval}
+          onChange={handleReloadIntervalChange}
+        >
           <option value={10}>10</option>
           <option value={20}>20</option>
           <option value={30}>30</option>
@@ -184,16 +375,21 @@ function DraftHelper({
           <option value={60}>60</option>
         </select>
         <label>seconds</label>
+
         {isFlashing && <span className="flash-text">Refreshed</span>}
-        <input
-          type="checkbox"
-          checked={keepEmptyTiers}
-          onChange={() => setKeepEmptyTiers(!keepEmptyTiers)}
-        />
-        <label htmlFor="autoReload">Keep empty tiers</label>
+
+        <label className="modern-checkbox">
+          <input
+            type="checkbox"
+            checked={keepEmptyTiers}
+            onChange={() => setKeepEmptyTiers(!keepEmptyTiers)}
+          />
+          <span>Keep empty tiers</span>
+        </label>
       </div>
 
       <div className="lists-container">
+        {/* PlayerList components remain the same */}
         <PlayerList
           title="ALL"
           players={players}
@@ -243,5 +439,4 @@ function DraftHelper({
     </div>
   );
 }
-
 export default DraftHelper;

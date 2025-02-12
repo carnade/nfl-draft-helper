@@ -1,14 +1,15 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faArrowLeft,
   faUserInjured,
   faQuestion,
   faExternalLinkAlt,
 } from "@fortawesome/free-solid-svg-icons";
-import { useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
+import "./LeagueList.css";
 
-function LeagueList({ userName }) {
+function LeagueList() {
+  const { userName } = useParams();
   const [userId, setUserId] = useState(null);
   const [leagues, setLeagues] = useState([]);
   const [expandedLeagueIds, setExpandedLeagueIds] = useState(new Set());
@@ -20,13 +21,8 @@ function LeagueList({ userName }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [showAllInjuries, setShowAllInjuries] = useState(false);
 
-  const navigate = useNavigate();
   let searchTimeout;
   const mock = false;
-
-  const handleBackClick = () => {
-    navigate(-1); // Navigate to the previous page
-  };
 
   const handleToggle = (leagueId) => {
     setExpandedLeagueIds((prevIds) => {
@@ -54,6 +50,7 @@ function LeagueList({ userName }) {
 
   const handlePlayerClick = (player) => {
     const playerId = `${player.first_name}-${player.last_name}`;
+    console.log(`Player ${playerId} clicked`);
 
     if (selectedPlayer === playerId) {
       setSelectedPlayer(null);
@@ -77,6 +74,7 @@ function LeagueList({ userName }) {
   };
 
   const highlightLeaguesWithPlayer = (firstName, lastName) => {
+    console.log(`Highlighting leagues with player ${firstName} ${lastName}`);
     const highlightedLeaguesSet = new Set();
     leagues.forEach((league) => {
       Object.keys(playerData[league.league_id]?.players || {}).forEach((p) => {
@@ -206,7 +204,7 @@ function LeagueList({ userName }) {
       setUserId(userId);
 
       const leaguesResponse = await fetch(
-        `https://api.sleeper.app/v1/user/${userId}/leagues/nfl/2024`
+        `https://api.sleeper.app/v1/user/${userId}/leagues/nfl/2025`
       );
       const leaguesData = await leaguesResponse.json();
 
@@ -336,7 +334,7 @@ function LeagueList({ userName }) {
           style={{
             display: "inline-block",
             marginRight: "5px",
-            filter: yahooId ? "none" : "grayscale(100%)"
+            filter: yahooId ? "none" : "grayscale(100%)",
           }}
         >
           <a
@@ -345,11 +343,10 @@ function LeagueList({ userName }) {
             }
             target="_blank"
             rel="noopener noreferrer"
-            style={{ 
+            style={{
               display: yahooId ? "inline" : "none",
-              pointerEvents: yahooId ? "auto" : "none"
-             }}
-
+              pointerEvents: yahooId ? "auto" : "none",
+            }}
           >
             <img
               src="/yahoo.png"
@@ -496,11 +493,6 @@ function LeagueList({ userName }) {
         <div className="draftname">
           <h1>Leagues Overview</h1>
           <span>{userName}</span>
-        </div>
-        <div className="button-container">
-          <button onClick={handleBackClick} className="back-button">
-            <FontAwesomeIcon icon={faArrowLeft} /> Back
-          </button>
         </div>
       </div>
 

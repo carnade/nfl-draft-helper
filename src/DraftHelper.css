@@ -1,0 +1,141 @@
+.backButton-container {
+  display: flex;
+  position: absolute;
+  right: 20px;
+  top: 30px;
+}
+
+.backButton-container button {
+  padding: 10px 20px;
+  font-size: 16px;
+  border-radius: 25px;
+  border: none;
+  background-color: grey;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.backButton-container button:hover {
+  background-color: rgb(65, 65, 65);
+}
+
+.base-container {
+  display: flex;
+  position: relative;
+  flex-wrap: wrap; /* if needed to handle smaller screens */
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+/* modern-input for text fields */
+.modern-input {
+  padding: 10px;
+  font-size: 16px;
+  border: 2px solid #ddd;
+  border-radius: 25px;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  outline: none;
+}
+
+/* optional placeholder styling */
+.modern-input::placeholder {
+  color: #aaa;
+  font-style: italic;
+}
+
+.modern-input:focus {
+  border-color: #007bff; /* your preferred blue color */
+  box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
+}
+
+/* modern-button: a blue style instead of green */
+.modern-button {
+  padding: 10px 20px;
+  font-size: 16px;
+  color: white;
+  background-color: #007bff; /* your main blue color */
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: background-color 0.3s, box-shadow 0.3s;
+  outline: none;
+}
+
+.modern-button:hover {
+  background-color: #0056b3;
+  box-shadow: 0 0 8px rgba(0, 86, 179, 0.3);
+}
+
+.modern-button:active {
+  background-color: #003f7f;
+  box-shadow: 0 0 8px rgba(0, 63, 127, 0.3);
+}
+
+/* modern-dropdown: for <select> */
+.modern-dropdown {
+  padding: 10px;
+  font-size: 16px;
+  border: 2px solid #ddd;
+  border-radius: 25px;
+  background-color: #f8f8f8;
+  cursor: pointer;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  outline: none;
+}
+
+.modern-dropdown:focus {
+  border-color: #007bff; /* match your button color if you like */
+  box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
+}
+
+/* Optional: style your checkbox if desired. 
+   Simple approach is a label around the input. */
+.modern-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 5px; /* space between checkbox and label text */
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.modern-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.input-container {
+  display: flex;
+  position: relative; /* Needed if .flash-text is absolutely positioned */
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 10px;
+}
+
+/* You may already have these input/button styles in a shared form CSS.
+   If so, remove duplicates here. */
+
+.flash-text {
+  font-size: 16px;
+  color: green;
+  position: absolute; /* so it appears above or near the input */
+  top: 50px; /* adjust as needed for your layout */
+  animation: flashAnimation 0.7s ease-in-out;
+  white-space: nowrap;
+}
+
+@keyframes flashAnimation {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.lists-container {
+  display: flex;
+  justify-content: space-between;
+}

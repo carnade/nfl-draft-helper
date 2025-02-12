@@ -1,0 +1,115 @@
+/* LeftMenu.css */
+
+/* Overall container */
+.left-menu {
+  width: 200px;
+  background-color: #2b2b2b;
+  color: #ffffff;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.3s;
+  position: relative;
+}
+
+.left-menu.collapsed {
+  width: 60px; /* narrower on collapse */
+}
+
+/* Header area */
+.menu-header {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  background-color: #3a3a3a;
+}
+
+.menu-title {
+  margin: 0;
+  margin-left: 10px;
+  font-size: 18px;
+  color: #ffffff;
+}
+
+/* Toggle button (bars or times icon) */
+.menu-toggle {
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+/* Hide the big "Menu" title if collapsed (already conditionally rendered in JS) */
+.left-menu.collapsed .menu-title {
+  display: none;
+}
+
+/* The user input area (only shown in JS if !collapsed) */
+.user-input {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+}
+
+.user-input label {
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+.user-input input {
+  padding: 8px;
+  border-radius: 4px;
+  border: none;
+  outline: none;
+}
+
+/* The nav list */
+.menu-links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Each item in the list */
+.menu-links li {
+  margin-bottom: 10px;
+}
+
+/* The link styling itself */
+.menu-link {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: #ffffff;
+  padding: 10px 12px;
+  transition: background-color 0.2s;
+}
+
+/* Hover effect on each link */
+.menu-link:hover {
+  background-color: #404040;
+}
+
+/* The icon before the text */
+.menu-icon {
+  margin-right: 8px;
+  font-size: 18px;
+}
+
+/* Hide only the text <span> when collapsed */
+.left-menu.collapsed .menu-link span {
+  display: none;
+}
+
+/* Center the icon horizontally when collapsed */
+.left-menu.collapsed .menu-link {
+  justify-content: center;
+}
+
+.settings-link {
+  margin-top: auto; /* If the parent is a flex container, it pins to the bottom. */
+}

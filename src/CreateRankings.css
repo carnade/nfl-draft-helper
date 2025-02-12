@@ -1,0 +1,76 @@
+.backButton-container {
+  display: flex;
+  position: absolute;
+  right: 20px;
+  top: 30px;
+}
+
+.backButton-container button {
+  padding: 10px 20px;
+  font-size: 16px;
+  border-radius: 25px;
+  border: none;
+  background-color: grey;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.backButton-container button:hover {
+  background-color: rgb(65, 65, 65);
+}
+
+.input-container {
+  display: flex;
+  position: relative; /* Needed if .flash-text is absolutely positioned */
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 10px;
+}
+
+/* You may already have these input/button styles in a shared form CSS.
+   If so, remove duplicates here. */
+
+.flash-text {
+  font-size: 16px;
+  color: green;
+  position: absolute; /* so it appears above or near the input */
+  top: 50px; /* adjust as needed for your layout */
+  animation: flashAnimation 0.7s ease-in-out;
+  white-space: nowrap;
+}
+
+@keyframes flashAnimation {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.lists-container {
+  display: flex;
+  justify-content: space-between;
+}
+
+.modern-button {
+  padding: 10px 20px;
+  font-size: 16px;
+  color: white;
+  background-color: #28a745;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: background-color 0.3s, box-shadow 0.3s;
+  outline: none;
+}
+.modern-button:hover {
+  background-color: #218838;
+  box-shadow: 0 0 8px rgba(33, 136, 56, 0.3);
+}
+.modern-button:active {
+  background-color: #1e7e34;
+  box-shadow: 0 0 8px rgba(30, 126, 52, 0.3);
+}

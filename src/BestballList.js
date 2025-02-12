@@ -1,23 +1,14 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faArrowLeft,
-  faExternalLinkAlt,
-  faTrophy,
-} from "@fortawesome/free-solid-svg-icons";
-import { useNavigate, useParams } from "react-router-dom";
+import { faExternalLinkAlt, faTrophy } from "@fortawesome/free-solid-svg-icons";
+import { useParams } from "react-router-dom";
+import "./BestballList.css";
 
 function BestballList() {
   const { userName } = useParams();
   const [userId, setUserId] = useState(null);
   const [leagues, setLeagues] = useState([]);
   const [expandedLeagueIds, setExpandedLeagueIds] = useState(new Set());
-
-  const navigate = useNavigate();
-
-  const handleBackClick = () => {
-    navigate(-1); // Navigate back to the start page
-  };
 
   const handleToggle = (leagueId) => {
     setExpandedLeagueIds((prevIds) => {
@@ -41,7 +32,7 @@ function BestballList() {
       setUserId(userId);
 
       const leaguesResponse = await fetch(
-        `https://api.sleeper.app/v1/user/${userId}/leagues/nfl/2024`
+        `https://api.sleeper.app/v1/user/${userId}/leagues/nfl/2025`
       );
       const leaguesData = await leaguesResponse.json();
 
@@ -97,10 +88,10 @@ function BestballList() {
   return (
     <div className="dashboard-container">
       <div className="header-container">
-        <h1>Bestball Leagues</h1>
-        <button onClick={handleBackClick} className="back-button">
-          <FontAwesomeIcon icon={faArrowLeft} /> Back
-        </button>
+        <div className="draftname">
+          <h1>Bestball Overview</h1>
+          <span>{userName}</span>
+        </div>
       </div>
       <div className="bestball-grid">
         <div className="league-grid-header">League Name</div>

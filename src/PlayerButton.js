@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import "./PlayerButton.css";
 
 function PlayerButton({ player, setPlayers, setRemovedPlayers }) {
   const [isDisabled] = useState(false);
