@@ -325,26 +325,42 @@ function DraftHelper({ csvData, csvFileName }) {
         <h1>{draftName}</h1>
       </div>
 
-      <div className="input-container">
+      {/* 
+        Wrap your inputs in "base-container" or similar, or individually
+        give them modern classes:
+      */}
+      <div className="base-container">
         <input
           type="text"
+          className="modern-input"
           value={draftId}
           onChange={(e) => setDraftId(e.target.value)}
           placeholder="Enter Draft ID"
         />
-        <button onClick={handleFetchDraftData}>Fetch Draft Results</button>
-        <button onClick={handleResetDraft}>
+
+        <button onClick={handleFetchDraftData} className="modern-button">
+          Fetch Draft Results
+        </button>
+        <button onClick={handleResetDraft} className="modern-button">
           <FontAwesomeIcon icon={faRecycle} /> Reset Draft
         </button>
 
-        <input
-          type="checkbox"
-          checked={autoReload}
-          onChange={() => setAutoReload(!autoReload)}
-        />
-        <label>Auto-Reload</label>
+        {/* For the auto-reload checkbox, you can optionally style it, 
+            or just keep the default. A basic approach: */}
+        <label className="modern-checkbox">
+          <input
+            type="checkbox"
+            checked={autoReload}
+            onChange={() => setAutoReload(!autoReload)}
+          />
+          <span>Auto-Reload</span>
+        </label>
 
-        <select value={reloadInterval} onChange={handleReloadIntervalChange}>
+        <select
+          className="modern-dropdown"
+          value={reloadInterval}
+          onChange={handleReloadIntervalChange}
+        >
           <option value={10}>10</option>
           <option value={20}>20</option>
           <option value={30}>30</option>
@@ -353,17 +369,21 @@ function DraftHelper({ csvData, csvFileName }) {
           <option value={60}>60</option>
         </select>
         <label>seconds</label>
+
         {isFlashing && <span className="flash-text">Refreshed</span>}
 
-        <input
-          type="checkbox"
-          checked={keepEmptyTiers}
-          onChange={() => setKeepEmptyTiers(!keepEmptyTiers)}
-        />
-        <label>Keep empty tiers</label>
+        <label className="modern-checkbox">
+          <input
+            type="checkbox"
+            checked={keepEmptyTiers}
+            onChange={() => setKeepEmptyTiers(!keepEmptyTiers)}
+          />
+          <span>Keep empty tiers</span>
+        </label>
       </div>
 
       <div className="lists-container">
+        {/* PlayerList components remain the same */}
         <PlayerList
           title="ALL"
           players={players}
@@ -413,5 +433,4 @@ function DraftHelper({ csvData, csvFileName }) {
     </div>
   );
 }
-
 export default DraftHelper;
