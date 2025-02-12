@@ -26,97 +26,6 @@ function DraftHelper({ csvData, csvFileName }) {
   // The final "draftId" we use (either from route or user input)
   const [draftId, setDraftId] = useState("");
 
-  // 1) If there's a :draftId param, store it in `draftId`
-  useEffect(() => {
-    if (routeDraftId) {
-      console.log("routeDraftId found =>", routeDraftId);
-      setDraftId(routeDraftId);
-    }
-  }, [routeDraftId]);
-
-  // -- CSV & picks loading in one effect --
-  useEffect(() => {
-    async function loadCsvAndRemovePicks() {
-      console.log("DraftHelper: loadCSV triggered");
-      console.log("csvData:", csvData, "csvFileName:", csvFileName);
-
-      // Step A) Figure out which CSV data we’ll parse
-      let finalCsvContent = null; // raw CSV text to parse
-
-      if (csvData) {
-        console.log("Using direct CSV data");
-        // A1) If direct CSV data was provided in props
-        finalCsvContent = csvData;
-      } else {
-        // A2) Possibly read from localStorage if scoringType is set
-        let usedCustomData = false;
-        let localFileName = csvFileName || ""; // might be empty
-
-        const settingsStr = localStorage.getItem("FantasyHelperSettings");
-        console.log("settingsStr:", settingsStr);
-        console.log("scoringType:", scoringType);
-        if (scoringType && settingsStr) {
-          const parsed = JSON.parse(settingsStr);
-          const dr = parsed.defaultRankings || {};
-
-          const localStorageKey = mapScoringType(scoringType);
-          const customFileEntry = dr[localStorageKey];
-          if (customFileEntry && customFileEntry.name !== "default") {
-            console.log("Using localStorage custom CSV for:", scoringType);
-            if (customFileEntry.data) {
-              finalCsvContent = customFileEntry.data;
-              usedCustomData = true;
-            }
-          }
-        }
-
-        // A3) If we did NOT use custom data, fallback to a local file from the server
-        if (!usedCustomData) {
-          console.log("Using local file fallback", localFileName);
-          if (!localFileName && scoringType) {
-            localFileName = getDefaultFile(scoringType);
-          }
-          if (localFileName) {
-            console.log("Using localFileName fallback:", localFileName);
-            finalCsvContent = await fetchCsvFile(localFileName);
-          } else {
-            console.log("No CSV file, no scoring type => no CSV to load");
-            // finalCsvContent remains null => means no data
-          }
-        }
-      }
-
-      // Step B) Now parse CSV if we have any
-      let parsedPlayers = [];
-      if (finalCsvContent) {
-        parsedPlayers = await parseCsvAndCheckTier(finalCsvContent);
-      }
-
-      // Step C) If we have a routeDraftId => fetch picks from Sleeper & remove from "parsedPlayers"
-      let finalPlayers = parsedPlayers;
-      if (routeDraftId && finalPlayers.length > 0) {
-        console.log(
-          "We have routeDraftId => auto remove picks from finalPlayers"
-        );
-        finalPlayers = await removePickedPlayers(routeDraftId, finalPlayers);
-      }
-
-      // Step D) Store finalPlayers into state
-      setPlayers(finalPlayers);
-      setInitialPlayers(finalPlayers);
-    }
-
-    loadCsvAndRemovePicks();
-  }, [
-    csvData,
-    csvFileName,
-    scoringType,
-    routeDraftId,
-    fetchCsvFile,
-    parseCsvAndCheckTier,
-    removePickedPlayers,
-  ]);
-
   /**
    * parseCsvAndCheckTier(csvString):
    *  - parse CSV with Papa
@@ -324,6 +233,97 @@ function DraftHelper({ csvData, csvFileName }) {
     if (val >= 10) setReloadInterval(val);
     else alert("Auto-refresh interval cannot be less than 10 seconds.");
   };
+
+  // 1) If there's a :draftId param, store it in `draftId`
+  useEffect(() => {
+    if (routeDraftId) {
+      console.log("routeDraftId found =>", routeDraftId);
+      setDraftId(routeDraftId);
+    }
+  }, [routeDraftId]);
+
+  // -- CSV & picks loading in one effect --
+  useEffect(() => {
+    async function loadCsvAndRemovePicks() {
+      console.log("DraftHelper: loadCSV triggered");
+      console.log("csvData:", csvData, "csvFileName:", csvFileName);
+
+      // Step A) Figure out which CSV data we’ll parse
+      let finalCsvContent = null; // raw CSV text to parse
+
+      if (csvData) {
+        console.log("Using direct CSV data");
+        // A1) If direct CSV data was provided in props
+        finalCsvContent = csvData;
+      } else {
+        // A2) Possibly read from localStorage if scoringType is set
+        let usedCustomData = false;
+        let localFileName = csvFileName || ""; // might be empty
+
+        const settingsStr = localStorage.getItem("FantasyHelperSettings");
+        console.log("settingsStr:", settingsStr);
+        console.log("scoringType:", scoringType);
+        if (scoringType && settingsStr) {
+          const parsed = JSON.parse(settingsStr);
+          const dr = parsed.defaultRankings || {};
+
+          const localStorageKey = mapScoringType(scoringType);
+          const customFileEntry = dr[localStorageKey];
+          if (customFileEntry && customFileEntry.name !== "default") {
+            console.log("Using localStorage custom CSV for:", scoringType);
+            if (customFileEntry.data) {
+              finalCsvContent = customFileEntry.data;
+              usedCustomData = true;
+            }
+          }
+        }
+
+        // A3) If we did NOT use custom data, fallback to a local file from the server
+        if (!usedCustomData) {
+          console.log("Using local file fallback", localFileName);
+          if (!localFileName && scoringType) {
+            localFileName = getDefaultFile(scoringType);
+          }
+          if (localFileName) {
+            console.log("Using localFileName fallback:", localFileName);
+            finalCsvContent = await fetchCsvFile(localFileName);
+          } else {
+            console.log("No CSV file, no scoring type => no CSV to load");
+            // finalCsvContent remains null => means no data
+          }
+        }
+      }
+
+      // Step B) Now parse CSV if we have any
+      let parsedPlayers = [];
+      if (finalCsvContent) {
+        parsedPlayers = await parseCsvAndCheckTier(finalCsvContent);
+      }
+
+      // Step C) If we have a routeDraftId => fetch picks from Sleeper & remove from "parsedPlayers"
+      let finalPlayers = parsedPlayers;
+      if (routeDraftId && finalPlayers.length > 0) {
+        console.log(
+          "We have routeDraftId => auto remove picks from finalPlayers"
+        );
+        finalPlayers = await removePickedPlayers(routeDraftId, finalPlayers);
+      }
+
+      // Step D) Store finalPlayers into state
+      setPlayers(finalPlayers);
+      setInitialPlayers(finalPlayers);
+    }
+
+    loadCsvAndRemovePicks();
+  }, [
+    csvData,
+    csvFileName,
+    scoringType,
+    routeDraftId,
+    fetchCsvFile,
+    parseCsvAndCheckTier,
+    removePickedPlayers,
+  ]);
 
   return (
     <div>
