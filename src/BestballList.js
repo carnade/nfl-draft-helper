@@ -76,6 +76,7 @@ function BestballList() {
       );
 
       setLeagues(sortedLeagues);
+      console.log("Fetched league data:", sortedLeagues);
     } catch (error) {
       console.error("Error fetching league data:", error);
     }
