@@ -87,7 +87,7 @@ function DraftHelper({ csvData, csvFileName }) {
           case "WAS":
             return "WAS";
           case "JAX":
-            return "JAC";
+            return "JAX";
           default:
             return team;
         }
@@ -98,7 +98,6 @@ function DraftHelper({ csvData, csvFileName }) {
         const fetchedLastName = pick.metadata.last_name;
 
         let fetchedTeam = fixTeamNames(pick.metadata.team);
-        console.log("fetchedTeam:", fetchedTeam, "old:", pick.metadata.team);
         const fetchedPosition = pick.metadata.position;
 
         for (const p of playersArr) {
