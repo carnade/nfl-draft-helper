@@ -4,7 +4,7 @@ import "./DraftSetup.css";
 
 function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage }) {
   const [selectedFile, setSelectedFile] = useState(null);
-  const [selectedOption, setSelectedOption] = useState("1qbdata.csv"); // Set default value
+  const [selectedOption, setSelectedOption] = useState("adp_2qb.csv"); // Set default value
   const navigate = useNavigate();
 
   const handleLoadCsvClick = () => {
@@ -101,17 +101,14 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage }) {
           onChange={handleDropdownChange}
           className="modern-dropdown"
         >
-          <option value="1qbdata.csv">Early FantasyPros 1qb</option>
-          <option value="2qbdata.csv">Early FantasyPros 2qb</option>
-          <option value="rookies_early.csv">Early Rookies</option>
-          {/* 
-          <option value="redraft_ppr_adp.csv">Sleeper PPR</option>
-          <option value="redraft_sf_adp.csv">Sleeper SF</option>
-          <option value="redraft_half_ppr_adp.csv">Sleeper half-PPR</option>
-          <option value="dynasty_ppr_adp.csv">Sleeper Dynasy PPR</option>
-          <option value="dynasty_sf_adp.csv">Sleeper Dynasy SF</option>
-          <option value="dynasty_half_ppr_adp.csv">Sleeper Dynasty half-PPR</option>
-          */}
+          <option value="adp_ppr.csv">Sleeper PPR</option>
+          <option value="adp_2qb.csv">Sleeper SF</option>
+          <option value="adp_half_ppr.csv">Sleeper half-PPR</option>
+          <option value="adp_dynasty_ppr.csv">Sleeper Dynasy PPR</option>
+          <option value="adp_dynasty_2qb.csv">Sleeper Dynasy SF</option>
+          <option value="adp_dynasty_half_ppr.csv">
+            Sleeper Dynasty half-PPR
+          </option>
         </select>
         <button onClick={handleDownloadCSV}>Download CSV</button>
       </div>
