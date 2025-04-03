@@ -180,19 +180,19 @@ function DraftHelper({ csvData, csvFileName }) {
   function getDefaultFile(type) {
     switch (type) {
       case "dynasty_2qb":
-        return "dynasty_sf.csv";
+        return "adp_dynasty_2qb.csv";
       case "dynasty_ppr":
-        return "dynasty_ppr.csv";
+        return "adp_dynasty_ppr.csv";
       case "dynasty_half-ppr":
-        return "dynasty_half_ppr.csv";
+        return "adp_dynasty_half_ppr.csv";
       case "ppr":
-        return "redraft_ppr.csv";
+        return "adp_ppr.csv";
       case "2qb":
-        return "redraft_sf.csv";
+        return "adp_2qb.csv";
       case "half_ppr":
-        return "redraft_half_ppr.csv";
+        return "adp_half_ppr.csv";
       default:
-        return "dynasty_sf.csv";
+        return "adp_dynasty_2qb.csv";
     }
   }
 
