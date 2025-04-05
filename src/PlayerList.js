@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import PlayerButton from "./PlayerButton";
 import "./PlayerList.css";
 
@@ -10,6 +10,7 @@ function PlayerList({
   setPlayers,
   setRemovedPlayers,
   keepEmptyTiers,
+  scoringType,
 }) {
   // Determine the maximum tier number by checking the players
   const maxTier = players.reduce((max, player) => {
@@ -54,6 +55,7 @@ function PlayerList({
                     player={player}
                     setPlayers={setPlayers}
                     setRemovedPlayers={setRemovedPlayers}
+                    scoringType={scoringType} // Pass scoringType here
                   />
                 ) : null;
               })}

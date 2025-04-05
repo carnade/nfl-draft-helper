@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import "./PlayerButton.css";
 
-function PlayerButton({ player, setPlayers, setRemovedPlayers }) {
+function PlayerButton({ player, setPlayers, setRemovedPlayers, scoringType }) {
   const [isDisabled] = useState(false);
 
   const handleClick = () => {
@@ -75,12 +75,5 @@ function PlayerButton({ player, setPlayers, setRemovedPlayers }) {
     </button>
   );
 }
-//     {player["Overall Rank"]} {player.Name} - {player.Team} ({player.Bye})
-/*<div className="button-content">
-        <span className="overall-rank">{player["Overall Rank"]}</span>
-        <span className="name">{player.Name}</span>
-        <span className="team">{player.Team}</span>
-        <span className="bye">({player.Bye})</span>
-      </div>
-   */
+
 export default PlayerButton;
