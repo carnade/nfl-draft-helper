@@ -147,26 +147,113 @@
   border-radius: 0 5px 5px 5px; /* Rounded corners at the bottom */
 }
 
-/* Exposure grid */
-.exposure-grid {
-  width: 90%;
+/* Portfolio grid container */
+.portfolio-grid {
+  width: 60%;
   display: grid;
-  grid-template-columns: 7fr 1fr 1fr 1fr; /* 4 columns: 70%, 10%, 10%, 10% */
+  grid-template-columns: 5fr 1fr 1fr 1fr 1fr; /* Adjust column widths: 3fr for Player Name, 1fr for POS, 1QB, 2QB, and Total */
   gap: 10px;
-  margin-left: auto;
-  margin-right: auto;
+  margin-top: 20px;
 }
 
-.exposure-grid-header {
+/* Portfolio grid headers */
+.portfolio-grid-header {
   font-weight: bold;
   background-color: #f1f1f1;
   padding: 10px;
+  border-bottom: 2px solid #ddd;
+  text-align: left;
+}
+
+/* Portfolio grid items */
+.portfolio-grid-item {
+  padding: 10px;
   border-bottom: 1px solid #ddd;
   text-align: left;
 }
 
-.exposure-grid-item {
-  padding: 10px;
-  border-bottom: 1px solid #ddd;
-  text-align: left;
+/* Optional: Add hover effect for rows */
+.portfolio-grid-item:hover {
+  background-color: #f9f9f9;
+}
+
+/* Adjust text alignment for numeric columns */
+.portfolio-grid-item:nth-child(3),
+.portfolio-grid-item:nth-child(4),
+.portfolio-grid-item:nth-child(5) {
+  text-align: center;
+}
+
+/* Filter container */
+.filter-container {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  gap: 10px; /* Space between label and buttons */
+}
+
+/* Filter label */
+.filter-label {
+  font-weight: bold;
+  font-size: 18px;
+  color: #333;
+}
+
+/* Filter buttons container */
+.filter-buttons {
+  display: flex;
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+/* Default button style */
+.filter-button {
+  padding: 5px 10px;
+  background-color: #ccc;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #000;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease,
+    transform 0.2s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Add shadow for 3D effect */
+}
+
+/* Active button styles */
+.filter-button.qb-active {
+  background-color: red;
+  color: white;
+  box-shadow: 0 4px 6px rgba(255, 0, 0, 0.4); /* Red shadow for QB */
+}
+
+.filter-button.rb-active {
+  background-color: green;
+  color: white;
+  box-shadow: 0 4px 6px rgba(0, 128, 0, 0.4); /* Green shadow for RB */
+}
+
+.filter-button.wr-active {
+  background-color: blue;
+  color: white;
+  box-shadow: 0 4px 6px rgba(0, 0, 255, 0.4); /* Blue shadow for WR */
+}
+
+.filter-button.te-active {
+  background-color: yellow;
+  color: black;
+  box-shadow: 0 4px 6px rgba(255, 255, 0, 0.4); /* Yellow shadow for TE */
+}
+
+/* Hover effect */
+.filter-button:hover {
+  opacity: 0.9;
+  transform: translateY(-2px); /* Slight lift on hover */
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2); /* Stronger shadow on hover */
+}
+
+/* Active/pressed effect */
+.filter-button:active {
+  transform: translateY(1px); /* Slight press effect */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Reduced shadow on press */
 }

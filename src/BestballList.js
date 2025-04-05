@@ -10,7 +10,8 @@ function BestballList() {
   const [leagues, setLeagues] = useState([]);
   const [expandedLeagueIds, setExpandedLeagueIds] = useState(new Set());
   const [activeTab, setActiveTab] = useState("Results"); // New state for active tab
-  const [exposureData, setExposureData] = useState([]); // New state for exposure data
+  const [portfolioData, setPortfolioData] = useState([]); // New state for portfolio data
+  const [selectedPosition, setSelectedPosition] = useState(null); // State for filtering by position
   const LEAGUE_YEAR = 2025;
   const mock = true; // Set to true for mock data
 
@@ -27,7 +28,7 @@ function BestballList() {
   };
 
   const fetchBestballPlayerData = useCallback(
-    async (playerIds, playerCountMap) => {
+    async (playerIds, playerCountMap, oneQBCountMap, twoQBCountMap) => {
       const requests = {
         playerlist: playerIds, // Input list of player IDs
       };
@@ -35,7 +36,6 @@ function BestballList() {
       try {
         let response;
         if (mock) {
-          //response = await fetch("/bestball_players_mock.json", {
           response = await fetch("http://localhost:5000/getplayers/bestball", {
             method: "POST",
             headers: {
@@ -57,13 +57,17 @@ function BestballList() {
         }
         const data = await response.json();
 
-        // Map player names to their counts
-        const playerData = data.map((player) => ({
+        // Access the players array from the data object
+        const playerData = data.players.map((player) => ({
           name: player.name,
+          position: player.position, // Include the position field
           count: playerCountMap[player.id] || 0,
+          oneQBCount: oneQBCountMap[player.id] || 0, // Include 1QB count
+          twoQBCount: twoQBCountMap[player.id] || 0, // Include 2QB count
         }));
 
-        setExposureData(playerData); // Save the processed data to state
+        setPortfolioData(playerData); // Save the processed data to state
+        console.log("Fetched player data:", playerData);
       } catch (error) {
         console.error("Error fetching bestball player data:", error);
       }
@@ -89,7 +93,9 @@ function BestballList() {
         (league) => league.settings.best_ball === 1
       );
 
-      const playerCountMap = {}; // Dictionary to track player counts
+      const playerCountMap = {}; // Dictionary to track total player counts
+      const oneQBCountMap = {}; // Dictionary to track 1QB league counts
+      const twoQBCountMap = {}; // Dictionary to track 2QB league counts
 
       const standingsPromises = filteredLeagues.map(async (league) => {
         const standingsResponse = await fetch(
@@ -97,20 +103,30 @@ function BestballList() {
         );
         const standingsData = await standingsResponse.json();
 
+        // Check if the league is a 2QB league
+        const isTwoQBLeague = league.roster_positions.includes("SUPER_FLEX");
+
         // Process each roster in the league
         standingsData.forEach((roster) => {
-          const players = roster.players || []; // Get the players array
-BARA RÄKNA OM MITT LAG
-          // Increment the count for each player_id
-          players.forEach((playerId) => {
-            if (playerId !== 0) {
-              if (playerCountMap[playerId]) {
-                playerCountMap[playerId]++;
-              } else {
-                playerCountMap[playerId] = 1;
+          // Only count players if the owner_id matches the userId
+          if (roster.owner_id === userId) {
+            const players = roster.players || []; // Get the players array
+
+            // Increment the count for each player_id
+            players.forEach((playerId) => {
+              if (playerId !== 0) {
+                // Update total count
+                playerCountMap[playerId] = (playerCountMap[playerId] || 0) + 1;
+
+                // Update 1QB or 2QB count
+                if (isTwoQBLeague) {
+                  twoQBCountMap[playerId] = (twoQBCountMap[playerId] || 0) + 1;
+                } else {
+                  oneQBCountMap[playerId] = (oneQBCountMap[playerId] || 0) + 1;
+                }
               }
-            }
-          });
+            });
+          }
         });
 
         // Sort teams by FPTS in descending order
@@ -146,7 +162,12 @@ BARA RÄKNA OM MITT LAG
 
       // Fetch player data using playerCountMap
       const playerIds = Object.keys(playerCountMap); // Extract player IDs
-      fetchBestballPlayerData(playerIds, playerCountMap); // Pass playerCountMap for later use
+      fetchBestballPlayerData(
+        playerIds,
+        playerCountMap,
+        oneQBCountMap,
+        twoQBCountMap
+      ); // Pass count maps for later use
 
       console.log("Fetched league data:", sortedLeagues);
       console.log("Player count map:", playerCountMap); // Log the player count map
@@ -158,6 +179,17 @@ BARA RÄKNA OM MITT LAG
   useEffect(() => {
     fetchLeagueData();
   }, [fetchLeagueData]);
+
+  useEffect(() => {
+    if (activeTab === "Portfolio") {
+      // Save portfolio data to localStorage when the Portfolio tab is opened
+      localStorage.setItem(
+        "FantasyHelperBestballPortfolio",
+        JSON.stringify(portfolioData)
+      );
+      console.log("Portfolio data saved to localStorage:", portfolioData);
+    }
+  }, [activeTab, portfolioData]);
 
   return (
     <div className="dashboard-container">
@@ -177,10 +209,10 @@ BARA RÄKNA OM MITT LAG
           Results
         </button>
         <button
-          className={`tab-button ${activeTab === "Exposure" ? "active" : ""}`}
-          onClick={() => setActiveTab("Exposure")}
+          className={`tab-button ${activeTab === "Portfolio" ? "active" : ""}`}
+          onClick={() => setActiveTab("Portfolio")}
         >
-          Exposure
+          Portfolio
         </button>
       </div>
 
@@ -283,21 +315,84 @@ BARA RÄKNA OM MITT LAG
           </div>
         )}
 
-        {activeTab === "Exposure" && (
-          <div className="exposure-grid">
-            <div className="exposure-grid-header">Player Name</div>
-            <div className="exposure-grid-header">1QB</div>
-            <div className="exposure-grid-header">2QB</div>
-            <div className="exposure-grid-header">Total</div>
+        {activeTab === "Portfolio" && (
+          <div className="filter-container">
+            <span className="filter-label">Filter:</span>
+            <div className="filter-buttons">
+              <button
+                className={`filter-button ${
+                  selectedPosition === "QB" ? "qb-active" : ""
+                }`}
+                onClick={() =>
+                  setSelectedPosition((prev) => (prev === "QB" ? null : "QB"))
+                }
+              >
+                QB
+              </button>
+              <button
+                className={`filter-button ${
+                  selectedPosition === "RB" ? "rb-active" : ""
+                }`}
+                onClick={() =>
+                  setSelectedPosition((prev) => (prev === "RB" ? null : "RB"))
+                }
+              >
+                RB
+              </button>
+              <button
+                className={`filter-button ${
+                  selectedPosition === "WR" ? "wr-active" : ""
+                }`}
+                onClick={() =>
+                  setSelectedPosition((prev) => (prev === "WR" ? null : "WR"))
+                }
+              >
+                WR
+              </button>
+              <button
+                className={`filter-button ${
+                  selectedPosition === "TE" ? "te-active" : ""
+                }`}
+                onClick={() =>
+                  setSelectedPosition((prev) => (prev === "TE" ? null : "TE"))
+                }
+              >
+                TE
+              </button>
+            </div>
+          </div>
+        )}
 
-            {exposureData.map((player) => (
-              <React.Fragment key={player.name}>
-                <div className="exposure-grid-item">{player.name}</div>
-                <div className="exposure-grid-item">0</div>
-                <div className="exposure-grid-item">0</div>
-                <div className="exposure-grid-item">{player.count}</div>
-              </React.Fragment>
-            ))}
+        {activeTab === "Portfolio" && (
+          <div className="portfolio-grid">
+            <div className="portfolio-grid-header">Player Name</div>
+            <div className="portfolio-grid-header">POS</div>
+            <div className="portfolio-grid-header">1QB</div>
+            <div className="portfolio-grid-header">2QB</div>
+            <div className="portfolio-grid-header">Total</div>
+
+            {portfolioData
+              .filter((player) =>
+                selectedPosition ? player.position === selectedPosition : true
+              ) // Filter by position if a position is selected
+              .slice() // Create a shallow copy to avoid mutating the original state
+              .sort((a, b) => {
+                // Primary sort: Total count (descending)
+                if (b.count !== a.count) {
+                  return b.count - a.count;
+                }
+                // Secondary sort: Player name (ascending)
+                return a.name.localeCompare(b.name);
+              })
+              .map((player) => (
+                <React.Fragment key={player.name}>
+                  <div className="portfolio-grid-item">{player.name}</div>
+                  <div className="portfolio-grid-item">{player.position}</div>
+                  <div className="portfolio-grid-item">{player.oneQBCount}</div>
+                  <div className="portfolio-grid-item">{player.twoQBCount}</div>
+                  <div className="portfolio-grid-item">{player.count}</div>
+                </React.Fragment>
+              ))}
           </div>
         )}
       </div>

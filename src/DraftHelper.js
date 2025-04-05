@@ -252,16 +252,12 @@ function DraftHelper({ csvData, csvFileName }) {
 
       if (csvData) {
         console.log("Using direct CSV data");
-        // A1) If direct CSV data was provided in props
         finalCsvContent = csvData;
       } else {
-        // A2) Possibly read from localStorage if scoringType is set
         let usedCustomData = false;
-        let localFileName = csvFileName || ""; // might be empty
+        let localFileName = csvFileName || "";
 
         const settingsStr = localStorage.getItem("FantasyHelperSettings");
-        console.log("settingsStr:", settingsStr);
-        console.log("scoringType:", scoringType);
         if (scoringType && settingsStr) {
           const parsed = JSON.parse(settingsStr);
           const dr = parsed.defaultRankings || {};
@@ -269,7 +265,6 @@ function DraftHelper({ csvData, csvFileName }) {
           const localStorageKey = mapScoringType(scoringType);
           const customFileEntry = dr[localStorageKey];
           if (customFileEntry && customFileEntry.name !== "default") {
-            console.log("Using localStorage custom CSV for:", scoringType);
             if (customFileEntry.data) {
               finalCsvContent = customFileEntry.data;
               usedCustomData = true;
@@ -277,38 +272,57 @@ function DraftHelper({ csvData, csvFileName }) {
           }
         }
 
-        // A3) If we did NOT use custom data, fallback to a local file from the server
         if (!usedCustomData) {
-          console.log("Using local file fallback", localFileName);
           if (!localFileName && scoringType) {
             localFileName = getDefaultFile(scoringType);
           }
           if (localFileName) {
-            console.log("Using localFileName fallback:", localFileName);
             finalCsvContent = await fetchCsvFile(localFileName);
-          } else {
-            console.log("No CSV file, no scoring type => no CSV to load");
-            // finalCsvContent remains null => means no data
           }
         }
       }
 
-      // Step B) Now parse CSV if we have any
+      // Step B) Parse CSV if we have any
       let parsedPlayers = [];
       if (finalCsvContent) {
         parsedPlayers = await parseCsvAndCheckTier(finalCsvContent);
       }
 
-      // Step C) If we have a routeDraftId => fetch picks from Sleeper & remove from "parsedPlayers"
+      // Step C) Remove picks from Sleeper if we have a routeDraftId
       let finalPlayers = parsedPlayers;
       if (routeDraftId && finalPlayers.length > 0) {
-        console.log(
-          "We have routeDraftId => auto remove picks from finalPlayers"
-        );
         finalPlayers = await removePickedPlayers(routeDraftId, finalPlayers);
       }
 
-      // Step D) Store finalPlayers into state
+      // Step D) Add BestBallTotal field to each player
+      const savedPortfolioData = JSON.parse(
+        localStorage.getItem("FantasyHelperBestballPortfolio")
+      );
+
+      if (savedPortfolioData) {
+        console.log("Loaded bestball portfolio data:", savedPortfolioData);
+
+        // Create a mapping of player names to their counts from the portfolio data
+        const portfolioCounts = savedPortfolioData.reduce((acc, player) => {
+          acc[player.name] = player.count;
+          return acc;
+        }, {});
+
+        // Add BestBallTotal to each player in finalPlayers
+        finalPlayers = finalPlayers.map((player) => ({
+          ...player,
+          BestBallTotal: portfolioCounts[player.Name] || 0, // Default to 0 if no match
+        }));
+      } else {
+        console.log("No bestball portfolio data found in localStorage.");
+        // Add BestBallTotal as 0 for all players if no portfolio data is found
+        finalPlayers = finalPlayers.map((player) => ({
+          ...player,
+          BestBallTotal: 0,
+        }));
+      }
+      console.log("Final players with BestBallTotal:", finalPlayers);
+      // Step E) Store finalPlayers into state
       setPlayers(finalPlayers);
       setInitialPlayers(finalPlayers);
     }
