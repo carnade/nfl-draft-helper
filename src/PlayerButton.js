@@ -6,7 +6,6 @@ function PlayerButton({ player, setPlayers, setRemovedPlayers, scoringType }) {
 
   const handleClick = () => {
     const playerId = player["Overall Rank"];
-    // Update state to hide the button
 
     // Hide all buttons with the same Overall Rank
     document
@@ -52,7 +51,14 @@ function PlayerButton({ player, setPlayers, setRemovedPlayers, scoringType }) {
       default:
         color = "Gray";
     }
-    return { backgroundColor: color };
+    return { backgroundColor: color, color: "white" }; // Ensure text color is white
+  };
+
+  const renderPortfolioOrScoringType = () => {
+    if (["2qb", "ppr", "half_ppr"].includes(scoringType)) {
+      return `Portfolio: ${player.BestBallTotal || 0}`; // Default to 0 if BestBallTotal is undefined
+    }
+    return scoringType; // Fallback to scoringType if not one of the specified types
   };
 
   return (
@@ -63,14 +69,16 @@ function PlayerButton({ player, setPlayers, setRemovedPlayers, scoringType }) {
       onClick={handleClick}
       className="player-button"
     >
-      <div className="button-content">
-        <span className="overall-rank">
-          {player["Overall Rank"]}: {player["Position"]}
+      <div className="grid-container">
+        <div className="grid-item">R:{player["Overall Rank"]}</div>
+        <div className="grid-item player-name">{player.Name}</div>
+        <div className="grid-item">{player.Team}</div>
+        <div className="grid-item">
+          {player["Position"]}
           {player["Position Rank"]}
-        </span>
-        <span className="name">{player.Name}</span>
-        <span className="team">{player.Team}</span>
-        <span className="bye">({player.Bye})</span>
+        </div>
+        <div className="grid-item">{renderPortfolioOrScoringType()}</div>
+        <div className="grid-item">({player.Bye})</div>
       </div>
     </button>
   );

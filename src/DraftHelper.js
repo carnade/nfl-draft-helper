@@ -402,7 +402,6 @@ function DraftHelper({ csvData, csvFileName }) {
       </div>
 
       <div className="lists-container">
-        {/* PlayerList components remain the same */}
         <PlayerList
           title="ALL"
           players={players}
@@ -411,6 +410,7 @@ function DraftHelper({ csvData, csvFileName }) {
           setPlayers={setPlayers}
           setRemovedPlayers={setRemovedPlayers}
           keepEmptyTiers={keepEmptyTiers}
+          scoringType={scoringType} // Pass scoringType here
         />
         <PlayerList
           title="QB"
@@ -420,6 +420,7 @@ function DraftHelper({ csvData, csvFileName }) {
           setPlayers={setPlayers}
           setRemovedPlayers={setRemovedPlayers}
           keepEmptyTiers={keepEmptyTiers}
+          scoringType={scoringType} // Pass scoringType here
         />
         <PlayerList
           title="RB"
@@ -429,6 +430,7 @@ function DraftHelper({ csvData, csvFileName }) {
           setPlayers={setPlayers}
           setRemovedPlayers={setRemovedPlayers}
           keepEmptyTiers={keepEmptyTiers}
+          scoringType={scoringType} // Pass scoringType here
         />
         <PlayerList
           title="WR"
@@ -438,6 +440,7 @@ function DraftHelper({ csvData, csvFileName }) {
           setPlayers={setPlayers}
           setRemovedPlayers={setRemovedPlayers}
           keepEmptyTiers={keepEmptyTiers}
+          scoringType={scoringType} // Pass scoringType here
         />
         <PlayerList
           title="TE"
@@ -447,6 +450,7 @@ function DraftHelper({ csvData, csvFileName }) {
           setPlayers={setPlayers}
           setRemovedPlayers={setRemovedPlayers}
           keepEmptyTiers={keepEmptyTiers}
+          scoringType={scoringType} // Pass scoringType here
         />
       </div>
     </div>

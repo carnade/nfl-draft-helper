@@ -1,17 +1,38 @@
 /* PlayerButton.css */
 .player-button {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  display: block;
+  width: 100%;
   padding: 10px;
-  margin-bottom: 5px;
+  margin: 5px 0;
   border: none;
-  color: white;
   border-radius: 5px;
   cursor: pointer;
+  text-align: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.player-button:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.player-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.grid-container {
+  display: grid;
+  grid-template-columns: 1fr 4fr 1fr; /* 3 columns: edges smaller, middle larger */
+  grid-template-rows: 1fr 1fr; /* 2 rows */
+  gap: 5px;
+  align-items: center;
+  justify-items: center;
+}
+
+.grid-item {
   font-size: 16px;
-  width: 100%; /* Ensure buttons are full-width */
-  pointer-events: auto;
+  text-align: center;
 }
 
 .player-button.disabled {
@@ -51,4 +72,10 @@
 
 .player-button:active {
   cursor: grabbing;
+}
+
+.player-name {
+  font-size: 18px; /* Set font size for player name */
+  text-align: center; /* Center the text */
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3); /* Subtle shadow */
 }
