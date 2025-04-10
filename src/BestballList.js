@@ -4,6 +4,14 @@ import { faExternalLinkAlt, faTrophy } from "@fortawesome/free-solid-svg-icons";
 import { useParams } from "react-router-dom";
 import "./BestballList.css";
 
+// Add a mock flag
+const mock = true; // Set to true for mock data, false for production
+
+// Define the base URL based on the mock flag
+const BASE_URL = mock
+  ? "http://localhost:5000"
+  : "https://shaggy-latashia-carnade-2ea2054a.koyeb.app";
+
 function BestballList() {
   const { userName } = useParams();
   const [userId, setUserId] = useState(null);
@@ -13,7 +21,6 @@ function BestballList() {
   const [portfolioData, setPortfolioData] = useState([]); // New state for portfolio data
   const [selectedPosition, setSelectedPosition] = useState(null); // State for filtering by position
   const LEAGUE_YEAR = 2025;
-  const mock = true; // Set to true for mock data
 
   const handleToggle = (leagueId) => {
     setExpandedLeagueIds((prevIds) => {
@@ -34,27 +41,14 @@ function BestballList() {
       };
 
       try {
-        let response;
-        if (mock) {
-          response = await fetch("http://localhost:5000/getplayers/bestball", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(requests),
-          });
-        } else {
-          response = await fetch(
-            "https://shaggy-latashia-carnade-2ea2054a.koyeb.app/getplayers/bestball",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(requests),
-            }
-          );
-        }
+        const response = await fetch(`${BASE_URL}/getplayers/bestball`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requests),
+        });
+
         const data = await response.json();
 
         // Access the players array from the data object
@@ -72,7 +66,7 @@ function BestballList() {
         console.error("Error fetching bestball player data:", error);
       }
     },
-    [mock]
+    []
   );
 
   const fetchLeagueData = useCallback(async () => {

@@ -36,6 +36,7 @@ def main():
         position = player_obj.get("position", "")
         # Build a dictionary that has all ADP fields plus what we need for output
         p = {
+            "sleeper_id": entry.get("player_id", ""),
             "name": f"{first_name} {last_name}".strip(),
             "position": position,
             "team": team,
@@ -63,7 +64,7 @@ def main():
         position_counts = {}  # e.g. {"QB": number_of_QBs_processed, ...}
 
         # We'll build the CSV rows. The row format:
-        #   Overall Rank, Name, Position, Team, Bye, Position Rank, Tier, OverallTier
+        #   SleeperId, Overall Rank, Name, Position, Team, Bye, Position Rank, Tier, OverallTier
         rows = []
         overall_rank = 0
 
@@ -84,6 +85,7 @@ def main():
             position_tier = (position_rank - 1) // 5 + 1
 
             rows.append([
+                pl["sleeper_id"],
                 overall_rank,
                 name,
                 pos,
@@ -95,7 +97,7 @@ def main():
             ])
 
         # Now write CSV
-        headers = ["Overall Rank","Name","Position","Team","Bye",
+        headers = ["SleeperId", "Overall Rank","Name","Position","Team","Bye",
                    "Position Rank","Tier","OverallTier"]
 
         with open(filename, "w", newline="", encoding="utf-8") as outfile:

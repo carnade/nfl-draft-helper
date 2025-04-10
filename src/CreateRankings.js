@@ -437,8 +437,8 @@ function CreateRankings({ csvData, csvFileName, useTierForOverall }) {
     .sort((a, b) => a.PositionRank - b.PositionRank);
 
   function handleExport() {
-    // 1) Define the CSV header
     const headers = [
+      "SleeperId", // Add SleeperId
       "Overall Rank",
       "Name",
       "Position",
@@ -450,21 +450,18 @@ function CreateRankings({ csvData, csvFileName, useTierForOverall }) {
     ];
     let csvContent = headers.join(",") + "\n";
 
-    // 2) Build the CSV rows
-    // Make sure each field is included in your allPlayers
-    // If "Tier" is stored as `player.Tier` or `player["Tier"]`, match that exactly.
     allPlayers.forEach((player) => {
       const row = [
-        player["Overall Rank"], // or player.OverallRank
+        player.SleeperId, // Add SleeperId
+        player["Overall Rank"],
         player.Name,
         player.Position,
         player.Team,
         player.Bye,
-        player["Position Rank"], // or player.PositionRank
-        player.Tier || "", // might be player["Tier"]
+        player["Position Rank"],
+        player.Tier || "",
         player.OverallTier || "",
       ];
-
       csvContent += row.join(",") + "\n";
     });
 

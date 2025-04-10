@@ -6,6 +6,14 @@ import Papa from "papaparse";
 import { useLocation, useParams } from "react-router-dom";
 import "./DraftHelper.css";
 
+// Add a mock flag
+const mock = true; // Set to true for localhost, false for production
+
+// Define the base URL based on the mock flag
+const BASE_URL = mock
+  ? "http://localhost:5000"
+  : "https://shaggy-latashia-carnade-2ea2054a.koyeb.app";
+
 function DraftHelper({ csvData, csvFileName }) {
   const location = useLocation();
   const { draftId: routeDraftId } = useParams();
@@ -180,19 +188,19 @@ function DraftHelper({ csvData, csvFileName }) {
   function getDefaultFile(type) {
     switch (type) {
       case "dynasty_2qb":
-        return "dynasty_sf.csv";
+        return "adp_dynasty_2qb.csv";
       case "dynasty_ppr":
-        return "dynasty_ppr.csv";
+        return "adp_dynasty_ppr.csv";
       case "dynasty_half-ppr":
-        return "dynasty_half_ppr.csv";
+        return "adp_dynasty_half_ppr.csv";
       case "ppr":
-        return "redraft_ppr.csv";
+        return "adp_ppr.csv";
       case "2qb":
-        return "redraft_sf.csv";
+        return "adp_2qb.csv";
       case "half_ppr":
-        return "redraft_half_ppr.csv";
+        return "adp_half_ppr.csv";
       default:
-        return "dynasty_sf.csv";
+        return "adp_dynasty_2qb.csv";
     }
   }
 
@@ -322,24 +330,29 @@ function DraftHelper({ csvData, csvFileName }) {
         }));
       }
       console.log("scoringType:", scoringType);
-      if (["2qb", "ppr", "half_ppr"].includes(scoringType)) {
+      if (!["2qb", "ppr", "half_ppr"].includes(scoringType)) {
         try {
-          const response = await fetch("http://localhost:5000/getplayers/all");
-          const externalPlayers = await response.json();
-          console.log(
-            "External players data fetched successfully:",
-            externalPlayers
-          );
-          // Map externalPlayers data to finalPlayers based on their names
-          const externalPlayerMap = externalPlayers.reduce((acc, player) => {
-            acc[player.name] = player;
-            return acc;
-          }, {});
+          const playerIds = finalPlayers.map((player) => player.SleeperId); // Collect SleeperIds
+          const response = await fetch(`${BASE_URL}/getplayers/data`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ playerlist: playerIds }), // Send playerIds in the body
+          });
 
+          const externalPlayers = await response.json();
+          console.log("API Response:", externalPlayers); // Log the response
+
+          // Map externalPlayers data to finalPlayers based on SleeperId
           finalPlayers = finalPlayers.map((player) => {
-            const externalPlayer = externalPlayerMap[player.Name];
+            const externalPlayer = externalPlayers[player.SleeperId]; // Access by SleeperId
             return externalPlayer
-              ? { ...player, ...externalPlayer } // Merge external data with existing player
+              ? {
+                  ...player,
+                  "FC Value": externalPlayer["FC Value"] || "N/A",
+                  "KTC Value": externalPlayer["KTC Value"] || "N/A",
+                } // Merge external data with existing player
               : player; // Keep the original player if no match is found
           });
         } catch (error) {

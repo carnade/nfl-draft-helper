@@ -55,11 +55,11 @@ function PlayerButton({ player, setPlayers, setRemovedPlayers, scoringType }) {
   };
 
   const renderPortfolioOrDynastyRankings = () => {
-    if (!["2qb", "ppr", "half_ppr"].includes(scoringType)) {
+    if (["2qb", "ppr", "half_ppr"].includes(scoringType)) {
       return `Portfolio: ${player.BestBallTotal || 0}`; // Default to 0 if BestBallTotal is undefined
     }
     // Render KTC and FC values if scoringType is not one of the specified types
-    return `KTC: ${player["KTC Value"] || "N/A"} FC: ${
+    return `KTC: ${player["KTC Value"] || "N/A"} | FC: ${
       player["FC Value"] || "N/A"
     }`;
   };
