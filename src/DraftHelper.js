@@ -321,6 +321,32 @@ function DraftHelper({ csvData, csvFileName }) {
           BestBallTotal: 0,
         }));
       }
+      console.log("scoringType:", scoringType);
+      if (["2qb", "ppr", "half_ppr"].includes(scoringType)) {
+        try {
+          const response = await fetch("http://localhost:5000/getplayers/all");
+          const externalPlayers = await response.json();
+          console.log(
+            "External players data fetched successfully:",
+            externalPlayers
+          );
+          // Map externalPlayers data to finalPlayers based on their names
+          const externalPlayerMap = externalPlayers.reduce((acc, player) => {
+            acc[player.name] = player;
+            return acc;
+          }, {});
+
+          finalPlayers = finalPlayers.map((player) => {
+            const externalPlayer = externalPlayerMap[player.Name];
+            return externalPlayer
+              ? { ...player, ...externalPlayer } // Merge external data with existing player
+              : player; // Keep the original player if no match is found
+          });
+        } catch (error) {
+          console.error("Error fetching external players:", error);
+        }
+      }
+
       console.log("Final players with BestBallTotal:", finalPlayers);
       // Step E) Store finalPlayers into state
       setPlayers(finalPlayers);

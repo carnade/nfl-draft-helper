@@ -54,11 +54,14 @@ function PlayerButton({ player, setPlayers, setRemovedPlayers, scoringType }) {
     return { backgroundColor: color, color: "white" }; // Ensure text color is white
   };
 
-  const renderPortfolioOrScoringType = () => {
-    if (["2qb", "ppr", "half_ppr"].includes(scoringType)) {
+  const renderPortfolioOrDynastyRankings = () => {
+    if (!["2qb", "ppr", "half_ppr"].includes(scoringType)) {
       return `Portfolio: ${player.BestBallTotal || 0}`; // Default to 0 if BestBallTotal is undefined
     }
-    return scoringType; // Fallback to scoringType if not one of the specified types
+    // Render KTC and FC values if scoringType is not one of the specified types
+    return `KTC: ${player["KTC Value"] || "N/A"} FC: ${
+      player["FC Value"] || "N/A"
+    }`;
   };
 
   return (
@@ -77,7 +80,7 @@ function PlayerButton({ player, setPlayers, setRemovedPlayers, scoringType }) {
           {player["Position"]}
           {player["Position Rank"]}
         </div>
-        <div className="grid-item">{renderPortfolioOrScoringType()}</div>
+        <div className="grid-item">{renderPortfolioOrDynastyRankings()}</div>
         <div className="grid-item">({player.Bye})</div>
       </div>
     </button>
