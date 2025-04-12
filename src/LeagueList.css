@@ -107,7 +107,7 @@
 
 .roster-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: 4fr 1fr 2fr 2fr 2fr 1fr; /* Updated to include KTC and FC columns */
   gap: 10px;
   padding: 10px 0;
 }
@@ -115,6 +115,18 @@
 .roster-grid-item {
   font-size: 16px;
   padding: 2px 0;
+}
+
+.value-positive {
+  color: green; /* Positive delta */
+}
+
+.value-negative {
+  color: red; /* Negative delta */
+}
+
+.value-neutral {
+  color: black; /* Neutral delta */
 }
 
 /* When a player is selected */
