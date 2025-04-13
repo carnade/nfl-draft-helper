@@ -9,7 +9,7 @@ import { useParams } from "react-router-dom";
 import "./LeagueList.css";
 
 // Add a mock flag
-const mock = true; // Set to true for mock data, false for production
+const mock = false; // Set to true for mock data, false for production
 
 // Define the base URL based on the mock flag
 const BASE_URL = mock
@@ -643,9 +643,7 @@ if (mock) {
                                         {playerInfo?.position || ""}
                                       </div>
                                       <div className="roster-grid-item">
-                                        <span style={{ color: "black" }}>
-                                          {ktcValue}
-                                        </span>
+                                        <span>{ktcValue}</span>
                                         {" ("}
                                         <span
                                           className={`${
@@ -660,12 +658,10 @@ if (mock) {
                                             ? `+${ktcDelta}`
                                             : ktcDelta}
                                         </span>
-                                        <span style={{ color: "black" }}>
-                                          )
-                                        </span>
+                                        <span>)</span>
                                       </div>
                                       <div className="roster-grid-item">
-                                        <span style={{ color: "black" }}>
+                                        <span>
                                           {playerInfo?.["FC Value"] || "N/A"}
                                         </span>
                                         {" ("}
@@ -682,9 +678,7 @@ if (mock) {
                                             ? `+${fcDelta}`
                                             : fcDelta}
                                         </span>
-                                        <span style={{ color: "black" }}>
-                                          )
-                                        </span>
+                                        <span>)</span>
                                       </div>
                                       <div className="roster-grid-item">
                                         {renderInjuryStatus(

@@ -27,31 +27,23 @@ function PlayerButton({ player, setPlayers, setRemovedPlayers, scoringType }) {
     );
   };
 
-  const getButtonStyle = () => {
-    let color;
+  const getPositionClass = () => {
     switch (player.Position) {
       case "WR":
-        color = "blue";
-        break;
+        return "wr";
       case "RB":
-        color = "green";
-        break;
+        return "rb";
       case "TE":
-        color = "orange";
-        break;
+        return "te";
       case "QB":
-        color = "red";
-        break;
+        return "qb";
       case "D/ST":
-        color = "brown";
-        break;
+        return "dst";
       case "K":
-        color = "purple";
-        break;
+        return "k";
       default:
-        color = "Gray";
+        return "default";
     }
-    return { backgroundColor: color }; // Ensure text color is white
   };
 
   const renderPortfolioOrDynastyRankings = () => {
@@ -67,10 +59,9 @@ function PlayerButton({ player, setPlayers, setRemovedPlayers, scoringType }) {
   return (
     <button
       data-id={player["Overall Rank"]}
-      style={getButtonStyle()}
       disabled={isDisabled}
       onClick={handleClick}
-      className="player-button"
+      className={`player-button ${getPositionClass()}`}
     >
       <div className="grid-container">
         <div className="grid-item">R:{player["Overall Rank"]}</div>

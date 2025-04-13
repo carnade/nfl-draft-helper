@@ -258,6 +258,7 @@ function DraftPage() {
                   href={`https://sleeper.app/draft/nfl/${draft.draft_id}`}
                   target="_blank"
                   rel="noopener noreferrer"
+                  className="draft-grid-link"
                 >
                   <FontAwesomeIcon icon={faExternalLinkAlt} />
                 </a>

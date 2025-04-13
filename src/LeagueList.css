@@ -298,3 +298,75 @@ input:checked + .slider:before {
 .injury-icon {
   margin-right: 10px;
 }
+
+/* Grid headers for light and dark modes */
+body.light .league-grid-header,
+body.light .roster-header {
+  background-color: #f1f1f1; /* Light background */
+  color: #000; /* Dark text */
+}
+
+body.dark .league-grid-header,
+body.dark .roster-header {
+  background-color: #333; /* Dark background */
+  color: #fff; /* Light text */
+}
+/* Value-neutral for light and dark modes */
+body.light .value-neutral {
+  color: #000; /* Neutral black text for light mode */
+}
+
+body.dark .value-neutral {
+  color: #e2e2e2; /* Neutral light text for dark mode */
+}
+/* Light mode styles for draftname and username */
+body.light .draftname {
+  background-color: #f8f8f8; /* Light background */
+  color: #000; /* Dark text */
+}
+
+body.light .draftname span {
+  color: #555; /* Slightly darker text for username */
+}
+
+/* Dark mode styles for draftname and username */
+body.dark .draftname {
+  color: #fff; /* Light text */
+}
+
+body.dark .draftname span {
+  color: #e2e2e2; /* Slightly lighter text for username */
+}
+body.dark .draftname h1 {
+  color: #e2e2e2; /* Slightly lighter text for username */
+}
+
+/* Light mode styles for selected-player */
+body.light .selected-player {
+  border: 2px solid red; /* Current light mode border */
+  border-radius: 5px;
+  padding: 5px;
+  background-color: #ffe5e5; /* Current light mode background */
+}
+
+/* Dark mode styles for selected-player */
+body.dark .selected-player {
+  border: 2px solid #ff6666; /* Slightly lighter red for dark mode */
+  border-radius: 5px;
+  padding: 5px;
+  background-color: #661a1a; /* Darker red background for dark mode */
+}
+
+/* Light mode styles for highlighted-league */
+body.light .highlighted-league {
+  border: 2px solid #ff6666;
+  background-color: #ffb97c; /* Current light mode background */
+  border-radius: 5px;
+}
+
+/* Dark mode styles for highlighted-league */
+body.dark .highlighted-league {
+  border: 2px solid #661a1a;
+  background-color: #45454b; /* Darker orange for dark mode */
+  border-radius: 5px;
+}

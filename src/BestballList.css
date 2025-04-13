@@ -147,12 +147,27 @@
   border-radius: 0 5px 5px 5px; /* Rounded corners at the bottom */
 }
 
+/* Light mode styles for tab-content */
+body.light .tab-content {
+  background-color: #fff;
+  border: 1px solid #ddd;
+  color: #000;
+}
+
+/* Dark mode styles for tab-content */
+body.dark .tab-content {
+  background-color: #25252b;
+  border: 1px solid #555;
+  border-radius: 5px; /* Rounded corners at the bottom */
+  color: #e2e2e2;
+}
+
 /* Portfolio grid container */
 .portfolio-grid {
   width: 60%;
   display: grid;
   grid-template-columns: 5fr 1fr 1fr 1fr 1fr; /* Adjust column widths: 3fr for Player Name, 1fr for POS, 1QB, 2QB, and Total */
-  gap: 10px;
+  gap: 5px;
   margin-top: 20px;
 }
 
@@ -165,11 +180,35 @@
   text-align: left;
 }
 
+/* Light mode styles for portfolio-grid-header */
+body.light .portfolio-grid-header {
+  background-color: #f1f1f1;
+  color: #000;
+}
+
+/* Dark mode styles for portfolio-grid-header */
+body.dark .portfolio-grid-header {
+  background-color: #333;
+  color: #fff;
+}
+
 /* Portfolio grid items */
 .portfolio-grid-item {
   padding: 10px;
   border-bottom: 1px solid #ddd;
   text-align: left;
+}
+
+/* Light mode styles for portfolio-grid-item */
+body.light .portfolio-grid-item {
+  background-color: #fff;
+  color: #000;
+}
+
+/* Dark mode styles for portfolio-grid-item */
+body.dark .portfolio-grid-item {
+  background-color: #222;
+  color: #e2e2e2;
 }
 
 /* Optional: Add hover effect for rows */
@@ -193,10 +232,16 @@
 }
 
 /* Filter label */
-.filter-label {
+body.light .filter-label {
   font-weight: bold;
   font-size: 18px;
   color: #333;
+}
+
+body.dark .filter-label {
+  font-weight: bold;
+  font-size: 18px;
+  color: #f0f0f0;
 }
 
 /* Filter buttons container */
@@ -220,28 +265,46 @@
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Add shadow for 3D effect */
 }
 
+/* Light mode styles for filter-button */
+body.light .filter-button {
+  background-color: #ccc;
+  color: #000;
+}
+
+/* Dark mode styles for filter-button */
+body.dark .filter-button {
+  background-color: #45454b;
+  color: #e2e2e2;
+}
+
+/* Hover effect for filter-button in dark mode */
+body.dark .filter-button:hover {
+  background-color: #666;
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.4);
+}
+
 /* Active button styles */
 .filter-button.qb-active {
-  background-color: red;
+  background-color: red !important;
   color: white;
   box-shadow: 0 4px 6px rgba(255, 0, 0, 0.4); /* Red shadow for QB */
 }
 
 .filter-button.rb-active {
-  background-color: green;
+  background-color: green !important;
   color: white;
   box-shadow: 0 4px 6px rgba(0, 128, 0, 0.4); /* Green shadow for RB */
 }
 
 .filter-button.wr-active {
-  background-color: blue;
+  background-color: blue !important;
   color: white;
   box-shadow: 0 4px 6px rgba(0, 0, 255, 0.4); /* Blue shadow for WR */
 }
 
 .filter-button.te-active {
-  background-color: yellow;
-  color: black;
+  background-color: yellow !important;
+  color: black !important;
   box-shadow: 0 4px 6px rgba(255, 255, 0, 0.4); /* Yellow shadow for TE */
 }
 
@@ -256,4 +319,28 @@
 .filter-button:active {
   transform: translateY(1px); /* Slight press effect */
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Reduced shadow on press */
+}
+
+/* Light mode styles for team-grid-header */
+body.light .team-grid-header {
+  background-color: #f0f0f0;
+  color: #000;
+}
+
+/* Dark mode styles for team-grid-header */
+body.dark .team-grid-header {
+  background-color: #25252b;
+  color: #fff;
+}
+
+/* Light mode styles for user-position */
+body.light .user-position {
+  background-color: rgba(4, 128, 6, 0.24); /* Semi-transparent green */
+  color: #0b0c0b;
+}
+
+/* Dark mode styles for user-position */
+body.dark .user-position {
+  background-color: rgba(4, 128, 6, 0.5); /* Slightly darker green */
+  color: #e2e2e2;
 }

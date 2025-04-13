@@ -48,11 +48,11 @@ body.dark {
 
 /* Content-specific styles */
 .content.light {
-  background-color: #ffffff;
-  color: #000000;
+  background-color: #e2e2e2;
+  color: #25252b;
 }
 
 .content.dark {
-  background-color: #2b2b2b;
-  color: #ffffff;
+  background-color: #25252b;
+  color: #e2e2e2;
 }
