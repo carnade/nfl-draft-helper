@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import PlayerList from "./PlayerList";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faRecycle } from "@fortawesome/free-solid-svg-icons";
+import {
+  faRecycle,
+  faExternalLinkAlt,
+} from "@fortawesome/free-solid-svg-icons";
 import Papa from "papaparse";
 import { useLocation, useParams } from "react-router-dom";
 import "./DraftHelper.css";
@@ -388,14 +391,25 @@ function DraftHelper({ csvData, csvFileName }) {
         give them modern classes:
       */}
       <div className="base-container">
-        <input
-          type="text"
-          className="modern-input"
-          value={draftId}
-          onChange={(e) => setDraftId(e.target.value)}
-          placeholder="Enter Draft ID"
-        />
-
+        <div className="draft-id-container">
+          <input
+            type="text"
+            className="modern-input"
+            value={draftId}
+            onChange={(e) => setDraftId(e.target.value)}
+            placeholder="Enter Draft ID"
+          />
+          {draftId && (
+            <a
+              href={`https://sleeper.app/draft/nfl/${draftId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="modern-button"
+            >
+              <FontAwesomeIcon icon={faExternalLinkAlt} />
+            </a>
+          )}
+        </div>
         <button onClick={handleFetchDraftData} className="modern-button">
           Fetch Draft Results
         </button>
