@@ -33,16 +33,17 @@ function PlayerButtonDroppable({ player }) {
     <div
       data-id={player["Overall Rank"]}
       style={getButtonStyle()}
-      className="player-button"
+      className="player-button droppable"
     >
-      <div className="button-content">
-        <span className="overall-rank">
+      <div className="grid-container small">
+        <div className="grid-item">
           {player["Overall Rank"]}: {player["Position"]}
           {player["Position Rank"]}
-        </span>
-        <span className="name">{player.Name}</span>
-        <span className="team">{player.Team}</span>
-        <span className="bye">({player.Bye})</span>
+        </div>
+        <div className="grid-item player-name">{player.Name}</div>
+        <div className="grid-item">
+          {player.Team} ({player.Bye})
+        </div>
       </div>
     </div>
   );

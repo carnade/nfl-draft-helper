@@ -51,7 +51,7 @@ function PlayerButton({ player, setPlayers, setRemovedPlayers, scoringType }) {
       default:
         color = "Gray";
     }
-    return { backgroundColor: color, color: "white" }; // Ensure text color is white
+    return { backgroundColor: color }; // Ensure text color is white
   };
 
   const renderPortfolioOrDynastyRankings = () => {

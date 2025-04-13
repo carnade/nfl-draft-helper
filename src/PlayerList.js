@@ -42,7 +42,7 @@ function PlayerList({
         // Only render the tier if it has players or keepEmptyTiers is true
         if (tierHasPlayers || keepEmptyTiers) {
           return (
-            <div key={tier}>
+            <div className="tier-group" key={tier}>
               <h3>{`Tier ${tier}`}</h3>
               {groupedPlayers[tier].map((player) => {
                 const shouldRenderPlayer = !removedPlayers.has(

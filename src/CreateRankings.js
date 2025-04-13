@@ -7,7 +7,7 @@ import { DragDropContext } from "react-beautiful-dnd";
 // Import our new "droppable" PlayerList
 import PlayerListDroppable from "./PlayerListDroppable";
 
-import "./CreateRankings.css";
+import "./DraftHelper.css";
 
 function CreateRankings({ csvData, csvFileName, useTierForOverall }) {
   const [allPlayers, setAllPlayers] = useState([]);
