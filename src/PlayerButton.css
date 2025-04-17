@@ -43,6 +43,7 @@
 .grid-item {
   font-size: 16px;
   text-align: center;
+  color: rgba(220, 220, 220, 0.95);
 }
 
 .player-button.disabled {
@@ -65,9 +66,10 @@
 }
 
 .player-name {
+  color: white;
   font-size: 18px; /* Set font size for player name */
   text-align: center; /* Center the text */
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3); /* Subtle shadow */
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6); /* Subtle shadow */
 }
 
 /* Position-specific styles */
