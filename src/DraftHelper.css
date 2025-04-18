@@ -139,3 +139,18 @@
   display: flex;
   justify-content: space-between;
 }
+
+.draft-id-container {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.draft-id-container .modern-input {
+  margin: 0;
+}
+
+.draft-id-container .modern-button {
+  padding: 8px 12px;
+  height: 100%;
+}

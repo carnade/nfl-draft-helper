@@ -31,3 +31,28 @@
   text-align: center;
   margin-bottom: 20px;
 }
+
+/* Light mode styles */
+body.light {
+  background-color: #f8f8f8;
+  color: #000000;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Dark mode styles */
+body.dark {
+  background-color: #15151b;
+  color: #ffffff;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Content-specific styles */
+.content.light {
+  background-color: #e2e2e2;
+  color: #25252b;
+}
+
+.content.dark {
+  background-color: #25252b;
+  color: #e2e2e2;
+}

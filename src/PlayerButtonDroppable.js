@@ -2,47 +2,39 @@ import React from "react";
 import "./PlayerButton.css";
 
 function PlayerButtonDroppable({ player }) {
-  const getButtonStyle = () => {
-    let color;
+  const getPositionClass = () => {
     switch (player.Position) {
       case "WR":
-        color = "blue";
-        break;
+        return "wr";
       case "RB":
-        color = "green";
-        break;
+        return "rb";
       case "TE":
-        color = "orange";
-        break;
+        return "te";
       case "QB":
-        color = "red";
-        break;
+        return "qb";
       case "D/ST":
-        color = "brown";
-        break;
+        return "dst";
       case "K":
-        color = "purple";
-        break;
+        return "k";
       default:
-        color = "Gray";
+        return "default";
     }
-    return { backgroundColor: color };
   };
 
   return (
     <div
       data-id={player["Overall Rank"]}
-      style={getButtonStyle()}
-      className="player-button"
+      className={`player-button droppable ${getPositionClass()}`}
     >
-      <div className="button-content">
-        <span className="overall-rank">
+      <div className="grid-container small">
+        <div className="grid-item">
           {player["Overall Rank"]}: {player["Position"]}
           {player["Position Rank"]}
-        </span>
-        <span className="name">{player.Name}</span>
-        <span className="team">{player.Team}</span>
-        <span className="bye">({player.Bye})</span>
+        </div>
+        <div className="grid-item player-name">{player.Name}</div>
+        <div className="grid-item">
+          {player.Team} ({player.Bye})
+        </div>
       </div>
     </div>
   );

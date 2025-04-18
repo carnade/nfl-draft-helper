@@ -3,7 +3,7 @@
 /* Overall container */
 .left-menu {
   width: 200px;
-  background-color: #2b2b2b;
+  background-color: #25252b;
   color: #ffffff;
   height: 100vh;
   display: flex;
@@ -21,7 +21,7 @@
   display: flex;
   align-items: center;
   padding: 10px;
-  background-color: #3a3a3a;
+  background-color: #34343a;
 }
 
 .menu-title {

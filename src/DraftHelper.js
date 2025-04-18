@@ -1,10 +1,21 @@
 import React, { useState, useEffect, useCallback } from "react";
 import PlayerList from "./PlayerList";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faRecycle } from "@fortawesome/free-solid-svg-icons";
+import {
+  faRecycle,
+  faExternalLinkAlt,
+} from "@fortawesome/free-solid-svg-icons";
 import Papa from "papaparse";
 import { useLocation, useParams } from "react-router-dom";
 import "./DraftHelper.css";
+
+// Add a mock flag
+const mock = false; // Set to true for localhost, false for production
+
+// Define the base URL based on the mock flag
+const BASE_URL = mock
+  ? "http://localhost:5000"
+  : "https://shaggy-latashia-carnade-2ea2054a.koyeb.app";
 
 function DraftHelper({ csvData, csvFileName }) {
   const location = useLocation();
@@ -252,16 +263,12 @@ function DraftHelper({ csvData, csvFileName }) {
 
       if (csvData) {
         console.log("Using direct CSV data");
-        // A1) If direct CSV data was provided in props
         finalCsvContent = csvData;
       } else {
-        // A2) Possibly read from localStorage if scoringType is set
         let usedCustomData = false;
-        let localFileName = csvFileName || ""; // might be empty
+        let localFileName = csvFileName || "";
 
         const settingsStr = localStorage.getItem("FantasyHelperSettings");
-        console.log("settingsStr:", settingsStr);
-        console.log("scoringType:", scoringType);
         if (scoringType && settingsStr) {
           const parsed = JSON.parse(settingsStr);
           const dr = parsed.defaultRankings || {};
@@ -269,7 +276,6 @@ function DraftHelper({ csvData, csvFileName }) {
           const localStorageKey = mapScoringType(scoringType);
           const customFileEntry = dr[localStorageKey];
           if (customFileEntry && customFileEntry.name !== "default") {
-            console.log("Using localStorage custom CSV for:", scoringType);
             if (customFileEntry.data) {
               finalCsvContent = customFileEntry.data;
               usedCustomData = true;
@@ -277,38 +283,88 @@ function DraftHelper({ csvData, csvFileName }) {
           }
         }
 
-        // A3) If we did NOT use custom data, fallback to a local file from the server
         if (!usedCustomData) {
-          console.log("Using local file fallback", localFileName);
           if (!localFileName && scoringType) {
             localFileName = getDefaultFile(scoringType);
           }
           if (localFileName) {
-            console.log("Using localFileName fallback:", localFileName);
             finalCsvContent = await fetchCsvFile(localFileName);
-          } else {
-            console.log("No CSV file, no scoring type => no CSV to load");
-            // finalCsvContent remains null => means no data
           }
         }
       }
 
-      // Step B) Now parse CSV if we have any
+      // Step B) Parse CSV if we have any
       let parsedPlayers = [];
       if (finalCsvContent) {
         parsedPlayers = await parseCsvAndCheckTier(finalCsvContent);
       }
 
-      // Step C) If we have a routeDraftId => fetch picks from Sleeper & remove from "parsedPlayers"
+      // Step C) Remove picks from Sleeper if we have a routeDraftId
       let finalPlayers = parsedPlayers;
       if (routeDraftId && finalPlayers.length > 0) {
-        console.log(
-          "We have routeDraftId => auto remove picks from finalPlayers"
-        );
         finalPlayers = await removePickedPlayers(routeDraftId, finalPlayers);
       }
 
-      // Step D) Store finalPlayers into state
+      // Step D) Add BestBallTotal field to each player
+      const savedPortfolioData = JSON.parse(
+        localStorage.getItem("FantasyHelperBestballPortfolio")
+      );
+
+      if (savedPortfolioData) {
+        console.log("Loaded bestball portfolio data:", savedPortfolioData);
+
+        // Create a mapping of player names to their counts from the portfolio data
+        const portfolioCounts = savedPortfolioData.reduce((acc, player) => {
+          acc[player.name] = player.count;
+          return acc;
+        }, {});
+
+        // Add BestBallTotal to each player in finalPlayers
+        finalPlayers = finalPlayers.map((player) => ({
+          ...player,
+          BestBallTotal: portfolioCounts[player.Name] || 0, // Default to 0 if no match
+        }));
+      } else {
+        console.log("No bestball portfolio data found in localStorage.");
+        // Add BestBallTotal as 0 for all players if no portfolio data is found
+        finalPlayers = finalPlayers.map((player) => ({
+          ...player,
+          BestBallTotal: 0,
+        }));
+      }
+      console.log("scoringType:", scoringType);
+      if (!["2qb", "ppr", "half_ppr"].includes(scoringType)) {
+        try {
+          const playerIds = finalPlayers.map((player) => player.SleeperId); // Collect SleeperIds
+          const response = await fetch(`${BASE_URL}/getplayers/data`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ playerlist: playerIds }), // Send playerIds in the body
+          });
+
+          const externalPlayers = await response.json();
+          console.log("API Response:", externalPlayers); // Log the response
+
+          // Map externalPlayers data to finalPlayers based on SleeperId
+          finalPlayers = finalPlayers.map((player) => {
+            const externalPlayer = externalPlayers[player.SleeperId]; // Access by SleeperId
+            return externalPlayer
+              ? {
+                  ...player,
+                  "FC Value": externalPlayer["FC Value"] || "N/A",
+                  "KTC Value": externalPlayer["KTC Value"] || "N/A",
+                } // Merge external data with existing player
+              : player; // Keep the original player if no match is found
+          });
+        } catch (error) {
+          console.error("Error fetching external players:", error);
+        }
+      }
+
+      console.log("Final players with BestBallTotal:", finalPlayers);
+      // Step E) Store finalPlayers into state
       setPlayers(finalPlayers);
       setInitialPlayers(finalPlayers);
     }
@@ -335,14 +391,25 @@ function DraftHelper({ csvData, csvFileName }) {
         give them modern classes:
       */}
       <div className="base-container">
-        <input
-          type="text"
-          className="modern-input"
-          value={draftId}
-          onChange={(e) => setDraftId(e.target.value)}
-          placeholder="Enter Draft ID"
-        />
-
+        <div className="draft-id-container">
+          <input
+            type="text"
+            className="modern-input"
+            value={draftId}
+            onChange={(e) => setDraftId(e.target.value)}
+            placeholder="Enter Draft ID"
+          />
+          {draftId && (
+            <a
+              href={`https://sleeper.app/draft/nfl/${draftId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="modern-button"
+            >
+              <FontAwesomeIcon icon={faExternalLinkAlt} />
+            </a>
+          )}
+        </div>
         <button onClick={handleFetchDraftData} className="modern-button">
           Fetch Draft Results
         </button>
@@ -388,7 +455,6 @@ function DraftHelper({ csvData, csvFileName }) {
       </div>
 
       <div className="lists-container">
-        {/* PlayerList components remain the same */}
         <PlayerList
           title="ALL"
           players={players}
@@ -397,6 +463,7 @@ function DraftHelper({ csvData, csvFileName }) {
           setPlayers={setPlayers}
           setRemovedPlayers={setRemovedPlayers}
           keepEmptyTiers={keepEmptyTiers}
+          scoringType={scoringType} // Pass scoringType here
         />
         <PlayerList
           title="QB"
@@ -406,6 +473,7 @@ function DraftHelper({ csvData, csvFileName }) {
           setPlayers={setPlayers}
           setRemovedPlayers={setRemovedPlayers}
           keepEmptyTiers={keepEmptyTiers}
+          scoringType={scoringType} // Pass scoringType here
         />
         <PlayerList
           title="RB"
@@ -415,6 +483,7 @@ function DraftHelper({ csvData, csvFileName }) {
           setPlayers={setPlayers}
           setRemovedPlayers={setRemovedPlayers}
           keepEmptyTiers={keepEmptyTiers}
+          scoringType={scoringType} // Pass scoringType here
         />
         <PlayerList
           title="WR"
@@ -424,6 +493,7 @@ function DraftHelper({ csvData, csvFileName }) {
           setPlayers={setPlayers}
           setRemovedPlayers={setRemovedPlayers}
           keepEmptyTiers={keepEmptyTiers}
+          scoringType={scoringType} // Pass scoringType here
         />
         <PlayerList
           title="TE"
@@ -433,6 +503,7 @@ function DraftHelper({ csvData, csvFileName }) {
           setPlayers={setPlayers}
           setRemovedPlayers={setRemovedPlayers}
           keepEmptyTiers={keepEmptyTiers}
+          scoringType={scoringType} // Pass scoringType here
         />
       </div>
     </div>

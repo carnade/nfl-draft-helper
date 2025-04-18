@@ -10,6 +10,7 @@ function PlayerList({
   setPlayers,
   setRemovedPlayers,
   keepEmptyTiers,
+  scoringType,
 }) {
   // Determine the maximum tier number by checking the players
   const maxTier = players.reduce((max, player) => {
@@ -41,7 +42,7 @@ function PlayerList({
         // Only render the tier if it has players or keepEmptyTiers is true
         if (tierHasPlayers || keepEmptyTiers) {
           return (
-            <div key={tier}>
+            <div className="tier-group" key={tier}>
               <h3>{`Tier ${tier}`}</h3>
               {groupedPlayers[tier].map((player) => {
                 const shouldRenderPlayer = !removedPlayers.has(
@@ -54,6 +55,7 @@ function PlayerList({
                     player={player}
                     setPlayers={setPlayers}
                     setRemovedPlayers={setRemovedPlayers}
+                    scoringType={scoringType} // Pass scoringType here
                   />
                 ) : null;
               })}

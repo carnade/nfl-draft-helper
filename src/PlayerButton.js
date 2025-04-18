@@ -1,12 +1,11 @@
 import React, { useState } from "react";
 import "./PlayerButton.css";
 
-function PlayerButton({ player, setPlayers, setRemovedPlayers }) {
+function PlayerButton({ player, setPlayers, setRemovedPlayers, scoringType }) {
   const [isDisabled] = useState(false);
 
   const handleClick = () => {
     const playerId = player["Overall Rank"];
-    // Update state to hide the button
 
     // Hide all buttons with the same Overall Rank
     document
@@ -28,59 +27,55 @@ function PlayerButton({ player, setPlayers, setRemovedPlayers }) {
     );
   };
 
-  const getButtonStyle = () => {
-    let color;
+  const getPositionClass = () => {
     switch (player.Position) {
       case "WR":
-        color = "blue";
-        break;
+        return "wr";
       case "RB":
-        color = "green";
-        break;
+        return "rb";
       case "TE":
-        color = "orange";
-        break;
+        return "te";
       case "QB":
-        color = "red";
-        break;
+        return "qb";
       case "D/ST":
-        color = "brown";
-        break;
+        return "dst";
       case "K":
-        color = "purple";
-        break;
+        return "k";
       default:
-        color = "Gray";
+        return "default";
     }
-    return { backgroundColor: color };
+  };
+
+  const renderPortfolioOrDynastyRankings = () => {
+    if (["2qb", "ppr", "half_ppr"].includes(scoringType)) {
+      return `Portfolio: ${player.BestBallTotal || 0}`; // Default to 0 if BestBallTotal is undefined
+    }
+    // Render KTC and FC values if scoringType is not one of the specified types
+    return `KTC: ${player["KTC Value"] || "N/A"} | FC: ${
+      player["FC Value"] || "N/A"
+    }`;
   };
 
   return (
     <button
       data-id={player["Overall Rank"]}
-      style={getButtonStyle()}
       disabled={isDisabled}
       onClick={handleClick}
-      className="player-button"
+      className={`player-button ${getPositionClass()}`}
     >
-      <div className="button-content">
-        <span className="overall-rank">
-          {player["Overall Rank"]}: {player["Position"]}
+      <div className="grid-container">
+        <div className="grid-item">R:{player["Overall Rank"]}</div>
+        <div className="grid-item player-name">{player.Name}</div>
+        <div className="grid-item">{player.Team}</div>
+        <div className="grid-item">
+          {player["Position"]}
           {player["Position Rank"]}
-        </span>
-        <span className="name">{player.Name}</span>
-        <span className="team">{player.Team}</span>
-        <span className="bye">({player.Bye})</span>
+        </div>
+        <div className="grid-item">{renderPortfolioOrDynastyRankings()}</div>
+        <div className="grid-item">({player.Bye})</div>
       </div>
     </button>
   );
 }
-//     {player["Overall Rank"]} {player.Name} - {player.Team} ({player.Bye})
-/*<div className="button-content">
-        <span className="overall-rank">{player["Overall Rank"]}</span>
-        <span className="name">{player.Name}</span>
-        <span className="team">{player.Team}</span>
-        <span className="bye">({player.Bye})</span>
-      </div>
-   */
+
 export default PlayerButton;

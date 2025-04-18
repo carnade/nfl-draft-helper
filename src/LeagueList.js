@@ -8,6 +8,14 @@ import {
 import { useParams } from "react-router-dom";
 import "./LeagueList.css";
 
+// Add a mock flag
+const mock = false; // Set to true for mock data, false for production
+
+// Define the base URL based on the mock flag
+const BASE_URL = mock
+  ? "http://localhost:5000"
+  : "https://shaggy-latashia-carnade-2ea2054a.koyeb.app";
+
 function LeagueList() {
   const { userName } = useParams();
   const [userId, setUserId] = useState(null);
@@ -22,7 +30,6 @@ function LeagueList() {
   const [showAllInjuries, setShowAllInjuries] = useState(false);
 
   let searchTimeout;
-  const mock = false;
 
   const handleToggle = (leagueId) => {
     setExpandedLeagueIds((prevIds) => {
@@ -159,28 +166,25 @@ function LeagueList() {
           };
         }),
       };
-
+      /*
+let response;
+if (mock) {
+  response = await fetch("/carnade_players.json", {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+*/
       try {
-        let response;
-        if (mock) {
-          response = await fetch("/carnade_players.json", {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          });
-        } else {
-          response = await fetch(
-            "https://shaggy-latashia-carnade-2ea2054a.koyeb.app/getplayers",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(requests),
-            }
-          );
-        }
+        const response = await fetch(`${BASE_URL}/getplayers`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requests),
+        });
+
         const data = await response.json();
         const playerDataMap = {};
         data.forEach((leagueData) => {
@@ -191,7 +195,7 @@ function LeagueList() {
         console.error("Error fetching player data:", error);
       }
     },
-    [userName, mock] // Add necessary dependencies here
+    [userName]
   );
 
   const fetchLeagueData = useCallback(async () => {
@@ -267,26 +271,20 @@ function LeagueList() {
 
   const fetchInjuryReport = useCallback(async () => {
     try {
-      let response;
-      if (mock) {
-        response = await fetch("/injury_report.json");
-      } else {
-        response = await fetch(
-          "https://shaggy-latashia-carnade-2ea2054a.koyeb.app/teams",
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
-      }
+      //if (mock) response = await fetch("/injury_report.json");
+      const response = await fetch(`${BASE_URL}/teams`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
       const data = await response.json();
       setInjuryReport(data);
     } catch (error) {
       console.error("Error fetching injury report:", error);
     }
-  }, [mock]);
+  }, []);
 
   useEffect(() => {
     fetchLeagueData();
@@ -599,6 +597,12 @@ function LeagueList() {
                                     Position
                                   </div>
                                   <div className="roster-grid-item roster-header">
+                                    KTC
+                                  </div>
+                                  <div className="roster-grid-item roster-header">
+                                    FantasyCalc
+                                  </div>
+                                  <div className="roster-grid-item roster-header">
                                     Status
                                   </div>
                                   <div className="roster-grid-item roster-header">
@@ -614,6 +618,12 @@ function LeagueList() {
                                       player
                                     ];
                                   const playerId = `${playerInfo?.first_name}-${playerInfo?.last_name}`;
+
+                                  const ktcValue =
+                                    playerInfo?.["KTC Value"] || "N/A"; // Access "KTC Value"
+                                  const ktcDelta =
+                                    playerInfo?.["KTC Delta"] || 0; // Access "KTC Delta"
+                                  const fcDelta = playerInfo?.["FC Delta"] || 0; // Access "FC Delta"
 
                                   return (
                                     <div key={index} className="roster-grid">
@@ -631,6 +641,44 @@ function LeagueList() {
                                       </div>
                                       <div className="roster-grid-item">
                                         {playerInfo?.position || ""}
+                                      </div>
+                                      <div className="roster-grid-item">
+                                        <span>{ktcValue}</span>
+                                        {" ("}
+                                        <span
+                                          className={`${
+                                            ktcDelta > 0
+                                              ? "value-positive"
+                                              : ktcDelta < 0
+                                              ? "value-negative"
+                                              : "value-neutral"
+                                          }`}
+                                        >
+                                          {ktcDelta > 0
+                                            ? `+${ktcDelta}`
+                                            : ktcDelta}
+                                        </span>
+                                        <span>)</span>
+                                      </div>
+                                      <div className="roster-grid-item">
+                                        <span>
+                                          {playerInfo?.["FC Value"] || "N/A"}
+                                        </span>
+                                        {" ("}
+                                        <span
+                                          className={`${
+                                            fcDelta > 0
+                                              ? "value-positive"
+                                              : fcDelta < 0
+                                              ? "value-negative"
+                                              : "value-neutral"
+                                          }`}
+                                        >
+                                          {fcDelta > 0
+                                            ? `+${fcDelta}`
+                                            : fcDelta}
+                                        </span>
+                                        <span>)</span>
                                       </div>
                                       <div className="roster-grid-item">
                                         {renderInjuryStatus(

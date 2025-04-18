@@ -96,3 +96,27 @@
   color: red;
   font-weight: bold;
 }
+
+/* Light mode styles for draft-grid-link */
+body.light .draft-grid-link {
+  color: #6a0dad; /* Light purple */
+  text-decoration: none; /* Remove underline */
+  font-weight: bold;
+}
+
+body.light .draft-grid-link:hover {
+  color: #8a2be2; /* Brighter purple on hover */
+  text-decoration: underline; /* Add underline on hover */
+}
+
+/* Dark mode styles for draft-grid-link */
+body.dark .draft-grid-link {
+  color: #b19cd9; /* Softer purple for dark mode */
+  text-decoration: none; /* Remove underline */
+  font-weight: bold;
+}
+
+body.dark .draft-grid-link:hover {
+  color: #d8bfd8; /* Lighter purple on hover */
+  text-decoration: underline; /* Add underline on hover */
+}

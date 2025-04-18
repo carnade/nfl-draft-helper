@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
+import { ThemeContext } from "./ThemeContext";
 import "./Settings.css";
 
 function Settings() {
@@ -6,7 +7,6 @@ function Settings() {
   const [username, setUsername] = useState("");
 
   // Existing states
-  const [theme, setTheme] = useState("light");
   const [defaultRankings, setDefaultRankings] = useState({
     dynasty_sf: { name: "default", data: "" },
     dynasty_ppr: { name: "default", data: "" },
@@ -15,6 +15,8 @@ function Settings() {
     redraft_ppr: { name: "default", data: "" },
     redraft_half_ppr: { name: "default", data: "" },
   });
+
+  const { theme, setTheme } = useContext(ThemeContext);
 
   useEffect(() => {
     const saved = localStorage.getItem("FantasyHelperSettings");
@@ -27,10 +29,6 @@ function Settings() {
       // Restore defaultRankings if present
       if (parsed.defaultRankings) {
         setDefaultRankings(parsed.defaultRankings);
-      }
-      // Restore theme if present
-      if (parsed.theme) {
-        setTheme(parsed.theme);
       }
     }
   }, []);
@@ -71,14 +69,13 @@ function Settings() {
       redraft_ppr: { name: "default", data: "" },
       redraft_half_ppr: { name: "default", data: "" },
     });
-    setTheme("light");
     setUsername("");
     alert("Settings reset to defaults (REMEMBER to save).");
   };
 
   const handleSave = () => {
     // Include the new username in the object
-    const settingsToSave = { username, defaultRankings, theme };
+    const settingsToSave = { username, defaultRankings };
     localStorage.setItem(
       "FantasyHelperSettings",
       JSON.stringify(settingsToSave)
@@ -87,8 +84,13 @@ function Settings() {
     alert("Settings saved!");
   };
 
+  const handleThemeToggle = () => {
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+  };
+
   return (
-    <div className="start-page">
+    <div className={`settings-container ${theme}`}>
       <h1>Settings</h1>
       <hr className="separator" />
 
@@ -221,16 +223,19 @@ function Settings() {
           <hr className="separator" />
         </div>
 
-        <div className="settings-field" style={{ display: "none" }}>
-          <label htmlFor="theme-select">Theme:</label>
-          <select
-            id="theme-select"
-            value={theme}
-            onChange={(e) => setTheme(e.target.value)}
-          >
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
+        <div className="settings-field">
+          <label>Dark Mode:</label>
+          <div className="theme-toggle-wrapper" onClick={handleThemeToggle}>
+            <div className={`theme-toggle ${theme}`}>
+              <div className="toggle-circle">
+                {theme === "light" ? (
+                  <span className="sun-icon">☀️</span>
+                ) : (
+                  <span className="moon-icon">🌙</span>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Two buttons in one row: "Reset to Defaults" (red, left) & "Save" (right) */}
