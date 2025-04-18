@@ -53,6 +53,7 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage }) {
   };
 
   const handleStartDefault = () => {
+    setCsvData("");
     setCsvFileName(selectedOption); // Use default CSV data
     if (isRankingsPage) {
       navigate("/rankings");
