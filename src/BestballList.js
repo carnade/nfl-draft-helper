@@ -35,7 +35,15 @@ function BestballList() {
   };
 
   const fetchBestballPlayerData = useCallback(
-    async (playerIds, playerCountMap, oneQBCountMap, twoQBCountMap) => {
+    async (
+      playerIds,
+      playerCountMap,
+      oneQBCountMap,
+      twoQBCountMap,
+      totalDrafts,
+      oneQBDrafts,
+      twoQBDrafts
+    ) => {
       const requests = {
         playerlist: playerIds, // Input list of player IDs
       };
@@ -52,13 +60,30 @@ function BestballList() {
         const data = await response.json();
 
         // Access the players array from the data object
-        const playerData = data.players.map((player) => ({
-          name: player.name,
-          position: player.position, // Include the position field
-          count: playerCountMap[player.id] || 0,
-          oneQBCount: oneQBCountMap[player.id] || 0, // Include 1QB count
-          twoQBCount: twoQBCountMap[player.id] || 0, // Include 2QB count
-        }));
+        const playerData = data.players.map((player) => {
+          const totalCount = playerCountMap[player.id] || 0;
+          const oneQBCount = oneQBCountMap[player.id] || 0;
+          const twoQBCount = twoQBCountMap[player.id] || 0;
+
+          // Calculate percentages
+          const totalPercentage =
+            totalDrafts > 0 ? ((totalCount / totalDrafts) * 100).toFixed(0) : 0;
+          const oneQBPercentage =
+            oneQBDrafts > 0 ? ((oneQBCount / oneQBDrafts) * 100).toFixed(0) : 0;
+          const twoQBPercentage =
+            twoQBDrafts > 0 ? ((twoQBCount / twoQBDrafts) * 100).toFixed(0) : 0;
+
+          return {
+            name: player.name,
+            position: player.position, // Include the position field
+            totalCount, // Total count as a separate value
+            totalPercentage, // Total percentage as a separate value
+            oneQBCount, // 1QB count as a separate value
+            oneQBPercentage, // 1QB percentage as a separate value
+            twoQBCount, // 2QB count as a separate value
+            twoQBPercentage, // 2QB percentage as a separate value
+          };
+        });
 
         setPortfolioData(playerData); // Save the processed data to state
         console.log("Fetched player data:", playerData);
@@ -84,8 +109,13 @@ function BestballList() {
       const leaguesData = await leaguesResponse.json();
 
       const filteredLeagues = leaguesData.filter(
-        (league) => league.settings.best_ball === 1
+        (league) =>
+          league.settings.best_ball === 1 && league.status === "in_season"
       );
+
+      const totalDrafts = filteredLeagues.length; // Count total in_season drafts
+      let oneQBDrafts = 0; // Count of 1QB drafts
+      let twoQBDrafts = 0; // Count of 2QB drafts
 
       const playerCountMap = {}; // Dictionary to track total player counts
       const oneQBCountMap = {}; // Dictionary to track 1QB league counts
@@ -99,6 +129,13 @@ function BestballList() {
 
         // Check if the league is a 2QB league
         const isTwoQBLeague = league.roster_positions.includes("SUPER_FLEX");
+
+        // Increment the appropriate draft count
+        if (isTwoQBLeague) {
+          twoQBDrafts++;
+        } else {
+          oneQBDrafts++;
+        }
 
         // Process each roster in the league
         standingsData.forEach((roster) => {
@@ -160,8 +197,11 @@ function BestballList() {
         playerIds,
         playerCountMap,
         oneQBCountMap,
-        twoQBCountMap
-      ); // Pass count maps for later use
+        twoQBCountMap,
+        totalDrafts, // Pass total drafts for percentage calculation
+        oneQBDrafts, // Pass 1QB drafts for percentage calculation
+        twoQBDrafts // Pass 2QB drafts for percentage calculation
+      );
 
       console.log("Fetched league data:", sortedLeagues);
       console.log("Player count map:", playerCountMap); // Log the player count map
@@ -372,9 +412,10 @@ function BestballList() {
               .slice() // Create a shallow copy to avoid mutating the original state
               .sort((a, b) => {
                 // Primary sort: Total count (descending)
-                if (b.count !== a.count) {
-                  return b.count - a.count;
+                if (b.totalCount !== a.totalCount) {
+                  return b.totalCount - a.totalCount;
                 }
+
                 // Secondary sort: Player name (ascending)
                 return a.name.localeCompare(b.name);
               })
@@ -382,9 +423,24 @@ function BestballList() {
                 <React.Fragment key={player.name}>
                   <div className="portfolio-grid-item">{player.name}</div>
                   <div className="portfolio-grid-item">{player.position}</div>
-                  <div className="portfolio-grid-item">{player.oneQBCount}</div>
-                  <div className="portfolio-grid-item">{player.twoQBCount}</div>
-                  <div className="portfolio-grid-item">{player.count}</div>
+                  <div className="portfolio-grid-item">
+                    <span className="count">{player.oneQBCount}</span>{" "}
+                    <span className="percentage">
+                      ({player.oneQBPercentage}%)
+                    </span>
+                  </div>
+                  <div className="portfolio-grid-item">
+                    <span className="count">{player.twoQBCount}</span>{" "}
+                    <span className="percentage">
+                      ({player.twoQBPercentage}%)
+                    </span>
+                  </div>
+                  <div className="portfolio-grid-item">
+                    <span className="count">{player.totalCount}</span>{" "}
+                    <span className="percentage">
+                      ({player.totalPercentage}%)
+                    </span>
+                  </div>
                 </React.Fragment>
               ))}
           </div>

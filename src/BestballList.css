@@ -223,6 +223,20 @@ body.dark .portfolio-grid-item {
   text-align: center;
 }
 
+/* Make the count bold */
+.portfolio-grid-item .count {
+  font-weight: bold;
+}
+
+/* Make the percentage grey */
+.portfolio-grid-item .percentage {
+  color: #888; /* Grey for light mode */
+}
+
+body.dark .portfolio-grid-item .percentage {
+  color: #bbb; /* Lighter grey for dark mode */
+}
+
 /* Filter container */
 .filter-container {
   display: flex;
