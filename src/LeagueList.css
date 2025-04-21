@@ -37,12 +37,11 @@
   border-radius: 5px;
 }
 
-/* Main 2-column layout: leagues vs. injury report */
-.main-content {
-  width: 100%;
+/* Main layout */
+.league-main-content {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  gap: 20px;
 }
 
 /* Left side: league list */
@@ -55,20 +54,36 @@
   display: grid;
   grid-template-columns: 3fr 1fr 1fr 1fr 1fr 1fr;
   gap: 10px;
-  margin-left: auto;
-  margin-right: auto;
 }
 
 .league-grid-header {
   font-weight: bold;
   border-bottom: 2px solid #ccc;
-  padding-bottom: 10px;
+  padding: 10px;
   text-align: left;
+  border-radius: 5px 5px 0 0;
+}
+
+body.light .league-grid-header {
+  background-color: #e2e2e2;
+  color: #000;
+}
+
+body.dark .league-grid-header {
+  background-color: #35353b;
+  color: #fff;
 }
 
 .league-grid-item {
-  padding: 10px 0;
-  border-bottom: 1px solid #eee;
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+}
+
+body.light .league-grid-item {
+}
+
+body.dark .league-grid-item {
+  color: #e2e2e2;
 }
 
 /* The league name with possible highlighting */
@@ -78,8 +93,12 @@
   font-weight: 500;
 }
 
-.highlighted-league {
-  background-color: #ffb97c;
+.league-highlighted-league {
+  background-color: #ffffcc;
+}
+
+body.dark .league-highlighted-league {
+  background-color: #444;
 }
 
 /* Expand/collapse arrow */
@@ -137,11 +156,136 @@
   background-color: #ffe5e5;
 }
 
-/* Right side: injury report container */
-.injury-report-container {
+/* Right-side container */
+.league-right-side-container {
   width: 35%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Tab Navigation */
+.league-tab-container {
+  display: flex;
+  gap: 10px;
+}
+
+.league-tab-button {
+  padding: 10px 20px;
+  border: none;
+  background-color: #f1f1f1;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  border-radius: 5px 5px 0 0;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+body.light .league-tab-button {
+  background-color: #f1f1f1;
+  color: #000;
+}
+
+body.dark .league-tab-button {
+  background-color: #35353b;
+  color: #fff;
+}
+
+body.light .league-tab-button.active {
+  background-color: #007bff;
+  color: #fff;
+}
+
+body.dark .league-tab-button.active {
+  background-color: #0056b3;
+  color: #fff;
+}
+
+/* Tab Content */
+.league-tab-content {
+  flex: 1;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+}
+
+body.dark .league-tab-content {
+  background-color: #25252b;
+  border-color: #444;
+  color: #e2e2e2;
+}
+
+/* Injury Report */
+.league-injury-report-container {
   padding-left: 20px;
   border-left: 1px solid #ccc;
+}
+
+body.dark .league-injury-report-container {
+  background-color: #25252b;
+  color: #e2e2e2;
+}
+
+/* Portfolio */
+.league-portfolio-container {
+}
+
+body.dark .league-portfolio-container {
+  background-color: #25252b;
+  color: #e2e2e2;
+}
+
+/* Portfolio Grid */
+.league-portfolio-grid {
+  display: grid;
+  grid-template-columns: 6fr 1fr 3fr;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.league-portfolio-grid-header {
+  font-weight: bold;
+  background-color: #f1f1f1;
+  padding: 10px;
+  text-align: left;
+}
+
+body.light .league-portfolio-grid-header {
+  background-color: #f1f1f1;
+  color: #000;
+}
+
+body.dark .league-portfolio-grid-header {
+  background-color: #35353b;
+  color: #fff;
+}
+
+.league-portfolio-grid-item {
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+}
+
+body.light .league-portfolio-grid-item {
+  color: #000;
+}
+
+body.dark .league-portfolio-grid-item {
+  background-color: #25252b;
+  color: #e2e2e2;
+}
+
+/* Scoped styling for count inside league-portfolio-grid-item */
+.league-portfolio-grid-item .count {
+  font-weight: bold;
+  color: inherit; /* Inherit the default text color */
+}
+
+/* Scoped styling for percentage inside league-portfolio-grid-item */
+.league-portfolio-grid-item .percentage {
+  color: #888; /* Light grey for light mode */
+}
+
+body.dark .league-portfolio-grid-item .percentage {
+  color: #bbb; /* Lighter grey for dark mode */
 }
 
 /* Switch toggle for "show by team" */
@@ -207,6 +351,16 @@ input:checked + .slider:before {
   border-bottom: 2px solid #ccc;
 }
 
+body.light .injury-grid-header {
+  background-color: #f1f1f1;
+  color: #000;
+}
+
+body.dark .injury-grid-header {
+  background-color: #35353b;
+  color: #fff;
+}
+
 /* Each data row is also a grid container with the same 3 columns */
 .injury-grid-row {
   display: grid;
@@ -214,6 +368,16 @@ input:checked + .slider:before {
   align-items: center;
   padding: 5px 0;
   cursor: pointer; /* if clickable */
+}
+
+body.light .injury-grid-row {
+  background-color: ##f2f2f2;
+  color: #000;
+}
+
+body.dark .injury-grid-row {
+  background-color: #25252b;
+  color: #e2e2e2;
 }
 
 /* Then each column cell inside the row */
@@ -308,7 +472,7 @@ body.light .roster-header {
 
 body.dark .league-grid-header,
 body.dark .roster-header {
-  background-color: #333; /* Dark background */
+  background-color: #35353b; /* Dark background */
   color: #fff; /* Light text */
 }
 /* Value-neutral for light and dark modes */
@@ -369,4 +533,14 @@ body.dark .highlighted-league {
   border: 2px solid #661a1a;
   background-color: #45454b; /* Darker orange for dark mode */
   border-radius: 5px;
+}
+
+/* Align text to the right */
+.align_right {
+  text-align: right;
+}
+
+/* Align text to the center */
+.align_center {
+  text-align: center;
 }

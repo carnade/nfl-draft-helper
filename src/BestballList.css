@@ -45,7 +45,7 @@
   margin-right: auto;
 }
 
-.league-grid-header {
+.bestball-grid-header {
   font-weight: bold;
   background-color: #f1f1f1; /* optional */
   padding: 10px;
@@ -53,10 +53,9 @@
   text-align: left;
 }
 
-.league-grid-item {
+.bestball-grid-item {
   padding: 10px;
   border-bottom: 1px solid #ddd;
-  /*background-color: #f9f9f9; /* optional for a subtle background */
 }
 
 /* Expand/collapse arrow for league details */
@@ -66,7 +65,7 @@
 }
 
 /* Extra info row that appears when expanded */
-.league-details {
+.bestball-details {
   grid-column: 1 / -1; /* spans all columns in the .bestball-grid */
   padding: 10px 0;
   margin-left: 20px; /* indent or pad the expanded area */
@@ -135,7 +134,7 @@
 /* Hover effect for inactive tabs */
 .tab-button:hover {
   background-color: #e0e0e0;
-  color: #333;
+  color: #35353b;
 }
 
 /* Optional: Add spacing between the tabs and the content */
@@ -164,11 +163,19 @@ body.dark .tab-content {
 
 /* Portfolio grid container */
 .portfolio-grid {
-  width: 60%;
   display: grid;
-  grid-template-columns: 5fr 1fr 1fr 1fr 1fr; /* Adjust column widths: 3fr for Player Name, 1fr for POS, 1QB, 2QB, and Total */
+  grid-template-columns: 5fr 1fr 1fr 1fr 1fr; /* Adjust column widths */
   gap: 5px;
   margin-top: 20px;
+  max-width: 1000px; /* Fixed width for larger screens */
+  width: 100%;
+}
+
+/* Media query for smaller screens */
+@media (max-width: 1000px) {
+  .portfolio-grid {
+    width: 100%; /* Shrink to fit the screen */
+  }
 }
 
 /* Portfolio grid headers */
@@ -188,7 +195,7 @@ body.light .portfolio-grid-header {
 
 /* Dark mode styles for portfolio-grid-header */
 body.dark .portfolio-grid-header {
-  background-color: #333;
+  background-color: #35353b;
   color: #fff;
 }
 
@@ -207,7 +214,7 @@ body.light .portfolio-grid-item {
 
 /* Dark mode styles for portfolio-grid-item */
 body.dark .portfolio-grid-item {
-  background-color: #222;
+  background-color: #25252b;
   color: #e2e2e2;
 }
 
@@ -240,29 +247,26 @@ body.dark .portfolio-grid-item .percentage {
 /* Filter container */
 .filter-container {
   display: flex;
-  align-items: center;
-  margin-bottom: 10px;
-  gap: 10px; /* Space between label and buttons */
+  align-items: center; /* Align label and buttons vertically */
+  gap: 10px; /* Space between the label and buttons */
 }
 
 /* Filter label */
-body.light .filter-label {
+.filter-label {
   font-weight: bold;
   font-size: 18px;
-  color: #333;
+  color: #35353b;
+  white-space: nowrap; /* Prevent the label from wrapping */
 }
 
 body.dark .filter-label {
-  font-weight: bold;
-  font-size: 18px;
   color: #f0f0f0;
 }
 
 /* Filter buttons container */
 .filter-buttons {
   display: flex;
-  justify-content: flex-start;
-  gap: 10px;
+  gap: 10px; /* Space between buttons */
 }
 
 /* Default button style */
@@ -357,4 +361,66 @@ body.light .user-position {
 body.dark .user-position {
   background-color: rgba(4, 128, 6, 0.5); /* Slightly darker green */
   color: #e2e2e2;
+}
+
+/* Flex container for the portfolio layout */
+.portfolio-container {
+  display: flex;
+  flex-direction: column; /* Stack items vertically */
+  gap: 20px; /* Space between sections */
+  margin-top: 20px;
+}
+
+/* Left section containing the summary table and filter buttons */
+.portfolio-left-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px; /* Space between the summary table and filter buttons */
+}
+
+/* Summary Grid */
+.portfolio-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  max-width: 400px; /* Limit the width of the summary table */
+  width: 100%; /* Ensure it scales for smaller screens */
+}
+
+/* Light mode styles for summary grid header */
+body.light .portfolio-summary-header {
+  font-weight: bold;
+  text-align: center;
+  background-color: #f1f1f1; /* Light background */
+  color: #000; /* Dark text */
+  padding: 10px;
+  border: 1px solid #ccc;
+}
+
+/* Dark mode styles for summary grid header */
+body.dark .portfolio-summary-header {
+  font-weight: bold;
+  text-align: center;
+  background-color: #35353b; /* Dark background */
+  color: #fff; /* Light text */
+  padding: 10px;
+  border: 1px solid #555;
+}
+
+/* Light mode styles for summary grid items */
+body.light .portfolio-summary-item {
+  text-align: center;
+  background-color: #fff; /* Light background */
+  color: #000; /* Dark text */
+  padding: 10px;
+  border: 1px solid #ccc;
+}
+
+/* Dark mode styles for summary grid items */
+body.dark .portfolio-summary-item {
+  text-align: center;
+  background-color: #25252b; /* Dark background */
+  color: #e2e2e2; /* Light text */
+  padding: 10px;
+  border: 1px solid #555;
 }

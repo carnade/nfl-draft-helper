@@ -17,9 +17,15 @@ function BestballList() {
   const [userId, setUserId] = useState(null);
   const [leagues, setLeagues] = useState([]);
   const [expandedLeagueIds, setExpandedLeagueIds] = useState(new Set());
-  const [activeTab, setActiveTab] = useState("Results"); // New state for active tab
-  const [portfolioData, setPortfolioData] = useState([]); // New state for portfolio data
-  const [selectedPosition, setSelectedPosition] = useState(null); // State for filtering by position
+  const [activeTab, setActiveTab] = useState("Results");
+  const [portfolioData, setPortfolioData] = useState([]);
+  const [selectedPosition, setSelectedPosition] = useState(null);
+
+  // Add state for league counts
+  const [oneQBDrafts, setOneQBDrafts] = useState(0);
+  const [twoQBDrafts, setTwoQBDrafts] = useState(0);
+  const [totalDrafts, setTotalDrafts] = useState(0);
+
   const LEAGUE_YEAR = 2025;
 
   const handleToggle = (leagueId) => {
@@ -45,7 +51,7 @@ function BestballList() {
       twoQBDrafts
     ) => {
       const requests = {
-        playerlist: playerIds, // Input list of player IDs
+        playerlist: playerIds,
       };
 
       try {
@@ -59,13 +65,11 @@ function BestballList() {
 
         const data = await response.json();
 
-        // Access the players array from the data object
         const playerData = data.players.map((player) => {
           const totalCount = playerCountMap[player.id] || 0;
           const oneQBCount = oneQBCountMap[player.id] || 0;
           const twoQBCount = twoQBCountMap[player.id] || 0;
 
-          // Calculate percentages
           const totalPercentage =
             totalDrafts > 0 ? ((totalCount / totalDrafts) * 100).toFixed(0) : 0;
           const oneQBPercentage =
@@ -75,17 +79,17 @@ function BestballList() {
 
           return {
             name: player.name,
-            position: player.position, // Include the position field
-            totalCount, // Total count as a separate value
-            totalPercentage, // Total percentage as a separate value
-            oneQBCount, // 1QB count as a separate value
-            oneQBPercentage, // 1QB percentage as a separate value
-            twoQBCount, // 2QB count as a separate value
-            twoQBPercentage, // 2QB percentage as a separate value
+            position: player.position,
+            totalCount,
+            totalPercentage,
+            oneQBCount,
+            oneQBPercentage,
+            twoQBCount,
+            twoQBPercentage,
           };
         });
 
-        setPortfolioData(playerData); // Save the processed data to state
+        setPortfolioData(playerData);
         console.log("Fetched player data:", playerData);
       } catch (error) {
         console.error("Error fetching bestball player data:", error);
@@ -113,13 +117,15 @@ function BestballList() {
           league.settings.best_ball === 1 && league.status === "in_season"
       );
 
-      const totalDrafts = filteredLeagues.length; // Count total in_season drafts
-      let oneQBDrafts = 0; // Count of 1QB drafts
-      let twoQBDrafts = 0; // Count of 2QB drafts
+      // Update total drafts
+      setTotalDrafts(filteredLeagues.length);
 
-      const playerCountMap = {}; // Dictionary to track total player counts
-      const oneQBCountMap = {}; // Dictionary to track 1QB league counts
-      const twoQBCountMap = {}; // Dictionary to track 2QB league counts
+      let oneQBCount = 0;
+      let twoQBCount = 0;
+
+      const playerCountMap = {};
+      const oneQBCountMap = {};
+      const twoQBCountMap = {};
 
       const standingsPromises = filteredLeagues.map(async (league) => {
         const standingsResponse = await fetch(
@@ -127,29 +133,22 @@ function BestballList() {
         );
         const standingsData = await standingsResponse.json();
 
-        // Check if the league is a 2QB league
         const isTwoQBLeague = league.roster_positions.includes("SUPER_FLEX");
 
-        // Increment the appropriate draft count
         if (isTwoQBLeague) {
-          twoQBDrafts++;
+          twoQBCount++;
         } else {
-          oneQBDrafts++;
+          oneQBCount++;
         }
 
-        // Process each roster in the league
         standingsData.forEach((roster) => {
-          // Only count players if the owner_id matches the userId
           if (roster.owner_id === userId) {
-            const players = roster.players || []; // Get the players array
+            const players = roster.players || [];
 
-            // Increment the count for each player_id
             players.forEach((playerId) => {
               if (playerId !== 0) {
-                // Update total count
                 playerCountMap[playerId] = (playerCountMap[playerId] || 0) + 1;
 
-                // Update 1QB or 2QB count
                 if (isTwoQBLeague) {
                   twoQBCountMap[playerId] = (twoQBCountMap[playerId] || 0) + 1;
                 } else {
@@ -160,17 +159,14 @@ function BestballList() {
           }
         });
 
-        // Sort teams by FPTS in descending order
         const sortedTeams = standingsData.sort(
           (a, b) => b.settings.fpts - a.settings.fpts
         );
 
-        // Assign positions based on the sorted order
         sortedTeams.forEach((team, index) => {
-          team.position = index + 1; // 1-based index for position
+          team.position = index + 1;
         });
 
-        // Find the user's team and assign the user's position
         const userTeam = sortedTeams.find((team) => team.owner_id === userId);
         const userPosition = userTeam ? userTeam.position : null;
 
@@ -184,27 +180,28 @@ function BestballList() {
 
       const leaguesWithTeams = await Promise.all(standingsPromises);
 
-      // Sort leagues by user position (lowest position at the top)
       const sortedLeagues = leaguesWithTeams.sort(
         (a, b) => a.userPosition - b.userPosition
       );
 
       setLeagues(sortedLeagues);
 
-      // Fetch player data using playerCountMap
-      const playerIds = Object.keys(playerCountMap); // Extract player IDs
+      setOneQBDrafts(oneQBCount);
+      setTwoQBDrafts(twoQBCount);
+
+      const playerIds = Object.keys(playerCountMap);
       fetchBestballPlayerData(
         playerIds,
         playerCountMap,
         oneQBCountMap,
         twoQBCountMap,
-        totalDrafts, // Pass total drafts for percentage calculation
-        oneQBDrafts, // Pass 1QB drafts for percentage calculation
-        twoQBDrafts // Pass 2QB drafts for percentage calculation
+        filteredLeagues.length,
+        oneQBCount,
+        twoQBCount
       );
 
       console.log("Fetched league data:", sortedLeagues);
-      console.log("Player count map:", playerCountMap); // Log the player count map
+      console.log("Player count map:", playerCountMap);
     } catch (error) {
       console.error("Error fetching league data:", error);
     }
@@ -216,7 +213,6 @@ function BestballList() {
 
   useEffect(() => {
     if (activeTab === "Portfolio") {
-      // Save portfolio data to localStorage when the Portfolio tab is opened
       localStorage.setItem(
         "FantasyHelperBestballPortfolio",
         JSON.stringify(portfolioData)
@@ -224,6 +220,10 @@ function BestballList() {
       console.log("Portfolio data saved to localStorage:", portfolioData);
     }
   }, [activeTab, portfolioData]);
+
+  const totalOneQBLeagues = oneQBDrafts;
+  const totalTwoQBLeagues = twoQBDrafts;
+  const totalLeagues = totalDrafts;
 
   return (
     <div className="dashboard-container">
@@ -234,7 +234,6 @@ function BestballList() {
         </div>
       </div>
 
-      {/* Tab Buttons */}
       <div className="tab-container">
         <button
           className={`tab-button ${activeTab === "Results" ? "active" : ""}`}
@@ -250,19 +249,18 @@ function BestballList() {
         </button>
       </div>
 
-      {/* Tab Content */}
       <div className="tab-content">
         {activeTab === "Results" && (
           <div className="bestball-grid">
-            <div className="league-grid-header">League Name</div>
-            <div className="league-grid-header">Position</div>
-            <div className="league-grid-header">Record</div>
-            <div className="league-grid-header">Links</div>
+            <div className="bestball-grid-header">League Name</div>
+            <div className="bestball-grid-header">Position</div>
+            <div className="bestball-grid-header">Record</div>
+            <div className="bestball-grid-header">Links</div>
 
             {leagues.length > 0 ? (
               leagues.map((league) => (
                 <React.Fragment key={league.league_id}>
-                  <div className="league-grid-item">
+                  <div className="bestball-grid-item">
                     <span
                       className="toggle-button"
                       onClick={() => handleToggle(league.league_id)}
@@ -271,7 +269,7 @@ function BestballList() {
                       {league.name}
                     </span>
                   </div>
-                  <div className="league-grid-item">
+                  <div className="bestball-grid-item">
                     {league.userPosition || "-"}
                     <span> </span>
                     {league.userPosition === 1 && (
@@ -293,12 +291,12 @@ function BestballList() {
                       />
                     )}
                   </div>
-                  <div className="league-grid-item">
+                  <div className="bestball-grid-item">
                     {league.userRosterSettings?.wins || 0}-
                     {league.userRosterSettings?.losses || 0}-
                     {league.userRosterSettings?.ties || 0}
                   </div>
-                  <div className="league-grid-item">
+                  <div className="bestball-grid-item">
                     <a
                       href={`https://sleeper.app/leagues/${league.league_id}`}
                       target="_blank"
@@ -308,7 +306,7 @@ function BestballList() {
                     </a>
                   </div>
                   {expandedLeagueIds.has(league.league_id) && (
-                    <div className="league-details">
+                    <div className="bestball-details">
                       <div className="team-grid">
                         <div className="team-grid-header">Position</div>
                         <div className="team-grid-header">Team Name</div>
@@ -344,105 +342,128 @@ function BestballList() {
                 </React.Fragment>
               ))
             ) : (
-              <div className="league-grid-item">No bestball leagues found.</div>
+              <div className="bestball-grid-item">
+                No bestball leagues found.
+              </div>
             )}
           </div>
         )}
 
         {activeTab === "Portfolio" && (
-          <div className="filter-container">
-            <span className="filter-label">Filter:</span>
-            <div className="filter-buttons">
-              <button
-                className={`filter-button ${
-                  selectedPosition === "QB" ? "qb-active" : ""
-                }`}
-                onClick={() =>
-                  setSelectedPosition((prev) => (prev === "QB" ? null : "QB"))
-                }
-              >
-                QB
-              </button>
-              <button
-                className={`filter-button ${
-                  selectedPosition === "RB" ? "rb-active" : ""
-                }`}
-                onClick={() =>
-                  setSelectedPosition((prev) => (prev === "RB" ? null : "RB"))
-                }
-              >
-                RB
-              </button>
-              <button
-                className={`filter-button ${
-                  selectedPosition === "WR" ? "wr-active" : ""
-                }`}
-                onClick={() =>
-                  setSelectedPosition((prev) => (prev === "WR" ? null : "WR"))
-                }
-              >
-                WR
-              </button>
-              <button
-                className={`filter-button ${
-                  selectedPosition === "TE" ? "te-active" : ""
-                }`}
-                onClick={() =>
-                  setSelectedPosition((prev) => (prev === "TE" ? null : "TE"))
-                }
-              >
-                TE
-              </button>
+          <div className="portfolio-container">
+            <div className="portfolio-left-section">
+              <div className="portfolio-summary-grid">
+                <div className="portfolio-summary-header">1QB Leagues</div>
+                <div className="portfolio-summary-header">2QB Leagues</div>
+                <div className="portfolio-summary-header">Total Leagues</div>
+
+                <div className="portfolio-summary-item">
+                  {totalOneQBLeagues}
+                </div>
+                <div className="portfolio-summary-item">
+                  {totalTwoQBLeagues}
+                </div>
+                <div className="portfolio-summary-item">{totalLeagues}</div>
+              </div>
+
+              <div className="filter-container">
+                <span className="filter-label">Filter:</span>
+                <div className="filter-buttons">
+                  <button
+                    className={`filter-button ${
+                      selectedPosition === "QB" ? "qb-active" : ""
+                    }`}
+                    onClick={() =>
+                      setSelectedPosition((prev) =>
+                        prev === "QB" ? null : "QB"
+                      )
+                    }
+                  >
+                    QB
+                  </button>
+                  <button
+                    className={`filter-button ${
+                      selectedPosition === "RB" ? "rb-active" : ""
+                    }`}
+                    onClick={() =>
+                      setSelectedPosition((prev) =>
+                        prev === "RB" ? null : "RB"
+                      )
+                    }
+                  >
+                    RB
+                  </button>
+                  <button
+                    className={`filter-button ${
+                      selectedPosition === "WR" ? "wr-active" : ""
+                    }`}
+                    onClick={() =>
+                      setSelectedPosition((prev) =>
+                        prev === "WR" ? null : "WR"
+                      )
+                    }
+                  >
+                    WR
+                  </button>
+                  <button
+                    className={`filter-button ${
+                      selectedPosition === "TE" ? "te-active" : ""
+                    }`}
+                    onClick={() =>
+                      setSelectedPosition((prev) =>
+                        prev === "TE" ? null : "TE"
+                      )
+                    }
+                  >
+                    TE
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
 
-        {activeTab === "Portfolio" && (
-          <div className="portfolio-grid">
-            <div className="portfolio-grid-header">Player Name</div>
-            <div className="portfolio-grid-header">POS</div>
-            <div className="portfolio-grid-header">1QB</div>
-            <div className="portfolio-grid-header">2QB</div>
-            <div className="portfolio-grid-header">Total</div>
+            <div className="portfolio-grid">
+              <div className="portfolio-grid-header">Player Name</div>
+              <div className="portfolio-grid-header">POS</div>
+              <div className="portfolio-grid-header">1QB</div>
+              <div className="portfolio-grid-header">2QB</div>
+              <div className="portfolio-grid-header">Total</div>
 
-            {portfolioData
-              .filter((player) =>
-                selectedPosition ? player.position === selectedPosition : true
-              ) // Filter by position if a position is selected
-              .slice() // Create a shallow copy to avoid mutating the original state
-              .sort((a, b) => {
-                // Primary sort: Total count (descending)
-                if (b.totalCount !== a.totalCount) {
-                  return b.totalCount - a.totalCount;
-                }
-
-                // Secondary sort: Player name (ascending)
-                return a.name.localeCompare(b.name);
-              })
-              .map((player) => (
-                <React.Fragment key={player.name}>
-                  <div className="portfolio-grid-item">{player.name}</div>
-                  <div className="portfolio-grid-item">{player.position}</div>
-                  <div className="portfolio-grid-item">
-                    <span className="count">{player.oneQBCount}</span>{" "}
-                    <span className="percentage">
-                      ({player.oneQBPercentage}%)
-                    </span>
-                  </div>
-                  <div className="portfolio-grid-item">
-                    <span className="count">{player.twoQBCount}</span>{" "}
-                    <span className="percentage">
-                      ({player.twoQBPercentage}%)
-                    </span>
-                  </div>
-                  <div className="portfolio-grid-item">
-                    <span className="count">{player.totalCount}</span>{" "}
-                    <span className="percentage">
-                      ({player.totalPercentage}%)
-                    </span>
-                  </div>
-                </React.Fragment>
-              ))}
+              {portfolioData
+                .filter((player) =>
+                  selectedPosition ? player.position === selectedPosition : true
+                )
+                .slice()
+                .sort((a, b) => {
+                  if (b.totalCount !== a.totalCount) {
+                    return b.totalCount - a.totalCount;
+                  }
+                  return a.name.localeCompare(b.name);
+                })
+                .map((player) => (
+                  <React.Fragment key={player.name}>
+                    <div className="portfolio-grid-item">{player.name}</div>
+                    <div className="portfolio-grid-item">{player.position}</div>
+                    <div className="portfolio-grid-item">
+                      <span className="count">{player.oneQBCount}</span>{" "}
+                      <span className="percentage">
+                        ({player.oneQBPercentage}%)
+                      </span>
+                    </div>
+                    <div className="portfolio-grid-item">
+                      <span className="count">{player.twoQBCount}</span>{" "}
+                      <span className="percentage">
+                        ({player.twoQBPercentage}%)
+                      </span>
+                    </div>
+                    <div className="portfolio-grid-item">
+                      <span className="count">{player.totalCount}</span>{" "}
+                      <span className="percentage">
+                        ({player.totalPercentage}%)
+                      </span>
+                    </div>
+                  </React.Fragment>
+                ))}
+            </div>
           </div>
         )}
       </div>
