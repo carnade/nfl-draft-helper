@@ -382,7 +382,6 @@ body.dark .user-position {
 .portfolio-summary-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
   max-width: 400px; /* Limit the width of the summary table */
   width: 100%; /* Ensure it scales for smaller screens */
 }
