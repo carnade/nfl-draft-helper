@@ -20,14 +20,17 @@ function LeagueList() {
   const { userName } = useParams();
   const [userId, setUserId] = useState(null);
   const [leagues, setLeagues] = useState([]);
+  const [injuryReport, setInjuryReport] = useState({});
+  const [portfolioData, setPortfolioData] = useState([]); // State for portfolio data
+  const [activeTab, setActiveTab] = useState("Injuries"); // State for active tab
   const [expandedLeagueIds, setExpandedLeagueIds] = useState(new Set());
   const [playerData, setPlayerData] = useState({});
-  const [injuryReport, setInjuryReport] = useState({});
   const [expandedTeams, setExpandedTeams] = useState(new Set());
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [highlightedLeagues, setHighlightedLeagues] = useState(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [showAllInjuries, setShowAllInjuries] = useState(false);
+  const [selectedPosition, setSelectedPosition] = useState(null); // Filter by position
 
   let searchTimeout;
 
@@ -166,16 +169,7 @@ function LeagueList() {
           };
         }),
       };
-      /*
-let response;
-if (mock) {
-  response = await fetch("/carnade_players.json", {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-*/
+
       try {
         const response = await fetch(`${BASE_URL}/getplayers`, {
           method: "POST",
@@ -191,6 +185,62 @@ if (mock) {
           playerDataMap[leagueData.league_id] = leagueData;
         });
         setPlayerData(playerDataMap);
+
+        const playerCountMap = {};
+
+        // Count players across leagues, excluding playerId === 0
+        leagues.forEach((league) => {
+          const players = [
+            ...league.userRoster.starters,
+            ...league.userRoster.reserve,
+            ...league.userRoster.taxi,
+            ...league.userRoster.uniquePlayers,
+          ];
+
+          players.forEach((playerId) => {
+            if (playerId && playerId !== "0") {
+              // Ensure playerId is valid and not 0
+              if (!playerCountMap[playerId]) {
+                playerCountMap[playerId] = 0;
+              }
+              playerCountMap[playerId]++;
+            }
+          });
+        });
+        console.log("Player Count Map: ", playerCountMap);
+        // Map player data to portfolio format
+        const portfolio = Object.keys(playerCountMap).map((playerId) => {
+          let player = null;
+
+          // Convert playerId to a string for comparison
+          const playerIdStr = String(playerId);
+
+          // Iterate through each league in the data array
+          for (const league of data) {
+            // Iterate through league.players and include the player ID
+            player = Object.entries(league.players).find(([key, value]) => {
+              return key === playerIdStr;
+            });
+
+            if (player) {
+              // Extract the player object and include the ID
+              player = { id: player[0], ...player[1] };
+              break; // Exit the loop once the player is found
+            }
+          }
+
+          return {
+            name: `${player?.first_name || ""} ${player?.last_name || ""}`,
+            position: player?.position || "N/A",
+            count: playerCountMap[playerId],
+            percentage: (
+              (playerCountMap[playerId] / leagues.length) *
+              100
+            ).toFixed(0),
+          };
+        });
+
+        setPortfolioData(portfolio);
       } catch (error) {
         console.error("Error fetching player data:", error);
       }
@@ -271,7 +321,6 @@ if (mock) {
 
   const fetchInjuryReport = useCallback(async () => {
     try {
-      //if (mock) response = await fetch("/injury_report.json");
       const response = await fetch(`${BASE_URL}/teams`, {
         method: "GET",
         headers: {
@@ -505,7 +554,8 @@ if (mock) {
         />
       </div>
 
-      <div className="main-content">
+      <div className="league-main-content">
+        {/* Left Side: Leagues */}
         <div className="league-list-container">
           <div className="league-grid">
             <div className="league-grid-header">League Name</div>
@@ -526,7 +576,7 @@ if (mock) {
                     <div
                       className={`league-grid-item league-name ${
                         highlightedLeagues.has(league.league_id)
-                          ? "highlighted-league"
+                          ? "league-highlighted-league"
                           : ""
                       }`}
                     >
@@ -708,114 +758,245 @@ if (mock) {
             )}
           </div>
         </div>
-        <div className="injury-report-container">
-          <h2>Injury Report</h2>
-          <label className="switch">
-            <input
-              type="checkbox"
-              checked={showAllInjuries}
-              onChange={() => setShowAllInjuries((prev) => !prev)}
-            />
-            <span className="slider"></span>
-          </label>
-          <label>Show by team</label>
-          {!showAllInjuries ? (
-            <div className="all-injuries-list">
-              <div className="injury-grid-header">
-                <div className="injury-grid-column">Player Name</div>
-                <div className="injury-grid-column">Team</div>
-                <div className="injury-grid-column">Status</div>
-              </div>
-              {Object.keys(injuryReport).flatMap((teamAbbreviation) =>
-                injuryReport[teamAbbreviation].map((player, index) => (
-                  <div
-                    key={`${teamAbbreviation}-${index}`}
-                    className={`injury-grid-row ${
-                      selectedPlayer ===
-                      `${player.first_name}-${player.last_name}`
-                        ? "selected-player"
-                        : ""
-                    }`}
-                    onClick={() => handlePlayerClick(player)}
-                    onDoubleClick={() => handlePlayerDoubleClick(player)}
-                  >
-                    <div className="injury-grid-column">
-                      {player.first_name} {player.last_name}
-                    </div>
-                    <div className="injury-grid-column">{teamAbbreviation}</div>
-                    <div className="injury-grid-column">
-                      <span className={`injury-status ${player.injury_status}`}>
-                        {player.injury_status}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          ) : (
-            <div className="injury-report-teams">
-              {Object.keys(injuryReport).map((teamAbbreviation) => {
-                const teamInjuries = injuryReport[teamAbbreviation];
-                const { redCount, orangeCount } =
-                  countInjuriesForReport(teamInjuries);
 
-                return (
-                  <div key={teamAbbreviation} className="injury-team">
-                    <span
-                      className="team-name"
-                      onClick={() => handleTeamToggle(teamAbbreviation)}
-                    >
-                      {expandedTeams.has(teamAbbreviation) ? "▼" : "►"}{" "}
-                      {teamFullName(teamAbbreviation)}
-                    </span>
-                    <div className="team-injury-icons">
-                      {redCount > 0 && (
-                        <span className="injury-icon">
-                          <FontAwesomeIcon
-                            icon={faUserInjured}
-                            style={{ color: "red" }}
-                          />{" "}
-                          {redCount}
-                        </span>
-                      )}
-                      {orangeCount > 0 && (
-                        <span className="injury-icon">
-                          <FontAwesomeIcon
-                            icon={faQuestion}
-                            style={{ color: "orange" }}
-                          />{" "}
-                          {orangeCount}
-                        </span>
-                      )}
+        {/* Right Side: Tabs for Injuries and Portfolio */}
+        <div className="league-right-side-container">
+          {/* Tab Navigation */}
+          <div className="league-tab-container">
+            <button
+              className={`league-tab-button ${
+                activeTab === "Injuries" ? "active" : ""
+              }`}
+              onClick={() => setActiveTab("Injuries")}
+            >
+              Injuries
+            </button>
+            <button
+              className={`league-tab-button ${
+                activeTab === "Portfolio" ? "active" : ""
+              }`}
+              onClick={() => setActiveTab("Portfolio")}
+            >
+              Portfolio
+            </button>
+          </div>
+
+          {/* Tab Content */}
+          <div className="league-tab-content">
+            {activeTab === "Injuries" && (
+              <div className="league-injury-report-container">
+                <h2>Injury Report</h2>
+                <label className="switch">
+                  <input
+                    type="checkbox"
+                    checked={showAllInjuries}
+                    onChange={() => setShowAllInjuries((prev) => !prev)}
+                  />
+                  <span className="slider"></span>
+                </label>
+                <label>Show by team</label>
+                {!showAllInjuries ? (
+                  <div className="all-injuries-list">
+                    <div className="injury-grid-header">
+                      <div className="injury-grid-column">Player Name</div>
+                      <div className="injury-grid-column">Team</div>
+                      <div className="injury-grid-column">Status</div>
                     </div>
-                    {expandedTeams.has(teamAbbreviation) && (
-                      <div className="team-injury-list">
-                        {teamInjuries.map((player, index) => (
-                          <div
-                            key={index}
-                            className={`injury-player ${
-                              selectedPlayer ===
-                              `${player.first_name}-${player.last_name}`
-                                ? "selected-player"
-                                : ""
-                            }`}
-                            onClick={() => handlePlayerClick(player)}
-                          >
+                    {Object.keys(injuryReport).flatMap((teamAbbreviation) =>
+                      injuryReport[teamAbbreviation].map((player, index) => (
+                        <div
+                          key={`${teamAbbreviation}-${index}`}
+                          className={`injury-grid-row ${
+                            selectedPlayer ===
+                            `${player.first_name}-${player.last_name}`
+                              ? "selected-player"
+                              : ""
+                          }`}
+                          onClick={() => handlePlayerClick(player)}
+                          onDoubleClick={() => handlePlayerDoubleClick(player)}
+                        >
+                          <div className="injury-grid-column">
                             {player.first_name} {player.last_name}
+                          </div>
+                          <div className="injury-grid-column">
+                            {teamAbbreviation}
+                          </div>
+                          <div className="injury-grid-column">
                             <span
                               className={`injury-status ${player.injury_status}`}
                             >
                               {player.injury_status}
                             </span>
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      ))
                     )}
                   </div>
-                );
-              })}
-            </div>
-          )}
+                ) : (
+                  <div className="injury-report-teams">
+                    {Object.keys(injuryReport).map((teamAbbreviation) => {
+                      const teamInjuries = injuryReport[teamAbbreviation];
+                      const { redCount, orangeCount } =
+                        countInjuriesForReport(teamInjuries);
+
+                      return (
+                        <div key={teamAbbreviation} className="injury-team">
+                          <span
+                            className="team-name"
+                            onClick={() => handleTeamToggle(teamAbbreviation)}
+                          >
+                            {expandedTeams.has(teamAbbreviation) ? "▼" : "►"}{" "}
+                            {teamFullName(teamAbbreviation)}
+                          </span>
+                          <div className="team-injury-icons">
+                            {redCount > 0 && (
+                              <span className="injury-icon">
+                                <FontAwesomeIcon
+                                  icon={faUserInjured}
+                                  style={{ color: "red" }}
+                                />{" "}
+                                {redCount}
+                              </span>
+                            )}
+                            {orangeCount > 0 && (
+                              <span className="injury-icon">
+                                <FontAwesomeIcon
+                                  icon={faQuestion}
+                                  style={{ color: "orange" }}
+                                />{" "}
+                                {orangeCount}
+                              </span>
+                            )}
+                          </div>
+                          {expandedTeams.has(teamAbbreviation) && (
+                            <div className="team-injury-list">
+                              {teamInjuries.map((player, index) => (
+                                <div
+                                  key={index}
+                                  className={`injury-player ${
+                                    selectedPlayer ===
+                                    `${player.first_name}-${player.last_name}`
+                                      ? "selected-player"
+                                      : ""
+                                  }`}
+                                  onClick={() => handlePlayerClick(player)}
+                                >
+                                  {player.first_name} {player.last_name}
+                                  <span
+                                    className={`injury-status ${player.injury_status}`}
+                                  >
+                                    {player.injury_status}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === "Portfolio" && (
+              <div className="league-portfolio-container">
+                <h2>Portfolio</h2>
+
+                {/* Filter Buttons */}
+                <div className="filter-container">
+                  <span className="filter-label">Filter:</span>
+                  <div className="filter-buttons">
+                    <button
+                      className={`filter-button ${
+                        selectedPosition === "QB" ? "qb-active" : ""
+                      }`}
+                      onClick={() =>
+                        setSelectedPosition((prev) =>
+                          prev === "QB" ? null : "QB"
+                        )
+                      }
+                    >
+                      QB
+                    </button>
+                    <button
+                      className={`filter-button ${
+                        selectedPosition === "RB" ? "rb-active" : ""
+                      }`}
+                      onClick={() =>
+                        setSelectedPosition((prev) =>
+                          prev === "RB" ? null : "RB"
+                        )
+                      }
+                    >
+                      RB
+                    </button>
+                    <button
+                      className={`filter-button ${
+                        selectedPosition === "WR" ? "wr-active" : ""
+                      }`}
+                      onClick={() =>
+                        setSelectedPosition((prev) =>
+                          prev === "WR" ? null : "WR"
+                        )
+                      }
+                    >
+                      WR
+                    </button>
+                    <button
+                      className={`filter-button ${
+                        selectedPosition === "TE" ? "te-active" : ""
+                      }`}
+                      onClick={() =>
+                        setSelectedPosition((prev) =>
+                          prev === "TE" ? null : "TE"
+                        )
+                      }
+                    >
+                      TE
+                    </button>
+                  </div>
+                </div>
+
+                {/* Portfolio Table */}
+                <div className="league-portfolio-grid">
+                  <div className="league-portfolio-grid-header">
+                    Player Name
+                  </div>
+                  <div className="league-portfolio-grid-header align_center">
+                    Position
+                  </div>
+                  <div className="league-portfolio-grid-header align_center">
+                    Count
+                  </div>
+
+                  {portfolioData
+                    .filter((player) =>
+                      selectedPosition
+                        ? player.position === selectedPosition
+                        : true
+                    )
+                    .sort((a, b) => b.count - a.count)
+                    .map((player, index) => (
+                      <React.Fragment key={index}>
+                        <div className="league-portfolio-grid-item">
+                          {player.name}
+                        </div>
+                        <div className="league-portfolio-grid-item align_center">
+                          {player.position}
+                        </div>
+                        <div className="league-portfolio-grid-item align_center">
+                          <span className="count">{player.count}</span>{" "}
+                          <span className="percentage">
+                            ({player.percentage}%)
+                          </span>
+                        </div>
+                      </React.Fragment>
+                    ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       <span hidden>{userId}</span>

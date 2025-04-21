@@ -252,15 +252,15 @@ function BestballList() {
       <div className="tab-content">
         {activeTab === "Results" && (
           <div className="bestball-grid">
-            <div className="league-grid-header">League Name</div>
-            <div className="league-grid-header">Position</div>
-            <div className="league-grid-header">Record</div>
-            <div className="league-grid-header">Links</div>
+            <div className="bestball-grid-header">League Name</div>
+            <div className="bestball-grid-header">Position</div>
+            <div className="bestball-grid-header">Record</div>
+            <div className="bestball-grid-header">Links</div>
 
             {leagues.length > 0 ? (
               leagues.map((league) => (
                 <React.Fragment key={league.league_id}>
-                  <div className="league-grid-item">
+                  <div className="bestball-grid-item">
                     <span
                       className="toggle-button"
                       onClick={() => handleToggle(league.league_id)}
@@ -269,7 +269,7 @@ function BestballList() {
                       {league.name}
                     </span>
                   </div>
-                  <div className="league-grid-item">
+                  <div className="bestball-grid-item">
                     {league.userPosition || "-"}
                     <span> </span>
                     {league.userPosition === 1 && (
@@ -291,12 +291,12 @@ function BestballList() {
                       />
                     )}
                   </div>
-                  <div className="league-grid-item">
+                  <div className="bestball-grid-item">
                     {league.userRosterSettings?.wins || 0}-
                     {league.userRosterSettings?.losses || 0}-
                     {league.userRosterSettings?.ties || 0}
                   </div>
-                  <div className="league-grid-item">
+                  <div className="bestball-grid-item">
                     <a
                       href={`https://sleeper.app/leagues/${league.league_id}`}
                       target="_blank"
@@ -306,7 +306,7 @@ function BestballList() {
                     </a>
                   </div>
                   {expandedLeagueIds.has(league.league_id) && (
-                    <div className="league-details">
+                    <div className="bestball-details">
                       <div className="team-grid">
                         <div className="team-grid-header">Position</div>
                         <div className="team-grid-header">Team Name</div>
@@ -342,7 +342,9 @@ function BestballList() {
                 </React.Fragment>
               ))
             ) : (
-              <div className="league-grid-item">No bestball leagues found.</div>
+              <div className="bestball-grid-item">
+                No bestball leagues found.
+              </div>
             )}
           </div>
         )}
