@@ -60,7 +60,6 @@ function LeagueList() {
 
   const handlePlayerClick = (player) => {
     const playerId = `${player.first_name}-${player.last_name}`;
-    console.log(`Player ${playerId} clicked`);
 
     if (selectedPlayer === playerId) {
       setSelectedPlayer(null);
@@ -977,22 +976,37 @@ function LeagueList() {
                         : true
                     )
                     .sort((a, b) => b.count - a.count)
-                    .map((player, index) => (
-                      <React.Fragment key={index}>
-                        <div className="league-portfolio-grid-item">
-                          {player.name}
-                        </div>
-                        <div className="league-portfolio-grid-item align_center">
-                          {player.position}
-                        </div>
-                        <div className="league-portfolio-grid-item align_center">
-                          <span className="count">{player.count}</span>{" "}
-                          <span className="percentage">
-                            ({player.percentage}%)
-                          </span>
-                        </div>
-                      </React.Fragment>
-                    ))}
+                    .map((player, index) => {
+                      const playerId = player.name.replace(" ", "-"); // Use player name as the unique identifier
+                      return (
+                        <React.Fragment key={index}>
+                          <div
+                            className={`league-portfolio-grid-item ${
+                              selectedPlayer == playerId
+                                ? "selected-player"
+                                : ""
+                            }`}
+                            onClick={() =>
+                              handlePlayerClick({
+                                first_name: player.name.split(" ")[0],
+                                last_name: player.name.split(" ")[1],
+                              })
+                            }
+                          >
+                            {player.name}
+                          </div>
+                          <div className="league-portfolio-grid-item align_center">
+                            {player.position}
+                          </div>
+                          <div className="league-portfolio-grid-item align_center">
+                            <span className="count">{player.count}</span>{" "}
+                            <span className="percentage">
+                              ({player.percentage}%)
+                            </span>
+                          </div>
+                        </React.Fragment>
+                      );
+                    })}
                 </div>
               </div>
             )}
