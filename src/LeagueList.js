@@ -982,7 +982,7 @@ function LeagueList() {
                         <React.Fragment key={index}>
                           <div
                             className={`league-portfolio-grid-item ${
-                              selectedPlayer == playerId
+                              selectedPlayer === playerId
                                 ? "selected-player"
                                 : ""
                             }`}
