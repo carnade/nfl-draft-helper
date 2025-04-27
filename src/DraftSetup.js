@@ -110,7 +110,7 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage }) {
           <option value="adp_dynasty_half_ppr.csv">
             Sleeper Dynasty half-PPR
           </option>
-          <option value="rookies_early.csv">Rookies</option>
+          <option value="adp_rookies.csv">Rookies</option>
         </select>
         <button onClick={handleDownloadCSV}>Download CSV</button>
       </div>
