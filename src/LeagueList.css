@@ -42,6 +42,16 @@
   display: flex;
   justify-content: space-between;
   gap: 20px;
+  width: 100%; /* Ensure it takes up the full width of its parent */
+  margin: 0 auto; /* Center the content */
+  padding: 20px; /* Add consistent padding */
+  box-sizing: border-box; /* Include padding in width calculation */
+  overflow-x: hidden; /* Prevent horizontal scrollbars */
+}
+
+body.dark .league-main-content {
+  background-color: #25252b; /* Match dark mode background */
+  color: #e2e2e2; /* Match dark mode text color */
 }
 
 /* Left side: league list */
@@ -202,16 +212,16 @@ body.dark .league-tab-button.active {
 
 /* Tab Content */
 .league-tab-content {
-  flex: 1;
-  padding: 20px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
+  width: 100%; /* Ensure full width */
+  max-width: 1200px; /* Optional: Set a max width for consistency */
+  margin: 0 auto; /* Center the content */
+  padding: 20px; /* Add consistent padding */
+  box-sizing: border-box; /* Include padding in width calculation */
 }
 
 body.dark .league-tab-content {
-  background-color: #25252b;
-  border-color: #444;
-  color: #e2e2e2;
+  background-color: #25252b; /* Match dark mode background */
+  color: #e2e2e2; /* Match dark mode text color */
 }
 
 /* Injury Report */
