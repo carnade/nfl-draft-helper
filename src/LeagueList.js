@@ -4,8 +4,10 @@ import {
   faUserInjured,
   faQuestion,
   faExternalLinkAlt,
+  faTableCells,
 } from "@fortawesome/free-solid-svg-icons";
 import { useParams } from "react-router-dom";
+import DraftModal from "./DraftModal";
 import "./LeagueList.css";
 
 // Add a mock flag
@@ -31,6 +33,8 @@ function LeagueList() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showAllInjuries, setShowAllInjuries] = useState(false);
   const [selectedPosition, setSelectedPosition] = useState(null); // Filter by position
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedLeague, setSelectedLeague] = useState(null);
 
   let searchTimeout;
 
@@ -533,6 +537,16 @@ function LeagueList() {
     return teams[abbreviation] || abbreviation;
   };
 
+  const handleOpenModal = (league) => {
+    setSelectedLeague(league);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedLeague(null);
+  };
+
   return (
     <div className="dashboard-container">
       <div className="header-container">
@@ -562,7 +576,7 @@ function LeagueList() {
             <div className="league-grid-header">FPTS</div>
             <div className="league-grid-header">Used Waiver Budget</div>
             <div className="league-grid-header">Injuries on starters</div>
-            <div className="league-grid-header">Links</div>
+            <div className="league-grid-header">Actions</div>
 
             {leagues.length > 0 ? (
               leagues.map((league, index) => {
@@ -620,14 +634,23 @@ function LeagueList() {
                         </>
                       )}
                     </div>
-                    <div className="league-grid-item">
+                    <div className="league-grid-item league-actions">
+                      {/* Link to Sleeper league */}
                       <a
                         href={`https://sleeper.app/leagues/${league.league_id}`}
                         target="_blank"
                         rel="noopener noreferrer"
+                        className="league-link-icon"
                       >
                         <FontAwesomeIcon icon={faExternalLinkAlt} />
                       </a>
+
+                      {/* Modal action */}
+                      <FontAwesomeIcon
+                        icon={faTableCells}
+                        className="league-action-icon"
+                        onClick={() => handleOpenModal(league)}
+                      />
                     </div>
                     {expandedLeagueIds.has(league.league_id) && (
                       <div className="league-details">
@@ -757,6 +780,15 @@ function LeagueList() {
             )}
           </div>
         </div>
+
+        {/* Modal */}
+        {isModalOpen && (
+          <DraftModal
+            league={selectedLeague}
+            draftId={selectedLeague?.draft_id}
+            onClose={handleCloseModal}
+          />
+        )}
 
         {/* Right Side: Tabs for Injuries and Portfolio */}
         <div className="league-right-side-container">

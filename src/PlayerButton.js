@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import PropTypes from "prop-types";
 import "./PlayerButton.css";
 
 function PlayerButton({ player, setPlayers, setRemovedPlayers, scoringType }) {
@@ -65,7 +66,9 @@ function PlayerButton({ player, setPlayers, setRemovedPlayers, scoringType }) {
     >
       <div className="grid-container">
         <div className="grid-item">R:{player["Overall Rank"]}</div>
-        <div className="grid-item player-name">{player.Name}</div>
+        <div className="grid-item player-name" style={{ color: "inherit" }}>
+          {player.Name}
+        </div>
         <div className="grid-item">{player.Team}</div>
         <div className="grid-item">
           {player["Position"]}
@@ -77,5 +80,22 @@ function PlayerButton({ player, setPlayers, setRemovedPlayers, scoringType }) {
     </button>
   );
 }
+
+PlayerButton.propTypes = {
+  player: PropTypes.shape({
+    Name: PropTypes.string.isRequired,
+    Position: PropTypes.string.isRequired,
+    "Overall Rank": PropTypes.number.isRequired,
+    "Position Rank": PropTypes.number,
+    Team: PropTypes.string.isRequired,
+    Bye: PropTypes.number,
+    BestBallTotal: PropTypes.number,
+    "KTC Value": PropTypes.number,
+    "FC Value": PropTypes.number,
+  }).isRequired,
+  setPlayers: PropTypes.func.isRequired,
+  setRemovedPlayers: PropTypes.func.isRequired,
+  scoringType: PropTypes.string.isRequired,
+};
 
 export default PlayerButton;

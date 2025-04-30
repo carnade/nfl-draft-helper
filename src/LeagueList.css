@@ -381,7 +381,7 @@ body.dark .injury-grid-header {
 }
 
 body.light .injury-grid-row {
-  background-color: ##f2f2f2;
+  background-color: #f2f2f2;
   color: #000;
 }
 
@@ -553,4 +553,112 @@ body.dark .highlighted-league {
 /* Align text to the center */
 .align_center {
   text-align: center;
+}
+
+/* Style for the FontAwesome icon */
+.league-action-icon {
+  cursor: pointer;
+  font-size: 18px;
+  color: #007bff; /* Light blue for light mode */
+  transition: color 0.3s;
+}
+
+body.dark .league-action-icon {
+  color: #66b2ff; /* Light blueish for dark mode */
+}
+
+body.dark .league-action-icon:hover {
+  color: #3399ff; /* Slightly darker blueish on hover for dark mode */
+}
+
+/* Modal overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+/* Modal content */
+.modal-content {
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  width: 400px;
+  text-align: center;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+body.dark .modal-content {
+  background-color: #35353b;
+  color: #e2e2e2;
+}
+
+/* Close button */
+.close-modal-button {
+  margin-top: 20px;
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.close-modal-button:hover {
+  background-color: #0056b3;
+}
+
+/* Style for the actions container */
+.league-actions {
+  display: flex;
+  gap: 15px; /* Add spacing between icons */
+  align-items: center;
+  justify-content: center; /* Center the icons in the column */
+}
+
+/* Style for the link icon */
+.league-link-icon {
+  color: #007bff; /* Light blue for light mode */
+  font-size: 18px;
+  transition: color 0.3s;
+}
+
+body.dark .league-link-icon {
+  color: #66b2ff; /* Light blueish for dark mode */
+}
+
+.league-link-icon:hover {
+  color: #0056b3; /* Darker blue on hover */
+}
+
+body.dark .league-link-icon:hover {
+  color: #3399ff; /* Slightly darker blueish on hover for dark mode */
+}
+
+/* Style for the modal action icon */
+.league-action-icon {
+  cursor: pointer;
+  font-size: 18px;
+  color: #007bff; /* Light blue for light mode */
+  transition: color 0.3s;
+}
+
+body.dark .league-action-icon {
+  color: #66b2ff; /* Light blueish for dark mode */
+}
+
+.league-action-icon:hover {
+  color: #0056b3; /* Darker blue on hover */
+}
+
+body.dark .league-action-icon:hover {
+  color: #3399ff; /* Slightly darker blueish on hover for dark mode */
 }
