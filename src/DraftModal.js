@@ -101,7 +101,7 @@ function DraftModal({ league, onClose }) {
   return (
     <div className="draft-modal-overlay">
       <div className="draft-modal-content">
-        <h2>{league.name}</h2>
+        <h2 className="league-title">{league.name}</h2>
         <div className="grid-container">
           {picks.map((pick) => {
             const player = playerData[pick.player_id] || {};
@@ -112,22 +112,9 @@ function DraftModal({ league, onClose }) {
                 className={`player-card ${
                   metadata.position?.toLowerCase() || "unknown"
                 }`}
-                style={{
-                  display: "grid",
-                  gridTemplateAreas: "'name team' 'ktc ktc-rank' 'fc fc-rank'",
-                  gridTemplateColumns: "1fr auto",
-                  gridTemplateRows: "auto auto auto",
-                  gap: "5px",
-                }}
               >
-                <div
-                  className="player-name"
-                  style={{
-                    gridArea: "name",
-                    color: "inherit",
-                    textAlign: "left",
-                  }}
-                >
+                <div className="pick-number">{pick.pick_no}</div>
+                <div className="player-name">
                   <div>
                     {metadata.first_name || player.first_name || "Unknown"}
                   </div>
@@ -135,54 +122,16 @@ function DraftModal({ league, onClose }) {
                     {metadata.last_name || player.last_name || "Player"}
                   </div>
                 </div>
-                <div
-                  className="player-team"
-                  style={{
-                    gridArea: "team",
-                    color: "inherit",
-                    textAlign: "right",
-                  }}
-                >
-                  {metadata.team || player.team || "N/A"}
-                </div>
-                <div
-                  className="player-info"
-                  style={{
-                    gridArea: "ktc",
-                    color: "inherit",
-                    textAlign: "left",
-                  }}
-                >
+                <div className="player-info ktc">
                   KTC: {player["KTC Value"] || "N/A"}
                 </div>
-                <div
-                  className="player-info"
-                  style={{
-                    gridArea: "ktc-rank",
-                    color: "inherit",
-                    textAlign: "right",
-                  }}
-                >
+                <div className="player-info ktc-rank">
                   R: {player.ktcRankCalculated || "N/A"}
                 </div>
-                <div
-                  className="player-info"
-                  style={{
-                    gridArea: "fc",
-                    color: "inherit",
-                    textAlign: "left",
-                  }}
-                >
+                <div className="player-info fc">
                   FC: {player["FC Value"] || "N/A"}
                 </div>
-                <div
-                  className="player-info"
-                  style={{
-                    gridArea: "fc-rank",
-                    color: "inherit",
-                    textAlign: "right",
-                  }}
-                >
+                <div className="player-info fc-rank">
                   R: {player.fcRankCalculated || "N/A"}
                 </div>
               </div>

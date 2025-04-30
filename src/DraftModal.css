@@ -47,27 +47,71 @@ body.dark .draft-modal-content {
   margin-top: 20px;
 }
 
+/* Adjusted the grid layout to align names with the ranks area */
 .player-card {
+  display: grid;
+  grid-template-areas:
+    "pick name name"
+    "ktc ktc-rank ktc-rank"
+    "fc fc-rank fc-rank";
+  grid-template-columns: 1fr 2fr 1fr; /* Adjusted column sizes */
+  grid-template-rows: auto auto auto;
+  gap: 5px;
   background: #f9f9f9;
   border: 1px solid #ddd;
   border-radius: 20px;
   padding: 10px;
   text-align: center;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  width: 85%; /* Fixed width */
-  height: 100px; /* Fixed height */
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+  width: 85%;
+  height: 100px;
+}
+
+.pick-number {
+  grid-area: pick;
+  font-size: 1.5em; /* Slightly smaller font size */
+  font-weight: bold;
+  text-align: left;
+  color: inherit;
 }
 
 .player-name {
-  font-weight: bold;
-  margin-bottom: 5px;
+  grid-area: name;
+  color: inherit;
+  text-align: right;
+  justify-self: stretch; /* Ensure it stretches to align with the ranks */
+  grid-column: span 4; /* Take less space */
+  font-size: 1.3em; /* Slightly smaller font size */
 }
 
-.player-info {
-  color: #555;
+.player-team {
+  grid-area: team;
+  color: inherit;
+  text-align: right;
+}
+
+.player-info.ktc {
+  grid-area: ktc;
+  text-align: left;
+  grid-column: span 3; /* Take more space */
+}
+
+.player-info.ktc-rank {
+  grid-area: ktc-rank;
+  text-align: right;
+  grid-column: span 2; /* Take less space */
+}
+
+.player-info.fc {
+  grid-area: fc;
+  text-align: left;
+  grid-column: span 3; /* Take more space */
+}
+
+.player-info.fc-rank {
+  grid-area: fc-rank;
+  text-align: right;
+  grid-column: span 2; /* Take less space */
 }
 
 /* Position-specific styles for player cards */
@@ -259,4 +303,12 @@ body.dark .draft-modal-content .player-card.default {
   font-size: 1.5rem;
   font-weight: bold;
   color: #333;
+}
+
+/* Centered the league name title */
+.league-title {
+  text-align: center;
+  font-size: 1.8em;
+  font-weight: bold;
+  margin-bottom: 20px;
 }
