@@ -21,8 +21,8 @@ function DraftModal({ league, onClose }) {
       const fetchDraftDetails = async () => {
         try {
           const response = await fetch(
-            //`https://api.sleeper.app/v1/draft/${league.draft_id}`
-            `https://api.sleeper.app/v1/draft/1109079449594814464`
+            `https://api.sleeper.app/v1/draft/${league.draft_id}`
+            //`https://api.sleeper.app/v1/draft/1109079449594814464`
           );
           const data = await response.json();
           setDraftType(data.type);
@@ -41,8 +41,8 @@ function DraftModal({ league, onClose }) {
       const fetchPicks = async () => {
         try {
           const response = await fetch(
-            //`https://api.sleeper.app/v1/draft/${league.draft_id}/picks`
-            `https://api.sleeper.app/v1/draft/1109079449594814464/picks`
+            `https://api.sleeper.app/v1/draft/${league.draft_id}/picks`
+            //`https://api.sleeper.app/v1/draft/1109079449594814464/picks`
           );
           const data = await response.json();
           setPicks(data);
@@ -243,7 +243,7 @@ function DraftModal({ league, onClose }) {
                   R: {player.ktcRankCalculated || "N/A"}
                 </div>
                 <div className="player-info fc">
-                  FC: {player["FC Value"] || "N/A"}
+                  FAC: {player["FC Value"] || "N/A"}
                 </div>
                 <div className="player-info fc-rank">
                   R: {player.fcRankCalculated || "N/A"}
