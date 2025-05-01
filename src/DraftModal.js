@@ -22,7 +22,6 @@ function DraftModal({ league, onClose }) {
         try {
           const response = await fetch(
             `https://api.sleeper.app/v1/draft/${league.draft_id}`
-            //`https://api.sleeper.app/v1/draft/1109079449594814464`
           );
           const data = await response.json();
           setDraftType(data.type);
@@ -34,7 +33,7 @@ function DraftModal({ league, onClose }) {
 
       fetchDraftDetails();
     }
-  }, [league?.draft_id]); // Updated dependency array to avoid unnecessary re-renders
+  }, [league]); // Added 'league' as a dependency
 
   useEffect(() => {
     if (league) {
@@ -42,7 +41,6 @@ function DraftModal({ league, onClose }) {
         try {
           const response = await fetch(
             `https://api.sleeper.app/v1/draft/${league.draft_id}/picks`
-            //`https://api.sleeper.app/v1/draft/1109079449594814464/picks`
           );
           const data = await response.json();
           setPicks(data);
@@ -53,7 +51,7 @@ function DraftModal({ league, onClose }) {
 
       fetchPicks();
     }
-  }, [league?.draft_id]); // Updated dependency array to avoid unnecessary re-renders
+  }, [league]); // Added 'league' as a dependency
 
   useEffect(() => {
     const fetchPlayerData = async () => {
