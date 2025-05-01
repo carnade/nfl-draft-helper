@@ -17,6 +17,9 @@
   border-radius: 8px;
   width: 90%;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  max-height: 80vh; /* 80% of the screen height */
+  display: flex;
+  flex-direction: column;
 }
 
 body.dark .draft-modal-content {
@@ -34,6 +37,7 @@ body.dark .draft-modal-content {
   border-radius: 5px;
   cursor: pointer;
   transition: background-color 0.3s;
+  flex-shrink: 0; /* Ensure the button does not shrink */
 }
 
 .close-modal-button:hover {
@@ -46,6 +50,9 @@ body.dark .draft-modal-content {
   grid-template-columns: repeat(12, 1fr);
   gap: 10px;
   margin-top: 20px;
+  flex: 1; /* Allow the grid to take up remaining space */
+  overflow-y: auto; /* Make the grid content scrollable */
+  margin-bottom: 20px; /* Add spacing between grid and close button */
 }
 
 /* Adjusted the grid layout to align names with the ranks area */
