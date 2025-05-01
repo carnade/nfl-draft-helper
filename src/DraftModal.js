@@ -20,6 +20,7 @@ function DraftModal({ league, onClose }) {
         try {
           const response = await fetch(
             `https://api.sleeper.app/v1/draft/${league.draft_id}/picks`
+            //`https://api.sleeper.app/v1/draft/1109079449594814464/picks`
           );
           const data = await response.json();
           setPicks(data);
@@ -102,10 +103,17 @@ function DraftModal({ league, onClose }) {
     <div className="draft-modal-overlay">
       <div className="draft-modal-content">
         <h2 className="league-title">{league.name}</h2>
-        <div className="grid-container">
-          {picks.map((pick) => {
+        <div className="draftmodal-gridcontainer">
+          {picks.map((pick, index) => {
             const player = playerData[pick.player_id] || {};
             const metadata = pick.metadata || {};
+            const teamsCount = league.teams || 12; // Default to 12 teams if not provided
+            const round = Math.floor(index / teamsCount) + 1;
+            const pickInRound = (index % teamsCount) + 1;
+            const formattedRank = `${round}.${pickInRound
+              .toString()
+              .padStart(2, "0")}`;
+
             return (
               <div
                 key={pick.pick_no}
@@ -113,8 +121,8 @@ function DraftModal({ league, onClose }) {
                   metadata.position?.toLowerCase() || "unknown"
                 }`}
               >
-                <div className="pick-number">{pick.pick_no}</div>
-                <div className="player-name">
+                <div className="pick-number">{formattedRank}</div>
+                <div className="draftmodal-player-name">
                   <div>
                     {metadata.first_name || player.first_name || "Unknown"}
                   </div>
@@ -129,7 +137,7 @@ function DraftModal({ league, onClose }) {
                   R: {player.ktcRankCalculated || "N/A"}
                 </div>
                 <div className="player-info fc">
-                  FC: {player["FC Value"] || "N/A"}
+                  FAC: {player["FC Value"] || "N/A"}
                 </div>
                 <div className="player-info fc-rank">
                   R: {player.fcRankCalculated || "N/A"}
