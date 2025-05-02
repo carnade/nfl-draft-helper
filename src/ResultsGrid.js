@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
+import PropTypes from "prop-types";
 import "./ResultsGrid.css";
 
 function ResultsGrid({ playerResults }) {
@@ -15,5 +16,9 @@ function ResultsGrid({ playerResults }) {
     </div>
   );
 }
+
+ResultsGrid.propTypes = {
+  playerResults: PropTypes.object.isRequired,
+};
 
 export default ResultsGrid;
