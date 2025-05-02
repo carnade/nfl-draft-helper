@@ -4,6 +4,7 @@ import "./DraftModal.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSquare } from "@fortawesome/free-regular-svg-icons";
 import ResultsGrid from "./ResultsGrid";
+import { GiGoat } from "react-icons/gi";
 
 // Add a mock flag
 const mock = false; // Set to true for localhost, false for production
@@ -198,7 +199,11 @@ function DraftModal({ league, draftId, onClose, userId }) {
   });
 
   const calculateBorders = (pick) => {
-    if (!isRedGreenActive || pick.isDimmed) {
+    if (!isRedGreenActive) {
+      return { border: "2px solid #999" }; // Default border when redgreen is off
+    }
+
+    if (pick.isDimmed) {
       return { border: "none" };
     }
 
@@ -216,7 +221,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
       }
     }
 
-    return { border: "none" };
+    return { border: "2px solid #999" }; // Default border
   };
 
   const calculateBackground = (pick) => {
@@ -317,7 +322,9 @@ function DraftModal({ league, draftId, onClose, userId }) {
           return (
             <button
               key={uid}
-              className="team-button"
+              className={`team-button ${
+                selectedTeam === uid ? "selected" : ""
+              }`}
               title={`Team ${position}`}
               onClick={() => handleTeamButtonClick(uid)}
             >
@@ -358,11 +365,14 @@ function DraftModal({ league, draftId, onClose, userId }) {
             </div>
 
             <div className="switch-container">
+              <GiGoat
+                size={33}
+                style={{ marginLeft: "10px", marginRight: "10px" }}
+              />
               <label className="switch">
                 <input type="checkbox" id="goat-toggle" />
                 <span className="slider round"></span>
               </label>
-              <label htmlFor="goat-toggle">Goat Toggle</label>
             </div>
           </div>
         </div>

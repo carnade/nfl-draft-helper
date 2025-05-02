@@ -235,8 +235,12 @@ body.light button.team-button {
   border: 1px solid #ccc; /* Subtle border */
 }
 
-body.light button.team-button:hover {
+body.light button.team-button:hover,
+body.light button.team-button.selected {
   background-color: #d6d6d6; /* Slightly darker gray on hover */
+  font-weight: bold;
+  color: #0b0c0b;
+  border-radius: 5px;
 }
 
 /* Dark mode styles for team buttons */
@@ -246,8 +250,12 @@ body.dark button.team-button {
   border: 2px solid #222; /* Subtle border */
 }
 
-body.dark button.team-button:hover {
+body.dark button.team-button:hover,
+body.dark button.team-button.selected {
   background-color: #557; /* Slightly lighter gray on hover */
+  font-weight: bold;
+  color: #0b0c0b;
+  border-radius: 80px; /* Ensure consistent border-radius */
 }
 
 /* Updated styles for team-buttons-grid to include dynamic columns */
