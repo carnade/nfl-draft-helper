@@ -18,8 +18,10 @@ function DraftModal({ league, draftId, onClose, userId }) {
   const [playerData, setPlayerData] = useState({});
   const [draftType, setDraftType] = useState(null);
   const [reversalRound, setReversalRound] = useState(null);
-  const [draftOrder, setDraftOrder] = useState(null); // Added state for draftOrder
+  const [draftOrder, setDraftOrder] = useState(null);
   const [playerResults, setPlayerResults] = useState({});
+  const [selectedTeam, setSelectedTeam] = useState(null);
+  const [isRedGreenActive, setIsRedGreenActive] = useState(false);
 
   useEffect(() => {
     if (league) {
@@ -31,7 +33,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
           const data = await response.json();
           setDraftType(data.type);
           setReversalRound(data.settings.reversal_round);
-          setDraftOrder(data.draft_order); // Set draftOrder from the response
+          setDraftOrder(data.draft_order);
         } catch (error) {
           console.error("Error fetching draft details:", error);
         }
@@ -39,7 +41,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
 
       fetchDraftDetails();
     }
-  }, [league, draftId]); // Added 'draftId' as a dependency
+  }, [league, draftId]);
 
   useEffect(() => {
     if (league) {
@@ -57,7 +59,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
 
       fetchPicks();
     }
-  }, [league, draftId]); // Added 'draftId' as a dependency
+  }, [league, draftId]);
 
   useEffect(() => {
     const fetchPlayerData = async () => {
@@ -158,24 +160,17 @@ function DraftModal({ league, draftId, onClose, userId }) {
 
       if (draftType === "snake") {
         if (reversalRound && round === reversalRound) {
-          // Reversal round itself: reverse order
           draftPositionInRound = reverseDraftPosition;
         } else if (reversalRound && round > reversalRound) {
-          // After the reversal round
           if (round % 2 === 1) {
-            // Odd rounds after reversal: reverse order
             draftPositionInRound = reverseDraftPosition;
           } else {
-            // Even rounds after reversal: normal order
             draftPositionInRound = draftPosition;
           }
         } else {
-          // Before the reversal round or no reversal round
           if (round % 2 === 1) {
-            // Odd rounds: normal order
             draftPositionInRound = draftPosition;
           } else {
-            // Even rounds: reverse order
             draftPositionInRound = reverseDraftPosition;
           }
         }
@@ -186,14 +181,8 @@ function DraftModal({ league, draftId, onClose, userId }) {
             (index % teamsCount) + 1 === draftPositionInRound
         );
 
-        console.debug(
-          `Round: ${round}, Draft Position: ${draftPosition}, Reverse Draft Position: ${reverseDraftPosition}, Draft Position In Round: ${draftPositionInRound}, Pick:`,
-          pick
-        );
-
         orderedPicks.push(pick);
       } else {
-        // Linear draft
         orderedPicks.push(picks[i]);
       }
     }
@@ -201,27 +190,66 @@ function DraftModal({ league, draftId, onClose, userId }) {
     return orderedPicks;
   };
 
-  const handleTeamButtonClick = (selectedUserId) => {
-    const playerCards = document.querySelectorAll(".player-card");
-    const isAlreadyFiltered =
-      playerCards[0]?.style.backgroundColor === "transparent";
-
-    if (isAlreadyFiltered) {
-      // Reset all cards to their default background color
-      playerCards.forEach((card) => {
-        card.style.backgroundColor = "";
-      });
-    } else {
-      // Filter cards based on the selected user ID
-      playerCards.forEach((card) => {
-        const pickedBy = card.getAttribute("data-picked-by");
-        if (pickedBy !== selectedUserId) {
-          card.style.backgroundColor = "transparent";
-        } else {
-          card.style.backgroundColor = ""; // Reset to default
-        }
-      });
+  const filteredPicks = picks.map((pick) => {
+    if (selectedTeam && pick.picked_by !== selectedTeam) {
+      return { ...pick, isDimmed: true }; // Add a flag to dim the background
     }
+    return { ...pick, isDimmed: false }; // Reset dimming for selected team or no filter
+  });
+
+  const calculateBorders = (pick) => {
+    if (!isRedGreenActive || pick.isDimmed) {
+      console.debug("No border applied for pick:", pick);
+      return { border: "none" };
+    }
+
+    const player = playerData[pick.player_id] || {};
+    const pickNumber = pick.pick_no;
+    const ktcRank = player.ktcRankCalculated;
+    const fcRank = player.fcRankCalculated;
+
+    console.debug("Calculating border for pick:", {
+      pickNumber,
+      ktcRank,
+      fcRank,
+    });
+
+    if (!isNaN(pickNumber) && !isNaN(ktcRank) && !isNaN(fcRank)) {
+      const averageRank = (ktcRank + fcRank) / 2;
+      console.debug("Average rank calculated:", averageRank);
+      if (pickNumber > averageRank) {
+        console.debug("Applying green border for pick:", pick);
+        return { border: "4px solid rgb(45, 222, 39)" }; // Light green
+      } else if (pickNumber < averageRank) {
+        console.debug("Applying red border for pick:", pick);
+        return { border: "4px solid red" };
+      }
+    }
+
+    console.debug("No specific border applied for pick:", pick);
+    return { border: "none" };
+  };
+
+  const calculateBackground = (pick) => {
+    if (pick.isDimmed) {
+      return { backgroundColor: "transparent" };
+    }
+    return { backgroundColor: "" }; // Default background
+  };
+
+  const handleTeamButtonClick = (selectedUserId) => {
+    console.debug("Team button clicked:", selectedUserId);
+    if (selectedTeam === selectedUserId) {
+      console.debug("Resetting selection as the same team was clicked twice.");
+      setSelectedTeam(null);
+    } else {
+      console.debug("Highlighting picks for team:", selectedUserId);
+      setSelectedTeam(selectedUserId);
+    }
+  };
+
+  const handleRedGreenToggle = (event) => {
+    setIsRedGreenActive(event.target.checked);
   };
 
   const renderTeamButtons = (draftOrder) => {
@@ -252,75 +280,6 @@ function DraftModal({ league, draftId, onClose, userId }) {
     );
   };
 
-  useEffect(() => {
-    const updateResultsGrid = () => {
-      const redGreenToggle = document.getElementById("redgreen-toggle");
-      if (!redGreenToggle.checked) {
-        setPlayerResults({}); // Clear the results if toggle is off
-        return;
-      }
-
-      const results = {}; // Object to store counts per user
-
-      const playerCards = document.querySelectorAll(".player-card");
-      playerCards.forEach((card) => {
-        const pickedBy = card.getAttribute("data-picked-by");
-        const borderColor = card.style.borderColor;
-
-        if (!results[pickedBy]) {
-          results[pickedBy] = { green: 0, red: 0 };
-        }
-
-        if (borderColor === "rgb(45, 222, 39)") {
-          // Light green
-          results[pickedBy].green++;
-        } else if (borderColor === "red") {
-          results[pickedBy].red++;
-        }
-      });
-
-      setPlayerResults(results);
-    };
-
-    const redGreenToggle = document.getElementById("redgreen-toggle");
-
-    redGreenToggle.addEventListener("change", (event) => {
-      if (event.target.checked) {
-        picks.forEach((pick) => {
-          const player = playerData[pick.player_id] || {};
-          const pickNumber = pick.pick_no;
-          const ktcRank = player.ktcRankCalculated;
-          const fcRank = player.fcRankCalculated;
-
-          if (!isNaN(pickNumber) && !isNaN(ktcRank) && !isNaN(fcRank)) {
-            const averageRank = (ktcRank + fcRank) / 2;
-            const card = document.querySelector(
-              `.player-card[data-pick-no='${pickNumber}']`
-            );
-
-            if (card) {
-              if (pickNumber < averageRank) {
-                card.style.border = "4px solid rgb(45, 222, 39)"; // Light green
-              } else if (pickNumber > averageRank) {
-                card.style.border = "4px solid red";
-              } else {
-                card.style.border = ""; // Reset border if equal
-              }
-            } else {
-              console.warn(`Card not found for pick number: ${pickNumber}`);
-            }
-          }
-        });
-      } else {
-        const playerCards = document.querySelectorAll(".player-card");
-        playerCards.forEach((card) => {
-          card.style.border = ""; // Reset border when toggle is off
-        });
-      }
-      updateResultsGrid();
-    });
-  }, [picks, playerData]);
-
   if (!league) return null;
 
   return (
@@ -339,7 +298,12 @@ function DraftModal({ league, draftId, onClose, userId }) {
                 style={{ color: "red", marginRight: "10px" }}
               />
               <label className="switch">
-                <input type="checkbox" id="redgreen-toggle" />
+                <input
+                  type="checkbox"
+                  id="redgreen-toggle"
+                  checked={isRedGreenActive}
+                  onChange={handleRedGreenToggle}
+                />
                 <span className="slider round"></span>
               </label>
             </div>
@@ -354,7 +318,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
           </div>
         </div>
         <div className="team-buttons-container">
-          {renderTeamButtons(draftOrder, league.teams || 12)}
+          {renderTeamButtons(draftOrder)}
         </div>
         <div className="results-container">
           <ResultsGrid playerResults={playerResults} />
@@ -362,7 +326,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
 
         <div className="draftmodal-gridcontainer">
           {calculatePresentationOrder(
-            picks,
+            filteredPicks,
             league.teams || 12,
             draftType,
             reversalRound
@@ -383,6 +347,10 @@ function DraftModal({ league, draftId, onClose, userId }) {
                 }`}
                 data-picked-by={pick.picked_by}
                 data-pick-no={pick.pick_no}
+                style={{
+                  ...calculateBorders(pick),
+                  ...calculateBackground(pick),
+                }}
               >
                 <div className="pick-number">
                   {formattedRank} :{pick.pick_no}
@@ -423,8 +391,8 @@ DraftModal.propTypes = {
   league: PropTypes.shape({
     draft_id: PropTypes.string.isRequired,
     name: PropTypes.string.isRequired,
-    teams: PropTypes.number, // Added validation for 'teams'
-    draft_order: PropTypes.object.isRequired, // Added validation for 'draft_order'
+    teams: PropTypes.number,
+    draft_order: PropTypes.object.isRequired,
   }).isRequired,
   draftId: PropTypes.string.isRequired,
   userId: PropTypes.string.isRequired,
