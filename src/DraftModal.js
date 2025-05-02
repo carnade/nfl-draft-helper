@@ -10,22 +10,24 @@ const BASE_URL = mock
   ? "http://localhost:5000"
   : "https://shaggy-latashia-carnade-2ea2054a.koyeb.app";
 
-function DraftModal({ league, onClose }) {
+function DraftModal({ league, draftId, onClose, userId }) {
   const [picks, setPicks] = useState([]);
   const [playerData, setPlayerData] = useState({});
   const [draftType, setDraftType] = useState(null);
   const [reversalRound, setReversalRound] = useState(null);
+  const [draftOrder, setDraftOrder] = useState(null); // Added state for draftOrder
 
   useEffect(() => {
     if (league) {
       const fetchDraftDetails = async () => {
         try {
           const response = await fetch(
-            `https://api.sleeper.app/v1/draft/${league.draft_id}`
+            `https://api.sleeper.app/v1/draft/${draftId}`
           );
           const data = await response.json();
           setDraftType(data.type);
           setReversalRound(data.settings.reversal_round);
+          setDraftOrder(data.draft_order); // Set draftOrder from the response
         } catch (error) {
           console.error("Error fetching draft details:", error);
         }
@@ -33,14 +35,14 @@ function DraftModal({ league, onClose }) {
 
       fetchDraftDetails();
     }
-  }, [league]); // Added 'league' as a dependency
+  }, [league, draftId]); // Added 'draftId' as a dependency
 
   useEffect(() => {
     if (league) {
       const fetchPicks = async () => {
         try {
           const response = await fetch(
-            `https://api.sleeper.app/v1/draft/${league.draft_id}/picks`
+            `https://api.sleeper.app/v1/draft/${draftId}/picks`
           );
           const data = await response.json();
           setPicks(data);
@@ -51,7 +53,7 @@ function DraftModal({ league, onClose }) {
 
       fetchPicks();
     }
-  }, [league]); // Added 'league' as a dependency
+  }, [league, draftId]); // Added 'draftId' as a dependency
 
   useEffect(() => {
     const fetchPlayerData = async () => {
@@ -195,12 +197,66 @@ function DraftModal({ league, onClose }) {
     return orderedPicks;
   };
 
+  const handleTeamButtonClick = (selectedUserId) => {
+    const playerCards = document.querySelectorAll(".player-card");
+    const isAlreadyFiltered =
+      playerCards[0]?.style.backgroundColor === "transparent";
+
+    if (isAlreadyFiltered) {
+      // Reset all cards to their default background color
+      playerCards.forEach((card) => {
+        card.style.backgroundColor = "";
+      });
+    } else {
+      // Filter cards based on the selected user ID
+      playerCards.forEach((card) => {
+        const pickedBy = card.getAttribute("data-picked-by");
+        if (pickedBy !== selectedUserId) {
+          card.style.backgroundColor = "transparent";
+        } else {
+          card.style.backgroundColor = ""; // Reset to default
+        }
+      });
+    }
+  };
+
+  const renderTeamButtons = (draftOrder, teamsCount) => {
+    if (!draftOrder || typeof draftOrder !== "object") {
+      return <div>No draft order available</div>;
+    }
+
+    const sortedDraftOrder = Object.entries(draftOrder).sort(
+      (a, b) => a[1] - b[1]
+    );
+
+    return (
+      <div className="team-buttons-grid">
+        {sortedDraftOrder.map(([uid, position]) => {
+          const buttonLabel = uid === userId ? "Myself" : position;
+          return (
+            <button
+              key={uid}
+              className="team-button"
+              title={`Team ${position}`}
+              onClick={() => handleTeamButtonClick(uid)}
+            >
+              {buttonLabel}
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
+
   if (!league) return null;
 
   return (
     <div className="draft-modal-overlay">
       <div className="draft-modal-content">
         <h2 className="league-title">{league.name}</h2>
+        <div className="team-buttons-container">
+          {renderTeamButtons(draftOrder, league.teams || 12)}
+        </div>
         <div className="draftmodal-gridcontainer">
           {calculatePresentationOrder(
             picks,
@@ -222,6 +278,7 @@ function DraftModal({ league, onClose }) {
                 className={`player-card ${
                   metadata.position?.toLowerCase() || "unknown"
                 }`}
+                data-picked-by={pick.picked_by}
               >
                 <div className="pick-number">
                   {formattedRank} :{pick.pick_no}
@@ -263,7 +320,10 @@ DraftModal.propTypes = {
     draft_id: PropTypes.string.isRequired,
     name: PropTypes.string.isRequired,
     teams: PropTypes.number, // Added validation for 'teams'
+    draft_order: PropTypes.object.isRequired, // Added validation for 'draft_order'
   }).isRequired,
+  draftId: PropTypes.string.isRequired,
+  userId: PropTypes.string.isRequired,
   onClose: PropTypes.func.isRequired,
 };
 

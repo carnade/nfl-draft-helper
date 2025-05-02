@@ -205,3 +205,43 @@ body.dark .draft-modal-content .player-card.default {
   font-weight: bold;
   margin-bottom: 20px;
 }
+
+button.team-button {
+  font-size: 1.5rem; /* Larger text */
+  padding: 10px; /* Add some padding */
+  cursor: pointer; /* Pointer cursor on hover */
+  border-radius: 80px;
+  width: 70%;
+  box-shadow: #222 0px 0px 5px; /* Subtle shadow */
+}
+
+/* Light mode styles for team buttons */
+body.light button.team-button {
+  background-color: #e0e0e0; /* Light gray background */
+  color: #333; /* Dark text */
+  border: 1px solid #ccc; /* Subtle border */
+}
+
+body.light button.team-button:hover {
+  background-color: #d6d6d6; /* Slightly darker gray on hover */
+}
+
+/* Dark mode styles for team buttons */
+body.dark button.team-button {
+  background-color: #444; /* Dark gray background */
+  color: #e2e2e2; /* Light text */
+  border: 2px solid #222; /* Subtle border */
+}
+
+body.dark button.team-button:hover {
+  background-color: #557; /* Slightly lighter gray on hover */
+}
+
+/* Updated styles for team-buttons-grid to include dynamic columns */
+.team-buttons-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 10px;
+  justify-items: center; /* Align buttons horizontally in the center of each grid column */
+  align-items: center; /* Align buttons vertically in the middle of the grid */
+}

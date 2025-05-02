@@ -787,6 +787,7 @@ function LeagueList() {
             league={selectedLeague}
             draftId={selectedLeague?.draft_id}
             onClose={handleCloseModal}
+            userId={userId}
           />
         )}
 
