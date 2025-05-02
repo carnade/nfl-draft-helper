@@ -199,7 +199,6 @@ function DraftModal({ league, draftId, onClose, userId }) {
 
   const calculateBorders = (pick) => {
     if (!isRedGreenActive || pick.isDimmed) {
-      console.debug("No border applied for pick:", pick);
       return { border: "none" };
     }
 
@@ -208,25 +207,15 @@ function DraftModal({ league, draftId, onClose, userId }) {
     const ktcRank = player.ktcRankCalculated;
     const fcRank = player.fcRankCalculated;
 
-    console.debug("Calculating border for pick:", {
-      pickNumber,
-      ktcRank,
-      fcRank,
-    });
-
     if (!isNaN(pickNumber) && !isNaN(ktcRank) && !isNaN(fcRank)) {
       const averageRank = (ktcRank + fcRank) / 2;
-      console.debug("Average rank calculated:", averageRank);
       if (pickNumber > averageRank) {
-        console.debug("Applying green border for pick:", pick);
         return { border: "4px solid rgb(45, 222, 39)" }; // Light green
       } else if (pickNumber < averageRank) {
-        console.debug("Applying red border for pick:", pick);
         return { border: "4px solid red" };
       }
     }
 
-    console.debug("No specific border applied for pick:", pick);
     return { border: "none" };
   };
 
@@ -238,19 +227,79 @@ function DraftModal({ league, draftId, onClose, userId }) {
   };
 
   const handleTeamButtonClick = (selectedUserId) => {
-    console.debug("Team button clicked:", selectedUserId);
     if (selectedTeam === selectedUserId) {
-      console.debug("Resetting selection as the same team was clicked twice.");
       setSelectedTeam(null);
     } else {
-      console.debug("Highlighting picks for team:", selectedUserId);
       setSelectedTeam(selectedUserId);
     }
   };
 
   const handleRedGreenToggle = (event) => {
-    setIsRedGreenActive(event.target.checked);
+    const isChecked = event.target.checked;
+    setIsRedGreenActive(isChecked);
+
+    if (isChecked) {
+      console.debug("RedGreen toggle activated. Updating ResultsGrid.");
+    } else {
+      console.debug("RedGreen toggle deactivated. Clearing ResultsGrid.");
+    }
+
+    updateResultsGrid(isChecked);
   };
+
+  const updateResultsGrid = (isActive) => {
+    if (!isActive) {
+      setPlayerResults({}); // Clear the results if toggle is off
+      console.debug("RedGreen toggle is off. Clearing results.");
+      return;
+    }
+
+    const results = {}; // Object to store counts per user
+
+    // Initialize all userIds to 0 for green and red based on draft order
+    Object.entries(draftOrder || {}).forEach(([userId, position]) => {
+      results[position] = { userId, green: 0, red: 0 };
+    });
+
+    picks.forEach((pick) => {
+      const player = playerData[pick.player_id] || {};
+      const pickNumber = pick.pick_no;
+      const ktcRank = player.ktcRankCalculated;
+      const fcRank = player.fcRankCalculated;
+
+      if (!isNaN(pickNumber) && !isNaN(ktcRank) && !isNaN(fcRank)) {
+        const averageRank = (ktcRank + fcRank) / 2;
+        const pickedBy = pick.picked_by;
+        const position = draftOrder[pickedBy];
+
+        if (pickNumber > averageRank) {
+          results[position].green++;
+        } else if (pickNumber < averageRank) {
+          results[position].red++;
+        }
+      }
+    });
+
+    // Convert results back to an ordered array
+    const orderedResults = Object.values(results).sort(
+      (a, b) => a.position - b.position
+    );
+    setPlayerResults(orderedResults);
+  };
+
+  useEffect(() => {
+    const redGreenToggle = document.getElementById("redgreen-toggle");
+
+    const handleToggleChange = () => {
+      console.debug("RedGreen toggle changed.");
+    };
+
+    redGreenToggle.addEventListener("change", handleToggleChange);
+
+    return () => {
+      redGreenToggle.removeEventListener("change", handleToggleChange);
+    };
+  }, []);
 
   const renderTeamButtons = (draftOrder) => {
     if (!draftOrder || typeof draftOrder !== "object") {

@@ -89,7 +89,7 @@ body.dark .draft-modal-content {
   text-align: center;
   justify-self: stretch; /* Ensure it stretches to align with the ranks */
   grid-column: span 4; /* Take less space */
-  font-size: 1.3em; /* Slightly smaller font size */
+  font-size: 1.2em; /* Slightly smaller font size */
 
   color: white;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6); /* Subtle shadow */
