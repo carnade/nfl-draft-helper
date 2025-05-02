@@ -1,0 +1,62 @@
+/* ResultsGrid.css */
+
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr); /* Match the team-buttons-grid */
+  gap: 10px;
+  justify-items: center; /* Align items horizontally in the center */
+  align-items: center; /* Align items vertically in the middle */
+  width: 100%; /* Ensure it spans the full width */
+}
+
+.results-grid .player-results {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.results-grid .fa-square {
+  font-size: 1.5em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 5px;
+  margin-top: 5px;
+}
+
+/* Base class for common styles */
+.css-square {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 2px solid;
+  border-radius: 5px; /* Optional: rounded corners */
+  font-size: 1.2em;
+  font-weight: bold;
+  color: white;
+  margin-top: 10px;
+}
+
+/* Green version of css-square */
+.css-square-green {
+  border-color: darkgreen;
+  background-color: rgba(0, 128, 0, 0.2);
+}
+
+/* Red version of css-square */
+.css-square-red {
+  border-color: darkred;
+  background-color: rgba(255, 0, 0, 0.2);
+}
+
+/* Flex container for centering */
+.flex-center {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}

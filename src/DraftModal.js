@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import "./DraftModal.css";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faSquare } from "@fortawesome/free-regular-svg-icons";
+import ResultsGrid from "./ResultsGrid";
+import { GiGoat } from "react-icons/gi";
 
 // Add a mock flag
 const mock = false; // Set to true for localhost, false for production
@@ -10,22 +14,27 @@ const BASE_URL = mock
   ? "http://localhost:5000"
   : "https://shaggy-latashia-carnade-2ea2054a.koyeb.app";
 
-function DraftModal({ league, onClose }) {
+function DraftModal({ league, draftId, onClose, userId }) {
   const [picks, setPicks] = useState([]);
   const [playerData, setPlayerData] = useState({});
   const [draftType, setDraftType] = useState(null);
   const [reversalRound, setReversalRound] = useState(null);
+  const [draftOrder, setDraftOrder] = useState(null);
+  const [playerResults, setPlayerResults] = useState({});
+  const [selectedTeam, setSelectedTeam] = useState(null);
+  const [isRedGreenActive, setIsRedGreenActive] = useState(false);
 
   useEffect(() => {
     if (league) {
       const fetchDraftDetails = async () => {
         try {
           const response = await fetch(
-            `https://api.sleeper.app/v1/draft/${league.draft_id}`
+            `https://api.sleeper.app/v1/draft/${draftId}`
           );
           const data = await response.json();
           setDraftType(data.type);
           setReversalRound(data.settings.reversal_round);
+          setDraftOrder(data.draft_order);
         } catch (error) {
           console.error("Error fetching draft details:", error);
         }
@@ -33,14 +42,14 @@ function DraftModal({ league, onClose }) {
 
       fetchDraftDetails();
     }
-  }, [league]); // Added 'league' as a dependency
+  }, [league, draftId]);
 
   useEffect(() => {
     if (league) {
       const fetchPicks = async () => {
         try {
           const response = await fetch(
-            `https://api.sleeper.app/v1/draft/${league.draft_id}/picks`
+            `https://api.sleeper.app/v1/draft/${draftId}/picks`
           );
           const data = await response.json();
           setPicks(data);
@@ -51,7 +60,7 @@ function DraftModal({ league, onClose }) {
 
       fetchPicks();
     }
-  }, [league]); // Added 'league' as a dependency
+  }, [league, draftId]);
 
   useEffect(() => {
     const fetchPlayerData = async () => {
@@ -152,24 +161,17 @@ function DraftModal({ league, onClose }) {
 
       if (draftType === "snake") {
         if (reversalRound && round === reversalRound) {
-          // Reversal round itself: reverse order
           draftPositionInRound = reverseDraftPosition;
         } else if (reversalRound && round > reversalRound) {
-          // After the reversal round
           if (round % 2 === 1) {
-            // Odd rounds after reversal: reverse order
             draftPositionInRound = reverseDraftPosition;
           } else {
-            // Even rounds after reversal: normal order
             draftPositionInRound = draftPosition;
           }
         } else {
-          // Before the reversal round or no reversal round
           if (round % 2 === 1) {
-            // Odd rounds: normal order
             draftPositionInRound = draftPosition;
           } else {
-            // Even rounds: reverse order
             draftPositionInRound = reverseDraftPosition;
           }
         }
@@ -180,14 +182,8 @@ function DraftModal({ league, onClose }) {
             (index % teamsCount) + 1 === draftPositionInRound
         );
 
-        console.debug(
-          `Round: ${round}, Draft Position: ${draftPosition}, Reverse Draft Position: ${reverseDraftPosition}, Draft Position In Round: ${draftPositionInRound}, Pick:`,
-          pick
-        );
-
         orderedPicks.push(pick);
       } else {
-        // Linear draft
         orderedPicks.push(picks[i]);
       }
     }
@@ -195,15 +191,201 @@ function DraftModal({ league, onClose }) {
     return orderedPicks;
   };
 
+  const filteredPicks = picks.map((pick) => {
+    if (selectedTeam && pick.picked_by !== selectedTeam) {
+      return { ...pick, isDimmed: true }; // Add a flag to dim the background
+    }
+    return { ...pick, isDimmed: false }; // Reset dimming for selected team or no filter
+  });
+
+  const calculateBorders = (pick) => {
+    if (!isRedGreenActive) {
+      return { border: "2px solid #999" }; // Default border when redgreen is off
+    }
+
+    if (pick.isDimmed) {
+      return { border: "none" };
+    }
+
+    const player = playerData[pick.player_id] || {};
+    const pickNumber = pick.pick_no;
+    const ktcRank = player.ktcRankCalculated;
+    const fcRank = player.fcRankCalculated;
+
+    if (!isNaN(pickNumber) && !isNaN(ktcRank) && !isNaN(fcRank)) {
+      const averageRank = (ktcRank + fcRank) / 2;
+      if (pickNumber > averageRank) {
+        return { border: "4px solid rgb(45, 222, 39)" }; // Light green
+      } else if (pickNumber < averageRank) {
+        return { border: "4px solid red" };
+      }
+    }
+
+    return { border: "2px solid #999" }; // Default border
+  };
+
+  const calculateBackground = (pick) => {
+    if (pick.isDimmed) {
+      return { backgroundColor: "transparent" };
+    }
+    return { backgroundColor: "" }; // Default background
+  };
+
+  const handleTeamButtonClick = (selectedUserId) => {
+    if (selectedTeam === selectedUserId) {
+      setSelectedTeam(null);
+    } else {
+      setSelectedTeam(selectedUserId);
+    }
+  };
+
+  const handleRedGreenToggle = (event) => {
+    const isChecked = event.target.checked;
+    setIsRedGreenActive(isChecked);
+
+    if (isChecked) {
+      console.debug("RedGreen toggle activated. Updating ResultsGrid.");
+    } else {
+      console.debug("RedGreen toggle deactivated. Clearing ResultsGrid.");
+    }
+
+    updateResultsGrid(isChecked);
+  };
+
+  const updateResultsGrid = (isActive) => {
+    if (!isActive) {
+      setPlayerResults({}); // Clear the results if toggle is off
+      console.debug("RedGreen toggle is off. Clearing results.");
+      return;
+    }
+
+    const results = {}; // Object to store counts per user
+
+    // Initialize all userIds to 0 for green and red based on draft order
+    Object.entries(draftOrder || {}).forEach(([userId, position]) => {
+      results[position] = { userId, green: 0, red: 0 };
+    });
+
+    picks.forEach((pick) => {
+      const player = playerData[pick.player_id] || {};
+      const pickNumber = pick.pick_no;
+      const ktcRank = player.ktcRankCalculated;
+      const fcRank = player.fcRankCalculated;
+
+      if (!isNaN(pickNumber) && !isNaN(ktcRank) && !isNaN(fcRank)) {
+        const averageRank = (ktcRank + fcRank) / 2;
+        const pickedBy = pick.picked_by;
+        const position = draftOrder[pickedBy];
+
+        if (pickNumber > averageRank) {
+          results[position].green++;
+        } else if (pickNumber < averageRank) {
+          results[position].red++;
+        }
+      }
+    });
+
+    // Convert results back to an ordered array
+    const orderedResults = Object.values(results).sort(
+      (a, b) => a.position - b.position
+    );
+    setPlayerResults(orderedResults);
+  };
+
+  useEffect(() => {
+    const redGreenToggle = document.getElementById("redgreen-toggle");
+
+    const handleToggleChange = () => {
+      console.debug("RedGreen toggle changed.");
+    };
+
+    redGreenToggle.addEventListener("change", handleToggleChange);
+
+    return () => {
+      redGreenToggle.removeEventListener("change", handleToggleChange);
+    };
+  }, []);
+
+  const renderTeamButtons = (draftOrder) => {
+    if (!draftOrder || typeof draftOrder !== "object") {
+      return <div>No draft order available</div>;
+    }
+
+    const sortedDraftOrder = Object.entries(draftOrder).sort(
+      (a, b) => a[1] - b[1]
+    );
+
+    return (
+      <div className="team-buttons-grid">
+        {sortedDraftOrder.map(([uid, position]) => {
+          const buttonLabel = uid === userId ? "Myself" : position;
+          return (
+            <button
+              key={uid}
+              className={`team-button ${
+                selectedTeam === uid ? "selected" : ""
+              }`}
+              title={`Team ${position}`}
+              onClick={() => handleTeamButtonClick(uid)}
+            >
+              {buttonLabel}
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
+
   if (!league) return null;
 
   return (
     <div className="draft-modal-overlay">
       <div className="draft-modal-content">
-        <h2 className="league-title">{league.name}</h2>
+        <div className="header-container">
+          <h2 className="league-title">{league.name}</h2>
+          <div className="switches-container">
+            <div className="switch-container">
+              <FontAwesomeIcon
+                icon={faSquare}
+                style={{ color: "green", marginRight: "5px" }}
+              />
+              <FontAwesomeIcon
+                icon={faSquare}
+                style={{ color: "red", marginRight: "10px" }}
+              />
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  id="redgreen-toggle"
+                  checked={isRedGreenActive}
+                  onChange={handleRedGreenToggle}
+                />
+                <span className="slider round"></span>
+              </label>
+            </div>
+
+            <div className="switch-container">
+              <GiGoat
+                size={33}
+                style={{ marginLeft: "10px", marginRight: "10px" }}
+              />
+              <label className="switch">
+                <input type="checkbox" id="goat-toggle" />
+                <span className="slider round"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <div className="team-buttons-container">
+          {renderTeamButtons(draftOrder)}
+        </div>
+        <div className="results-container">
+          <ResultsGrid playerResults={playerResults} />
+        </div>
+
         <div className="draftmodal-gridcontainer">
           {calculatePresentationOrder(
-            picks,
+            filteredPicks,
             league.teams || 12,
             draftType,
             reversalRound
@@ -222,6 +404,12 @@ function DraftModal({ league, onClose }) {
                 className={`player-card ${
                   metadata.position?.toLowerCase() || "unknown"
                 }`}
+                data-picked-by={pick.picked_by}
+                data-pick-no={pick.pick_no}
+                style={{
+                  ...calculateBorders(pick),
+                  ...calculateBackground(pick),
+                }}
               >
                 <div className="pick-number">
                   {formattedRank} :{pick.pick_no}
@@ -262,8 +450,11 @@ DraftModal.propTypes = {
   league: PropTypes.shape({
     draft_id: PropTypes.string.isRequired,
     name: PropTypes.string.isRequired,
-    teams: PropTypes.number, // Added validation for 'teams'
+    teams: PropTypes.number,
+    draft_order: PropTypes.object.isRequired,
   }).isRequired,
+  draftId: PropTypes.string.isRequired,
+  userId: PropTypes.string.isRequired,
   onClose: PropTypes.func.isRequired,
 };
 
