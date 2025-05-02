@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import "./DraftModal.css";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faSquare } from "@fortawesome/free-regular-svg-icons";
+import ResultsGrid from "./ResultsGrid";
 
 // Add a mock flag
 const mock = false; // Set to true for localhost, false for production
@@ -16,6 +19,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
   const [draftType, setDraftType] = useState(null);
   const [reversalRound, setReversalRound] = useState(null);
   const [draftOrder, setDraftOrder] = useState(null); // Added state for draftOrder
+  const [playerResults, setPlayerResults] = useState({});
 
   useEffect(() => {
     if (league) {
@@ -220,7 +224,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
     }
   };
 
-  const renderTeamButtons = (draftOrder, teamsCount) => {
+  const renderTeamButtons = (draftOrder) => {
     if (!draftOrder || typeof draftOrder !== "object") {
       return <div>No draft order available</div>;
     }
@@ -248,15 +252,114 @@ function DraftModal({ league, draftId, onClose, userId }) {
     );
   };
 
+  useEffect(() => {
+    const updateResultsGrid = () => {
+      const redGreenToggle = document.getElementById("redgreen-toggle");
+      if (!redGreenToggle.checked) {
+        setPlayerResults({}); // Clear the results if toggle is off
+        return;
+      }
+
+      const results = {}; // Object to store counts per user
+
+      const playerCards = document.querySelectorAll(".player-card");
+      playerCards.forEach((card) => {
+        const pickedBy = card.getAttribute("data-picked-by");
+        const borderColor = card.style.borderColor;
+
+        if (!results[pickedBy]) {
+          results[pickedBy] = { green: 0, red: 0 };
+        }
+
+        if (borderColor === "rgb(45, 222, 39)") {
+          // Light green
+          results[pickedBy].green++;
+        } else if (borderColor === "red") {
+          results[pickedBy].red++;
+        }
+      });
+
+      setPlayerResults(results);
+    };
+
+    const redGreenToggle = document.getElementById("redgreen-toggle");
+
+    redGreenToggle.addEventListener("change", (event) => {
+      if (event.target.checked) {
+        picks.forEach((pick) => {
+          const player = playerData[pick.player_id] || {};
+          const pickNumber = pick.pick_no;
+          const ktcRank = player.ktcRankCalculated;
+          const fcRank = player.fcRankCalculated;
+
+          if (!isNaN(pickNumber) && !isNaN(ktcRank) && !isNaN(fcRank)) {
+            const averageRank = (ktcRank + fcRank) / 2;
+            const card = document.querySelector(
+              `.player-card[data-pick-no='${pickNumber}']`
+            );
+
+            if (card) {
+              if (pickNumber < averageRank) {
+                card.style.border = "4px solid rgb(45, 222, 39)"; // Light green
+              } else if (pickNumber > averageRank) {
+                card.style.border = "4px solid red";
+              } else {
+                card.style.border = ""; // Reset border if equal
+              }
+            } else {
+              console.warn(`Card not found for pick number: ${pickNumber}`);
+            }
+          }
+        });
+      } else {
+        const playerCards = document.querySelectorAll(".player-card");
+        playerCards.forEach((card) => {
+          card.style.border = ""; // Reset border when toggle is off
+        });
+      }
+      updateResultsGrid();
+    });
+  }, [picks, playerData]);
+
   if (!league) return null;
 
   return (
     <div className="draft-modal-overlay">
       <div className="draft-modal-content">
-        <h2 className="league-title">{league.name}</h2>
+        <div className="header-container">
+          <h2 className="league-title">{league.name}</h2>
+          <div className="switches-container">
+            <div className="switch-container">
+              <FontAwesomeIcon
+                icon={faSquare}
+                style={{ color: "green", marginRight: "5px" }}
+              />
+              <FontAwesomeIcon
+                icon={faSquare}
+                style={{ color: "red", marginRight: "10px" }}
+              />
+              <label className="switch">
+                <input type="checkbox" id="redgreen-toggle" />
+                <span className="slider round"></span>
+              </label>
+            </div>
+
+            <div className="switch-container">
+              <label className="switch">
+                <input type="checkbox" id="goat-toggle" />
+                <span className="slider round"></span>
+              </label>
+              <label htmlFor="goat-toggle">Goat Toggle</label>
+            </div>
+          </div>
+        </div>
         <div className="team-buttons-container">
           {renderTeamButtons(draftOrder, league.teams || 12)}
         </div>
+        <div className="results-container">
+          <ResultsGrid playerResults={playerResults} />
+        </div>
+
         <div className="draftmodal-gridcontainer">
           {calculatePresentationOrder(
             picks,
@@ -279,6 +382,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
                   metadata.position?.toLowerCase() || "unknown"
                 }`}
                 data-picked-by={pick.picked_by}
+                data-pick-no={pick.pick_no}
               >
                 <div className="pick-number">
                   {formattedRank} :{pick.pick_no}
