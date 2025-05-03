@@ -371,12 +371,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
     setPlayerResults(orderedResults);
   };
 
-  const updateGoatResults = () => {
-    if (!isGoatActive) {
-      setPlayerResults({}); // Clear results if Goat is not active
-      return;
-    }
-
+  const calculateGoatValues = (picks, draftType) => {
     const results = {}; // Object to store counts per user
 
     // Initialize all userIds to 0 for goat categories based on draft order
@@ -405,23 +400,75 @@ function DraftModal({ league, draftId, onClose, userId }) {
         const pickedBy = pick.picked_by;
         const position = draftOrder[pickedBy];
 
-        if (rankDifference >= 4) {
-          results[position].goat++;
-        } else if (rankDifference >= 3) {
-          results[position].hero++;
-        } else if (rankDifference >= 2) {
-          results[position].decent++;
-        } else if (rankDifference >= -1 && rankDifference <= 1) {
-          results[position].neutral++;
-        } else if (rankDifference <= -2) {
-          results[position].bad++;
-        } else if (rankDifference <= -3) {
-          results[position].horrible++;
-        } else if (rankDifference <= -4) {
-          results[position].turd++;
+        if (draftType === "linear") {
+          const round = Math.ceil(pickNumber / (league.teams || 12)); // Calculate the round based on pick number and team count
+          const adjustedRankDifference = rankDifference / round; // Adjust rankDifference by the round
+          console.debug("Adjusted Rank Difference:", {
+            pickNumber,
+            averageRank,
+            rankDifference,
+            round,
+            adjustedRankDifference,
+            player,
+            pick,
+          });
+          if (adjustedRankDifference >= 4) {
+            results[position].goat++;
+          } else if (adjustedRankDifference >= 3) {
+            results[position].hero++;
+          } else if (adjustedRankDifference >= 2) {
+            results[position].decent++;
+          } else if (adjustedRankDifference <= -4) {
+            results[position].turd++;
+          } else if (adjustedRankDifference <= -3) {
+            results[position].horrible++;
+          } else if (adjustedRankDifference <= -2) {
+            results[position].bad++;
+          } else if (
+            adjustedRankDifference > -2 &&
+            adjustedRankDifference < 2
+          ) {
+            results[position].neutral++;
+          }
+        } else if (draftType === "snake") {
+          const round = Math.ceil(pickNumber / (league.teams || 12)); // Calculate the round based on pick number and team count
+          let factor;
+          factor = 1.25 * round;
+
+          const adjustedRankDifference = rankDifference / factor; // Adjust rankDifference by the calculated factor
+
+          if (adjustedRankDifference >= 4) {
+            results[position].goat++;
+          } else if (adjustedRankDifference >= 3) {
+            results[position].hero++;
+          } else if (adjustedRankDifference >= 2) {
+            results[position].decent++;
+          } else if (adjustedRankDifference <= -4) {
+            results[position].turd++;
+          } else if (adjustedRankDifference <= -3) {
+            results[position].horrible++;
+          } else if (adjustedRankDifference <= -2) {
+            results[position].bad++;
+          } else if (
+            adjustedRankDifference > -2 &&
+            adjustedRankDifference < 2
+          ) {
+            results[position].neutral++;
+          }
         }
       }
     });
+
+    return results;
+  };
+
+  const updateGoatResults = () => {
+    if (!isGoatActive) {
+      setPlayerResults({}); // Clear results if Goat is not active
+      return;
+    }
+
+    const results = calculateGoatValues(picks, draftType);
 
     // Convert results back to an ordered array
     const orderedResults = Object.values(results).sort(
@@ -480,23 +527,54 @@ function DraftModal({ league, draftId, onClose, userId }) {
     );
   };
 
-  function iconForPick(pick) {
+  function iconForPick(pick, draftType) {
     const rankDifference = pick.rankDifference; // Assuming rankDifference is calculated elsewhere
-    console.debug("Rank difference for pick:", rankDifference);
-    if (rankDifference >= 4) {
-      return <GiGoat className="result-icon golden" />; // Golden goat icon
-    } else if (rankDifference >= 3) {
-      return <GiAmericanFootballPlayer className="result-icon" />; // Hero icon
-    } else if (rankDifference >= 2) {
-      return <GiAmericanFootballHelmet className="result-icon" />; // Decent icon
-    } else if (rankDifference >= -1 && rankDifference <= 1) {
-      return <TbArrowsLeftRight className="result-icon" />; // Neutral icon
-    } else if (rankDifference <= -2) {
-      return <GiSheep className="result-icon" />; // Bad icon
-    } else if (rankDifference <= -3) {
-      return <FaTrashAlt className="result-icon" />; // Horrible icon
-    } else if (rankDifference <= -4) {
-      return <GiTurd className="result-icon brown" />; // Brown turd icon
+    const round = Math.ceil(pick.pick_no / (league.teams || 12)); // Calculate the round based on pick number and team count
+    if (draftType === "linear") {
+      const adjustedRankDifference = rankDifference / round; // Adjust rankDifference for linear drafts
+
+      if (adjustedRankDifference >= 4) {
+        return <GiGoat className="result-icon golden" />; // Golden goat icon
+      } else if (adjustedRankDifference >= 3) {
+        return <GiAmericanFootballPlayer className="result-icon" />; // Hero icon
+      } else if (adjustedRankDifference >= 2) {
+        return <GiAmericanFootballHelmet className="result-icon" />; // Decent icon
+      } else if (adjustedRankDifference > -2 && adjustedRankDifference < 2) {
+        return <TbArrowsLeftRight className="result-icon" />; // Neutral icon
+      } else if (adjustedRankDifference <= -2 && adjustedRankDifference > -3) {
+        return <GiSheep className="result-icon" />; // Bad icon
+      } else if (adjustedRankDifference <= -3 && adjustedRankDifference > -4) {
+        return <FaTrashAlt className="result-icon" />; // Horrible icon
+      } else if (adjustedRankDifference <= -4) {
+        return <GiTurd className="result-icon brown" />; // Brown turd icon
+      }
+    } else if (draftType === "snake") {
+      let factor;
+      /*      if (round <= 5) {
+        factor = 1.5 * round;
+      } else if (round <= 30) {
+        factor = 1.5 * 5 - 0.1 * (round - 5);
+      } else {
+        factor = 1 * 15;
+      }*/
+      factor = 1.25 * round;
+      const adjustedRankDifference = rankDifference / factor; // Adjust rankDifference by the calculated factor
+
+      if (adjustedRankDifference >= 4) {
+        return <GiGoat className="result-icon golden" />; // Golden goat icon
+      } else if (adjustedRankDifference >= 3) {
+        return <GiAmericanFootballPlayer className="result-icon" />; // Hero icon
+      } else if (adjustedRankDifference >= 2) {
+        return <GiAmericanFootballHelmet className="result-icon" />; // Decent icon
+      } else if (adjustedRankDifference > -2 && adjustedRankDifference < 2) {
+        return <TbArrowsLeftRight className="result-icon" />; // Neutral icon
+      } else if (adjustedRankDifference <= -2 && adjustedRankDifference > -3) {
+        return <GiSheep className="result-icon" />; // Bad icon
+      } else if (adjustedRankDifference <= -3 && adjustedRankDifference > -4) {
+        return <FaTrashAlt className="result-icon" />; // Horrible icon
+      } else if (adjustedRankDifference <= -4) {
+        return <GiTurd className="result-icon brown" />; // Brown turd icon
+      }
     }
 
     return null; // Default to no icon if no condition matches
@@ -627,7 +705,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
                             pick.isIconDimmed ? "dimmed" : ""
                           }`}
                         >
-                          {iconForPick(pick)}
+                          {iconForPick(pick, draftType)}
                         </div>
                       )}
                     </div>
