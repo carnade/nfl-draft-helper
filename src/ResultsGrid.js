@@ -58,7 +58,12 @@ function ResultsGrid({ playerResults, isRedGreenActive, isGoatActive }) {
                   <GiAmericanFootballHelmet size={25} />
                 </div>
                 <div className="result-square green3">{result.decent}</div>
-                <div className="result-square red3">{result.bad}</div>
+                <div
+                  className="result-square red3
+                "
+                >
+                  {result.bad}
+                </div>
                 <div className="result-icon">
                   <GiSheep size={25} />
                 </div>

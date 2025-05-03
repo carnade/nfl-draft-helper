@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import PropTypes from "prop-types";
 import "./DraftModal.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -33,6 +33,115 @@ function DraftModal({ league, draftId, onClose, userId }) {
   const [isRedGreenActive, setIsRedGreenActive] = useState(false);
   const [isGoatActive, setIsGoatActive] = useState(false); // Add Goat toggle state
   const [isLoading, setIsLoading] = useState(true); // Add loading state
+
+  const calculateGoatValues = useCallback(
+    (picks, draftType) => {
+      const results = {}; // Object to store counts per user
+
+      // Initialize all userIds to 0 for goat categories based on draft order
+      Object.entries(draftOrder || {}).forEach(([userId, position]) => {
+        results[position] = {
+          userId,
+          goat: 0,
+          hero: 0,
+          decent: 0,
+          neutral: 0,
+          bad: 0,
+          horrible: 0,
+          turd: 0,
+        };
+      });
+
+      picks.forEach((pick) => {
+        const player = playerData[pick.player_id] || {};
+        const pickNumber = pick.pick_no;
+        const ktcRank = player.ktcRankCalculated;
+        const fcRank = player.fcRankCalculated;
+
+        if (!isNaN(pickNumber) && !isNaN(ktcRank) && !isNaN(fcRank)) {
+          const averageRank = (ktcRank + fcRank) / 2;
+          const rankDifference = pickNumber - averageRank;
+          const pickedBy = pick.picked_by;
+          const position = draftOrder[pickedBy];
+
+          if (draftType === "linear") {
+            const round = Math.ceil(pickNumber / (league.teams || 12)); // Calculate the round based on pick number and team count
+            const adjustedRankDifference = rankDifference / round; // Adjust rankDifference by the round
+            if (adjustedRankDifference >= 4) {
+              results[position].goat++;
+            } else if (adjustedRankDifference >= 3) {
+              results[position].hero++;
+            } else if (adjustedRankDifference >= 2) {
+              results[position].decent++;
+            } else if (adjustedRankDifference <= -4) {
+              results[position].turd++;
+            } else if (adjustedRankDifference <= -3) {
+              results[position].horrible++;
+            } else if (adjustedRankDifference <= -2) {
+              results[position].bad++;
+            } else if (
+              adjustedRankDifference > -2 &&
+              adjustedRankDifference < 2
+            ) {
+              results[position].neutral++;
+            }
+          } else if (draftType === "snake") {
+            const round = Math.ceil(pickNumber / (league.teams || 12)); // Calculate the round based on pick number and team count
+            let factor;
+            factor = 1.25 * round;
+
+            const adjustedRankDifference = rankDifference / factor; // Adjust rankDifference by the calculated factor
+
+            if (adjustedRankDifference >= 4) {
+              results[position].goat++;
+            } else if (adjustedRankDifference >= 3) {
+              results[position].hero++;
+            } else if (adjustedRankDifference >= 2) {
+              results[position].decent++;
+            } else if (adjustedRankDifference <= -4) {
+              results[position].turd++;
+            } else if (adjustedRankDifference <= -3) {
+              results[position].horrible++;
+            } else if (adjustedRankDifference <= -2) {
+              results[position].bad++;
+            } else if (
+              adjustedRankDifference > -2 &&
+              adjustedRankDifference < 2
+            ) {
+              results[position].neutral++;
+            }
+          }
+        }
+      });
+
+      return results;
+    },
+    [draftOrder, playerData, league.teams]
+  );
+
+  const updateGoatResults = useCallback(() => {
+    if (!isGoatActive) {
+      setPlayerResults({}); // Clear results if Goat is not active
+      return;
+    }
+
+    const results = calculateGoatValues(picks, draftType);
+
+    // Convert results back to an ordered array
+    const orderedResults = Object.values(results).sort(
+      (a, b) => a.position - b.position
+    );
+    setPlayerResults(orderedResults);
+
+    // Log the counts per team
+    console.debug("Goat results per team:", orderedResults);
+  }, [isGoatActive, picks, draftType, calculateGoatValues]);
+
+  useEffect(() => {
+    if (isGoatActive) {
+      updateGoatResults();
+    }
+  }, [isGoatActive, updateGoatResults]);
 
   useEffect(() => {
     setIsLoading(true); // Set loading to true before fetching data
@@ -168,12 +277,6 @@ function DraftModal({ league, draftId, onClose, userId }) {
 
     calculateRanks();
   }, [playerData]);
-
-  useEffect(() => {
-    if (isGoatActive) {
-      updateGoatResults();
-    }
-  }, [isGoatActive, updateGoatResults]); // Added 'updateGoatResults' to the dependency array
 
   const calculatePresentationOrder = (
     picks,
@@ -369,115 +472,6 @@ function DraftModal({ league, draftId, onClose, userId }) {
       (a, b) => a.position - b.position
     );
     setPlayerResults(orderedResults);
-  };
-
-  const calculateGoatValues = (picks, draftType) => {
-    const results = {}; // Object to store counts per user
-
-    // Initialize all userIds to 0 for goat categories based on draft order
-    Object.entries(draftOrder || {}).forEach(([userId, position]) => {
-      results[position] = {
-        userId,
-        goat: 0,
-        hero: 0,
-        decent: 0,
-        neutral: 0,
-        bad: 0,
-        horrible: 0,
-        turd: 0,
-      };
-    });
-
-    picks.forEach((pick) => {
-      const player = playerData[pick.player_id] || {};
-      const pickNumber = pick.pick_no;
-      const ktcRank = player.ktcRankCalculated;
-      const fcRank = player.fcRankCalculated;
-
-      if (!isNaN(pickNumber) && !isNaN(ktcRank) && !isNaN(fcRank)) {
-        const averageRank = (ktcRank + fcRank) / 2;
-        const rankDifference = pickNumber - averageRank;
-        const pickedBy = pick.picked_by;
-        const position = draftOrder[pickedBy];
-
-        if (draftType === "linear") {
-          const round = Math.ceil(pickNumber / (league.teams || 12)); // Calculate the round based on pick number and team count
-          const adjustedRankDifference = rankDifference / round; // Adjust rankDifference by the round
-          console.debug("Adjusted Rank Difference:", {
-            pickNumber,
-            averageRank,
-            rankDifference,
-            round,
-            adjustedRankDifference,
-            player,
-            pick,
-          });
-          if (adjustedRankDifference >= 4) {
-            results[position].goat++;
-          } else if (adjustedRankDifference >= 3) {
-            results[position].hero++;
-          } else if (adjustedRankDifference >= 2) {
-            results[position].decent++;
-          } else if (adjustedRankDifference <= -4) {
-            results[position].turd++;
-          } else if (adjustedRankDifference <= -3) {
-            results[position].horrible++;
-          } else if (adjustedRankDifference <= -2) {
-            results[position].bad++;
-          } else if (
-            adjustedRankDifference > -2 &&
-            adjustedRankDifference < 2
-          ) {
-            results[position].neutral++;
-          }
-        } else if (draftType === "snake") {
-          const round = Math.ceil(pickNumber / (league.teams || 12)); // Calculate the round based on pick number and team count
-          let factor;
-          factor = 1.25 * round;
-
-          const adjustedRankDifference = rankDifference / factor; // Adjust rankDifference by the calculated factor
-
-          if (adjustedRankDifference >= 4) {
-            results[position].goat++;
-          } else if (adjustedRankDifference >= 3) {
-            results[position].hero++;
-          } else if (adjustedRankDifference >= 2) {
-            results[position].decent++;
-          } else if (adjustedRankDifference <= -4) {
-            results[position].turd++;
-          } else if (adjustedRankDifference <= -3) {
-            results[position].horrible++;
-          } else if (adjustedRankDifference <= -2) {
-            results[position].bad++;
-          } else if (
-            adjustedRankDifference > -2 &&
-            adjustedRankDifference < 2
-          ) {
-            results[position].neutral++;
-          }
-        }
-      }
-    });
-
-    return results;
-  };
-
-  const updateGoatResults = () => {
-    if (!isGoatActive) {
-      setPlayerResults({}); // Clear results if Goat is not active
-      return;
-    }
-
-    const results = calculateGoatValues(picks, draftType);
-
-    // Convert results back to an ordered array
-    const orderedResults = Object.values(results).sort(
-      (a, b) => a.position - b.position
-    );
-    setPlayerResults(orderedResults);
-
-    // Log the counts per team
-    console.debug("Goat results per team:", orderedResults);
   };
 
   useEffect(() => {
