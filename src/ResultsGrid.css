@@ -157,9 +157,14 @@
   border: 2px solid rgb(129, 0, 0);
 }
 
-.result-square.grey {
+body.dark .result-square.grey {
   background-color: rgb(142, 141, 141);
   border: 2px solid rgb(63, 63, 63);
+}
+
+body.light .result-square.grey {
+  background-color: rgb(200, 200, 200); /* Lighter background for light mode */
+  border: 2px solid rgb(150, 150, 150); /* Lighter border for light mode */
 }
 
 .result-square.golden {
