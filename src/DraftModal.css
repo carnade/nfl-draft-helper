@@ -75,6 +75,25 @@ body.dark .draft-modal-content {
   color: rgba(220, 220, 220, 0.95);
 }
 
+.player-card-container {
+  position: relative; /* Make the container a positioning context */
+}
+
+.player-card-icon {
+  osition: relative;
+  /* top: -150%; */
+  /* left: 120%; */
+  transform: translate(66%, -100%);
+  z-index: 10;
+  font-size: 3.5rem;
+  pointer-events: none;
+  /* align-items: center; */
+  /* border: 3px; */
+  background-color: #313131;
+  border-radius: 10px;
+  padding: 1px;
+}
+
 .pick-number {
   grid-area: pick;
   font-size: 1.3em; /* Slightly smaller font size */
@@ -401,4 +420,22 @@ body.dark button.team-button.selected {
 
 .draft-modal-card-text {
   color: #c1c1c1; /* Dimmed text color */
+}
+
+.player-card-content {
+  position: relative; /* Ensure it stays within the card */
+  display: flex; /* Use flexbox for layout */
+  flex-direction: column; /* Stack content vertically */
+  justify-content: center; /* Center content vertically */
+  align-items: center; /* Center content horizontally */
+  width: 100%; /* Take full width of the card */
+  height: 100%; /* Take full height of the card */
+  padding: 10px; /* Add some padding */
+  box-sizing: border-box; /* Include padding in width/height */
+}
+
+.dimmed {
+  opacity: 0.2; /* Reduce opacity to make it look dimmed */
+  filter: grayscale(100%); /* Apply grayscale filter for a dimmed effect */
+  pointer-events: none; /* Prevent interaction with dimmed elements */
 }

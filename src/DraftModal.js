@@ -5,6 +5,14 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSquare } from "@fortawesome/free-regular-svg-icons";
 import ResultsGrid from "./ResultsGrid";
 import { GiGoat } from "react-icons/gi";
+import {
+  GiAmericanFootballPlayer,
+  GiAmericanFootballHelmet,
+  GiSheep,
+  GiTurd,
+} from "react-icons/gi";
+import { TbArrowsLeftRight } from "react-icons/tb";
+import { FaTrashAlt } from "react-icons/fa";
 
 // Add a mock flag
 const mock = false; // Set to true for localhost, false for production
@@ -215,10 +223,29 @@ function DraftModal({ league, draftId, onClose, userId }) {
   };
 
   const filteredPicks = (picks || []).map((pick) => {
-    if (selectedTeam && pick.picked_by !== selectedTeam) {
-      return { ...pick, isDimmed: true }; // Add a flag to dim the background
+    const player = playerData[pick.player_id] || {};
+    const pickNumber = pick.pick_no;
+    const ktcRank = player.ktcRankCalculated;
+    const fcRank = player.fcRankCalculated;
+
+    if (!isNaN(pickNumber) && !isNaN(ktcRank) && !isNaN(fcRank)) {
+      const averageRank = (ktcRank + fcRank) / 2;
+      const rankDifference = pick.pick_no - averageRank;
+      return {
+        ...pick,
+        rankDifference,
+        isDimmed: selectedTeam && pick.picked_by !== selectedTeam, // Dim background for non-selected teams
+        isIconDimmed:
+          isGoatActive && selectedTeam && pick.picked_by !== selectedTeam, // Dim icons for non-selected teams when Goat is active
+      };
     }
-    return { ...pick, isDimmed: false }; // Reset dimming for selected team or no filter
+
+    return {
+      ...pick,
+      isDimmed: selectedTeam && pick.picked_by !== selectedTeam, // Dim background for non-selected teams
+      isIconDimmed:
+        isGoatActive && selectedTeam && pick.picked_by !== selectedTeam, // Dim icons for non-selected teams when Goat is active
+    };
   });
 
   const calculateBorders = (pick) => {
@@ -453,6 +480,28 @@ function DraftModal({ league, draftId, onClose, userId }) {
     );
   };
 
+  function iconForPick(pick) {
+    const rankDifference = pick.rankDifference; // Assuming rankDifference is calculated elsewhere
+    console.debug("Rank difference for pick:", rankDifference);
+    if (rankDifference >= 4) {
+      return <GiGoat className="result-icon golden" />; // Golden goat icon
+    } else if (rankDifference >= 3) {
+      return <GiAmericanFootballPlayer className="result-icon" />; // Hero icon
+    } else if (rankDifference >= 2) {
+      return <GiAmericanFootballHelmet className="result-icon" />; // Decent icon
+    } else if (rankDifference >= -1 && rankDifference <= 1) {
+      return <TbArrowsLeftRight className="result-icon" />; // Neutral icon
+    } else if (rankDifference <= -2) {
+      return <GiSheep className="result-icon" />; // Bad icon
+    } else if (rankDifference <= -3) {
+      return <FaTrashAlt className="result-icon" />; // Horrible icon
+    } else if (rankDifference <= -4) {
+      return <GiTurd className="result-icon brown" />; // Brown turd icon
+    }
+
+    return null; // Default to no icon if no condition matches
+  }
+
   if (!league) return null;
 
   return (
@@ -572,6 +621,15 @@ function DraftModal({ league, draftId, onClose, userId }) {
                         <div className="draft-modal-card-text">R:</div>
                         {player.fcRankCalculated || "N/A"}
                       </div>
+                      {isGoatActive && (
+                        <div
+                          className={`player-card-icon ${
+                            pick.isIconDimmed ? "dimmed" : ""
+                          }`}
+                        >
+                          {iconForPick(pick)}
+                        </div>
+                      )}
                     </div>
                   );
                 })
