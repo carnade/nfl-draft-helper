@@ -1,15 +1,21 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faExternalLinkAlt } from "@fortawesome/free-solid-svg-icons";
+import {
+  faExternalLinkAlt,
+  faSyncAlt,
+  faTableCells,
+} from "@fortawesome/free-solid-svg-icons";
 import { useParams } from "react-router-dom";
-import { faSyncAlt } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "react-router-dom";
+import DraftModal from "./DraftModal";
 import "./DraftsList.css";
 
 function DraftPage() {
   const { userName } = useParams();
   const [userId, setUserId] = useState(null);
   const [drafts, setDrafts] = useState([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedLeague, setSelectedLeague] = useState(null);
 
   const formatMilliseconds = (milliseconds) => {
     const totalSeconds = Math.floor(milliseconds / 1000);
@@ -205,6 +211,16 @@ function DraftPage() {
     fetchUserData();
   };
 
+  const handleOpenModal = (league) => {
+    setSelectedLeague(league);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedLeague(null);
+  };
+
   useEffect(() => {
     fetchUserData();
   }, [userName, fetchUserData]);
@@ -273,6 +289,11 @@ function DraftPage() {
                     className="draft-grid-icon"
                   />
                 </Link>
+                <FontAwesomeIcon
+                  icon={faTableCells}
+                  className="league-action-icon"
+                  onClick={() => handleOpenModal(draft)}
+                />
                 <span hidden>{userId}</span>
               </div>
             </React.Fragment>
@@ -281,6 +302,16 @@ function DraftPage() {
           <div className="draft-grid-item">No drafts found.</div>
         )}
       </div>
+
+      {/* Modal */}
+      {isModalOpen && (
+        <DraftModal
+          league={selectedLeague}
+          draftId={selectedLeague?.draft_id}
+          onClose={handleCloseModal}
+          userId={userId}
+        />
+      )}
     </div>
   );
 }

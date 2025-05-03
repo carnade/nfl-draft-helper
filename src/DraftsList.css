@@ -66,9 +66,15 @@
 }
 
 .draft-grid-item {
+  display: flex;
+  align-items: center; /* Center items vertically */
   padding: 10px 0;
   border-bottom: 1px solid #eee;
   font-size: 14px;
+}
+
+.draft-grid-item .draft-grid-link {
+  margin-right: 10px; /* Add spacing between the links */
 }
 
 .draft-grid-name {
@@ -82,7 +88,7 @@
 .draft-grid-icon {
   width: 20px;
   height: 20px;
-  margin-left: 10px;
+  margin-right: 10px;
   vertical-align: middle;
 }
 
