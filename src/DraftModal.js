@@ -33,6 +33,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
   const [isRedGreenActive, setIsRedGreenActive] = useState(false);
   const [isGoatActive, setIsGoatActive] = useState(false); // Add Goat toggle state
   const [isLoading, setIsLoading] = useState(true); // Add loading state
+  const [qbCount, setQbCount] = useState(0); // Add QbCount state
 
   const calculateGoatValues = useCallback(
     (picks, draftType) => {
@@ -57,6 +58,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
         const pickNumber = pick.pick_no;
         const ktcRank = player.ktcRankCalculated;
         const fcRank = player.fcRankCalculated;
+        // Calculate total weight
 
         if (!isNaN(pickNumber) && !isNaN(ktcRank) && !isNaN(fcRank)) {
           const averageRank = (ktcRank + fcRank) / 2;
@@ -66,7 +68,12 @@ function DraftModal({ league, draftId, onClose, userId }) {
 
           if (draftType === "linear") {
             const round = Math.ceil(pickNumber / (league.teams || 12)); // Calculate the round based on pick number and team count
-            const adjustedRankDifference = rankDifference / round; // Adjust rankDifference by the round
+            let adjustedRankDifference = rankDifference / round; // Adjust rankDifference by the round and weights
+
+            if (qbCount >= 2 && player.position === "QB") {
+              adjustedRankDifference += 1; // Add 1 if total weight is 2 or more and player is QB
+            }
+
             if (adjustedRankDifference >= 4) {
               results[position].goat++;
             } else if (adjustedRankDifference >= 3) {
@@ -88,10 +95,13 @@ function DraftModal({ league, draftId, onClose, userId }) {
           } else if (draftType === "snake") {
             const round = Math.ceil(pickNumber / (league.teams || 12)); // Calculate the round based on pick number and team count
             let factor;
-            factor = 1.25 * round;
+            factor = 1.25 * round; // Adjust factor by weights
 
-            const adjustedRankDifference = rankDifference / factor; // Adjust rankDifference by the calculated factor
+            let adjustedRankDifference = rankDifference / factor; // Adjust rankDifference by the calculated factor
 
+            if (qbCount >= 2 && player.position === "QB") {
+              adjustedRankDifference += 2; // Add 1 if total weight is 2 or more and player is QB
+            }
             if (adjustedRankDifference >= 4) {
               results[position].goat++;
             } else if (adjustedRankDifference >= 3) {
@@ -134,7 +144,6 @@ function DraftModal({ league, draftId, onClose, userId }) {
     setPlayerResults(orderedResults);
 
     // Log the counts per team
-    console.debug("Goat results per team:", orderedResults);
   }, [isGoatActive, picks, draftType, calculateGoatValues]);
 
   useEffect(() => {
@@ -156,6 +165,12 @@ function DraftModal({ league, draftId, onClose, userId }) {
             setDraftType(data.type);
             setReversalRound(data.settings.reversal_round);
             setDraftOrder(data.draft_order);
+
+            // Calculate and set QbCount
+            const qbWeight = data.settings.slots_qb || 1;
+            const superFlexWeight = data.settings.slots_super_flex || 0;
+            const qbCount = qbWeight + superFlexWeight;
+            setQbCount(qbCount);
           } else if (response.status === 404) {
             console.error("No draft found");
             setDraftType(null); // Indicate no draft found
@@ -525,7 +540,15 @@ function DraftModal({ league, draftId, onClose, userId }) {
     const rankDifference = pick.rankDifference; // Assuming rankDifference is calculated elsewhere
     const round = Math.ceil(pick.pick_no / (league.teams || 12)); // Calculate the round based on pick number and team count
     if (draftType === "linear") {
-      const adjustedRankDifference = rankDifference / round; // Adjust rankDifference for linear drafts
+      let adjustedRankDifference = rankDifference / round; // Adjust rankDifference for linear drafts
+
+      if (
+        qbCount >= 2 &&
+        pick.player_id &&
+        playerData[pick.player_id]?.position === "QB"
+      ) {
+        adjustedRankDifference += 1; // Add 2 if total weight is 2 or more and player is QB
+      }
 
       if (adjustedRankDifference >= 4) {
         return <GiGoat className="result-icon golden" />; // Golden goat icon
@@ -543,16 +566,16 @@ function DraftModal({ league, draftId, onClose, userId }) {
         return <GiTurd className="result-icon brown" />; // Brown turd icon
       }
     } else if (draftType === "snake") {
-      let factor;
-      /*      if (round <= 5) {
-        factor = 1.5 * round;
-      } else if (round <= 30) {
-        factor = 1.5 * 5 - 0.1 * (round - 5);
-      } else {
-        factor = 1 * 15;
-      }*/
-      factor = 1.25 * round;
-      const adjustedRankDifference = rankDifference / factor; // Adjust rankDifference by the calculated factor
+      const factor = 1.25 * round;
+      let adjustedRankDifference = rankDifference / factor; // Adjust rankDifference by the calculated factor
+
+      if (
+        qbCount >= 2 &&
+        pick.player_id &&
+        playerData[pick.player_id]?.position === "QB"
+      ) {
+        adjustedRankDifference += 2; // Add 2 if total weight is 2 or more and player is QB
+      }
 
       if (adjustedRankDifference >= 4) {
         return <GiGoat className="result-icon golden" />; // Golden goat icon
