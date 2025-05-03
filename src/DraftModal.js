@@ -220,7 +220,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
     }
 
     if (pick.isDimmed) {
-      return { border: "none" };
+      return { border: "2px solid #999" }; // Keep the base border for dimmed players
     }
 
     const player = playerData[pick.player_id] || {};
