@@ -126,7 +126,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
 
       return results;
     },
-    [draftOrder, playerData, league.teams]
+    [draftOrder, playerData, league.teams, qbCount]
   );
 
   const updateGoatResults = useCallback(() => {
@@ -144,7 +144,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
     setPlayerResults(orderedResults);
 
     // Log the counts per team
-  }, [isGoatActive, picks, draftType, calculateGoatValues, qbCount]);
+  }, [isGoatActive, picks, draftType, calculateGoatValues]);
 
   useEffect(() => {
     if (isGoatActive) {
