@@ -23,44 +23,60 @@ function DraftModal({ league, draftId, onClose, userId }) {
   const [playerResults, setPlayerResults] = useState({});
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [isRedGreenActive, setIsRedGreenActive] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Add loading state
 
   useEffect(() => {
-    if (league) {
+    setIsLoading(true); // Set loading to true before fetching data
+    if (draftId) {
       const fetchDraftDetails = async () => {
         try {
           const response = await fetch(
             `https://api.sleeper.app/v1/draft/${draftId}`
           );
-          const data = await response.json();
-          setDraftType(data.type);
-          setReversalRound(data.settings.reversal_round);
-          setDraftOrder(data.draft_order);
+          if (response.ok) {
+            const data = await response.json();
+            setDraftType(data.type);
+            setReversalRound(data.settings.reversal_round);
+            setDraftOrder(data.draft_order);
+          } else if (response.status === 404) {
+            console.error("No draft found");
+            setDraftType(null); // Indicate no draft found
+          }
         } catch (error) {
           console.error("Error fetching draft details:", error);
+          setDraftType(null); // Indicate no draft found on error
+        } finally {
+          setIsLoading(false); // Set loading to false after fetching data
         }
       };
 
       fetchDraftDetails();
     }
-  }, [league, draftId]);
+  }, [draftId]);
 
   useEffect(() => {
-    if (league) {
+    if (draftId) {
       const fetchPicks = async () => {
         try {
           const response = await fetch(
             `https://api.sleeper.app/v1/draft/${draftId}/picks`
           );
-          const data = await response.json();
-          setPicks(data);
+          if (response.ok) {
+            const data = await response.json();
+            setPicks(data);
+          } else {
+            console.error("Error fetching draft picks: Not Found");
+            setPicks([]); // Set picks to an empty array on error
+          }
         } catch (error) {
           console.error("Error fetching draft picks:", error);
+          setPicks([]); // Set picks to an empty array on error
         }
       };
 
       fetchPicks();
     }
-  }, [league, draftId]);
+  }, [draftId]);
 
   useEffect(() => {
     const fetchPlayerData = async () => {
@@ -191,7 +207,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
     return orderedPicks;
   };
 
-  const filteredPicks = picks.map((pick) => {
+  const filteredPicks = (picks || []).map((pick) => {
     if (selectedTeam && pick.picked_by !== selectedTeam) {
       return { ...pick, isDimmed: true }; // Add a flag to dim the background
     }
@@ -295,20 +311,23 @@ function DraftModal({ league, draftId, onClose, userId }) {
   useEffect(() => {
     const redGreenToggle = document.getElementById("redgreen-toggle");
 
-    const handleToggleChange = () => {
-      console.debug("RedGreen toggle changed.");
-    };
+    if (redGreenToggle) {
+      // Add null check
+      const handleToggleChange = () => {
+        console.debug("RedGreen toggle changed.");
+      };
 
-    redGreenToggle.addEventListener("change", handleToggleChange);
+      redGreenToggle.addEventListener("change", handleToggleChange);
 
-    return () => {
-      redGreenToggle.removeEventListener("change", handleToggleChange);
-    };
+      return () => {
+        redGreenToggle.removeEventListener("change", handleToggleChange);
+      };
+    }
   }, []);
 
   const renderTeamButtons = (draftOrder) => {
     if (!draftOrder || typeof draftOrder !== "object") {
-      return <div>No draft order available</div>;
+      return null;
     }
 
     const sortedDraftOrder = Object.entries(draftOrder).sort(
@@ -341,103 +360,119 @@ function DraftModal({ league, draftId, onClose, userId }) {
   return (
     <div className="draft-modal-overlay">
       <div className="draft-modal-content">
-        <div className="header-container">
-          <h2 className="league-title">{league.name}</h2>
-          <div className="switches-container">
-            <div className="switch-container">
-              <FontAwesomeIcon
-                icon={faSquare}
-                style={{ color: "green", marginRight: "5px" }}
-              />
-              <FontAwesomeIcon
-                icon={faSquare}
-                style={{ color: "red", marginRight: "10px" }}
-              />
-              <label className="switch">
-                <input
-                  type="checkbox"
-                  id="redgreen-toggle"
-                  checked={isRedGreenActive}
-                  onChange={handleRedGreenToggle}
-                />
-                <span className="slider round"></span>
-              </label>
-            </div>
-
-            <div className="switch-container">
-              <GiGoat
-                size={33}
-                style={{ marginLeft: "10px", marginRight: "10px" }}
-              />
-              <label className="switch">
-                <input type="checkbox" id="goat-toggle" />
-                <span className="slider round"></span>
-              </label>
-            </div>
+        {isLoading ? (
+          <div className="center-content">
+            <div className="spinner"></div> {/* Add spinner while loading */}
           </div>
-        </div>
-        <div className="team-buttons-container">
-          {renderTeamButtons(draftOrder)}
-        </div>
-        <div className="results-container">
-          <ResultsGrid playerResults={playerResults} />
-        </div>
+        ) : (
+          <>
+            <div className="header-container">
+              <h2 className="league-title">{league.name}</h2>
+              <div className="switches-container">
+                <div className="switch-container">
+                  <FontAwesomeIcon
+                    icon={faSquare}
+                    style={{ color: "green", marginRight: "5px" }}
+                  />
+                  <FontAwesomeIcon
+                    icon={faSquare}
+                    style={{ color: "red", marginRight: "10px" }}
+                  />
+                  <label className="draft-modal-switch">
+                    <input
+                      type="checkbox"
+                      id="redgreen-toggle"
+                      checked={isRedGreenActive}
+                      onChange={handleRedGreenToggle}
+                    />
+                    <span className="draft-modal-slider round"></span>
+                  </label>
+                </div>
 
-        <div className="draftmodal-gridcontainer">
-          {calculatePresentationOrder(
-            filteredPicks,
-            league.teams || 12,
-            draftType,
-            reversalRound
-          ).map((pick, index) => {
-            const player = playerData[pick.player_id] || {};
-            const metadata = pick.metadata || {};
-            const round = Math.floor(index / (league.teams || 12)) + 1;
-            const pickInRound = (index % (league.teams || 12)) + 1;
-            const formattedRank = `${round}.${pickInRound
-              .toString()
-              .padStart(2, "0")}`;
-
-            return (
-              <div
-                key={pick.pick_no}
-                className={`player-card ${
-                  metadata.position?.toLowerCase() || "unknown"
-                }`}
-                data-picked-by={pick.picked_by}
-                data-pick-no={pick.pick_no}
-                style={{
-                  ...calculateBorders(pick),
-                  ...calculateBackground(pick),
-                }}
-              >
-                <div className="pick-number">
-                  {formattedRank} :{pick.pick_no}
-                </div>
-                <div className="draftmodal-player-name">
-                  <div>
-                    {metadata.first_name || player.first_name || "Unknown"}
-                  </div>
-                  <div>
-                    {metadata.last_name || player.last_name || "Player"}
-                  </div>
-                </div>
-                <div className="player-info ktc">
-                  KTC: {player["KTC Value"] || "N/A"}
-                </div>
-                <div className="player-info ktc-rank">
-                  R: {player.ktcRankCalculated || "N/A"}
-                </div>
-                <div className="player-info fc">
-                  FAC: {player["FC Value"] || "N/A"}
-                </div>
-                <div className="player-info fc-rank">
-                  R: {player.fcRankCalculated || "N/A"}
+                <div className="switch-container">
+                  <GiGoat
+                    size={33}
+                    style={{ marginLeft: "10px", marginRight: "10px" }}
+                  />
+                  <label className="draft-modal-switch">
+                    <input type="checkbox" id="goat-toggle" />
+                    <span className="draft-modal-slider round"></span>
+                  </label>
                 </div>
               </div>
-            );
-          })}
-        </div>
+            </div>
+            <div className="team-buttons-container">
+              {renderTeamButtons(draftOrder)}
+            </div>
+            <div className="results-container">
+              <ResultsGrid playerResults={playerResults} />
+            </div>
+
+            <div className="draftmodal-gridcontainer">
+              {draftType ? (
+                calculatePresentationOrder(
+                  filteredPicks,
+                  league.teams || 12,
+                  draftType,
+                  reversalRound
+                ).map((pick, index) => {
+                  const player = playerData[pick.player_id] || {};
+                  const metadata = pick.metadata || {};
+                  const round = Math.floor(index / (league.teams || 12)) + 1;
+                  const pickInRound = (index % (league.teams || 12)) + 1;
+                  const formattedRank = `${round}.${pickInRound
+                    .toString()
+                    .padStart(2, "0")}`;
+
+                  return (
+                    <div
+                      key={pick.pick_no}
+                      className={`player-card ${
+                        metadata.position?.toLowerCase() || "unknown"
+                      }`}
+                      data-picked-by={pick.picked_by}
+                      data-pick-no={pick.pick_no}
+                      style={{
+                        ...calculateBorders(pick),
+                        ...calculateBackground(pick),
+                      }}
+                    >
+                      <div className="pick-number">
+                        {formattedRank} :{pick.pick_no}
+                      </div>
+                      <div className="draftmodal-player-name">
+                        <div>
+                          {metadata.first_name ||
+                            player.first_name ||
+                            "Unknown"}
+                        </div>
+                        <div>
+                          {metadata.last_name || player.last_name || "Player"}
+                        </div>
+                      </div>
+                      <div className="player-info ktc">
+                        KTC: {player["KTC Value"] || "N/A"}
+                      </div>
+                      <div className="player-info ktc-rank">
+                        R: {player.ktcRankCalculated || "N/A"}
+                      </div>
+                      <div className="player-info fc">
+                        FAC: {player["FC Value"] || "N/A"}
+                      </div>
+                      <div className="player-info fc-rank">
+                        R: {player.fcRankCalculated || "N/A"}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="center-content draft-modal-not-found-text">
+                  No draft found
+                </div>
+              )}
+            </div>
+          </>
+        )}
         <button className="close-modal-button" onClick={onClose}>
           Close
         </button>
@@ -449,10 +484,10 @@ function DraftModal({ league, draftId, onClose, userId }) {
 DraftModal.propTypes = {
   league: PropTypes.shape({
     draft_id: PropTypes.string.isRequired,
-    name: PropTypes.string.isRequired,
+    name: PropTypes.string,
     teams: PropTypes.number,
-    draft_order: PropTypes.object.isRequired,
-  }).isRequired,
+    draft_order: PropTypes.object,
+  }), // Made league optional
   draftId: PropTypes.string.isRequired,
   userId: PropTypes.string.isRequired,
   onClose: PropTypes.func.isRequired,

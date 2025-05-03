@@ -126,3 +126,30 @@ body.dark .draft-grid-link:hover {
   color: #d8bfd8; /* Lighter purple on hover */
   text-decoration: underline; /* Add underline on hover */
 }
+
+/* Styling for the draft ID input field */
+.draft-id-input {
+  font-size: 16px; /* Make the input larger */
+  padding: 10px; /* Add padding for better usability */
+  border-radius: 8px; /* Rounded edges */
+  background-color: #f2f2f2; /* Light gray background */
+  border: 1px solid #ccc; /* Subtle border */
+  width: 250px; /* Set a reasonable width */
+}
+
+.draft-id-input:focus {
+  outline: none; /* Remove default focus outline */
+  border-color: #007bff; /* Highlight border on focus */
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.5); /* Add subtle shadow */
+}
+
+/* Styling for league action icons */
+.draftlist-input-icon {
+  font-size: 25px;
+  color: #66b2ff; /* Set the color to blue */
+  cursor: pointer; /* Add pointer cursor for better UX */
+}
+
+.draftlist-input-icon:hover {
+  color: #0056b3; /* Darker blue on hover */
+}

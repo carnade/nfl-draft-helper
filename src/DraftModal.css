@@ -268,23 +268,22 @@ body.dark button.team-button.selected {
 }
 
 /* The switch - the box around the slider */
-.switch {
+.draft-modal-switch {
   position: relative;
   display: inline-block;
   width: 60px;
   height: 34px;
-  margin-right: 10px; /* Add spacing between switch and label */
 }
 
 /* Hide default HTML checkbox */
-.switch input {
+.draft-modal-switch input {
   opacity: 0;
   width: 0;
   height: 0;
 }
 
 /* The slider */
-.slider {
+.draft-modal-slider {
   position: absolute;
   cursor: pointer;
   top: 0;
@@ -296,7 +295,7 @@ body.dark button.team-button.selected {
   transition: 0.4s;
 }
 
-.slider:before {
+.draft-modal-slider:before {
   position: absolute;
   content: "";
   height: 26px;
@@ -308,26 +307,26 @@ body.dark button.team-button.selected {
   transition: 0.4s;
 }
 
-input:checked + .slider {
+.draft-modal-switch input:checked + .draft-modal-slider {
   background-color: #2196f3;
 }
 
-input:focus + .slider {
+.draft-modal-switch input:focus + .draft-modal-slider {
   box-shadow: 0 0 1px #2196f3;
 }
 
-input:checked + .slider:before {
+.draft-modal-switch input:checked + .draft-modal-slider:before {
   -webkit-transform: translateX(26px);
   -ms-transform: translateX(26px);
   transform: translateX(26px);
 }
 
 /* Rounded sliders */
-.slider.round {
+.draft-modal-slider.round {
   border-radius: 34px;
 }
 
-.slider.round:before {
+.draft-modal-slider.round:before {
   border-radius: 50%;
 }
 
@@ -372,4 +371,22 @@ input:checked + .slider:before {
   align-items: center;
   justify-content: center;
   gap: 5px;
+}
+
+/* Center content both horizontally and vertically */
+.center-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+/* Ensure the 'No draft found' text spans all 12 columns in the grid */
+.draft-modal-not-found-text {
+  grid-column: span 12;
+  font-size: 64px;
+  height: 20vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
