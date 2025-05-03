@@ -118,6 +118,12 @@
   font-weight: bold;
   margin-top: 5px;
 }
+
+.result-square.green {
+  background-color: rgba(0, 133, 0, 0.2);
+  border: 2px solid darkgreen;
+}
+
 .result-square.green1 {
   background-color: rgba(0, 198, 0, 0.2);
   border: 2px solid rgb(0, 167, 0);
@@ -132,7 +138,10 @@
   background-color: rgba(0, 104, 0, 0.347);
   border: 2px solid darkgreen;
 }
-
+.result-square.red {
+  background-color: rgba(255, 0, 0, 0.25);
+  border: 2px solid rgb(133, 1, 1);
+}
 .result-square.red1 {
   background-color: rgba(255, 0, 0, 0.25);
   border: 2px solid rgb(192, 0, 0);

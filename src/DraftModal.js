@@ -264,29 +264,35 @@ function DraftModal({ league, draftId, onClose, userId }) {
 
   const handleRedGreenToggle = (event) => {
     const isChecked = event.target.checked;
-    setIsRedGreenActive(isChecked);
+    console.debug("RedGreen toggle changed:", isChecked);
 
     if (isChecked) {
-      setIsGoatActive(false); // Turn off Goat switch if RedGreen is activated
+      setIsGoatActive(false); // Turn off Goat switch first
+      setIsRedGreenActive(true); // Then activate RedGreen
       console.debug("RedGreen toggle activated. Updating ResultsGrid.");
+      updateResultsGrid(true); // Ensure results are updated for RedGreen
     } else {
+      setIsRedGreenActive(false);
       console.debug("RedGreen toggle deactivated. Clearing ResultsGrid.");
+      updateResultsGrid(false); // Clear results when RedGreen is deactivated
     }
-
-    updateResultsGrid(isChecked);
   };
 
   const handleGoatToggle = (event) => {
     const isChecked = event.target.checked;
+    console.debug("Goat toggle changed:", isChecked);
     setIsGoatActive(isChecked);
 
     if (isChecked) {
       setIsRedGreenActive(false); // Turn off RedGreen switch if Goat is activated
-      console.debug("Goat toggle activated.");
+      console.debug("Goat toggle activated. Updating Goat Results.");
       updateResultsGrid(false); // Clear results when Goat is activated
       updateGoatResults(); // Update Goat results
     } else {
-      console.debug("Goat toggle deactivated.");
+      console.debug(
+        "Goat toggle deactivated. Restoring RedGreen Results if active."
+      );
+      updateResultsGrid(isRedGreenActive); // Restore RedGreen results if active
     }
   };
 
@@ -297,12 +303,11 @@ function DraftModal({ league, draftId, onClose, userId }) {
       "isGoatActive:",
       isGoatActive
     );
-    if (!isActive || isGoatActive) {
-      // Hide results if Goat is active or RedGreen is off
-      setPlayerResults({}); // Clear the results if toggle is off or Goat is active
-      console.debug(
-        "RedGreen toggle is off or Goat is active. Clearing results."
-      );
+
+    if (!isActive) {
+      // Hide results if RedGreen is off
+      setPlayerResults({}); // Clear the results if toggle is off
+      console.debug("RedGreen toggle is off. Clearing results.");
       return;
     }
 
