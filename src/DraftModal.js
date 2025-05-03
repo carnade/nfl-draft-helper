@@ -173,7 +173,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
     if (isGoatActive) {
       updateGoatResults();
     }
-  }, [isGoatActive]);
+  }, [isGoatActive, updateGoatResults]); // Added 'updateGoatResults' to the dependency array
 
   const calculatePresentationOrder = (
     picks,
