@@ -86,7 +86,7 @@ body.dark .draft-modal-content {
 /* Renamed player-name to draftmodal-player-name */
 .draftmodal-player-name {
   grid-area: name;
-  text-align: center;
+  text-align: right;
   justify-self: stretch; /* Ensure it stretches to align with the ranks */
   grid-column: span 4; /* Take less space */
   font-size: 1.2em; /* Slightly smaller font size */
@@ -102,24 +102,32 @@ body.dark .draft-modal-content {
 }
 
 .player-info.ktc {
+  display: flex; /* Align items horizontally */
+  gap: 2px; /* Add some spacing between FAC: and the value */
   grid-area: ktc;
   text-align: left;
   grid-column: span 3; /* Take more space */
 }
 
 .player-info.ktc-rank {
+  display: flex; /* Align items horizontally */
+  gap: 2px; /* Add some spacing between FAC: and the value */
   grid-area: ktc-rank;
   text-align: right;
   grid-column: span 2; /* Take less space */
 }
 
 .player-info.fc {
+  display: flex; /* Align items horizontally */
+  gap: 2px; /* Add some spacing between FAC: and the value */
   grid-area: fc;
   text-align: left;
   grid-column: span 3; /* Take more space */
 }
 
 .player-info.fc-rank {
+  display: flex; /* Align items horizontally */
+  gap: 2px; /* Add some spacing between FAC: and the value */
   grid-area: fc-rank;
   text-align: right;
   grid-column: span 2; /* Take less space */
@@ -389,4 +397,8 @@ body.dark button.team-button.selected {
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+.draft-modal-card-text {
+  color: #c1c1c1; /* Dimmed text color */
 }

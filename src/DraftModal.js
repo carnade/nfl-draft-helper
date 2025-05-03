@@ -23,6 +23,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
   const [playerResults, setPlayerResults] = useState({});
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [isRedGreenActive, setIsRedGreenActive] = useState(false);
+  const [isGoatActive, setIsGoatActive] = useState(false); // Add Goat toggle state
   const [isLoading, setIsLoading] = useState(true); // Add loading state
 
   useEffect(() => {
@@ -160,6 +161,12 @@ function DraftModal({ league, draftId, onClose, userId }) {
     calculateRanks();
   }, [playerData]);
 
+  useEffect(() => {
+    if (isGoatActive) {
+      updateGoatResults();
+    }
+  }, [isGoatActive]);
+
   const calculatePresentationOrder = (
     picks,
     teamsCount,
@@ -260,6 +267,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
     setIsRedGreenActive(isChecked);
 
     if (isChecked) {
+      setIsGoatActive(false); // Turn off Goat switch if RedGreen is activated
       console.debug("RedGreen toggle activated. Updating ResultsGrid.");
     } else {
       console.debug("RedGreen toggle deactivated. Clearing ResultsGrid.");
@@ -268,10 +276,33 @@ function DraftModal({ league, draftId, onClose, userId }) {
     updateResultsGrid(isChecked);
   };
 
+  const handleGoatToggle = (event) => {
+    const isChecked = event.target.checked;
+    setIsGoatActive(isChecked);
+
+    if (isChecked) {
+      setIsRedGreenActive(false); // Turn off RedGreen switch if Goat is activated
+      console.debug("Goat toggle activated.");
+      updateResultsGrid(false); // Clear results when Goat is activated
+      updateGoatResults(); // Update Goat results
+    } else {
+      console.debug("Goat toggle deactivated.");
+    }
+  };
+
   const updateResultsGrid = (isActive) => {
-    if (!isActive) {
-      setPlayerResults({}); // Clear the results if toggle is off
-      console.debug("RedGreen toggle is off. Clearing results.");
+    console.debug(
+      "updateResultsGrid called with isActive:",
+      isActive,
+      "isGoatActive:",
+      isGoatActive
+    );
+    if (!isActive || isGoatActive) {
+      // Hide results if Goat is active or RedGreen is off
+      setPlayerResults({}); // Clear the results if toggle is off or Goat is active
+      console.debug(
+        "RedGreen toggle is off or Goat is active. Clearing results."
+      );
       return;
     }
 
@@ -306,6 +337,68 @@ function DraftModal({ league, draftId, onClose, userId }) {
       (a, b) => a.position - b.position
     );
     setPlayerResults(orderedResults);
+  };
+
+  const updateGoatResults = () => {
+    if (!isGoatActive) {
+      setPlayerResults({}); // Clear results if Goat is not active
+      return;
+    }
+
+    const results = {}; // Object to store counts per user
+
+    // Initialize all userIds to 0 for goat categories based on draft order
+    Object.entries(draftOrder || {}).forEach(([userId, position]) => {
+      results[position] = {
+        userId,
+        goat: 0,
+        hero: 0,
+        decent: 0,
+        neutral: 0,
+        bad: 0,
+        horrible: 0,
+        turd: 0,
+      };
+    });
+
+    picks.forEach((pick) => {
+      const player = playerData[pick.player_id] || {};
+      const pickNumber = pick.pick_no;
+      const ktcRank = player.ktcRankCalculated;
+      const fcRank = player.fcRankCalculated;
+
+      if (!isNaN(pickNumber) && !isNaN(ktcRank) && !isNaN(fcRank)) {
+        const averageRank = (ktcRank + fcRank) / 2;
+        const rankDifference = pickNumber - averageRank;
+        const pickedBy = pick.picked_by;
+        const position = draftOrder[pickedBy];
+
+        if (rankDifference >= 4) {
+          results[position].goat++;
+        } else if (rankDifference >= 3) {
+          results[position].hero++;
+        } else if (rankDifference >= 2) {
+          results[position].decent++;
+        } else if (rankDifference >= -1 && rankDifference <= 1) {
+          results[position].neutral++;
+        } else if (rankDifference <= -2) {
+          results[position].bad++;
+        } else if (rankDifference <= -3) {
+          results[position].horrible++;
+        } else if (rankDifference <= -4) {
+          results[position].turd++;
+        }
+      }
+    });
+
+    // Convert results back to an ordered array
+    const orderedResults = Object.values(results).sort(
+      (a, b) => a.position - b.position
+    );
+    setPlayerResults(orderedResults);
+
+    // Log the counts per team
+    console.debug("Goat results per team:", orderedResults);
   };
 
   useEffect(() => {
@@ -395,7 +488,12 @@ function DraftModal({ league, draftId, onClose, userId }) {
                     style={{ marginLeft: "10px", marginRight: "10px" }}
                   />
                   <label className="draft-modal-switch">
-                    <input type="checkbox" id="goat-toggle" />
+                    <input
+                      type="checkbox"
+                      id="goat-toggle"
+                      checked={isGoatActive}
+                      onChange={handleGoatToggle}
+                    />
                     <span className="draft-modal-slider round"></span>
                   </label>
                 </div>
@@ -404,9 +502,12 @@ function DraftModal({ league, draftId, onClose, userId }) {
             <div className="team-buttons-container">
               {renderTeamButtons(draftOrder)}
             </div>
-            <div className="results-container">
-              <ResultsGrid playerResults={playerResults} />
-            </div>
+
+            <ResultsGrid
+              playerResults={playerResults}
+              isRedGreenActive={isRedGreenActive}
+              isGoatActive={isGoatActive}
+            />
 
             <div className="draftmodal-gridcontainer">
               {draftType ? (
@@ -451,16 +552,20 @@ function DraftModal({ league, draftId, onClose, userId }) {
                         </div>
                       </div>
                       <div className="player-info ktc">
-                        KTC: {player["KTC Value"] || "N/A"}
+                        <div className="draft-modal-card-text">KTC:</div>
+                        {player["KTC Value"] || "N/A"}
                       </div>
                       <div className="player-info ktc-rank">
-                        R: {player.ktcRankCalculated || "N/A"}
+                        <div className="draft-modal-card-text">R:</div>
+                        {player.ktcRankCalculated || "N/A"}
                       </div>
                       <div className="player-info fc">
-                        FAC: {player["FC Value"] || "N/A"}
+                        <div className="draft-modal-card-text">FAC:</div>
+                        {player["FC Value"] || "N/A"}
                       </div>
                       <div className="player-info fc-rank">
-                        R: {player.fcRankCalculated || "N/A"}
+                        <div className="draft-modal-card-text">R:</div>
+                        {player.fcRankCalculated || "N/A"}
                       </div>
                     </div>
                   );
