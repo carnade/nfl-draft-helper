@@ -67,7 +67,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
             let adjustedRankDifference = rankDifference / round; // Adjust rankDifference by the round and weights
 
             if (qbCount >= 2 && player.position === "QB") {
-              adjustedRankDifference += 2; // Add 1 if total weight is 2 or more and player is QB
+              adjustedRankDifference += 1.5; // Add 1 if total weight is 2 or more and player is QB
             }
 
             if (adjustedRankDifference >= 4) {
@@ -543,7 +543,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
         pick.player_id &&
         playerData[pick.player_id]?.position === "QB"
       ) {
-        adjustedRankDifference += 2; // Add 2 if total weight is 2 or more and player is QB
+        adjustedRankDifference += 1.5; // Add 2 if total weight is 2 or more and player is QB
       }
 
       if (adjustedRankDifference >= 4) {
