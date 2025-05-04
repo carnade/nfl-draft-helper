@@ -75,6 +75,25 @@ body.dark .draft-modal-content {
   color: rgba(220, 220, 220, 0.95);
 }
 
+.player-card-container {
+  position: relative; /* Make the container a positioning context */
+}
+
+.player-card-icon {
+  osition: relative;
+  /* top: -150%; */
+  /* left: 120%; */
+  transform: translate(66%, -100%);
+  z-index: 10;
+  font-size: 3.5rem;
+  pointer-events: none;
+  /* align-items: center; */
+  /* border: 3px; */
+  background-color: #313131;
+  border-radius: 10px;
+  padding: 1px;
+}
+
 .pick-number {
   grid-area: pick;
   font-size: 1.3em; /* Slightly smaller font size */
@@ -86,7 +105,7 @@ body.dark .draft-modal-content {
 /* Renamed player-name to draftmodal-player-name */
 .draftmodal-player-name {
   grid-area: name;
-  text-align: center;
+  text-align: right;
   justify-self: stretch; /* Ensure it stretches to align with the ranks */
   grid-column: span 4; /* Take less space */
   font-size: 1.2em; /* Slightly smaller font size */
@@ -102,24 +121,32 @@ body.dark .draft-modal-content {
 }
 
 .player-info.ktc {
+  display: flex; /* Align items horizontally */
+  gap: 2px; /* Add some spacing between FAC: and the value */
   grid-area: ktc;
   text-align: left;
   grid-column: span 3; /* Take more space */
 }
 
 .player-info.ktc-rank {
+  display: flex; /* Align items horizontally */
+  gap: 2px; /* Add some spacing between FAC: and the value */
   grid-area: ktc-rank;
   text-align: right;
   grid-column: span 2; /* Take less space */
 }
 
 .player-info.fc {
+  display: flex; /* Align items horizontally */
+  gap: 2px; /* Add some spacing between FAC: and the value */
   grid-area: fc;
   text-align: left;
   grid-column: span 3; /* Take more space */
 }
 
 .player-info.fc-rank {
+  display: flex; /* Align items horizontally */
+  gap: 2px; /* Add some spacing between FAC: and the value */
   grid-area: fc-rank;
   text-align: right;
   grid-column: span 2; /* Take less space */
@@ -268,23 +295,22 @@ body.dark button.team-button.selected {
 }
 
 /* The switch - the box around the slider */
-.switch {
+.draft-modal-switch {
   position: relative;
   display: inline-block;
   width: 60px;
   height: 34px;
-  margin-right: 10px; /* Add spacing between switch and label */
 }
 
 /* Hide default HTML checkbox */
-.switch input {
+.draft-modal-switch input {
   opacity: 0;
   width: 0;
   height: 0;
 }
 
 /* The slider */
-.slider {
+.draft-modal-slider {
   position: absolute;
   cursor: pointer;
   top: 0;
@@ -296,7 +322,7 @@ body.dark button.team-button.selected {
   transition: 0.4s;
 }
 
-.slider:before {
+.draft-modal-slider:before {
   position: absolute;
   content: "";
   height: 26px;
@@ -308,26 +334,26 @@ body.dark button.team-button.selected {
   transition: 0.4s;
 }
 
-input:checked + .slider {
+.draft-modal-switch input:checked + .draft-modal-slider {
   background-color: #2196f3;
 }
 
-input:focus + .slider {
+.draft-modal-switch input:focus + .draft-modal-slider {
   box-shadow: 0 0 1px #2196f3;
 }
 
-input:checked + .slider:before {
+.draft-modal-switch input:checked + .draft-modal-slider:before {
   -webkit-transform: translateX(26px);
   -ms-transform: translateX(26px);
   transform: translateX(26px);
 }
 
 /* Rounded sliders */
-.slider.round {
+.draft-modal-slider.round {
   border-radius: 34px;
 }
 
-.slider.round:before {
+.draft-modal-slider.round:before {
   border-radius: 50%;
 }
 
@@ -372,4 +398,44 @@ input:checked + .slider:before {
   align-items: center;
   justify-content: center;
   gap: 5px;
+}
+
+/* Center content both horizontally and vertically */
+.center-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+/* Ensure the 'No draft found' text spans all 12 columns in the grid */
+.draft-modal-not-found-text {
+  grid-column: span 12;
+  font-size: 64px;
+  height: 20vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.draft-modal-card-text {
+  color: #c1c1c1; /* Dimmed text color */
+}
+
+.player-card-content {
+  position: relative; /* Ensure it stays within the card */
+  display: flex; /* Use flexbox for layout */
+  flex-direction: column; /* Stack content vertically */
+  justify-content: center; /* Center content vertically */
+  align-items: center; /* Center content horizontally */
+  width: 100%; /* Take full width of the card */
+  height: 100%; /* Take full height of the card */
+  padding: 10px; /* Add some padding */
+  box-sizing: border-box; /* Include padding in width/height */
+}
+
+.dimmed {
+  opacity: 0.2; /* Reduce opacity to make it look dimmed */
+  filter: grayscale(100%); /* Apply grayscale filter for a dimmed effect */
+  pointer-events: none; /* Prevent interaction with dimmed elements */
 }

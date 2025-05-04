@@ -1,15 +1,22 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faExternalLinkAlt } from "@fortawesome/free-solid-svg-icons";
+import {
+  faExternalLinkAlt,
+  faSyncAlt,
+  faTableCells,
+} from "@fortawesome/free-solid-svg-icons";
 import { useParams } from "react-router-dom";
-import { faSyncAlt } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "react-router-dom";
+import DraftModal from "./DraftModal";
 import "./DraftsList.css";
 
 function DraftPage() {
   const { userName } = useParams();
   const [userId, setUserId] = useState(null);
   const [drafts, setDrafts] = useState([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedLeague, setSelectedLeague] = useState(null);
+  const [draftIdInput, setDraftIdInput] = useState("");
 
   const formatMilliseconds = (milliseconds) => {
     const totalSeconds = Math.floor(milliseconds / 1000);
@@ -44,6 +51,16 @@ function DraftPage() {
     max_rounds
   ) => {
     let picksToDraft;
+    if (type === "linear") {
+      // Linear draft logic
+      if (picksCount % teams >= draftPosition) {
+        picksToDraft = teams - (picksCount % teams) + draftPosition - 1;
+      } else {
+        picksToDraft = draftPosition - (picksCount % teams) - 1;
+      }
+      return picksToDraft;
+    }
+
     if (type !== "snake") {
       // If not a snake draft, we'll assume a simple linear draft for now
       if (picksCount % teams > draftPosition) {
@@ -205,6 +222,36 @@ function DraftPage() {
     fetchUserData();
   };
 
+  // Ensure `league` object has all required properties in `handleOpenModal`
+  const handleOpenModal = (draft = null) => {
+    if (draft) {
+      console.log("Opening modal with draft:", draft);
+      setSelectedLeague({
+        draft_id: draft.draft_id,
+        name: draft.name || "Unknown League", // Ensure name is set
+        teams: draft.teams || 12,
+        draft_order: draft.draft_order || {},
+      });
+      setIsModalOpen(true);
+    } else if (draftIdInput.trim()) {
+      console.log("Opening modal with draftIdInput:", draftIdInput.trim());
+      setSelectedLeague({
+        draft_id: draftIdInput.trim(),
+        name: "Unknown League", // Default name for input-based modal
+        teams: 12, // Default teams value
+        draft_order: {}, // Default empty draft order
+      });
+      setIsModalOpen(true);
+    } else {
+      console.error("Draft ID input is empty or invalid");
+    }
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedLeague(null);
+  };
+
   useEffect(() => {
     fetchUserData();
   }, [userName, fetchUserData]);
@@ -219,6 +266,22 @@ function DraftPage() {
         <button onClick={handleRefresh} className="refresh-button">
           <FontAwesomeIcon icon={faSyncAlt} /> Refresh
         </button>
+        <div className="input-container">
+          <input
+            type="text"
+            placeholder="Enter Draft ID"
+            value={draftIdInput}
+            onChange={(e) => setDraftIdInput(e.target.value)}
+            className="draft-id-input"
+          />
+          <div className="draftlist-input-icon">
+            <FontAwesomeIcon
+              icon={faTableCells}
+              className="calendar-icon"
+              onClick={() => handleOpenModal({ draft_id: draftIdInput.trim() })} // Pass draftIdInput explicitly
+            />
+          </div>
+        </div>
       </div>
       <div className="draft-grid">
         <div className="draft-grid-header">Name</div>
@@ -226,61 +289,76 @@ function DraftPage() {
         <div className="draft-grid-header">Round</div>
         <div className="draft-grid-header">Current Clock</div>
         <div className="draft-grid-header">Links</div>
-        {drafts.length > 0 ? (
-          drafts.map((draft, index) => (
-            <React.Fragment key={index}>
-              <div className="draft-grid-item draft-grid-name">
-                {draft.name}
-              </div>
-              <div className="draft-grid-item">
-                {draft.picksToDraft === 0 ? (
-                  <span className="highlight-green">
-                    It&apos;s your turn to pick!
-                  </span>
-                ) : draft.picksToDraft === -99 ? (
-                  <span className="highlight-red">Your last pick is made!</span>
-                ) : (
-                  draft.picksToDraft
-                )}
-              </div>
-              <div className="draft-grid-item">
-                {Math.floor((draft.picksCount - 1) / draft.teams) + 1}
-              </div>
-              <div className="draft-grid-item">
-                {draft.status === "paused" ? (
-                  <span className="highlight-red">Paused</span>
-                ) : (
-                  draft.currentClock
-                )}
-              </div>
-              <div className="draft-grid-item">
-                <a
-                  href={`https://sleeper.app/draft/nfl/${draft.draft_id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="draft-grid-link"
-                >
-                  <FontAwesomeIcon icon={faExternalLinkAlt} />
-                </a>
-                <Link
-                  to={`/drafthelper/${draft.draft_id}`}
-                  state={{ scoringType: draft.scoring_type }}
-                >
-                  <span>{draft.metadatascoring_type}</span>
-                  <img
-                    src="/favicon.ico"
-                    alt="Icon"
-                    className="draft-grid-icon"
+        {drafts.length > 0
+          ? drafts.map((draft, index) => (
+              <React.Fragment key={index}>
+                <div className="draft-grid-item draft-grid-name">
+                  {draft.name}
+                </div>
+                <div className="draft-grid-item">
+                  {draft.picksToDraft === 0 ? (
+                    <span className="highlight-green">
+                      It&apos;s your turn to pick!
+                    </span>
+                  ) : draft.picksToDraft === -99 ? (
+                    <span className="highlight-red">
+                      Your last pick is made!
+                    </span>
+                  ) : (
+                    draft.picksToDraft
+                  )}
+                </div>
+                <div className="draft-grid-item">
+                  {Math.floor((draft.picksCount - 1) / draft.teams) + 1}
+                </div>
+                <div className="draft-grid-item">
+                  {draft.status === "paused" ? (
+                    <span className="highlight-red">Paused</span>
+                  ) : (
+                    draft.currentClock
+                  )}
+                </div>
+                <div className="draft-grid-item">
+                  <a
+                    href={`https://sleeper.app/draft/nfl/${draft.draft_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="draft-grid-link"
+                  >
+                    <FontAwesomeIcon icon={faExternalLinkAlt} />
+                  </a>
+                  <Link
+                    to={`/drafthelper/${draft.draft_id}`}
+                    state={{ scoringType: draft.scoring_type }}
+                  >
+                    <span>{draft.metadatascoring_type}</span>
+                    <img
+                      src="/favicon.ico"
+                      alt="Icon"
+                      className="draft-grid-icon"
+                    />
+                  </Link>
+                  <FontAwesomeIcon
+                    icon={faTableCells}
+                    className="league-action-icon"
+                    onClick={() => handleOpenModal(draft)} // Ensure the draft object is passed correctly
                   />
-                </Link>
-                <span hidden>{userId}</span>
-              </div>
-            </React.Fragment>
-          ))
-        ) : (
-          <div className="draft-grid-item">No drafts found.</div>
-        )}
+                  <span hidden>{userId}</span>
+                </div>
+              </React.Fragment>
+            ))
+          : null}
       </div>
+
+      {/* Modal */}
+      {isModalOpen && (
+        <DraftModal
+          league={selectedLeague}
+          draftId={selectedLeague?.draft_id}
+          onClose={handleCloseModal}
+          userId={userId}
+        />
+      )}
     </div>
   );
 }

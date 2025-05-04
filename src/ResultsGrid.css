@@ -1,6 +1,6 @@
 /* ResultsGrid.css */
 
-.results-grid {
+.results-grid-redgreen {
   display: grid;
   grid-template-columns: repeat(12, 1fr); /* Match the team-buttons-grid */
   gap: 10px;
@@ -9,14 +9,14 @@
   width: 100%; /* Ensure it spans the full width */
 }
 
-.results-grid .player-results {
+.results-grid-redgreen .player-results-redgreen {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
 }
 
-.results-grid .fa-square {
+.results-grid-redgreen .fa-square {
   font-size: 1.5em;
   display: flex;
   align-items: center;
@@ -25,6 +25,32 @@
   height: 36px;
   border-radius: 5px;
   margin-top: 5px;
+}
+
+.results-grid-goat {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr); /* Create a 12x1 grid */
+  gap: 10px;
+  justify-items: center; /* Align items horizontally in the center */
+  align-items: center; /* Align items vertically in the middle */
+  width: 100%; /* Ensure it spans the full width */
+}
+
+.player-results-goat {
+  gap: 5px;
+  align-items: center;
+  justify-items: center;
+}
+
+.player-results-goat .result-row {
+  display: grid;
+  grid-template-columns: auto 1fr 1fr auto; /* Icon - Square - Square - Icon */
+  gap: 5px;
+  align-items: center;
+}
+
+.player-results-goat .result-row:last-child {
+  grid-template-columns: auto 1fr; /* Icon - Square for the 4th row */
 }
 
 /* Base class for common styles */
@@ -59,4 +85,94 @@
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.result-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.result-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.result-icon.golden {
+  color: goldenrod; /* Golden yellow for goat */
+}
+
+.result-icon.brown {
+  color: rgb(155, 74, 12); /* Brownish color for turd */
+}
+
+.result-square {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 5px;
+  font-size: 1.5em;
+  font-weight: bold;
+  margin-top: 5px;
+}
+
+.result-square.green {
+  background-color: rgba(0, 133, 0, 0.2);
+  border: 2px solid darkgreen;
+}
+
+.result-square.green1 {
+  background-color: rgba(0, 198, 0, 0.2);
+  border: 2px solid rgb(0, 167, 0);
+}
+
+.result-square.green2 {
+  background-color: rgba(0, 128, 0, 0.2);
+  border: 2px solid darkgreen;
+}
+
+.result-square.green3 {
+  background-color: rgba(0, 104, 0, 0.347);
+  border: 2px solid darkgreen;
+}
+.result-square.red {
+  background-color: rgba(255, 0, 0, 0.25);
+  border: 2px solid rgb(133, 1, 1);
+}
+.result-square.red1 {
+  background-color: rgba(255, 0, 0, 0.25);
+  border: 2px solid rgb(192, 0, 0);
+}
+
+.result-square.red2 {
+  background-color: rgba(222, 0, 0, 0.22);
+  border: 2px solid rgb(156, 0, 0);
+}
+
+.result-square.red3 {
+  background-color: rgba(244, 0, 0, 0.2);
+  border: 2px solid rgb(129, 0, 0);
+}
+
+body.dark .result-square.grey {
+  background-color: rgb(142, 141, 141);
+  border: 2px solid rgb(63, 63, 63);
+}
+
+body.light .result-square.grey {
+  background-color: rgb(200, 200, 200); /* Lighter background for light mode */
+  border: 2px solid rgb(150, 150, 150); /* Lighter border for light mode */
+}
+
+.result-square.golden {
+  background-color: rgba(255, 215, 0, 0.2); /* Golden yellow */
+  border: 2px solid goldenrod;
+}
+
+.result-square.brown {
+  background-color: rgba(165, 42, 42, 0.2); /* Brownish color */
+  border: 2px solid brown;
 }
