@@ -5,12 +5,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSquare } from "@fortawesome/free-regular-svg-icons";
 import ResultsGrid from "./ResultsGrid";
 import { GiGoat } from "react-icons/gi";
-import {
-  GiAmericanFootballPlayer,
-  GiAmericanFootballHelmet,
-  GiSheep,
-  GiTurd,
-} from "react-icons/gi";
+import { GiAmericanFootballPlayer, GiSheep, GiTurd } from "react-icons/gi";
+import { GiFireworkRocket } from "react-icons/gi";
 import { TbArrowsLeftRight } from "react-icons/tb";
 import { FaTrashAlt } from "react-icons/fa";
 
@@ -71,7 +67,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
             let adjustedRankDifference = rankDifference / round; // Adjust rankDifference by the round and weights
 
             if (qbCount >= 2 && player.position === "QB") {
-              adjustedRankDifference += 1; // Add 1 if total weight is 2 or more and player is QB
+              adjustedRankDifference += 2; // Add 1 if total weight is 2 or more and player is QB
             }
 
             if (adjustedRankDifference >= 4) {
@@ -100,7 +96,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
             let adjustedRankDifference = rankDifference / factor; // Adjust rankDifference by the calculated factor
 
             if (qbCount >= 2 && player.position === "QB") {
-              adjustedRankDifference += 2; // Add 1 if total weight is 2 or more and player is QB
+              adjustedRankDifference += 2.5; // Add 1 if total weight is 2 or more and player is QB
             }
             if (adjustedRankDifference >= 4) {
               results[position].goat++;
@@ -547,15 +543,15 @@ function DraftModal({ league, draftId, onClose, userId }) {
         pick.player_id &&
         playerData[pick.player_id]?.position === "QB"
       ) {
-        adjustedRankDifference += 1; // Add 2 if total weight is 2 or more and player is QB
+        adjustedRankDifference += 2; // Add 2 if total weight is 2 or more and player is QB
       }
 
       if (adjustedRankDifference >= 4) {
         return <GiGoat className="result-icon golden" />; // Golden goat icon
       } else if (adjustedRankDifference >= 3) {
-        return <GiAmericanFootballPlayer className="result-icon" />; // Hero icon
+        return <GiFireworkRocket className="result-icon" />; // Hero icon
       } else if (adjustedRankDifference >= 2) {
-        return <GiAmericanFootballHelmet className="result-icon" />; // Decent icon
+        return <GiAmericanFootballPlayer className="result-icon" />; // Decent icon
       } else if (adjustedRankDifference > -2 && adjustedRankDifference < 2) {
         return <TbArrowsLeftRight className="result-icon" />; // Neutral icon
       } else if (adjustedRankDifference <= -2 && adjustedRankDifference > -3) {
@@ -574,15 +570,15 @@ function DraftModal({ league, draftId, onClose, userId }) {
         pick.player_id &&
         playerData[pick.player_id]?.position === "QB"
       ) {
-        adjustedRankDifference += 2; // Add 2 if total weight is 2 or more and player is QB
+        adjustedRankDifference += 2.5; // Add 2 if total weight is 2 or more and player is QB
       }
 
       if (adjustedRankDifference >= 4) {
         return <GiGoat className="result-icon golden" />; // Golden goat icon
       } else if (adjustedRankDifference >= 3) {
-        return <GiAmericanFootballPlayer className="result-icon" />; // Hero icon
+        return <GiFireworkRocket className="result-icon" />; // Hero icon
       } else if (adjustedRankDifference >= 2) {
-        return <GiAmericanFootballHelmet className="result-icon" />; // Decent icon
+        return <GiAmericanFootballPlayer className="result-icon" />; // Decent icon
       } else if (adjustedRankDifference > -2 && adjustedRankDifference < 2) {
         return <TbArrowsLeftRight className="result-icon" />; // Neutral icon
       } else if (adjustedRankDifference <= -2 && adjustedRankDifference > -3) {
@@ -653,7 +649,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
             </div>
 
             <ResultsGrid
-              playerResults={playerResults}
+              playerResults={Array.isArray(playerResults) ? playerResults : []}
               isRedGreenActive={isRedGreenActive}
               isGoatActive={isGoatActive}
             />

@@ -3,9 +3,9 @@ import PropTypes from "prop-types";
 import {
   GiGoat,
   GiAmericanFootballPlayer,
-  GiAmericanFootballHelmet,
   GiSheep,
   GiTurd,
+  GiFireworkRocket,
 } from "react-icons/gi";
 import { FaTrashAlt } from "react-icons/fa";
 import { TbArrowsLeftRight } from "react-icons/tb";
@@ -44,7 +44,7 @@ function ResultsGrid({ playerResults, isRedGreenActive, isGoatActive }) {
 
               <div className="result-row">
                 <div className="result-icon">
-                  <GiAmericanFootballPlayer size={28} />
+                  <GiFireworkRocket size={28} />
                 </div>
                 <div className="result-square green2">{result.hero}</div>
                 <div className="result-square red2">{result.horrible}</div>
@@ -55,7 +55,7 @@ function ResultsGrid({ playerResults, isRedGreenActive, isGoatActive }) {
 
               <div className="result-row">
                 <div className="result-icon">
-                  <GiAmericanFootballHelmet size={25} />
+                  <GiAmericanFootballPlayer size={25} />
                 </div>
                 <div className="result-square green3">{result.decent}</div>
                 <div
