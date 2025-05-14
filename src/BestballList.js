@@ -26,6 +26,12 @@ function BestballList() {
   const [twoQBDrafts, setTwoQBDrafts] = useState(0);
   const [totalDrafts, setTotalDrafts] = useState(0);
 
+  // Add state for sorting
+  const [sortConfig, setSortConfig] = useState({
+    key: null,
+    direction: "ascending",
+  });
+
   const LEAGUE_YEAR = 2025;
 
   const handleToggle = (leagueId) => {
@@ -228,14 +234,52 @@ function BestballList() {
     }
   }, [activeTab, portfolioData]);
 
-  // Add logging to debug player names
-  useEffect(() => {
-    console.log("Debugging portfolioData:", portfolioData);
-  }, [portfolioData]);
-
   const totalOneQBLeagues = oneQBDrafts;
   const totalTwoQBLeagues = twoQBDrafts;
   const totalLeagues = totalDrafts;
+
+  // Sorting function
+  const handleSort = (key, defaultDirection = "ascending") => {
+    setSortConfig((prevConfig) => {
+      const isSameKey = prevConfig.key === key;
+      const newDirection = isSameKey
+        ? prevConfig.direction === "ascending"
+          ? "descending"
+          : "ascending"
+        : defaultDirection;
+      console.log("Is same key:", isSameKey);
+      console.log("Previous config:", prevConfig);
+      console.log("New config:", { key, direction: newDirection });
+      return { key, direction: newDirection };
+    });
+  };
+
+  // Revert sorting logic to handle values as they are
+  const sortedPortfolioData = [...portfolioData].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+
+    const aValue = a[sortConfig.key] ?? -Infinity;
+    const bValue = b[sortConfig.key] ?? -Infinity;
+
+    if (sortConfig.direction === "ascending") {
+      return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+    } else {
+      return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+    }
+  });
+
+  // Ensure diff column is properly calculated and sortable
+  portfolioData.forEach((player) => {
+    player.diff =
+      player.pts_ppr && player.pos_pts_ppr && player.pos_adp_2qb
+        ? player.pos_adp_2qb - player.pos_pts_ppr
+        : null;
+  });
+
+  const getSortIcon = (key) => {
+    if (sortConfig.key !== key) return "\u2195"; // Up-down arrow for unsorted
+    return sortConfig.direction === "ascending" ? "\u2191" : "\u2193"; // Up or down arrow
+  };
 
   return (
     <div className="dashboard-container">
@@ -434,30 +478,90 @@ function BestballList() {
             </div>
 
             <div className="portfolio-grid">
-              <div className="portfolio-grid-header">Player Name</div>
-              <div className="portfolio-grid-header">POS</div>
-              <div className="portfolio-grid-header">1QB</div>
-              <div className="portfolio-grid-header">2QB</div>
-              <div className="portfolio-grid-header">Total</div>
-              <div className="portfolio-grid-header">Drafted As</div>
-              <div className="portfolio-grid-header">Points As</div>
-              <div className="portfolio-grid-header">Points</div>
-              <div className="portfolio-grid-header">Diff</div>
+              <div
+                className={`portfolio-grid-header ${
+                  sortConfig.key === "name" ? "active" : ""
+                }`}
+                onClick={() => handleSort("name", "ascending")}
+              >
+                Player Name{" "}
+                <span className="sort-icon">{getSortIcon("name")}</span>
+              </div>
+              <div
+                className={`portfolio-grid-header ${
+                  sortConfig.key === "position" ? "active" : ""
+                }`}
+                onClick={() => handleSort("position", "ascending")}
+              >
+                POS <span className="sort-icon">{getSortIcon("position")}</span>
+              </div>
+              <div
+                className={`portfolio-grid-header ${
+                  sortConfig.key === "oneQBCount" ? "active" : ""
+                }`}
+                onClick={() => handleSort("oneQBCount", "descending")}
+              >
+                1QB{" "}
+                <span className="sort-icon">{getSortIcon("oneQBCount")}</span>
+              </div>
+              <div
+                className={`portfolio-grid-header ${
+                  sortConfig.key === "twoQBCount" ? "active" : ""
+                }`}
+                onClick={() => handleSort("twoQBCount", "descending")}
+              >
+                2QB{" "}
+                <span className="sort-icon">{getSortIcon("twoQBCount")}</span>
+              </div>
+              <div
+                className={`portfolio-grid-header ${
+                  sortConfig.key === "totalCount" ? "active" : ""
+                }`}
+                onClick={() => handleSort("totalCount", "descending")}
+              >
+                Total{" "}
+                <span className="sort-icon">{getSortIcon("totalCount")}</span>
+              </div>
+              <div
+                className={`portfolio-grid-header ${
+                  sortConfig.key === "pos_adp_2qb" ? "active" : ""
+                }`}
+                onClick={() => handleSort("pos_adp_2qb", "ascending")}
+              >
+                Drafted As{" "}
+                <span className="sort-icon">{getSortIcon("pos_adp_2qb")}</span>
+              </div>
+              <div
+                className={`portfolio-grid-header ${
+                  sortConfig.key === "pos_pts_ppr" ? "active" : ""
+                }`}
+                onClick={() => handleSort("pos_pts_ppr", "ascending")}
+              >
+                Points As{" "}
+                <span className="sort-icon">{getSortIcon("pos_pts_ppr")}</span>
+              </div>
+              <div
+                className={`portfolio-grid-header ${
+                  sortConfig.key === "pts_ppr" ? "active" : ""
+                }`}
+                onClick={() => handleSort("pts_ppr", "descending")}
+              >
+                Points{" "}
+                <span className="sort-icon">{getSortIcon("pts_ppr")}</span>
+              </div>
+              <div
+                className={`portfolio-grid-header ${
+                  sortConfig.key === "diff" ? "active" : ""
+                }`}
+                onClick={() => handleSort("diff", "descending")}
+              >
+                Diff <span className="sort-icon">{getSortIcon("diff")}</span>
+              </div>
 
-              {portfolioData
+              {sortedPortfolioData
                 .filter((player) =>
                   selectedPosition ? player.position === selectedPosition : true
                 )
-                .slice()
-                .sort((a, b) => {
-                  if (b.totalCount !== a.totalCount) {
-                    return b.totalCount - a.totalCount;
-                  }
-                  // Provide a fallback value for undefined names
-                  const nameA = a.name || "";
-                  const nameB = b.name || "";
-                  return nameA.localeCompare(nameB);
-                })
                 .map((player) => (
                   <React.Fragment key={player.name}>
                     <div className="portfolio-grid-item">{player.name}</div>
