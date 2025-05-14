@@ -5,7 +5,7 @@ import { useParams } from "react-router-dom";
 import "./BestballList.css";
 
 // Add a mock flag
-const mock = false; // Set to true for mock data, false for production
+const mock = true; // Set to true for mock data, false for production
 
 // Define the base URL based on the mock flag
 const BASE_URL = mock
@@ -55,7 +55,7 @@ function BestballList() {
       };
 
       try {
-        const response = await fetch(`${BASE_URL}/getplayers/bestball`, {
+        const response = await fetch(`${BASE_URL}/getplayers/data`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -65,10 +65,11 @@ function BestballList() {
 
         const data = await response.json();
 
-        const playerData = data.players.map((player) => {
-          const totalCount = playerCountMap[player.id] || 0;
-          const oneQBCount = oneQBCountMap[player.id] || 0;
-          const twoQBCount = twoQBCountMap[player.id] || 0;
+        // Update the `name` field to combine `first_name` and `last_name`
+        const playerData = Object.entries(data).map(([playerId, player]) => {
+          const totalCount = playerCountMap[playerId] || 0;
+          const oneQBCount = oneQBCountMap[playerId] || 0;
+          const twoQBCount = twoQBCountMap[playerId] || 0;
 
           const totalPercentage =
             totalDrafts > 0 ? ((totalCount / totalDrafts) * 100).toFixed(0) : 0;
@@ -78,7 +79,7 @@ function BestballList() {
             twoQBDrafts > 0 ? ((twoQBCount / twoQBDrafts) * 100).toFixed(0) : 0;
 
           return {
-            name: player.name,
+            name: `${player.first_name} ${player.last_name}`.trim(), // Combine first and last name
             position: player.position,
             totalCount,
             totalPercentage,
@@ -86,11 +87,17 @@ function BestballList() {
             oneQBPercentage,
             twoQBCount,
             twoQBPercentage,
+            pts_ppr: player.pts_ppr || null,
+            pts_half_ppr: player.pts_half_ppr || null,
+            pos_adp_2qb: player.adp_2qb_rank || null,
+            pos_adp_ppr: player.adp_ppr_rank || null,
+            pos_adp_half_ppr: player.adp_half_ppr_rank || null,
+            pos_pts_ppr: player.pos_rank_ppr || null,
+            pos_pts_half_ppr: player.pos_rank_half_ppr || null,
           };
         });
 
         setPortfolioData(playerData);
-        console.log("Fetched player data:", playerData);
       } catch (error) {
         console.error("Error fetching bestball player data:", error);
       }
@@ -220,6 +227,11 @@ function BestballList() {
       console.log("Portfolio data saved to localStorage:", portfolioData);
     }
   }, [activeTab, portfolioData]);
+
+  // Add logging to debug player names
+  useEffect(() => {
+    console.log("Debugging portfolioData:", portfolioData);
+  }, [portfolioData]);
 
   const totalOneQBLeagues = oneQBDrafts;
   const totalTwoQBLeagues = twoQBDrafts;
@@ -427,6 +439,10 @@ function BestballList() {
               <div className="portfolio-grid-header">1QB</div>
               <div className="portfolio-grid-header">2QB</div>
               <div className="portfolio-grid-header">Total</div>
+              <div className="portfolio-grid-header">Drafted As</div>
+              <div className="portfolio-grid-header">Points As</div>
+              <div className="portfolio-grid-header">Points</div>
+              <div className="portfolio-grid-header">Diff</div>
 
               {portfolioData
                 .filter((player) =>
@@ -437,7 +453,10 @@ function BestballList() {
                   if (b.totalCount !== a.totalCount) {
                     return b.totalCount - a.totalCount;
                   }
-                  return a.name.localeCompare(b.name);
+                  // Provide a fallback value for undefined names
+                  const nameA = a.name || "";
+                  const nameB = b.name || "";
+                  return nameA.localeCompare(nameB);
                 })
                 .map((player) => (
                   <React.Fragment key={player.name}>
@@ -460,6 +479,37 @@ function BestballList() {
                       <span className="percentage">
                         ({player.totalPercentage}%)
                       </span>
+                    </div>
+                    <div className="portfolio-grid-item">
+                      {player.position}
+                      {player.pos_adp_2qb ? player.pos_adp_2qb : ""}
+                    </div>
+                    <div className="portfolio-grid-item">
+                      {player.pts_ppr
+                        ? `${player.position}${player.pos_pts_ppr || ""}`
+                        : "-"}
+                    </div>
+                    <div className="portfolio-grid-item">
+                      {player.pts_ppr || "-"}
+                    </div>
+                    <div
+                      className={`portfolio-grid-item diff-column ${
+                        player.pts_ppr &&
+                        player.pos_pts_ppr &&
+                        player.pos_adp_2qb
+                          ? player.pos_adp_2qb - player.pos_pts_ppr > 0
+                            ? "positive-diff"
+                            : player.pos_adp_2qb - player.pos_pts_ppr < 0
+                            ? "negative-diff"
+                            : "neutral-diff"
+                          : "neutral-diff"
+                      }`}
+                    >
+                      {player.pts_ppr &&
+                      player.pos_pts_ppr &&
+                      player.pos_adp_2qb
+                        ? player.pos_adp_2qb - player.pos_pts_ppr
+                        : "-"}
                     </div>
                   </React.Fragment>
                 ))}

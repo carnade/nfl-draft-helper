@@ -45,17 +45,20 @@
   margin-right: auto;
 }
 
-.bestball-grid-header {
-  font-weight: bold;
-  background-color: #f1f1f1; /* optional */
+.bestball-grid-item {
   padding: 10px;
   border-bottom: 1px solid #ddd;
   text-align: left;
 }
 
-.bestball-grid-item {
-  padding: 10px;
-  border-bottom: 1px solid #ddd;
+/* Style for links in the bestball grid */
+.bestball-grid-item a {
+  color: #66b2ff;
+  text-decoration: none; /* Optional: Remove underline */
+}
+
+.bestball-grid-item a:hover {
+  text-decoration: underline; /* Optional: Add underline on hover */
 }
 
 /* Expand/collapse arrow for league details */
@@ -133,7 +136,7 @@
 
 /* Hover effect for inactive tabs */
 .tab-button:hover {
-  background-color: #e0e0e0;
+  background-color: #00b7ff;
   color: #35353b;
 }
 
@@ -164,10 +167,9 @@ body.dark .tab-content {
 /* Portfolio grid container */
 .portfolio-grid {
   display: grid;
-  grid-template-columns: 5fr 1fr 1fr 1fr 1fr; /* Adjust column widths */
-  gap: 5px;
+  grid-template-columns: 3fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr; /* Updated for 9 columns */
+  gap: 10px; /* Default gap */
   margin-top: 20px;
-  max-width: 1000px; /* Fixed width for larger screens */
   width: 100%;
 }
 
@@ -181,10 +183,10 @@ body.dark .tab-content {
 /* Portfolio grid headers */
 .portfolio-grid-header {
   font-weight: bold;
-  background-color: #f1f1f1;
-  padding: 10px;
-  border-bottom: 2px solid #ddd;
   text-align: left;
+  padding: 10px;
+  background-color: #f1f1f1;
+  border-bottom: 2px solid #ddd;
 }
 
 /* Light mode styles for portfolio-grid-header */
@@ -203,6 +205,16 @@ body.dark .portfolio-grid-header {
 .portfolio-grid-item {
   padding: 10px;
   border-bottom: 1px solid #ddd;
+  text-align: left;
+}
+
+/* Dark mode styles for .bestball-grid-header */
+body.dark .bestball-grid-header {
+  font-weight: bold;
+  background-color: #35353b; /* Dark background */
+  color: #fff; /* Light text */
+  padding: 10px;
+  border-bottom: 1px solid #555;
   text-align: left;
 }
 
@@ -226,7 +238,11 @@ body.dark .portfolio-grid-item {
 /* Adjust text alignment for numeric columns */
 .portfolio-grid-item:nth-child(3),
 .portfolio-grid-item:nth-child(4),
-.portfolio-grid-item:nth-child(5) {
+.portfolio-grid-item:nth-child(5),
+.portfolio-grid-item:nth-child(6),
+.portfolio-grid-item:nth-child(7),
+.portfolio-grid-item:nth-child(8),
+.portfolio-grid-item:nth-child(9) {
   text-align: center;
 }
 
@@ -422,4 +438,30 @@ body.dark .portfolio-summary-item {
   color: #e2e2e2; /* Light text */
   padding: 10px;
   border: 1px solid #555;
+}
+
+/* Conditional styling for column 9 in the portfolio grid */
+.positive-diff {
+  color: green;
+}
+
+.negative-diff {
+  color: rgb(126, 0, 0);
+}
+
+.neutral-diff {
+  color: inherit;
+}
+
+/* Add specific styles for diff-column classes to ensure they take precedence */
+.portfolio-grid-item.diff-column.positive-diff {
+  color: #009c24 !important; /* Dark green */
+}
+
+.portfolio-grid-item.diff-column.negative-diff {
+  color: #b80012 !important; /* Dark red */
+}
+
+.portfolio-grid-item.diff-column.neutral-diff {
+  color: #856404 !important; /* Dark yellow */
 }
