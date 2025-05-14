@@ -478,6 +478,7 @@ function BestballList() {
             </div>
 
             <div className="portfolio-grid">
+              {/* Header row with spacers */}
               <div
                 className={`portfolio-grid-header ${
                   sortConfig.key === "name" ? "active" : ""
@@ -487,6 +488,7 @@ function BestballList() {
                 Player Name{" "}
                 <span className="sort-icon">{getSortIcon("name")}</span>
               </div>
+              <div className="portfolio-grid-spacer" />
               <div
                 className={`portfolio-grid-header ${
                   sortConfig.key === "position" ? "active" : ""
@@ -522,6 +524,7 @@ function BestballList() {
                 Total{" "}
                 <span className="sort-icon">{getSortIcon("totalCount")}</span>
               </div>
+              <div className="portfolio-grid-spacer" />
               <div
                 className={`portfolio-grid-header ${
                   sortConfig.key === "pos_adp_2qb" ? "active" : ""
@@ -558,6 +561,7 @@ function BestballList() {
                 Diff <span className="sort-icon">{getSortIcon("diff")}</span>
               </div>
 
+              {/* Data rows with spacers */}
               {sortedPortfolioData
                 .filter((player) =>
                   selectedPosition ? player.position === selectedPosition : true
@@ -565,6 +569,7 @@ function BestballList() {
                 .map((player) => (
                   <React.Fragment key={player.name}>
                     <div className="portfolio-grid-item">{player.name}</div>
+                    <div className="portfolio-grid-spacer" />
                     <div className="portfolio-grid-item">{player.position}</div>
                     <div className="portfolio-grid-item">
                       <span className="count">{player.oneQBCount}</span>{" "}
@@ -584,6 +589,7 @@ function BestballList() {
                         ({player.totalPercentage}%)
                       </span>
                     </div>
+                    <div className="portfolio-grid-spacer" />
                     <div className="portfolio-grid-item">
                       {player.position}
                       {player.pos_adp_2qb ? player.pos_adp_2qb : ""}

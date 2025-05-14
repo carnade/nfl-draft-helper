@@ -167,17 +167,10 @@ body.dark .tab-content {
 /* Portfolio grid container */
 .portfolio-grid {
   display: grid;
-  grid-template-columns: 3fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr; /* Updated for 9 columns */
-  gap: 10px; /* Default gap */
+  grid-template-columns: 3fr 0px 1fr 1fr 1fr 1fr 0px 1fr 1fr 1fr 1fr;
+  gap: 10px;
   margin-top: 20px;
   width: 100%;
-}
-
-/* Media query for smaller screens */
-@media (max-width: 1000px) {
-  .portfolio-grid {
-    width: 100%; /* Shrink to fit the screen */
-  }
 }
 
 /* Portfolio grid headers */
@@ -495,5 +488,5 @@ body.dark .portfolio-summary-item {
 }
 
 .portfolio-grid-header.active .sort-icon {
-  color: #888; /* Darker color for active sorted column */
+  color: #ddd; /* Darker color for active sorted column */
 }
