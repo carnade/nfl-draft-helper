@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import "./DraftModal.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSquare } from "@fortawesome/free-regular-svg-icons";
+import { faExternalLinkAlt } from "@fortawesome/free-solid-svg-icons";
 import ResultsGrid from "./ResultsGrid";
 import { GiGoat } from "react-icons/gi";
 import { GiAmericanFootballPlayer, GiSheep, GiTurd } from "react-icons/gi";
@@ -861,6 +862,15 @@ function DraftModal({ league, draftId, onClose, userId }) {
                 className="switches-container"
                 style={{ display: "flex", alignItems: "center" }}
               >
+                <a
+                  href={`https://sleeper.app/draft/nfl/${draftId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="league-link-icon"
+                  style={{ marginRight: "15px" }}
+                >
+                  <FontAwesomeIcon icon={faExternalLinkAlt} />
+                </a>
                 <div className="switch-container">
                   <FontAwesomeIcon
                     icon={faSquare}
