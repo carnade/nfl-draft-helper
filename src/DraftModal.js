@@ -558,6 +558,8 @@ function DraftModal({ league, draftId, onClose, userId }) {
             ? player.pos_rank_half_ppr
             : player.pos_rank_ppr;
 
+          if (posRank) {
+
             if (draftPosRank > posRank) {
               results[position].green++;
             } else if (draftPosRank < posRank) {
