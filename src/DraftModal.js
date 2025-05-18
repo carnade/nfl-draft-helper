@@ -1025,35 +1025,22 @@ function DraftModal({ league, draftId, onClose, userId }) {
                             })()}
                           </div>
                           <div className="player-info fc">
-                            Pts: 
-                            {(() => {
-                              const position = player.position;
-                              if (!position) return "-";
-                              const rank = scoringType?.toLowerCase().includes("half_ppr")
-                                ? player.pos_rank_half_ppr
-                                : player.pos_rank_ppr;
-                              return rank ? ` ${rank}` : "-";
-                            })()}
-                          </div>
+                          {scoringType &&
+                            scoringType.toLowerCase().includes("half_ppr")
+                              ? (player.pts_half_ppr / player.gp ?? 0).toFixed(1)
+                              : (player.pts_ppr / player.gp ?? 0).toFixed(1)}
+                              {" "}/g               
+                         </div>
                           <div className="player-info fc-rank">
-                            Adp:
-                            {(() => {
-                              if (!scoringType) return "-";
-                              const position = player.position;
-                              const isDynasty = scoringType.toLowerCase().includes("dynasty");
-                              const isHalfPpr = scoringType.toLowerCase().includes("half_ppr");
-                              
-                              let adpRank;
-                              if (isDynasty) {
-                                adpRank = player.adp_dynasty_2qb_rank;
-                              } else if (isHalfPpr) {
-                                adpRank = player.adp_half_ppr_rank;
-                              } else {
-                                adpRank = player.adp_ppr_rank;
-                              }
-                              
-                              return adpRank ? ` ${adpRank}` : "-";
-                            })()}
+                            Pts: 
+                              {(() => {
+                                const position = player.position;
+                                if (!position) return "-";
+                                const rank = scoringType?.toLowerCase().includes("half_ppr")
+                                  ? player.pos_rank_half_ppr
+                                  : player.pos_rank_ppr;
+                                return rank ? ` ${rank}` : "-";
+                              })()}
                           </div>
                         </>
                       )}
