@@ -60,69 +60,135 @@ function DraftModal({ league, draftId, onClose, userId }) {
       picks.forEach((pick) => {
         const player = playerData[pick.player_id] || {};
         const pickNumber = pick.pick_no;
-        const ktcRank = player.ktcRankCalculated;
-        const fcRank = player.fcRankCalculated;
-        // Calculate total weight
+        const pickedBy = pick.picked_by;
+        const position = draftOrder[pickedBy];
+        const round = Math.ceil(pickNumber / (league.teams || 12));
 
-        if (!isNaN(pickNumber) && !isNaN(ktcRank) && !isNaN(fcRank)) {
-          const averageRank = (ktcRank + fcRank) / 2;
-          const rankDifference = pickNumber - averageRank;
-          const pickedBy = pick.picked_by;
-          const position = draftOrder[pickedBy];
+        if (isRanksMode) {
+          // Original KTC/FC rank calculation
+          const ktcRank = player.ktcRankCalculated;
+          const fcRank = player.fcRankCalculated;
 
-          if (draftType === "linear") {
-            const round = Math.ceil(pickNumber / (league.teams || 12)); // Calculate the round based on pick number and team count
-            let adjustedRankDifference = rankDifference / round; // Adjust rankDifference by the round and weights
+          if (!isNaN(pickNumber) && !isNaN(ktcRank) && !isNaN(fcRank)) {
+            const averageRank = (ktcRank + fcRank) / 2;
+            const rankDifference = pickNumber - averageRank;
 
-            if (qbCount >= 2 && player.position === "QB") {
-              adjustedRankDifference += 1.5; // Add 1 if total weight is 2 or more and player is QB
+            if (draftType === "linear") {
+              let adjustedRankDifference = rankDifference / round;
+
+              if (qbCount >= 2 && player.position === "QB") {
+                adjustedRankDifference += 1.5;
+              }
+
+              if (adjustedRankDifference >= 4) {
+                results[position].goat++;
+              } else if (adjustedRankDifference >= 3) {
+                results[position].hero++;
+              } else if (adjustedRankDifference >= 2) {
+                results[position].decent++;
+              } else if (adjustedRankDifference <= -4) {
+                results[position].turd++;
+              } else if (adjustedRankDifference <= -3) {
+                results[position].horrible++;
+              } else if (adjustedRankDifference <= -2) {
+                results[position].bad++;
+              } else if (adjustedRankDifference > -2 && adjustedRankDifference < 2) {
+                results[position].neutral++;
+              }
+            } else if (draftType === "snake") {
+              const factor = 1.25 * round;
+              let adjustedRankDifference = rankDifference / factor;
+
+              if (qbCount >= 2 && player.position === "QB") {
+                adjustedRankDifference += 2.5;
+              }
+
+              if (adjustedRankDifference >= 4) {
+                results[position].goat++;
+              } else if (adjustedRankDifference >= 3) {
+                results[position].hero++;
+              } else if (adjustedRankDifference >= 2) {
+                results[position].decent++;
+              } else if (adjustedRankDifference <= -4) {
+                results[position].turd++;
+              } else if (adjustedRankDifference <= -3) {
+                results[position].horrible++;
+              } else if (adjustedRankDifference <= -2) {
+                results[position].bad++;
+              } else if (adjustedRankDifference > -2 && adjustedRankDifference < 2) {
+                results[position].neutral++;
+              }
             }
+          }
+        } else {
+          // Position rank calculation
+          const currentPosition = player.position;
+          
+          if (currentPosition && pickNumber) {
+            const numPrior = picks.filter(
+              (p) => {
+                const pdata = playerData[p.player_id] || {};
+                return (
+                  p.pick_no < pickNumber &&
+                  pdata.position === currentPosition
+                );
+              }
+            ).length;
+            const draftPosRank = numPrior + 1;
 
-            if (adjustedRankDifference >= 4) {
-              results[position].goat++;
-            } else if (adjustedRankDifference >= 3) {
-              results[position].hero++;
-            } else if (adjustedRankDifference >= 2) {
-              results[position].decent++;
-            } else if (adjustedRankDifference <= -4) {
-              results[position].turd++;
-            } else if (adjustedRankDifference <= -3) {
-              results[position].horrible++;
-            } else if (adjustedRankDifference <= -2) {
-              results[position].bad++;
-            } else if (
-              adjustedRankDifference > -2 &&
-              adjustedRankDifference < 2
-            ) {
-              results[position].neutral++;
-            }
-          } else if (draftType === "snake") {
-            const round = Math.ceil(pickNumber / (league.teams || 12)); // Calculate the round based on pick number and team count
-            let factor;
-            factor = 1.25 * round; // Adjust factor by weights
+            const posRank = scoringType?.toLowerCase().includes("half_ppr")
+              ? player.pos_rank_half_ppr
+              : player.pos_rank_ppr;
 
-            let adjustedRankDifference = rankDifference / factor; // Adjust rankDifference by the calculated factor
+            if (posRank) {
+              const rankDifference = draftPosRank - posRank;
 
-            if (qbCount >= 2 && player.position === "QB") {
-              adjustedRankDifference += 2.5; // Add 1 if total weight is 2 or more and player is QB
-            }
-            if (adjustedRankDifference >= 4) {
-              results[position].goat++;
-            } else if (adjustedRankDifference >= 3) {
-              results[position].hero++;
-            } else if (adjustedRankDifference >= 2) {
-              results[position].decent++;
-            } else if (adjustedRankDifference <= -4) {
-              results[position].turd++;
-            } else if (adjustedRankDifference <= -3) {
-              results[position].horrible++;
-            } else if (adjustedRankDifference <= -2) {
-              results[position].bad++;
-            } else if (
-              adjustedRankDifference > -2 &&
-              adjustedRankDifference < 2
-            ) {
-              results[position].neutral++;
+              if (draftType === "linear") {
+                let adjustedRankDifference = rankDifference / round;
+
+                if (qbCount >= 2 && player.position === "QB") {
+                  adjustedRankDifference += 1.5;
+                }
+
+                if (adjustedRankDifference >= 4) {
+                  results[position].goat++;
+                } else if (adjustedRankDifference >= 3) {
+                  results[position].hero++;
+                } else if (adjustedRankDifference >= 2) {
+                  results[position].decent++;
+                } else if (adjustedRankDifference <= -4) {
+                  results[position].turd++;
+                } else if (adjustedRankDifference <= -3) {
+                  results[position].horrible++;
+                } else if (adjustedRankDifference <= -2) {
+                  results[position].bad++;
+                } else if (adjustedRankDifference > -2 && adjustedRankDifference < 2) {
+                  results[position].neutral++;
+                }
+              } else if (draftType === "snake") {
+                const factor = 1.25 * round;
+                let adjustedRankDifference = rankDifference / factor;
+
+                if (qbCount >= 2 && player.position === "QB") {
+                  adjustedRankDifference += 2.5;
+                }
+
+                if (adjustedRankDifference >= 4) {
+                  results[position].goat++;
+                } else if (adjustedRankDifference >= 3) {
+                  results[position].hero++;
+                } else if (adjustedRankDifference >= 2) {
+                  results[position].decent++;
+                } else if (adjustedRankDifference <= -4) {
+                  results[position].turd++;
+                } else if (adjustedRankDifference <= -3) {
+                  results[position].horrible++;
+                } else if (adjustedRankDifference <= -2) {
+                  results[position].bad++;
+                } else if (adjustedRankDifference > -2 && adjustedRankDifference < 2) {
+                  results[position].neutral++;
+                }
+              }
             }
           }
         }
@@ -130,7 +196,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
 
       return results;
     },
-    [draftOrder, playerData, league.teams, qbCount]
+    [draftOrder, playerData, league.teams, qbCount, scoringType, isRanksMode]
   );
 
   const updateGoatResults = useCallback(() => {
@@ -613,64 +679,140 @@ function DraftModal({ league, draftId, onClose, userId }) {
   };
 
   function iconForPick(pick, draftType) {
-    const rankDifference = pick.rankDifference; // Assuming rankDifference is calculated elsewhere
-    const round = Math.ceil(pick.pick_no / (league.teams || 12)); // Calculate the round based on pick number and team count
-    if (draftType === "linear") {
-      let adjustedRankDifference = rankDifference / round; // Adjust rankDifference for linear drafts
+    const player = playerData[pick.player_id] || {};
+    const pickNumber = pick.pick_no;
+    const round = Math.ceil(pickNumber / (league.teams || 12));
 
-      if (
-        qbCount >= 2 &&
-        pick.player_id &&
-        playerData[pick.player_id]?.position === "QB"
-      ) {
-        adjustedRankDifference += 1.5; // Add 2 if total weight is 2 or more and player is QB
+    if (isRanksMode) {
+      // Original KTC/FC rank calculation
+      const ktcRank = player.ktcRankCalculated;
+      const fcRank = player.fcRankCalculated;
+
+      if (!isNaN(pickNumber) && !isNaN(ktcRank) && !isNaN(fcRank)) {
+        const averageRank = (ktcRank + fcRank) / 2;
+        const rankDifference = pickNumber - averageRank;
+
+        if (draftType === "linear") {
+          let adjustedRankDifference = rankDifference / round;
+
+          if (qbCount >= 2 && player.position === "QB") {
+            adjustedRankDifference += 1.5;
+          }
+
+          if (adjustedRankDifference >= 4) {
+            return <GiGoat className="result-icon golden" />;
+          } else if (adjustedRankDifference >= 3) {
+            return <GiFireworkRocket className="result-icon" />;
+          } else if (adjustedRankDifference >= 2) {
+            return <GiAmericanFootballPlayer className="result-icon" />;
+          } else if (adjustedRankDifference > -2 && adjustedRankDifference < 2) {
+            return <TbArrowsLeftRight className="result-icon" />;
+          } else if (adjustedRankDifference <= -2 && adjustedRankDifference > -3) {
+            return <GiSheep className="result-icon" />;
+          } else if (adjustedRankDifference <= -3 && adjustedRankDifference > -4) {
+            return <FaTrashAlt className="result-icon" />;
+          } else if (adjustedRankDifference <= -4) {
+            return <GiTurd className="result-icon brown" />;
+          }
+        } else if (draftType === "snake") {
+          const factor = 1.25 * round;
+          let adjustedRankDifference = rankDifference / factor;
+
+          if (qbCount >= 2 && player.position === "QB") {
+            adjustedRankDifference += 2.5;
+          }
+
+          if (adjustedRankDifference >= 4) {
+            return <GiGoat className="result-icon golden" />;
+          } else if (adjustedRankDifference >= 3) {
+            return <GiFireworkRocket className="result-icon" />;
+          } else if (adjustedRankDifference >= 2) {
+            return <GiAmericanFootballPlayer className="result-icon" />;
+          } else if (adjustedRankDifference > -2 && adjustedRankDifference < 2) {
+            return <TbArrowsLeftRight className="result-icon" />;
+          } else if (adjustedRankDifference <= -2 && adjustedRankDifference > -3) {
+            return <GiSheep className="result-icon" />;
+          } else if (adjustedRankDifference <= -3 && adjustedRankDifference > -4) {
+            return <FaTrashAlt className="result-icon" />;
+          } else if (adjustedRankDifference <= -4) {
+            return <GiTurd className="result-icon brown" />;
+          }
+        }
       }
+    } else {
+      // Position rank calculation
+      const currentPosition = player.position;
+      
+      if (currentPosition && pickNumber) {
+        const numPrior = filteredPicks.filter(
+          (p) => {
+            const pdata = playerData[p.player_id] || {};
+            return (
+              p.pick_no < pickNumber &&
+              pdata.position === currentPosition
+            );
+          }
+        ).length;
+        const draftPosRank = numPrior + 1;
 
-      if (adjustedRankDifference >= 4) {
-        return <GiGoat className="result-icon golden" />; // Golden goat icon
-      } else if (adjustedRankDifference >= 3) {
-        return <GiFireworkRocket className="result-icon" />; // Hero icon
-      } else if (adjustedRankDifference >= 2) {
-        return <GiAmericanFootballPlayer className="result-icon" />; // Decent icon
-      } else if (adjustedRankDifference > -2 && adjustedRankDifference < 2) {
-        return <TbArrowsLeftRight className="result-icon" />; // Neutral icon
-      } else if (adjustedRankDifference <= -2 && adjustedRankDifference > -3) {
-        return <GiSheep className="result-icon" />; // Bad icon
-      } else if (adjustedRankDifference <= -3 && adjustedRankDifference > -4) {
-        return <FaTrashAlt className="result-icon" />; // Horrible icon
-      } else if (adjustedRankDifference <= -4) {
-        return <GiTurd className="result-icon brown" />; // Brown turd icon
-      }
-    } else if (draftType === "snake") {
-      const factor = 1.25 * round;
-      let adjustedRankDifference = rankDifference / factor; // Adjust rankDifference by the calculated factor
+        const posRank = scoringType?.toLowerCase().includes("half_ppr")
+          ? player.pos_rank_half_ppr
+          : player.pos_rank_ppr;
 
-      if (
-        qbCount >= 2 &&
-        pick.player_id &&
-        playerData[pick.player_id]?.position === "QB"
-      ) {
-        adjustedRankDifference += 2.5; // Add 2 if total weight is 2 or more and player is QB
-      }
+        if (posRank) {
+          const rankDifference = draftPosRank - posRank;
 
-      if (adjustedRankDifference >= 4) {
-        return <GiGoat className="result-icon golden" />; // Golden goat icon
-      } else if (adjustedRankDifference >= 3) {
-        return <GiFireworkRocket className="result-icon" />; // Hero icon
-      } else if (adjustedRankDifference >= 2) {
-        return <GiAmericanFootballPlayer className="result-icon" />; // Decent icon
-      } else if (adjustedRankDifference > -2 && adjustedRankDifference < 2) {
-        return <TbArrowsLeftRight className="result-icon" />; // Neutral icon
-      } else if (adjustedRankDifference <= -2 && adjustedRankDifference > -3) {
-        return <GiSheep className="result-icon" />; // Bad icon
-      } else if (adjustedRankDifference <= -3 && adjustedRankDifference > -4) {
-        return <FaTrashAlt className="result-icon" />; // Horrible icon
-      } else if (adjustedRankDifference <= -4) {
-        return <GiTurd className="result-icon brown" />; // Brown turd icon
+          if (draftType === "linear") {
+            let adjustedRankDifference = rankDifference / round;
+
+            if (qbCount >= 2 && player.position === "QB") {
+              adjustedRankDifference += 1.5;
+            }
+
+            if (adjustedRankDifference >= 4) {
+              return <GiGoat className="result-icon golden" />;
+            } else if (adjustedRankDifference >= 3) {
+              return <GiFireworkRocket className="result-icon" />;
+            } else if (adjustedRankDifference >= 2) {
+              return <GiAmericanFootballPlayer className="result-icon" />;
+            } else if (adjustedRankDifference > -2 && adjustedRankDifference < 2) {
+              return <TbArrowsLeftRight className="result-icon" />;
+            } else if (adjustedRankDifference <= -2 && adjustedRankDifference > -3) {
+              return <GiSheep className="result-icon" />;
+            } else if (adjustedRankDifference <= -3 && adjustedRankDifference > -4) {
+              return <FaTrashAlt className="result-icon" />;
+            } else if (adjustedRankDifference <= -4) {
+              return <GiTurd className="result-icon brown" />;
+            }
+          } else if (draftType === "snake") {
+            const factor = 1.25 * round;
+            let adjustedRankDifference = rankDifference / factor;
+
+            if (qbCount >= 2 && player.position === "QB") {
+              adjustedRankDifference += 2.5;
+            }
+
+            if (adjustedRankDifference >= 4) {
+              return <GiGoat className="result-icon golden" />;
+            } else if (adjustedRankDifference >= 3) {
+              return <GiFireworkRocket className="result-icon" />;
+            } else if (adjustedRankDifference >= 2) {
+              return <GiAmericanFootballPlayer className="result-icon" />;
+            } else if (adjustedRankDifference > -2 && adjustedRankDifference < 2) {
+              return <TbArrowsLeftRight className="result-icon" />;
+            } else if (adjustedRankDifference <= -2 && adjustedRankDifference > -3) {
+              return <GiSheep className="result-icon" />;
+            } else if (adjustedRankDifference <= -3 && adjustedRankDifference > -4) {
+              return <FaTrashAlt className="result-icon" />;
+            } else if (adjustedRankDifference <= -4) {
+              return <GiTurd className="result-icon brown" />;
+            }
+          }
+        }
       }
     }
 
-    return null; // Default to no icon if no condition matches
+    return null;
   }
 
   if (!league) return null;
