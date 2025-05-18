@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faExternalLinkAlt, faTrophy } from "@fortawesome/free-solid-svg-icons";
+import { faExternalLinkAlt, faTrophy, faTableCells } from "@fortawesome/free-solid-svg-icons";
 import { useParams } from "react-router-dom";
 import "./BestballList.css";
+import DraftModal from "./DraftModal";
 
 // Add a mock flag
 const mock = false; // Set to true for mock data, false for production
@@ -20,6 +21,8 @@ function BestballList() {
   const [activeTab, setActiveTab] = useState("Results");
   const [portfolioData, setPortfolioData] = useState([]);
   const [selectedPosition, setSelectedPosition] = useState(null);
+  const [selectedDraft, setSelectedDraft] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Add state for league counts
   const [oneQBDrafts, setOneQBDrafts] = useState(0);
@@ -28,8 +31,8 @@ function BestballList() {
 
   // Add state for sorting
   const [sortConfig, setSortConfig] = useState({
-    key: null,
-    direction: "ascending",
+    key: "totalCount",
+    direction: "descending",
   });
 
   const LEAGUE_YEAR = 2025;
@@ -281,6 +284,18 @@ function BestballList() {
     return sortConfig.direction === "ascending" ? "\u2191" : "\u2193"; // Up or down arrow
   };
 
+  const handleOpenModal = (league) => {
+    console.log("Opening modal for league:", league);
+    setSelectedDraft(league);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    console.log("Closing modal");
+    setSelectedDraft(null);
+    setIsModalOpen(false);
+  };
+
   return (
     <div className="dashboard-container">
       <div className="header-container">
@@ -357,9 +372,17 @@ function BestballList() {
                       href={`https://sleeper.app/leagues/${league.league_id}`}
                       target="_blank"
                       rel="noopener noreferrer"
+                      style={{ marginRight: "10px" }}
                     >
                       <FontAwesomeIcon icon={faExternalLinkAlt} />
                     </a>
+                    {league.draft_id && (
+                      <FontAwesomeIcon
+                        icon={faTableCells}
+                        className="league-action-icon"
+                        onClick={() => handleOpenModal(league)}
+                      />
+                    )}
                   </div>
                   {expandedLeagueIds.has(league.league_id) && (
                     <div className="bestball-details">
@@ -627,6 +650,18 @@ function BestballList() {
           </div>
         )}
       </div>
+
+      {isModalOpen && selectedDraft && (
+        <DraftModal
+          league={{
+            ...selectedDraft,
+            teams: selectedDraft.teams.length // Convert teams array to number
+          }}
+          draftId={selectedDraft.draft_id}
+          userId={userId}
+          onClose={handleCloseModal}
+        />
+      )}
 
       <span hidden>{userId}</span>
     </div>
