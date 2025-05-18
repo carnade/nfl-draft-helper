@@ -143,7 +143,7 @@ body.dark .draft-modal-content {
   display: flex; /* Align items horizontally */
   gap: 2px; /* Add some spacing between FAC: and the value */
   grid-area: ktc;
-  text-align: left;
+  justify-content: flex-start; /* Align content to the left */
   grid-column: span 3; /* Take more space */
 }
 
@@ -151,7 +151,7 @@ body.dark .draft-modal-content {
   display: flex; /* Align items horizontally */
   gap: 2px; /* Add some spacing between FAC: and the value */
   grid-area: ktc-rank;
-  text-align: right;
+  justify-content: flex-end; /* Align content to the right */
   grid-column: span 2; /* Take less space */
 }
 
@@ -159,7 +159,7 @@ body.dark .draft-modal-content {
   display: flex; /* Align items horizontally */
   gap: 2px; /* Add some spacing between FAC: and the value */
   grid-area: fc;
-  text-align: left;
+  justify-content: flex-start; /* Align content to the left */
   grid-column: span 3; /* Take more space */
 }
 
@@ -167,7 +167,7 @@ body.dark .draft-modal-content {
   display: flex; /* Align items horizontally */
   gap: 2px; /* Add some spacing between FAC: and the value */
   grid-area: fc-rank;
-  text-align: right;
+  justify-content: flex-end; /* Align content to the right */
   grid-column: span 2; /* Take less space */
 }
 

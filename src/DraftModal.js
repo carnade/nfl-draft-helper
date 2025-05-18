@@ -769,7 +769,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
                           {metadata.last_name || player.last_name || "Player"}
                         </div>
                       </div>
-                      {isRanksMode ? (
+                      {!isRanksMode ? (
                         <>
                           <div className="player-info ktc">
                             <div className="draft-modal-card-text">KTC:</div>
@@ -790,16 +790,62 @@ function DraftModal({ league, draftId, onClose, userId }) {
                         </>
                       ) : (
                         <>
-                          <div className="player-info pts-value">
+                          <div className="player-info ktc">
                             {scoringType &&
                             scoringType.toLowerCase().includes("half_ppr")
-                              ? player.pts_half_ppr ?? "-"
-                              : player.pts_ppr ?? "-"}
+                              ? Math.round(player.pts_half_ppr ?? 0)
+                              : Math.round(player.pts_ppr ?? 0)}
                             p
                           </div>
-                          <div className="player-info pts-placeholder">-</div>
-                          <div className="player-info pts-placeholder">-</div>
-                          <div className="player-info pts-placeholder">-</div>
+                          <div className="player-info ktc-rank">
+                            Pk: 
+                            {(() => {
+                              const currentPickNo = pick.pick_no;
+                              const currentPosition = player.position;
+                              if (!currentPosition || !currentPickNo) return "-";
+                              const numPrior = filteredPicks.filter(
+                                (p) => {
+                                  const pdata = playerData[p.player_id] || {};
+                                  return (
+                                    p.pick_no < currentPickNo &&
+                                    pdata.position === currentPosition
+                                  );
+                                }
+                              ).length;
+                              return ` ${numPrior + 1}`;
+                            })()}
+                          </div>
+                          <div className="player-info fc">
+                            Pts: 
+                            {(() => {
+                              const position = player.position;
+                              if (!position) return "-";
+                              const rank = scoringType?.toLowerCase().includes("half_ppr")
+                                ? player.pos_rank_half_ppr
+                                : player.pos_rank_ppr;
+                              return rank ? ` ${rank}` : "-";
+                            })()}
+                          </div>
+                          <div className="player-info fc-rank">
+                            Adp:
+                            {(() => {
+                              if (!scoringType) return "-";
+                              const position = player.position;
+                              const isDynasty = scoringType.toLowerCase().includes("dynasty");
+                              const isHalfPpr = scoringType.toLowerCase().includes("half_ppr");
+                              
+                              let adpRank;
+                              if (isDynasty) {
+                                adpRank = player.adp_dynasty_2qb_rank;
+                              } else if (isHalfPpr) {
+                                adpRank = player.adp_half_ppr_rank;
+                              } else {
+                                adpRank = player.adp_ppr_rank;
+                              }
+                              
+                              return adpRank ? ` ${adpRank}` : "-";
+                            })()}
+                          </div>
                         </>
                       )}
                       {isGoatActive && (
