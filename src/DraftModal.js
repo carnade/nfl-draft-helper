@@ -178,9 +178,9 @@ function DraftModal({ league, draftId, onClose, userId }) {
             setScoringType(scoring);
             // Set switch: dynasty = pts, else ranks
             if (scoring && scoring.toLowerCase().includes("dynasty")) {
-              setIsRanksMode(false);
-            } else {
               setIsRanksMode(true);
+            } else {
+              setIsRanksMode(false);
             }
 
             // Calculate and set QbCount
@@ -387,28 +387,66 @@ function DraftModal({ league, draftId, onClose, userId }) {
 
   const calculateBorders = (pick) => {
     if (!isRedGreenActive) {
-      return { border: "2px solid #999" }; // Default border when redgreen is off
+      return { border: "2px solid #999" };
     }
 
     if (pick.isDimmed) {
-      return { border: "2px solid #999" }; // Keep the base border for dimmed players
+      return { border: "2px solid #999" };
     }
 
     const player = playerData[pick.player_id] || {};
-    const pickNumber = pick.pick_no;
-    const ktcRank = player.ktcRankCalculated;
-    const fcRank = player.fcRankCalculated;
 
-    if (!isNaN(pickNumber) && !isNaN(ktcRank) && !isNaN(fcRank)) {
-      const averageRank = (ktcRank + fcRank) / 2;
-      if (pickNumber > averageRank) {
-        return { border: "4px solid rgb(45, 222, 39)" }; // Light green
-      } else if (pickNumber < averageRank) {
-        return { border: "4px solid red" };
+    if (isRanksMode) {
+      const pickNumber = pick.pick_no;
+      const ktcRank = player.ktcRankCalculated;
+      const fcRank = player.fcRankCalculated;
+
+      if (!isNaN(pickNumber) && !isNaN(ktcRank) && !isNaN(fcRank)) {
+        const averageRank = (ktcRank + fcRank) / 2;
+        if (pickNumber > averageRank) {
+          return { border: "4px solid rgb(45, 222, 39)" };
+        } else if (pickNumber < averageRank) {
+          return { border: "4px solid red" };
+        }
+      }
+    } else {
+      const currentPickNo = pick.pick_no;
+      const currentPosition = player.position;
+      
+      if (currentPosition && currentPickNo) {
+        const numPrior = filteredPicks.filter(
+          (p) => {
+            const pdata = playerData[p.player_id] || {};
+            return (
+              p.pick_no < currentPickNo &&
+              pdata.position === currentPosition
+            );
+          }
+        ).length;
+        const draftPosRank = numPrior + 1;
+
+        const posRank = scoringType?.toLowerCase().includes("half_ppr")
+          ? player.pos_rank_half_ppr
+          : player.pos_rank_ppr;
+
+        if (posRank) {
+          console.debug(
+            `Border - Player: ${player.first_name} ${player.last_name} (${currentPosition})`,
+            `Draft Pos Rank: ${draftPosRank}`,
+            `Pos Rank: ${posRank}`,
+            `Difference: ${draftPosRank - posRank}`
+          );
+
+          if (draftPosRank > posRank) {
+            return { border: "4px solid rgb(45, 222, 39)" };
+          } else if (draftPosRank < posRank) {
+            return { border: "4px solid red" };
+          }
+        }
       }
     }
 
-    return { border: "2px solid #999" }; // Default border
+    return { border: "2px solid #999" };
   };
 
   const calculateBackground = (pick) => {
@@ -460,7 +498,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
     }
   };
 
-  const updateResultsGrid = (isActive) => {
+  const updateResultsGrid = useCallback((isActive) => {
     console.debug(
       "updateResultsGrid called with isActive:",
       isActive,
@@ -469,61 +507,78 @@ function DraftModal({ league, draftId, onClose, userId }) {
     );
 
     if (!isActive) {
-      // Hide results if RedGreen is off
-      setPlayerResults({}); // Clear the results if toggle is off
+      setPlayerResults({});
       console.debug("RedGreen toggle is off. Clearing results.");
       return;
     }
 
-    const results = {}; // Object to store counts per user
+    const results = {};
 
-    // Initialize all userIds to 0 for green and red based on draft order
     Object.entries(draftOrder || {}).forEach(([userId, position]) => {
       results[position] = { userId, green: 0, red: 0 };
     });
 
     picks.forEach((pick) => {
       const player = playerData[pick.player_id] || {};
-      const pickNumber = pick.pick_no;
-      const ktcRank = player.ktcRankCalculated;
-      const fcRank = player.fcRankCalculated;
+      const pickedBy = pick.picked_by;
+      const position = draftOrder[pickedBy];
 
-      if (!isNaN(pickNumber) && !isNaN(ktcRank) && !isNaN(fcRank)) {
-        const averageRank = (ktcRank + fcRank) / 2;
-        const pickedBy = pick.picked_by;
-        const position = draftOrder[pickedBy];
+      if (isRanksMode) {
+        // Rank-based calculation
+        const pickNumber = pick.pick_no;
+        const ktcRank = player.ktcRankCalculated;
+        const fcRank = player.fcRankCalculated;
 
-        if (pickNumber > averageRank) {
-          results[position].green++;
-        } else if (pickNumber < averageRank) {
-          results[position].red++;
+        if (!isNaN(pickNumber) && !isNaN(ktcRank) && !isNaN(fcRank)) {
+          const averageRank = (ktcRank + fcRank) / 2;
+          if (pickNumber > averageRank) {
+            results[position].green++;
+          } else if (pickNumber < averageRank) {
+            results[position].red++;
+          }
+        }
+      } else {
+        // Points-based calculation
+        const currentPickNo = pick.pick_no;
+        const currentPosition = player.position;
+        
+        if (currentPosition && currentPickNo) {
+          const numPrior = picks.filter(
+            (p) => {
+              const pdata = playerData[p.player_id] || {};
+              return (
+                p.pick_no < currentPickNo &&
+                pdata.position === currentPosition
+              );
+            }
+          ).length;
+          const draftPosRank = numPrior + 1;
+
+          const posRank = scoringType?.toLowerCase().includes("half_ppr")
+            ? player.pos_rank_half_ppr
+            : player.pos_rank_ppr;
+
+            if (draftPosRank > posRank) {
+              results[position].green++;
+            } else if (draftPosRank < posRank) {
+              results[position].red++;
+            }
+          }
         }
       }
     });
 
-    // Convert results back to an ordered array
     const orderedResults = Object.values(results).sort(
       (a, b) => a.position - b.position
     );
     setPlayerResults(orderedResults);
-  };
+  }, [isRanksMode, isGoatActive, draftOrder, picks, playerData, scoringType]);
 
   useEffect(() => {
-    const redGreenToggle = document.getElementById("redgreen-toggle");
-
-    if (redGreenToggle) {
-      // Add null check
-      const handleToggleChange = () => {
-        console.debug("RedGreen toggle changed.");
-      };
-
-      redGreenToggle.addEventListener("change", handleToggleChange);
-
-      return () => {
-        redGreenToggle.removeEventListener("change", handleToggleChange);
-      };
+    if (isRedGreenActive) {
+      updateResultsGrid(true);
     }
-  }, []);
+  }, [isRanksMode, isRedGreenActive, updateResultsGrid]);
 
   const renderTeamButtons = (draftOrder) => {
     if (!draftOrder || typeof draftOrder !== "object") {
@@ -645,8 +700,8 @@ function DraftModal({ league, draftId, onClose, userId }) {
                   <input
                     type="checkbox"
                     id="pts-ranks-toggle"
-                    checked={isRanksMode}
-                    onChange={(e) => setIsRanksMode(e.target.checked)}
+                    checked={!isRanksMode}
+                    onChange={(e) => setIsRanksMode(!e.target.checked)}
                   />
                   <span className="draft-modal-slider round"></span>
                 </label>
@@ -769,7 +824,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
                           {metadata.last_name || player.last_name || "Player"}
                         </div>
                       </div>
-                      {!isRanksMode ? (
+                      {isRanksMode ? (
                         <>
                           <div className="player-info ktc">
                             <div className="draft-modal-card-text">KTC:</div>
@@ -803,6 +858,8 @@ function DraftModal({ league, draftId, onClose, userId }) {
                               const currentPickNo = pick.pick_no;
                               const currentPosition = player.position;
                               if (!currentPosition || !currentPickNo) return "-";
+                              
+                              // Calculate draft position rank
                               const numPrior = filteredPicks.filter(
                                 (p) => {
                                   const pdata = playerData[p.player_id] || {};
@@ -812,7 +869,15 @@ function DraftModal({ league, draftId, onClose, userId }) {
                                   );
                                 }
                               ).length;
-                              return ` ${numPrior + 1}`;
+                              const draftPosRank = numPrior + 1;
+
+                              // Get the player's position rank based on scoring type
+                              const posRank = scoringType?.toLowerCase().includes("half_ppr")
+                                ? player.pos_rank_half_ppr
+                                : player.pos_rank_ppr;
+
+
+                              return ` ${draftPosRank}`;
                             })()}
                           </div>
                           <div className="player-info fc">
