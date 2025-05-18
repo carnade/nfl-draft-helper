@@ -862,15 +862,6 @@ function DraftModal({ league, draftId, onClose, userId }) {
                 className="switches-container"
                 style={{ display: "flex", alignItems: "center" }}
               >
-                <a
-                  href={`https://sleeper.app/draft/nfl/${draftId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="league-link-icon"
-                  style={{ marginRight: "15px" }}
-                >
-                  <FontAwesomeIcon icon={faExternalLinkAlt} />
-                </a>
                 <div className="switch-container">
                   <FontAwesomeIcon
                     icon={faSquare}
@@ -1038,18 +1029,18 @@ function DraftModal({ league, draftId, onClose, userId }) {
                           {scoringType &&
                             scoringType.toLowerCase().includes("half_ppr")
                               ? (player.pts_half_ppr / player.gp ?? 0).toFixed(1)
-                              : (player.pts_ppr / player.gp ?? 0).toFixed(1)}
-                              {" "}/g               
+                              : (isNaN(player.pts_ppr / player.gp) ? 0 : (player.pts_ppr / player.gp)).toFixed(1)}
+                              /g               
                          </div>
                           <div className="player-info fc-rank">
                             Pts: 
                               {(() => {
                                 const position = player.position;
                                 if (!position) return "-";
-                                const rank = scoringType?.toLowerCase().includes("half_ppr")
+                                const posRank = scoringType?.toLowerCase().includes("half_ppr")
                                   ? player.pos_rank_half_ppr
                                   : player.pos_rank_ppr;
-                                return rank ? ` ${rank}` : "-";
+                                return posRank ? `${posRank}` : "-";
                               })()}
                           </div>
                         </>

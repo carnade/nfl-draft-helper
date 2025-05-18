@@ -100,7 +100,7 @@ body.dark .draft-modal-content {
 }
 
 .player-card-icon {
-  osition: relative;
+  position: relative;
   /* top: -150%; */
   /* left: 120%; */
   transform: translate(66%, -100%);
