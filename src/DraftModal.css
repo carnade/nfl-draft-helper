@@ -1,3 +1,23 @@
+.autoshrink-text {
+  display: block;
+  font-size: 1.2em;
+  white-space: nowrap;
+  max-width: 100%;
+  line-height: 1.1;
+  font-family: inherit;
+  transition: font-size 0.2s;
+}
+
+/* Remove ellipsis and overflow hiding, allow text to shrink instead */
+.autoshrink-text {
+  font-size: clamp(0.7em, 1.2em, 1.2em);
+}
+
+@media (max-width: 600px) {
+  .autoshrink-text {
+    font-size: clamp(0.6em, 1em, 1.2em);
+  }
+}
 .draft-modal-overlay {
   position: fixed;
   top: 0;
@@ -108,7 +128,6 @@ body.dark .draft-modal-content {
   text-align: right;
   justify-self: stretch; /* Ensure it stretches to align with the ranks */
   grid-column: span 4; /* Take less space */
-  font-size: 1.2em; /* Slightly smaller font size */
 
   color: white;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6); /* Subtle shadow */

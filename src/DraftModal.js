@@ -19,6 +19,14 @@ const BASE_URL = mock
   : "https://shaggy-latashia-carnade-2ea2054a.koyeb.app";
 
 function DraftModal({ league, draftId, onClose, userId }) {
+  // Debug: Log the league prop on mount
+  useEffect(() => {
+    console.log("[DraftModal] league prop:", league);
+  }, [league]);
+
+  // State for scoring type and pts/ranks switch
+  const [scoringType, setScoringType] = useState("");
+  const [isRanksMode, setIsRanksMode] = useState(false); // true = Ranks, false = Pts
   const [picks, setPicks] = useState([]);
   const [playerData, setPlayerData] = useState({});
   const [draftType, setDraftType] = useState(null);
@@ -162,6 +170,19 @@ function DraftModal({ league, draftId, onClose, userId }) {
             setReversalRound(data.settings.reversal_round);
             setDraftOrder(data.draft_order);
 
+            // Extract scoring type from metadata
+            const scoring =
+              data.metadata && data.metadata.scoring_type
+                ? data.metadata.scoring_type
+                : "";
+            setScoringType(scoring);
+            // Set switch: dynasty = pts, else ranks
+            if (scoring && scoring.toLowerCase().includes("dynasty")) {
+              setIsRanksMode(false);
+            } else {
+              setIsRanksMode(true);
+            }
+
             // Calculate and set QbCount
             const qbWeight = data.settings.slots_qb || 1;
             const superFlexWeight = data.settings.slots_super_flex || 0;
@@ -221,6 +242,8 @@ function DraftModal({ league, draftId, onClose, userId }) {
           });
           const data = await response.json();
           setPlayerData(data);
+          // Debug: Log playerData when fetched
+          console.log("[DraftModal] playerData fetched:", data);
         } catch (error) {
           console.error("Error fetching player data:", error);
         }
@@ -604,9 +627,41 @@ function DraftModal({ league, draftId, onClose, userId }) {
           </div>
         ) : (
           <>
-            <div className="header-container">
-              <h2 className="league-title">{league.name}</h2>
-              <div className="switches-container">
+            <div
+              className="header-container"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              {/* New Pts/Ranks switch on the left */}
+              <div
+                className="pts-ranks-switch-container"
+                style={{ display: "flex", alignItems: "center", gap: "10px" }}
+              >
+                <span style={{ fontWeight: 500, marginRight: 4 }}>Ranks</span>
+                <label className="draft-modal-switch">
+                  <input
+                    type="checkbox"
+                    id="pts-ranks-toggle"
+                    checked={isRanksMode}
+                    onChange={(e) => setIsRanksMode(e.target.checked)}
+                  />
+                  <span className="draft-modal-slider round"></span>
+                </label>
+                <span style={{ fontWeight: 500, marginLeft: 4 }}>Pts</span>
+              </div>
+              <h2
+                className="league-title"
+                style={{ flex: 1, textAlign: "center", margin: 0 }}
+              >
+                {league.name}
+              </h2>
+              <div
+                className="switches-container"
+                style={{ display: "flex", alignItems: "center" }}
+              >
                 <div className="switch-container">
                   <FontAwesomeIcon
                     icon={faSquare}
@@ -687,31 +742,66 @@ function DraftModal({ league, draftId, onClose, userId }) {
                         {formattedRank} :{pick.pick_no}
                       </div>
                       <div className="draftmodal-player-name">
-                        <div>
+                        <div
+                          className="draftmodal-player-firstname autoshrink-text"
+                          title={
+                            (metadata.first_name ||
+                              player.first_name ||
+                              "Unknown") +
+                            " " +
+                            (metadata.last_name || player.last_name || "Player")
+                          }
+                        >
                           {metadata.first_name ||
                             player.first_name ||
                             "Unknown"}
                         </div>
-                        <div>
+                        <div
+                          className="draftmodal-player-lastname autoshrink-text"
+                          title={
+                            (metadata.first_name ||
+                              player.first_name ||
+                              "Unknown") +
+                            " " +
+                            (metadata.last_name || player.last_name || "Player")
+                          }
+                        >
                           {metadata.last_name || player.last_name || "Player"}
                         </div>
                       </div>
-                      <div className="player-info ktc">
-                        <div className="draft-modal-card-text">KTC:</div>
-                        {player["KTC Value"] || "N/A"}
-                      </div>
-                      <div className="player-info ktc-rank">
-                        <div className="draft-modal-card-text">R:</div>
-                        {player.ktcRankCalculated || "N/A"}
-                      </div>
-                      <div className="player-info fc">
-                        <div className="draft-modal-card-text">FAC:</div>
-                        {player["FC Value"] || "N/A"}
-                      </div>
-                      <div className="player-info fc-rank">
-                        <div className="draft-modal-card-text">R:</div>
-                        {player.fcRankCalculated || "N/A"}
-                      </div>
+                      {isRanksMode ? (
+                        <>
+                          <div className="player-info ktc">
+                            <div className="draft-modal-card-text">KTC:</div>
+                            {player["KTC Value"] || "N/A"}
+                          </div>
+                          <div className="player-info ktc-rank">
+                            <div className="draft-modal-card-text">R:</div>
+                            {player.ktcRankCalculated || "N/A"}
+                          </div>
+                          <div className="player-info fc">
+                            <div className="draft-modal-card-text">FAC:</div>
+                            {player["FC Value"] || "N/A"}
+                          </div>
+                          <div className="player-info fc-rank">
+                            <div className="draft-modal-card-text">R:</div>
+                            {player.fcRankCalculated || "N/A"}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="player-info pts-value">
+                            {scoringType &&
+                            scoringType.toLowerCase().includes("half_ppr")
+                              ? player.pts_half_ppr ?? "-"
+                              : player.pts_ppr ?? "-"}
+                            p
+                          </div>
+                          <div className="player-info pts-placeholder">-</div>
+                          <div className="player-info pts-placeholder">-</div>
+                          <div className="player-info pts-placeholder">-</div>
+                        </>
+                      )}
                       {isGoatActive && (
                         <div
                           className={`player-card-icon ${
