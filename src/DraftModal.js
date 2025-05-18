@@ -3,7 +3,6 @@ import PropTypes from "prop-types";
 import "./DraftModal.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSquare } from "@fortawesome/free-regular-svg-icons";
-import { faExternalLinkAlt } from "@fortawesome/free-solid-svg-icons";
 import ResultsGrid from "./ResultsGrid";
 import { GiGoat } from "react-icons/gi";
 import { GiAmericanFootballPlayer, GiSheep, GiTurd } from "react-icons/gi";
@@ -1015,12 +1014,6 @@ function DraftModal({ league, draftId, onClose, userId }) {
                                 }
                               ).length;
                               const draftPosRank = numPrior + 1;
-
-                              // Get the player's position rank based on scoring type
-                              const posRank = scoringType?.toLowerCase().includes("half_ppr")
-                                ? player.pos_rank_half_ppr
-                                : player.pos_rank_ppr;
-
 
                               return ` ${draftPosRank}`;
                             })()}
