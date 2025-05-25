@@ -123,7 +123,6 @@ function DraftModal({ league, draftId, onClose, userId }) {
         } else {
           // Position rank calculation
           const currentPosition = player.position;
-          
           if (currentPosition && pickNumber) {
             const numPrior = picks.filter(
               (p) => {
@@ -136,57 +135,76 @@ function DraftModal({ league, draftId, onClose, userId }) {
             ).length;
             const draftPosRank = numPrior + 1;
 
-            const posRank = scoringType?.toLowerCase().includes("half_ppr")
+            // Get the player's points based on scoring type
+            const playerPoints = scoringType?.toLowerCase().includes("half_ppr")
+              ? player.pts_half_ppr
+              : player.pts_ppr;
+
+            // Get the player's position rank
+            const playerPosRank = scoringType?.toLowerCase().includes("half_ppr")
               ? player.pos_rank_half_ppr
               : player.pos_rank_ppr;
 
-            if (posRank) {
-              const rankDifference = draftPosRank - posRank;
+              console.log("player", player.first_name, player.last_name, "playerPosRank", playerPosRank)
+            if (playerPoints && playerPosRank) {
+              // Find the player that was picked at the player's position rank
+              const expectedPlayer = Object.values(playerData).find(p => {
+                const pPosRank = scoringType?.toLowerCase().includes("half_ppr")
+                  ? p.pos_rank_half_ppr
+                  : p.pos_rank_ppr;
+                return p.position === currentPosition && draftPosRank === pPosRank;
+              });
 
-              if (draftType === "linear") {
-                let adjustedRankDifference = rankDifference / round;
+              if (expectedPlayer) {
+                // Get the expected player's points
+                const expectedPoints = scoringType?.toLowerCase().includes("half_ppr")
+                  ? expectedPlayer.pts_half_ppr
+                  : expectedPlayer.pts_ppr;
+                if (expectedPoints) {
+                  // Calculate point differential
+                  const pointDiff = playerPoints - expectedPoints;
 
-                if (qbCount >= 2 && player.position === "QB") {
-                  adjustedRankDifference += 1.5;
-                }
+                  if (draftType === "linear") {
+                    let adjustedPointDiff = pointDiff;
 
-                if (adjustedRankDifference >= 4) {
-                  results[position].goat++;
-                } else if (adjustedRankDifference >= 3) {
-                  results[position].hero++;
-                } else if (adjustedRankDifference >= 2) {
-                  results[position].decent++;
-                } else if (adjustedRankDifference <= -4) {
-                  results[position].turd++;
-                } else if (adjustedRankDifference <= -3) {
-                  results[position].horrible++;
-                } else if (adjustedRankDifference <= -2) {
-                  results[position].bad++;
-                } else if (adjustedRankDifference > -2 && adjustedRankDifference < 2) {
-                  results[position].neutral++;
-                }
-              } else if (draftType === "snake") {
-                const factor = 1.25 * round;
-                let adjustedRankDifference = rankDifference / factor;
+                    //.log("LINEAR:player name", player.first_name, player.last_name, "points", playerPoints, "expected points", expectedPoints, "point diff", pointDiff, "adjusted point diff", adjustedPointDiff)
+                    if (adjustedPointDiff >= 30) {
+                      results[position].goat++;
+                    } else if (adjustedPointDiff >= 20) {
+                      results[position].hero++;
+                    } else if (adjustedPointDiff >= 10) {
+                      results[position].decent++;
+                    } else if (adjustedPointDiff <= -30) {
+                      results[position].turd++;
+                    } else if (adjustedPointDiff <= -20) {
+                      results[position].horrible++;
+                    } else if (adjustedPointDiff <= -10) {
+                      results[position].bad++;
+                    } else if (adjustedPointDiff > -10 && adjustedPointDiff < 10) {
+                      results[position].neutral++;
+                    }
+                  } else if (draftType === "snake") {
+                    const factor = 1;
+                    let adjustedPointDiff = pointDiff / factor;
 
-                if (qbCount >= 2 && player.position === "QB") {
-                  adjustedRankDifference += 2.5;
-                }
+                    //console.log("SNAKE: player name", player.first_name, player.last_name, "points", playerPoints, "expected points", expectedPoints, "point diff", pointDiff, "adjusted point diff", adjustedPointDiff)
 
-                if (adjustedRankDifference >= 4) {
-                  results[position].goat++;
-                } else if (adjustedRankDifference >= 3) {
-                  results[position].hero++;
-                } else if (adjustedRankDifference >= 2) {
-                  results[position].decent++;
-                } else if (adjustedRankDifference <= -4) {
-                  results[position].turd++;
-                } else if (adjustedRankDifference <= -3) {
-                  results[position].horrible++;
-                } else if (adjustedRankDifference <= -2) {
-                  results[position].bad++;
-                } else if (adjustedRankDifference > -2 && adjustedRankDifference < 2) {
-                  results[position].neutral++;
+                    if (adjustedPointDiff >= 30) {
+                      results[position].goat++;
+                    } else if (adjustedPointDiff >= 20) {
+                      results[position].hero++;
+                    } else if (adjustedPointDiff >= 10) {
+                      results[position].decent++;
+                    } else if (adjustedPointDiff <= -30) {
+                      results[position].turd++;
+                    } else if (adjustedPointDiff <= -20) {
+                      results[position].horrible++;
+                    } else if (adjustedPointDiff <= -10) {
+                      results[position].bad++;
+                    } else if (adjustedPointDiff > -10 && adjustedPointDiff < 10) {
+                      results[position].neutral++;
+                    }
+                  }
                 }
               }
             }
@@ -916,6 +934,8 @@ function DraftModal({ league, draftId, onClose, userId }) {
                   draftType,
                   reversalRound
                 ).map((pick, index) => {
+                  if (!pick) return null;
+                  
                   const player = playerData[pick.player_id] || {};
                   const metadata = pick.metadata || {};
                   const round = Math.floor(index / (league.teams || 12)) + 1;
