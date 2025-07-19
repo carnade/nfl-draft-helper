@@ -100,7 +100,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
               let adjustedRankDifference = rankDifference / factor;
 
               if (qbCount >= 2 && player.position === "QB") {
-                adjustedRankDifference += 2.5;
+                adjustedRankDifference += 1.5;
               }
 
               if (adjustedRankDifference >= 4) {
@@ -135,6 +135,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
             ).length;
             const draftPosRank = numPrior + 1;
 
+
             // Get the player's points based on scoring type
             const playerPoints = scoringType?.toLowerCase().includes("half_ppr")
               ? player.pts_half_ppr
@@ -144,8 +145,6 @@ function DraftModal({ league, draftId, onClose, userId }) {
             const playerPosRank = scoringType?.toLowerCase().includes("half_ppr")
               ? player.pos_rank_half_ppr
               : player.pos_rank_ppr;
-
-              console.log("player", player.first_name, player.last_name, "playerPosRank", playerPosRank)
             if (playerPoints && playerPosRank) {
               // Find the player that was picked at the player's position rank
               const expectedPlayer = Object.values(playerData).find(p => {
@@ -160,6 +159,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
                 const expectedPoints = scoringType?.toLowerCase().includes("half_ppr")
                   ? expectedPlayer.pts_half_ppr
                   : expectedPlayer.pts_ppr;
+
                 if (expectedPoints) {
                   // Calculate point differential
                   const pointDiff = playerPoints - expectedPoints;
@@ -167,46 +167,90 @@ function DraftModal({ league, draftId, onClose, userId }) {
                   if (draftType === "linear") {
                     let adjustedPointDiff = pointDiff;
 
-                    //.log("LINEAR:player name", player.first_name, player.last_name, "points", playerPoints, "expected points", expectedPoints, "point diff", pointDiff, "adjusted point diff", adjustedPointDiff)
-                    if (adjustedPointDiff >= 30) {
+                    if (adjustedPointDiff >= 50) {
                       results[position].goat++;
-                    } else if (adjustedPointDiff >= 20) {
+                      console.debug(`[GOAT] ${player.first_name} ${player.last_name} (pick_no: ${pick.pick_no}) adjustedPointDiff: ${adjustedPointDiff}`);
+                    } else if (adjustedPointDiff >= 35) {
                       results[position].hero++;
-                    } else if (adjustedPointDiff >= 10) {
+                      console.debug(`[HERO] ${player.first_name} ${player.last_name} (pick_no: ${pick.pick_no}) adjustedPointDiff: ${adjustedPointDiff}`);
+                    } else if (adjustedPointDiff >= 20) {
                       results[position].decent++;
-                    } else if (adjustedPointDiff <= -30) {
+                      console.debug(`[DECENT] ${player.first_name} ${player.last_name} (pick_no: ${pick.pick_no}) adjustedPointDiff: ${adjustedPointDiff}`);
+                    } else if (adjustedPointDiff <= -50) {
                       results[position].turd++;
-                    } else if (adjustedPointDiff <= -20) {
+                      console.debug(`[TURD] ${player.first_name} ${player.last_name} (pick_no: ${pick.pick_no}) adjustedPointDiff: ${adjustedPointDiff}`);
+                    } else if (adjustedPointDiff <= -35) {
                       results[position].horrible++;
-                    } else if (adjustedPointDiff <= -10) {
+                      console.debug(`[HORRIBLE] ${player.first_name} ${player.last_name} (pick_no: ${pick.pick_no}) adjustedPointDiff: ${adjustedPointDiff}`);
+                    } else if (adjustedPointDiff <= -20) {
                       results[position].bad++;
-                    } else if (adjustedPointDiff > -10 && adjustedPointDiff < 10) {
+                      console.debug(`[BAD] ${player.first_name} ${player.last_name} (pick_no: ${pick.pick_no}) adjustedPointDiff: ${adjustedPointDiff}`);
+                    } else if (adjustedPointDiff > -20 && adjustedPointDiff < 20) {
                       results[position].neutral++;
+                      console.debug(`[NEUTRAL] ${player.first_name} ${player.last_name} (pick_no: ${pick.pick_no}) adjustedPointDiff: ${adjustedPointDiff}`);
                     }
                   } else if (draftType === "snake") {
                     const factor = 1;
                     let adjustedPointDiff = pointDiff / factor;
 
-                    //console.log("SNAKE: player name", player.first_name, player.last_name, "points", playerPoints, "expected points", expectedPoints, "point diff", pointDiff, "adjusted point diff", adjustedPointDiff)
-
-                    if (adjustedPointDiff >= 30) {
+                    if (adjustedPointDiff >= 50) {
                       results[position].goat++;
-                    } else if (adjustedPointDiff >= 20) {
+                      console.debug(`[GOAT] ${player.first_name} ${player.last_name} (pick_no: ${pick.pick_no}) adjustedPointDiff: ${adjustedPointDiff}`);
+                    } else if (adjustedPointDiff >= 35) {
                       results[position].hero++;
-                    } else if (adjustedPointDiff >= 10) {
+                      console.debug(`[HERO] ${player.first_name} ${player.last_name} (pick_no: ${pick.pick_no}) adjustedPointDiff: ${adjustedPointDiff}`);
+                    } else if (adjustedPointDiff >= 20) {
                       results[position].decent++;
-                    } else if (adjustedPointDiff <= -30) {
+                      console.debug(`[DECENT] ${player.first_name} ${player.last_name} (pick_no: ${pick.pick_no}) adjustedPointDiff: ${adjustedPointDiff}`);
+                    } else if (adjustedPointDiff <= -50) {
                       results[position].turd++;
-                    } else if (adjustedPointDiff <= -20) {
+                      console.debug(`[TURD] ${player.first_name} ${player.last_name} (pick_no: ${pick.pick_no}) adjustedPointDiff: ${adjustedPointDiff}`);
+                    } else if (adjustedPointDiff <= -35) {
                       results[position].horrible++;
-                    } else if (adjustedPointDiff <= -10) {
+                      console.debug(`[HORRIBLE] ${player.first_name} ${player.last_name} (pick_no: ${pick.pick_no}) adjustedPointDiff: ${adjustedPointDiff}`);
+                    } else if (adjustedPointDiff <= -20) {
                       results[position].bad++;
-                    } else if (adjustedPointDiff > -10 && adjustedPointDiff < 10) {
+                      console.debug(`[BAD] ${player.first_name} ${player.last_name} (pick_no: ${pick.pick_no}) adjustedPointDiff: ${adjustedPointDiff}`);
+                    } else if (adjustedPointDiff > -20 && adjustedPointDiff < 20) {
                       results[position].neutral++;
+                      console.debug(`[NEUTRAL] ${player.first_name} ${player.last_name} (pick_no: ${pick.pick_no}) adjustedPointDiff: ${adjustedPointDiff}`);
                     }
                   }
                 }
               }
+              else {
+                console.debug(`[BY RANKINGS] ${player.first_name} ${player.last_name} (pick_no: ${pick.pick_no}) posRank: ${playerPosRank}`);
+
+                const factor = 0.4 * round;
+                let posPickRank = getDraftPosRank(picks, playerData, pick.pick_no, player.position)
+                let adjustedRankDifference = (posPickRank - playerPosRank) / factor;
+
+                if (qbCount >= 2 && player.position === "QB") {
+                  adjustedRankDifference += 1;
+                }
+  
+                if (adjustedRankDifference >= 4) {
+                  results[position].goat++;
+                  console.debug(`[RANKINGS GOAT] ${player.first_name} ${player.last_name} (adjustedRankDifference: ${adjustedRankDifference}) (posPickRank: ${posPickRank}) posRank: ${playerPosRank}`);
+                } else if (adjustedRankDifference >= 3) {
+                  results[position].hero++;
+                  console.debug(`[RANKINGS HERO] ${player.first_name} ${player.last_name} (adjustedRankDifference: ${adjustedRankDifference}) (posPickRank: ${posPickRank}) posRank: ${playerPosRank}`);
+                } else if (adjustedRankDifference >= 2) {
+                  results[position].decent++;
+                  console.debug(`[RANKINGS DECENT] ${player.first_name} ${player.last_name} (adjustedRankDifference: ${adjustedRankDifference}) (posPickRank: ${posPickRank}) posRank: ${playerPosRank}`);
+                } else if (adjustedRankDifference <= -4) {
+                  results[position].turd++;
+                  console.debug(`[RANKINGS TURD] ${player.first_name} ${player.last_name} (adjustedRankDifference: ${adjustedRankDifference}) (posPickRank: ${posPickRank}) posRank: ${playerPosRank}`);
+                } else if (adjustedRankDifference <= -3) {
+                  results[position].horrible++;
+                  console.debug(`[RANKINGS HORRIBLE] ${player.first_name} ${player.last_name} (adjustedRankDifference: ${adjustedRankDifference}) (posPickRank: ${posPickRank}) posRank: ${playerPosRank}`);
+                } else if (adjustedRankDifference <= -2) {
+                  results[position].bad++;
+                  console.debug(`[RANKINGS BAD] ${player.first_name} ${player.last_name} (adjustedRankDifference: ${adjustedRankDifference}) (posPickRank: ${posPickRank}) posRank: ${playerPosRank}`);
+                } else if (adjustedRankDifference > -2 && adjustedRankDifference < 2) {
+                  results[position].neutral++;
+                  console.debug(`[RANKINGS NEUTRAL] ${player.first_name} ${player.last_name} (adjustedRankDifference: ${adjustedRankDifference}) (posPickRank: ${posPickRank}) posRank: ${playerPosRank}`);
+                }}
             }
           }
         }
@@ -498,16 +542,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
       const currentPosition = player.position;
       
       if (currentPosition && currentPickNo) {
-        const numPrior = filteredPicks.filter(
-          (p) => {
-            const pdata = playerData[p.player_id] || {};
-            return (
-              p.pick_no < currentPickNo &&
-              pdata.position === currentPosition
-            );
-          }
-        ).length;
-        const draftPosRank = numPrior + 1;
+        const draftPosRank = getDraftPosRank(picks, playerData, currentPickNo, currentPosition);
 
         const posRank = scoringType?.toLowerCase().includes("half_ppr")
           ? player.pos_rank_half_ppr
@@ -627,16 +662,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
         const currentPosition = player.position;
         
         if (currentPosition && currentPickNo) {
-          const numPrior = picks.filter(
-            (p) => {
-              const pdata = playerData[p.player_id] || {};
-              return (
-                p.pick_no < currentPickNo &&
-                pdata.position === currentPosition
-              );
-            }
-          ).length;
-          const draftPosRank = numPrior + 1;
+          const draftPosRank = getDraftPosRank(picks, playerData, currentPickNo, currentPosition);
 
           const posRank = scoringType?.toLowerCase().includes("half_ppr")
             ? player.pos_rank_half_ppr
@@ -762,29 +788,83 @@ function DraftModal({ league, draftId, onClose, userId }) {
       const currentPosition = player.position;
       
       if (currentPosition && pickNumber) {
-        const numPrior = filteredPicks.filter(
-          (p) => {
-            const pdata = playerData[p.player_id] || {};
-            return (
-              p.pick_no < pickNumber &&
-              pdata.position === currentPosition
-            );
-          }
-        ).length;
-        const draftPosRank = numPrior + 1;
+        const draftPosRank = getDraftPosRank(picks, playerData, pickNumber, currentPosition);
 
-        const posRank = scoringType?.toLowerCase().includes("half_ppr")
+        // Get the player's points based on scoring type
+        const playerPoints = scoringType?.toLowerCase().includes("half_ppr")
+          ? player.pts_half_ppr
+          : player.pts_ppr;
+
+        // Get the player's position rank
+        const playerPosRank = scoringType?.toLowerCase().includes("half_ppr")
           ? player.pos_rank_half_ppr
           : player.pos_rank_ppr;
 
-        if (posRank) {
-          const rankDifference = draftPosRank - posRank;
+        if (playerPoints && playerPosRank) {
+          // Find the player that was picked at the player's position rank
+          const expectedPlayer = Object.values(playerData).find(p => {
+            const pPosRank = scoringType?.toLowerCase().includes("half_ppr")
+              ? p.pos_rank_half_ppr
+              : p.pos_rank_ppr;
+            return p.position === currentPosition && draftPosRank === pPosRank;
+          });
 
-          if (draftType === "linear") {
-            let adjustedRankDifference = rankDifference / round;
+          if (expectedPlayer) {
+            // Get the expected player's points
+            const expectedPoints = scoringType?.toLowerCase().includes("half_ppr")
+              ? expectedPlayer.pts_half_ppr
+              : expectedPlayer.pts_ppr;
+
+            if (expectedPoints) {
+              // Calculate point differential
+              const pointDiff = playerPoints - expectedPoints;
+
+              if (draftType === "linear") {
+                let adjustedPointDiff = pointDiff;
+
+                if (adjustedPointDiff >= 50) {
+                  return <GiGoat className="result-icon golden" />;
+                } else if (adjustedPointDiff >= 35) {
+                  return <GiFireworkRocket className="result-icon" />;
+                } else if (adjustedPointDiff >= 20) {
+                  return <GiAmericanFootballPlayer c4lassName="result-icon" />;
+                } else if (adjustedPointDiff <= -50) {
+                  return <GiTurd className="result-icon brown" />;
+                } else if (adjustedPointDiff <= -35) {
+                  return <FaTrashAlt className="result-icon" />;
+                } else if (adjustedPointDiff <= -20) {
+                  return <GiSheep className="result-icon" />;
+                } else if (adjustedPointDiff > -20 && adjustedPointDiff <20) {
+                  return <TbArrowsLeftRight className="result-icon" />;
+                }
+              } else if (draftType === "snake") {
+                const factor = 1;
+                let adjustedPointDiff = pointDiff / factor;
+
+                if (adjustedPointDiff >= 50) {
+                  return <GiGoat className="result-icon golden" />;
+                } else if (adjustedPointDiff >= 35) {
+                  return <GiFireworkRocket className="result-icon" />;
+                } else if (adjustedPointDiff >= 20) {
+                  return <GiAmericanFootballPlayer c4lassName="result-icon" />;
+                } else if (adjustedPointDiff <= -50) {
+                  return <GiTurd className="result-icon brown" />;
+                } else if (adjustedPointDiff <= -35) {
+                  return <FaTrashAlt className="result-icon" />;
+                } else if (adjustedPointDiff <= -20) {
+                  return <GiSheep className="result-icon" />;
+                } else if (adjustedPointDiff > -20 && adjustedPointDiff <20) {
+                  return <TbArrowsLeftRight className="result-icon" />;
+                }
+              }
+            }
+          } else {
+            const factor = 0.4 * round;
+            let posPickRank = getDraftPosRank(picks, playerData, pick.pick_no, player.position)
+            let adjustedRankDifference = (posPickRank - playerPosRank) / factor;
 
             if (qbCount >= 2 && player.position === "QB") {
-              adjustedRankDifference += 1.5;
+              adjustedRankDifference += 1;
             }
 
             if (adjustedRankDifference >= 4) {
@@ -792,38 +872,15 @@ function DraftModal({ league, draftId, onClose, userId }) {
             } else if (adjustedRankDifference >= 3) {
               return <GiFireworkRocket className="result-icon" />;
             } else if (adjustedRankDifference >= 2) {
-              return <GiAmericanFootballPlayer className="result-icon" />;
-            } else if (adjustedRankDifference > -2 && adjustedRankDifference < 2) {
-              return <TbArrowsLeftRight className="result-icon" />;
-            } else if (adjustedRankDifference <= -2 && adjustedRankDifference > -3) {
-              return <GiSheep className="result-icon" />;
-            } else if (adjustedRankDifference <= -3 && adjustedRankDifference > -4) {
-              return <FaTrashAlt className="result-icon" />;
+              return <GiAmericanFootballPlayer c4lassName="result-icon" />;
             } else if (adjustedRankDifference <= -4) {
               return <GiTurd className="result-icon brown" />;
-            }
-          } else if (draftType === "snake") {
-            const factor = 1.25 * round;
-            let adjustedRankDifference = rankDifference / factor;
-
-            if (qbCount >= 2 && player.position === "QB") {
-              adjustedRankDifference += 2.5;
-            }
-
-            if (adjustedRankDifference >= 4) {
-              return <GiGoat className="result-icon golden" />;
-            } else if (adjustedRankDifference >= 3) {
-              return <GiFireworkRocket className="result-icon" />;
-            } else if (adjustedRankDifference >= 2) {
-              return <GiAmericanFootballPlayer className="result-icon" />;
+            } else if (adjustedRankDifference <= -3) {
+              return <FaTrashAlt className="result-icon" />;
+            } else if (adjustedRankDifference <= -2) {
+              return <GiSheep className="result-icon" />;
             } else if (adjustedRankDifference > -2 && adjustedRankDifference < 2) {
               return <TbArrowsLeftRight className="result-icon" />;
-            } else if (adjustedRankDifference <= -2 && adjustedRankDifference > -3) {
-              return <GiSheep className="result-icon" />;
-            } else if (adjustedRankDifference <= -3 && adjustedRankDifference > -4) {
-              return <FaTrashAlt className="result-icon" />;
-            } else if (adjustedRankDifference <= -4) {
-              return <GiTurd className="result-icon brown" />;
             }
           }
         }
@@ -831,6 +888,20 @@ function DraftModal({ league, draftId, onClose, userId }) {
     }
 
     return null;
+  }
+
+  // Add this helper function inside DraftModal, before useEffect hooks
+  function getDraftPosRank(picks, playerData, pickNumber, position) {
+    const numPrior = picks.filter(
+      (p) => {
+        const pdata = playerData[p.player_id] || {};
+        return (
+          p.pick_no < pickNumber &&
+          pdata.position === position
+        );
+      }
+    ).length;
+    return numPrior + 1;
   }
 
   if (!league) return null;
@@ -938,11 +1009,10 @@ function DraftModal({ league, draftId, onClose, userId }) {
                   
                   const player = playerData[pick.player_id] || {};
                   const metadata = pick.metadata || {};
-                  const round = Math.floor(index / (league.teams || 12)) + 1;
-                  const pickInRound = (index % (league.teams || 12)) + 1;
-                  const formattedRank = `${round}.${pickInRound
-                    .toString()
-                    .padStart(2, "0")}`;
+                  const teamsCount = league.teams || 12;
+                  const round = Math.floor((pick.pick_no - 1) / teamsCount) + 1;
+                  const pickInRound = ((pick.pick_no - 1) % teamsCount) + 1;
+                  const formattedRank = `${round}.${pickInRound.toString().padStart(2, "0")}`;
 
                   return (
                     <div
@@ -1017,23 +1087,14 @@ function DraftModal({ league, draftId, onClose, userId }) {
                             p
                           </div>
                           <div className="player-info ktc-rank">
-                            Pk: 
+                          <div className="draft-modal-card-text">Pk:</div>
                             {(() => {
                               const currentPickNo = pick.pick_no;
                               const currentPosition = player.position;
                               if (!currentPosition || !currentPickNo) return "-";
                               
                               // Calculate draft position rank
-                              const numPrior = filteredPicks.filter(
-                                (p) => {
-                                  const pdata = playerData[p.player_id] || {};
-                                  return (
-                                    p.pick_no < currentPickNo &&
-                                    pdata.position === currentPosition
-                                  );
-                                }
-                              ).length;
-                              const draftPosRank = numPrior + 1;
+                              const draftPosRank = getDraftPosRank(picks, playerData, currentPickNo, currentPosition);
 
                               return ` ${draftPosRank}`;
                             })()}
@@ -1046,7 +1107,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
                               /g               
                          </div>
                           <div className="player-info fc-rank">
-                            Pts: 
+                          <div className="draft-modal-card-text">Pts:</div> 
                               {(() => {
                                 const position = player.position;
                                 if (!position) return "-";

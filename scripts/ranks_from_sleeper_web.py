@@ -34,7 +34,7 @@ def main():
         last_name = player_obj.get("last_name", "")
         team = entry.get("team", "") or player_obj.get("team", "")
         position = player_obj.get("position", "")
-        rookie_year = player_obj.get("metadata", {}).get("rookie_year", "")
+        rookie_year = (player_obj.get("metadata") or {}).get("rookie_year", "")
 
         # Build a dictionary that has all ADP fields plus what we need for output
         p = {
