@@ -39,7 +39,7 @@
 .bestball-grid {
   width: 90%;
   display: grid;
-  grid-template-columns: 6fr 2fr 2fr 2fr; /* 4 columns */
+  grid-template-columns: 6fr 1fr 2fr 2fr 2fr; /* Adjusted to include draft position as the second column */
   gap: 10px;
   margin-left: auto;
   margin-right: auto;
@@ -49,6 +49,12 @@
   padding: 10px;
   border-bottom: 1px solid #ddd;
   text-align: left;
+}
+
+/* Style for the draft position column */
+.bestball-grid-item:nth-child(2) {
+  text-align: center; /* Example alignment for the draft position column */
+  font-weight: bold; /* Make the draft position stand out */
 }
 
 /* Style for links in the bestball grid */

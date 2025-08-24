@@ -1,6 +1,10 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faExternalLinkAlt, faTrophy, faTableCells } from "@fortawesome/free-solid-svg-icons";
+import {
+  faExternalLinkAlt,
+  faTrophy,
+  faTableCells,
+} from "@fortawesome/free-solid-svg-icons";
 import { useParams } from "react-router-dom";
 import "./BestballList.css";
 import DraftModal from "./DraftModal";
@@ -114,6 +118,43 @@ function BestballList() {
     []
   );
 
+  const fetchDraftPosition = async (draftId, userId) => {
+    const cachedDraftData = localStorage.getItem(`draftData_${draftId}`);
+    if (cachedDraftData) {
+      return JSON.parse(cachedDraftData);
+    }
+
+    try {
+      const response = await fetch(
+        `https://api.sleeper.app/v1/draft/${draftId}`
+      );
+      const draftData = await response.json();
+
+      // Extract draft positions for all users
+      const draftPositions = Object.entries(draftData.draft_order).reduce(
+        (acc, [userId, draftSlot]) => {
+          acc[userId] = {
+            draftSlot,
+            rosterId: draftData.slot_to_roster_id[draftSlot],
+          };
+          return acc;
+        },
+        {}
+      );
+
+      // Cache the draft positions in localStorage
+      localStorage.setItem(
+        `draftData_${draftId}`,
+        JSON.stringify(draftPositions)
+      );
+
+      return draftPositions;
+    } catch (error) {
+      console.error(`Error fetching draft data for draft ${draftId}:`, error);
+      return null;
+    }
+  };
+
   const fetchLeagueData = useCallback(async () => {
     try {
       const userResponse = await fetch(
@@ -149,6 +190,12 @@ function BestballList() {
         );
         const standingsData = await standingsResponse.json();
 
+        console.log(
+          "Fetched standings data for league:",
+          league.league_id,
+          standingsData
+        );
+
         const isTwoQBLeague = league.roster_positions.includes("SUPER_FLEX");
 
         if (isTwoQBLeague) {
@@ -179,12 +226,30 @@ function BestballList() {
           (a, b) => b.settings.fpts - a.settings.fpts
         );
 
+        console.log("Sorted teams for league:", league.league_id, sortedTeams);
+
         sortedTeams.forEach((team, index) => {
           team.position = index + 1;
         });
 
         const userTeam = sortedTeams.find((team) => team.owner_id === userId);
         const userPosition = userTeam ? userTeam.position : null;
+
+        console.log(
+          "League ID:",
+          league.league_id,
+          "User Team:",
+          userTeam,
+          "User Position:",
+          userPosition
+        );
+
+        console.log("League object before adding to leagues state:", {
+          ...league,
+          teams: sortedTeams,
+          userPosition,
+          userRosterSettings: userTeam ? userTeam.settings : {},
+        });
 
         return {
           ...league,
@@ -200,7 +265,29 @@ function BestballList() {
         (a, b) => a.userPosition - b.userPosition
       );
 
-      setLeagues(sortedLeagues);
+      // Add draft position to the sorted league data
+      const leaguesWithDraftPositions = await Promise.all(
+        sortedLeagues.map(async (league) => {
+          const draftPositions = await fetchDraftPosition(
+            league.draft_id,
+            userId
+          );
+
+          const userDraftPosition =
+            draftPositions?.[userId]?.draftSlot || "N/A";
+          return {
+            ...league,
+            draftPositions,
+            userDraftPosition,
+          };
+        })
+      );
+
+      setLeagues(leaguesWithDraftPositions);
+      console.log("Updated leagues state:", leaguesWithDraftPositions);
+
+      // Add a log to inspect leagues state after setting it
+      console.log("Leagues state after update:", leagues);
 
       setOneQBDrafts(oneQBCount);
       setTwoQBDrafts(twoQBCount);
@@ -324,6 +411,7 @@ function BestballList() {
         {activeTab === "Results" && (
           <div className="bestball-grid">
             <div className="bestball-grid-header">League Name</div>
+            <div className="bestball-grid-header">Draft Position</div>
             <div className="bestball-grid-header">Position</div>
             <div className="bestball-grid-header">Record</div>
             <div className="bestball-grid-header">Links</div>
@@ -341,6 +429,14 @@ function BestballList() {
                     </span>
                   </div>
                   <div className="bestball-grid-item">
+                    {league.userDraftPosition || "-"}
+                  </div>
+                  <div className="bestball-grid-item">
+                    {console.log("JSX League:", league)}
+                    {console.log(
+                      "Rendering league.userPosition:",
+                      league.userPosition
+                    )}
                     {league.userPosition || "-"}
                     <span> </span>
                     {league.userPosition === 1 && (
@@ -655,7 +751,7 @@ function BestballList() {
         <DraftModal
           league={{
             ...selectedDraft,
-            teams: selectedDraft.teams.length // Convert teams array to number
+            teams: selectedDraft.teams.length, // Convert teams array to number
           }}
           draftId={selectedDraft.draft_id}
           userId={userId}
