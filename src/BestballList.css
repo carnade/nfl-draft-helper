@@ -496,3 +496,119 @@ body.dark .portfolio-summary-item {
 .portfolio-grid-header.active .sort-icon {
   color: #ddd; /* Darker color for active sorted column */
 }
+
+/* Styles for the Stats tab */
+.stats-filters {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.stats-filters label {
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Dark mode styles for stats filters */
+body.dark .stats-filters label {
+  color: #ffffff;
+}
+
+body.dark .stats-filters input[type="checkbox"] {
+  accent-color: #007bff;
+}
+
+/* Light mode styles for stats filters */
+body.light .stats-filters label {
+  color: #000000;
+}
+
+body.light .stats-filters input[type="checkbox"] {
+  accent-color: #007bff;
+}
+
+.stats-tables {
+  display: flex;
+  gap: 40px;
+}
+
+.stats-tables .my-data,
+.stats-tables .general-data {
+  flex: 1;
+}
+
+/* Dark mode styles for stats section headers */
+body.dark .stats-tables h3 {
+  color: #ffffff;
+}
+
+/* Light mode styles for stats section headers */
+body.light .stats-tables h3 {
+  color: #000000;
+}
+
+.stats-tables table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.stats-tables th,
+.stats-tables td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: center;
+}
+
+.stats-tables th {
+  background-color: #f4f4f4;
+  font-weight: bold;
+}
+
+/* Dark mode styles for stats table headers */
+body.dark .stats-tables th {
+  background-color: #3a3a3a;
+  color: #ffffff;
+}
+
+/* Dark mode styles for stats table borders and cells */
+body.dark .stats-tables th,
+body.dark .stats-tables td {
+  border: 1px solid #555;
+}
+
+body.dark .stats-tables td {
+  background-color: #2a2a2a;
+  color: #ffffff;
+}
+
+/* Light mode styles for stats table borders and cells */
+body.light .stats-tables th,
+body.light .stats-tables td {
+  border: 1px solid #ddd;
+}
+
+body.light .stats-tables td {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+/* Stats summary row styling */
+.stats-summary-row {
+  font-weight: bold;
+}
+
+/* Light mode summary row styling */
+body.light .stats-summary-row td {
+  background-color: #e8e8e8;
+  color: #000000;
+  border-top: 2px solid #ccc;
+}
+
+/* Dark mode summary row styling */
+body.dark .stats-summary-row td {
+  background-color: #1a1a1a;
+  color: #ffffff;
+  border-top: 2px solid #444;
+}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useContext, useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faExternalLinkAlt,
@@ -8,6 +8,7 @@ import {
 import { useParams } from "react-router-dom";
 import "./BestballList.css";
 import DraftModal from "./DraftModal";
+import { ThemeContext } from "./ThemeContext";
 
 // Add a mock flag
 const mock = false; // Set to true for mock data, false for production
@@ -19,6 +20,7 @@ const BASE_URL = mock
 
 function BestballList() {
   const { userName } = useParams();
+  const { theme } = useContext(ThemeContext);
   const [userId, setUserId] = useState(null);
   const [leagues, setLeagues] = useState([]);
   const [expandedLeagueIds, setExpandedLeagueIds] = useState(new Set());
@@ -38,6 +40,10 @@ function BestballList() {
     key: "totalCount",
     direction: "descending",
   });
+
+  const [showNon12TeamDrafts, setShowNon12TeamDrafts] = useState(false);
+  const [show1QB, setShow1QB] = useState(true);
+  const [show2QB, setShow2QB] = useState(true);
 
   const LEAGUE_YEAR = 2025;
 
@@ -383,6 +389,95 @@ function BestballList() {
     setIsModalOpen(false);
   };
 
+  const getFilteredLeagues = () => {
+    return leagues.filter((league) => {
+      // Determine team count from the league object (prefer teams array if present)
+      const teamCount =
+        league.teams?.length ??
+        league.roster_count ??
+        league.settings?.team_count ??
+        null;
+      const is12Team = teamCount === 12;
+      const is1QB = !league.roster_positions.includes("SUPER_FLEX");
+      const is2QB = league.roster_positions.includes("SUPER_FLEX");
+
+      // If the user does not want non-12-team drafts, exclude any league that is not 12 teams
+      if (!showNon12TeamDrafts && !is12Team) return false;
+
+      // Apply 1QB/2QB filters
+      if (!show1QB && is1QB) return false;
+      if (!show2QB && is2QB) return false;
+
+      return true;
+    });
+  };
+
+  const calculateMyData = (filteredLeagues) => {
+    const draftPositionStats = {};
+
+    filteredLeagues.forEach((league) => {
+      const userDraftPosition = league.userDraftPosition;
+      if (userDraftPosition === "N/A") return;
+
+      if (!draftPositionStats[userDraftPosition]) {
+        draftPositionStats[userDraftPosition] = {
+          count: 0,
+          totalPosition: 0,
+          no1: 0,
+        };
+      }
+
+      draftPositionStats[userDraftPosition].count += 1;
+      draftPositionStats[userDraftPosition].totalPosition += userDraftPosition;
+      if (userDraftPosition === 1) {
+        draftPositionStats[userDraftPosition].no1 += 1;
+      }
+    });
+
+    return Object.entries(draftPositionStats).map(([position, stats]) => ({
+      position,
+      count: stats.count,
+      averagePosition: (stats.totalPosition / stats.count).toFixed(2),
+      no1: stats.no1,
+    }));
+  };
+
+  const calculateGeneralData = (filteredLeagues) => {
+    const draftPositionStats = {};
+
+    filteredLeagues.forEach((league) => {
+      league.teams.forEach((team) => {
+        const draftPosition = team.position;
+        if (!draftPosition) return;
+
+        if (!draftPositionStats[draftPosition]) {
+          draftPositionStats[draftPosition] = {
+            totalPosition: 0,
+            count: 0,
+            no1: 0,
+          };
+        }
+
+        draftPositionStats[draftPosition].count += 1;
+        draftPositionStats[draftPosition].totalPosition += draftPosition;
+        if (draftPosition === 1) {
+          draftPositionStats[draftPosition].no1 += 1;
+        }
+      });
+    });
+
+    return Object.entries(draftPositionStats).map(([position, stats]) => ({
+      position,
+      averagePosition: (stats.totalPosition / stats.count).toFixed(2),
+      no1: stats.no1,
+    }));
+  };
+
+  // Memoize the filtered data and calculations to update when filters change
+  const filteredLeagues = useMemo(() => getFilteredLeagues(), [leagues, showNon12TeamDrafts, show1QB, show2QB]);
+  const myData = useMemo(() => calculateMyData(filteredLeagues), [filteredLeagues]);
+  const generalData = useMemo(() => calculateGeneralData(filteredLeagues), [filteredLeagues]);
+
   return (
     <div className="dashboard-container">
       <div className="header-container">
@@ -404,6 +499,12 @@ function BestballList() {
           onClick={() => setActiveTab("Portfolio")}
         >
           Portfolio
+        </button>
+        <button
+          className={`tab-button ${activeTab === "Stats" ? "active" : ""}`}
+          onClick={() => setActiveTab("Stats")}
+        >
+          Stats
         </button>
       </div>
 
@@ -742,6 +843,106 @@ function BestballList() {
                     </div>
                   </React.Fragment>
                 ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "Stats" && (
+          <div className="stats-container">
+            <div className="stats-filters">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={showNon12TeamDrafts}
+                  onChange={() => setShowNon12TeamDrafts((prev) => !prev)}
+                />
+                Show non-12 team drafts
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={show1QB}
+                  onChange={() => setShow1QB((prev) => !prev)}
+                />
+                1QB
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={show2QB}
+                  onChange={() => setShow2QB((prev) => !prev)}
+                />
+                2QB
+              </label>
+            </div>
+
+            <div className="stats-tables">
+              <div className="my-data">
+                <h3>My Data</h3>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Draft Position</th>
+                      <th>Count</th>
+                      <th>Average Position</th>
+                      <th>No1</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {myData.length > 0 ? (
+                      myData.map((row) => (
+                        <tr key={row.position}>
+                          <td>{row.position}</td>
+                          <td>{row.count}</td>
+                          <td>{row.averagePosition}</td>
+                          <td>{row.no1}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="4">No data available</td>
+                      </tr>
+                    )}
+                    {myData.length > 0 && (
+                      <tr className="stats-summary-row">
+                        <td><strong>Total</strong></td>
+                        <td><strong>{myData.reduce((sum, row) => sum + row.count, 0)}</strong></td>
+                        <td><strong>{(myData.reduce((sum, row) => sum + parseFloat(row.averagePosition) * row.count, 0) / myData.reduce((sum, row) => sum + row.count, 0)).toFixed(2)}</strong></td>
+                        <td><strong>{myData.reduce((sum, row) => sum + row.no1, 0)}</strong></td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="general-data">
+                <h3>General Data</h3>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Draft Position</th>
+                      <th>Average Position</th>
+                      <th>No1</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {generalData.map((row) => (
+                      <tr key={row.position}>
+                        <td>{row.position}</td>
+                        <td>{row.averagePosition}</td>
+                        <td>{row.no1}</td>
+                      </tr>
+                    ))}
+                    {generalData.length > 0 && (
+                      <tr className="stats-summary-row">
+                        <td><strong>Total</strong></td>
+                        <td><strong>{(generalData.reduce((sum, row) => sum + parseFloat(row.averagePosition), 0) / generalData.length).toFixed(2)}</strong></td>
+                        <td><strong>{generalData.reduce((sum, row) => sum + row.no1, 0)}</strong></td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
