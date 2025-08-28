@@ -742,6 +742,71 @@ body.dark .owner-clicked {
   border-bottom: none;
 }
 
+/* Small info marker for stat definitions */
+.stat-info {
+  margin-left: 6px;
+  font-size: 12px;
+  color: #888;
+  cursor: help;
+  vertical-align: middle;
+}
+
+body.dark .stat-info {
+  color: #bbb;
+}
+
+/* Custom tooltip (uses title text via attr(title)) */
+.stat-info {
+  position: relative; /* needed for pseudo elements */
+  display: inline-block;
+}
+
+.stat-info::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 140%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 6px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  font-size: 12px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+  z-index: 2000;
+}
+
+.stat-info::before {
+  content: "";
+  position: absolute;
+  bottom: 128%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px;
+  border-style: solid;
+  border-color: rgba(0, 0, 0, 0.8) transparent transparent transparent;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  pointer-events: none;
+  z-index: 2000;
+}
+
+.stat-info:hover::after,
+.stat-info:hover::before {
+  opacity: 1;
+}
+
+/* Dark mode tooltip tweak */
+body.dark .stat-info::after,
+body.dark .stat-info::before {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.08) transparent transparent transparent;
+}
+
 /* Dark mode styles for opponent input and dropdown */
 body.dark .head-to-head .opponent-input {
   background-color: #2a2a2a;

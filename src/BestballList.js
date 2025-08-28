@@ -54,6 +54,14 @@ function BestballList() {
   const [showOpponentDropdown, setShowOpponentDropdown] = useState(false);
   const [selectedDropdownIndex, setSelectedDropdownIndex] = useState(-1);
   const [sharedLeagueCount, setSharedLeagueCount] = useState(null);
+  const [no1UserCount, setNo1UserCount] = useState(null);
+  const [no1OpponentCount, setNo1OpponentCount] = useState(null);
+  const [rank1qbUserAvg, setRank1qbUserAvg] = useState(null);
+  const [rank1qbOpponentAvg, setRank1qbOpponentAvg] = useState(null);
+  const [rank2qbUserAvg, setRank2qbUserAvg] = useState(null);
+  const [rank2qbOpponentAvg, setRank2qbOpponentAvg] = useState(null);
+  const [h2hUserPoints, setH2hUserPoints] = useState(null);
+  const [h2hOpponentPoints, setH2hOpponentPoints] = useState(null);
 
   // Get username for a single user id, prefer localStorage cache
   const getUsernameFromId = async (userId) => {
@@ -237,25 +245,113 @@ function BestballList() {
   };
 
   const computeAndSetSharedLeagueCount = async (username) => {
+    // wrapper to maintain backward compatibility — use computeHeadToHeadStats
+    const results = await computeHeadToHeadStats(username);
+    return results ? results.sharedCount : null;
+  };
+
+  // Compute all head-to-head stats for the given opponent username using current filteredLeagues
+  const computeHeadToHeadStats = async (username) => {
+    // reset when missing
     if (!username || !userId) {
       setSharedLeagueCount(null);
+      setNo1UserCount(null);
+      setNo1OpponentCount(null);
+      setRank1qbUserAvg(null);
+      setRank1qbOpponentAvg(null);
+      setRank2qbUserAvg(null);
+      setRank2qbOpponentAvg(null);
+      setH2hUserPoints(null);
+      setH2hOpponentPoints(null);
       return null;
     }
 
     const opponentId = await resolveUsernameToId(username);
     if (!opponentId) {
+      // opponent not found — set zeros where appropriate
       setSharedLeagueCount(0);
-      return 0;
+      setNo1UserCount(0);
+      setNo1OpponentCount(0);
+      setRank1qbUserAvg(null);
+      setRank1qbOpponentAvg(null);
+      setRank2qbUserAvg(null);
+      setRank2qbOpponentAvg(null);
+      setH2hUserPoints(0);
+      setH2hOpponentPoints(0);
+      return {
+        sharedCount: 0,
+      };
     }
 
-    let count = 0;
-    leagues.forEach((league) => {
+    let sharedCount = 0;
+    let no1User = 0;
+    let no1Opp = 0;
+    const rank1qbUser = [];
+    const rank1qbOpp = [];
+    const rank2qbUser = [];
+    const rank2qbOpp = [];
+    let h2hUser = 0;
+    let h2hOpp = 0;
+
+    // Use filtered leagues (respecting filters)
+    const fl = filteredLeagues;
+
+    fl.forEach((league) => {
       const owners = new Set((league.teams || []).map((t) => t.owner_id));
-      if (owners.has(opponentId) && owners.has(userId)) count += 1;
+      if (!(owners.has(opponentId) && owners.has(userId))) return;
+      sharedCount += 1;
+
+      const userTeam = (league.teams || []).find((t) => t.owner_id === userId);
+      const oppTeam = (league.teams || []).find(
+        (t) => t.owner_id === opponentId
+      );
+      const userPos = userTeam ? userTeam.position : null;
+      const oppPos = oppTeam ? oppTeam.position : null;
+
+      if (userPos === 1) no1User += 1;
+      if (oppPos === 1) no1Opp += 1;
+
+      const is2QB = league.roster_positions.includes("SUPER_FLEX");
+      if (is2QB) {
+        if (userPos) rank2qbUser.push(userPos);
+        if (oppPos) rank2qbOpp.push(oppPos);
+      } else {
+        if (userPos) rank1qbUser.push(userPos);
+        if (oppPos) rank1qbOpp.push(oppPos);
+      }
+
+      if (userPos && oppPos) {
+        if (userPos < oppPos) h2hUser += 1;
+        else if (oppPos < userPos) h2hOpp += 1;
+      }
     });
 
-    setSharedLeagueCount(count);
-    return count;
+    const avg = (arr) =>
+      arr.length
+        ? (arr.reduce((s, v) => s + v, 0) / arr.length).toFixed(2)
+        : null;
+
+    setSharedLeagueCount(sharedCount);
+    setNo1UserCount(no1User);
+    setNo1OpponentCount(no1Opp);
+    setRank1qbUserAvg(avg(rank1qbUser));
+    setRank1qbOpponentAvg(avg(rank1qbOpp));
+    setRank2qbUserAvg(avg(rank2qbUser));
+    setRank2qbOpponentAvg(avg(rank2qbOpp));
+    setH2hUserPoints(h2hUser);
+    setH2hOpponentPoints(h2hOpp);
+
+    return {
+      sharedCount,
+      no1User,
+      no1Opp,
+      rank1qbUser: avg(rank1qbUser),
+      rank1qbOpp: avg(rank1qbOpp),
+      rank2qbUser: avg(rank2qbUser),
+      rank2qbOpp: avg(rank2qbOpp),
+      h2hUser,
+      h2hOpp,
+    };
   };
 
   // Handle username selection from dropdown
@@ -1226,23 +1322,39 @@ function BestballList() {
                     </tr>
                     <tr>
                       <td>No1</td>
-                      <td>-</td>
-                      <td>-</td>
+                      <td>{no1UserCount === null ? "-" : no1UserCount}</td>
+                      <td>
+                        {no1OpponentCount === null ? "-" : no1OpponentCount}
+                      </td>
                     </tr>
                     <tr>
                       <td>Rank 1QB</td>
-                      <td>-</td>
-                      <td>-</td>
+                      <td>{rank1qbUserAvg === null ? "-" : rank1qbUserAvg}</td>
+                      <td>
+                        {rank1qbOpponentAvg === null ? "-" : rank1qbOpponentAvg}
+                      </td>
                     </tr>
                     <tr>
                       <td>Rank 2QB</td>
-                      <td>-</td>
-                      <td>-</td>
+                      <td>{rank2qbUserAvg === null ? "-" : rank2qbUserAvg}</td>
+                      <td>
+                        {rank2qbOpponentAvg === null ? "-" : rank2qbOpponentAvg}
+                      </td>
                     </tr>
                     <tr>
-                      <td>H2H Rank</td>
-                      <td>-</td>
-                      <td>-</td>
+                      <td>
+                        H2H Rank
+                        <span
+                          className="stat-info"
+                          title="Higher rank in league than opponent"
+                        >
+                          ⓘ
+                        </span>
+                      </td>
+                      <td>{h2hUserPoints === null ? "-" : h2hUserPoints}</td>
+                      <td>
+                        {h2hOpponentPoints === null ? "-" : h2hOpponentPoints}
+                      </td>
                     </tr>
                   </tbody>
                 </table>
