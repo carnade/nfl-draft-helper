@@ -623,3 +623,68 @@ body.dark .stats-summary-row td {
   color: #ffffff;
   border-top: 2px solid #444;
 }
+
+/* Highlight class for leagues when an owner is clicked and shares a league with the current user */
+.highlight-league {
+  background-color: rgba(255, 235, 59, 0.15); /* light yellow highlight */
+  transition: background-color 0.2s ease;
+}
+
+/* Dark mode highlight override */
+body.dark .highlight-league {
+  background-color: rgba(
+    255,
+    193,
+    7,
+    0.12
+  ); /* slightly muted yellow for dark */
+}
+
+/* Make the highlight more visible on hover as well */
+.highlight-league:hover {
+  background-color: rgba(255, 235, 59, 0.25);
+}
+
+body.dark .highlight-league:hover {
+  background-color: rgba(255, 193, 7, 0.18);
+}
+
+/* Mark clicked owner name in leagues table */
+.owner-clicked {
+  padding: 3px 6px;
+  border-radius: 6px;
+  background-color: rgba(255, 235, 59, 0.18); /* soft yellow */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: background-color 0.18s ease, transform 0.12s ease;
+  font-weight: 600;
+}
+
+body.dark .owner-clicked {
+  background-color: rgba(255, 193, 7, 0.12);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+
+.owner-clicked:active {
+  transform: translateY(1px);
+}
+
+/* subtle pulse to draw attention when toggled */
+@keyframes owner-click-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.06);
+  }
+  60% {
+    box-shadow: 0 0 0 8px rgba(255, 193, 7, 0.03);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
+  }
+}
+
+.owner-clicked::after {
+  content: "";
+  position: absolute;
+  border-radius: 6px;
+  pointer-events: none;
+  animation: owner-click-pulse 1.2s ease-in-out;
+}

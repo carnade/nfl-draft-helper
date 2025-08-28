@@ -27,6 +27,7 @@ function BestballList() {
   const [selectedPosition, setSelectedPosition] = useState(null);
   const [selectedDraft, setSelectedDraft] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [clickedOwnerId, setClickedOwnerId] = useState(null);
 
   // Add state for league counts
   const [oneQBDrafts, setOneQBDrafts] = useState(0);
@@ -58,7 +59,8 @@ function BestballList() {
       const response = await fetch(`https://api.sleeper.app/v1/user/${userId}`);
       if (response.ok) {
         const userData = await response.json();
-        const username = userData.username || userData.display_name || `User_${userId}`;
+        const username =
+          userData.username || userData.display_name || `User_${userId}`;
         userMap[userId] = username;
         localStorage.setItem(userMapKey, JSON.stringify(userMap));
         return username;
@@ -88,12 +90,16 @@ function BestballList() {
       else uncachedUserIds.push(id);
     });
 
-    console.log(`Username caching: ${cachedUserIds.length} cached, ${uncachedUserIds.length} to fetch`);
+    console.log(
+      `Username caching: ${cachedUserIds.length} cached, ${uncachedUserIds.length} to fetch`
+    );
 
     let newUsernames = {};
     if (uncachedUserIds.length > 0) {
       setIsLoadingUsernames(true);
-      const usernamePromises = uncachedUserIds.map((id) => getUsernameFromId(id));
+      const usernamePromises = uncachedUserIds.map((id) =>
+        getUsernameFromId(id)
+      );
       const fetchedUsernames = await Promise.all(usernamePromises);
       uncachedUserIds.forEach((id, index) => {
         newUsernames[id] = fetchedUsernames[index];
@@ -133,6 +139,22 @@ function BestballList() {
       return newIds;
     });
   };
+
+  const handleOwnerClick = (ownerId) => {
+    setClickedOwnerId((prev) => (prev === ownerId ? null : ownerId));
+  };
+
+  const highlightedLeagueIds = React.useMemo(() => {
+    const result = new Set();
+    if (!clickedOwnerId || !userId) return result;
+    leagues.forEach((league) => {
+      const owners = new Set((league.teams || []).map((t) => t.owner_id));
+      if (owners.has(clickedOwnerId) && owners.has(userId)) {
+        result.add(league.league_id);
+      }
+    });
+    return result;
+  }, [clickedOwnerId, leagues, userId]);
 
   const fetchBestballPlayerData = useCallback(
     async (
@@ -378,10 +400,10 @@ function BestballList() {
 
         if (allUserIds.size > 0) {
           await getAllUsernames(Array.from(allUserIds));
-          console.log('Usernames fetched/loaded for owners');
+          console.log("Usernames fetched/loaded for owners");
         }
       } catch (e) {
-        console.error('Error fetching owner usernames:', e);
+        console.error("Error fetching owner usernames:", e);
       }
 
       // Add a log to inspect leagues state after setting it
@@ -611,7 +633,13 @@ function BestballList() {
             {leagues.length > 0 ? (
               leagues.map((league) => (
                 <React.Fragment key={league.league_id}>
-                  <div className="bestball-grid-item">
+                  <div
+                    className={`bestball-grid-item ${
+                      highlightedLeagueIds.has(league.league_id)
+                        ? "highlight-league"
+                        : ""
+                    }`}
+                  >
                     <span
                       className="toggle-button"
                       onClick={() => handleToggle(league.league_id)}
@@ -689,13 +717,32 @@ function BestballList() {
                               {(() => {
                                 const ownerName = getUsername(team.owner_id);
                                 const isMe = team.owner_id === userId;
+                                const isClickable = Boolean(team.owner_id);
                                 return (
-                                  <span className={isMe ? "user-position" : ""}>
+                                  <span
+                                    className={`${
+                                      isMe ? "user-position" : ""
+                                    } ${
+                                      clickedOwnerId === team.owner_id
+                                        ? "owner-clicked"
+                                        : ""
+                                    }`}
+                                    onClick={() =>
+                                      isClickable &&
+                                      handleOwnerClick(team.owner_id)
+                                    }
+                                    style={{
+                                      cursor: isClickable
+                                        ? "pointer"
+                                        : "default",
+                                    }}
+                                  >
                                     {ownerName || `Team ${team.position}`}
                                   </span>
                                 );
                               })()}
                             </div>
+
                             <div className="team-grid-item">
                               {team.settings.fpts}
                             </div>
