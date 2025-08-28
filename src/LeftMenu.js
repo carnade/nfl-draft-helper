@@ -11,6 +11,7 @@ import {
   faHouse,
   faBars,
   faTimes,
+  faScroll,
   faCog, // <-- import the cog icon
 } from "@fortawesome/free-solid-svg-icons";
 import "./LeftMenu.css";
@@ -87,6 +88,13 @@ function LeftMenu({ userName, setUserName }) {
           >
             <FontAwesomeIcon icon={faMedal} className="menu-icon" />
             <span>Bestball</span>
+          </Link>
+        </li>
+
+        <li className="bottom-link">
+          <Link to={`/changelog`} className="menu-link">
+            <FontAwesomeIcon icon={faScroll} className="menu-icon" />
+            <span>Changelog</span>
           </Link>
         </li>
 

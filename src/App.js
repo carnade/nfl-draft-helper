@@ -10,6 +10,7 @@ import DraftsList from "./DraftsList";
 import LeagueList from "./LeagueList";
 import BestballList from "./BestballList";
 import Settings from "./Settings";
+import Changelog from "./Changelog";
 import "./Layout.css";
 import "./LeftMenu.css";
 import "./GenericStyles.css";
@@ -105,6 +106,7 @@ function App() {
                   />
                 }
               />
+              <Route path="/changelog" element={<Changelog />} />
               <Route path="/settings" element={<Settings />} />
             </Routes>
           </div>

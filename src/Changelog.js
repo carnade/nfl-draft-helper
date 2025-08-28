@@ -1,0 +1,75 @@
+import React from "react";
+import "./Changelog.css";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faScroll } from "@fortawesome/free-solid-svg-icons";
+
+function ChangelogEntry({ date, title, items }) {
+  return (
+    <div className="changelog-entry">
+      <div className="changelog-date">{date}</div>
+      <h3 className="changelog-title">{title}</h3>
+      <ul className="changelog-list">
+        {items.map((it, i) => (
+          <li key={i}>{it}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export default function Changelog() {
+  // Example entries — add new entries as needed
+  const entries = [
+    {
+      date: "2025-08-29",
+      title: "Stats & Bestball improvements",
+      items: [
+        "Added Draft Position column to Bestball table and cached draft order in localStorage",
+        "Cached usernames for owners under 'sleeperUserMap' to reduce API calls",
+        "Added Stats tab with Head-to-Head computations and opponent fuzzy search",
+        "Clickable owners highlight shared leagues",
+      ],
+    },
+    {
+      date: "2025-07-12",
+      title: "Initial release notes (example)",
+      items: [
+        "Project scaffolded with React and basic routes",
+        "Import CSVs into Draft Helper",
+      ],
+    },
+  ];
+
+  return (
+    <div className="changelog-page">
+      <div className="changelog-header">
+        <FontAwesomeIcon icon={faScroll} className="changelog-icon" />
+        <div>
+          <h2>Changelog</h2>
+          <div className="changelog-sub">Recent changes and notes</div>
+        </div>
+      </div>
+
+      <div className="changelog-entries">
+        {entries.map((e, idx) => (
+          <ChangelogEntry
+            key={idx}
+            date={e.date}
+            title={e.title}
+            items={e.items}
+          />
+        ))}
+      </div>
+
+      <div className="changelog-help">
+        <h4>Adding entries</h4>
+        <p>
+          To add a changelog entry, add an object to the <code>entries</code>
+          array in <code>src/Changelog.js</code>. Each entry has a{" "}
+          <code>date</code>,<code>title</code>, and <code>items</code> (an array
+          of bullet strings).
+        </p>
+      </div>
+    </div>
+  );
+}

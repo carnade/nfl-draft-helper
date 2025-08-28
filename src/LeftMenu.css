@@ -110,6 +110,10 @@
   justify-content: center;
 }
 
+.bottom-link {
+  margin-top: auto; /* push this item (and the ones after it) toward the bottom */
+}
+
 .settings-link {
-  margin-top: auto; /* If the parent is a flex container, it pins to the bottom. */
+  margin-top: 6px; /* small gap from changelog */
 }
