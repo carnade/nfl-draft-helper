@@ -532,11 +532,14 @@ body.light .stats-filters input[type="checkbox"] {
 .stats-tables {
   display: flex;
   gap: 40px;
+  flex-wrap: wrap;
 }
 
+.stats-tables .head-to-head,
 .stats-tables .my-data,
 .stats-tables .general-data {
   flex: 1;
+  min-width: 300px;
 }
 
 /* Dark mode styles for stats section headers */
@@ -687,4 +690,85 @@ body.dark .owner-clicked {
   border-radius: 6px;
   pointer-events: none;
   animation: owner-click-pulse 1.2s ease-in-out;
+}
+
+/* Opponent input container for positioning */
+.opponent-input-container {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+/* Head to head input styles */
+.head-to-head .opponent-input {
+  width: 80%;
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  text-align: center;
+  background-color: #fff;
+  color: #000;
+}
+
+/* Opponent dropdown styles */
+.opponent-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.opponent-option {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background-color 0.2s;
+}
+
+.opponent-option:hover,
+.opponent-option.selected {
+  background-color: #f0f0f0;
+}
+
+.opponent-option:last-child {
+  border-bottom: none;
+}
+
+/* Dark mode styles for opponent input and dropdown */
+body.dark .head-to-head .opponent-input {
+  background-color: #2a2a2a;
+  color: #fff;
+  border-color: #555;
+}
+
+body.dark .opponent-dropdown {
+  background-color: #2a2a2a;
+  border-color: #555;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+body.dark .opponent-option {
+  border-bottom-color: #444;
+  color: #fff;
+}
+
+body.dark .opponent-option:hover,
+body.dark .opponent-option.selected {
+  background-color: #444;
+}
+
+body.dark .head-to-head .opponent-input::placeholder {
+  color: #aaa;
+}
+
+body.light .head-to-head .opponent-input::placeholder {
+  color: #666;
 }

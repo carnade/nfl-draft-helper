@@ -48,6 +48,13 @@ function BestballList() {
   const [usernameMap, setUsernameMap] = useState({});
   const [isLoadingUsernames, setIsLoadingUsernames] = useState(false);
 
+  // Add state for opponent input and dropdown
+  const [opponentInput, setOpponentInput] = useState("");
+  const [filteredUsernames, setFilteredUsernames] = useState([]);
+  const [showOpponentDropdown, setShowOpponentDropdown] = useState(false);
+  const [selectedDropdownIndex, setSelectedDropdownIndex] = useState(-1);
+  const [sharedLeagueCount, setSharedLeagueCount] = useState(null);
+
   // Get username for a single user id, prefer localStorage cache
   const getUsernameFromId = async (userId) => {
     const userMapKey = "sleeperUserMap";
@@ -124,6 +131,142 @@ function BestballList() {
     const userMapKey = "sleeperUserMap";
     const stored = JSON.parse(localStorage.getItem(userMapKey) || "{}");
     return stored[userId] || `User_${userId}`;
+  };
+
+  // Filter usernames based on input (starts with only)
+  const filterUsernames = (input) => {
+    if (!input.trim()) return [];
+
+    const usernames = Object.values(usernameMap);
+    return usernames
+      .filter((username) =>
+        username.toLowerCase().startsWith(input.toLowerCase())
+      )
+      .slice(0, 10); // Limit to 10 results
+  };
+
+  // Handle opponent input change
+  const handleOpponentInputChange = (e) => {
+    const value = e.target.value;
+    setOpponentInput(value);
+
+    if (value.trim()) {
+      const filtered = filterUsernames(value);
+      setFilteredUsernames(filtered);
+      setShowOpponentDropdown(filtered.length > 0);
+      setSelectedDropdownIndex(-1);
+    } else {
+      setShowOpponentDropdown(false);
+      setFilteredUsernames([]);
+    }
+  };
+
+  // Handle opponent input keydown
+  const handleOpponentInputKeydown = (e) => {
+    if (!showOpponentDropdown) return;
+
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        setSelectedDropdownIndex((prev) =>
+          prev < filteredUsernames.length - 1 ? prev + 1 : prev
+        );
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setSelectedDropdownIndex((prev) => (prev > 0 ? prev - 1 : -1));
+        break;
+      case "Enter":
+        e.preventDefault();
+        if (
+          selectedDropdownIndex >= 0 &&
+          filteredUsernames[selectedDropdownIndex]
+        ) {
+          setOpponentInput(filteredUsernames[selectedDropdownIndex]);
+          setShowOpponentDropdown(false);
+          // compute shared leagues when selecting via keyboard
+          computeAndSetSharedLeagueCount(
+            filteredUsernames[selectedDropdownIndex]
+          ).catch((err) =>
+            console.error("Error computing shared leagues:", err)
+          );
+        }
+        break;
+      case "Escape":
+        setShowOpponentDropdown(false);
+        break;
+    }
+  };
+
+  // Resolve a username to a sleeper user_id using cached map or API
+  const resolveUsernameToId = async (username) => {
+    if (!username) return null;
+    // build reverse map from usernameMap
+    const lower = username.toLowerCase();
+    for (const [id, name] of Object.entries(usernameMap)) {
+      if (name && name.toLowerCase() === lower) return id;
+    }
+
+    // check localStorage backup
+    const userMapKey = "sleeperUserMap";
+    const stored = JSON.parse(localStorage.getItem(userMapKey) || "{}");
+    for (const [id, name] of Object.entries(stored)) {
+      if (name && name.toLowerCase() === lower) return id;
+    }
+
+    // fallback: call sleeper API to resolve username
+    try {
+      const resp = await fetch(`https://api.sleeper.app/v1/user/${username}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        const id = data.user_id;
+        // save into cache
+        const combined = {
+          ...(stored || {}),
+          [id]: data.username || data.display_name,
+        };
+        localStorage.setItem(userMapKey, JSON.stringify(combined));
+        setUsernameMap(combined);
+        return id;
+      }
+    } catch (e) {
+      console.error("Error resolving username to id:", e);
+    }
+
+    return null;
+  };
+
+  const computeAndSetSharedLeagueCount = async (username) => {
+    if (!username || !userId) {
+      setSharedLeagueCount(null);
+      return null;
+    }
+
+    const opponentId = await resolveUsernameToId(username);
+    if (!opponentId) {
+      setSharedLeagueCount(0);
+      return 0;
+    }
+
+    let count = 0;
+    leagues.forEach((league) => {
+      const owners = new Set((league.teams || []).map((t) => t.owner_id));
+      if (owners.has(opponentId) && owners.has(userId)) count += 1;
+    });
+
+    setSharedLeagueCount(count);
+    return count;
+  };
+
+  // Handle username selection from dropdown
+  const handleUsernameSelect = (username) => {
+    setOpponentInput(username);
+    setShowOpponentDropdown(false);
+    setSelectedDropdownIndex(-1);
+    // compute shared leagues when a username is explicitly selected
+    computeAndSetSharedLeagueCount(username).catch((e) =>
+      console.error("Error computing shared leagues:", e)
+    );
   };
 
   const LEAGUE_YEAR = 2025;
@@ -433,6 +576,16 @@ function BestballList() {
   useEffect(() => {
     fetchLeagueData();
   }, [fetchLeagueData]);
+
+  // Recompute shared league count when leagues or usernameMap change
+  useEffect(() => {
+    if (opponentInput) {
+      computeAndSetSharedLeagueCount(opponentInput).catch((e) =>
+        console.error("Error recomputing shared leagues:", e)
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leagues, usernameMap]);
 
   useEffect(() => {
     if (activeTab === "Portfolio") {
@@ -1017,6 +1170,84 @@ function BestballList() {
             </div>
 
             <div className="stats-tables">
+              <div className="head-to-head">
+                <h3>Head to Head</h3>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Comparison</th>
+                      <th>{userName}</th>
+                      <th>
+                        <div className="opponent-input-container">
+                          <input
+                            type="text"
+                            placeholder="Opponent"
+                            className="opponent-input"
+                            value={opponentInput}
+                            onChange={handleOpponentInputChange}
+                            onKeyDown={handleOpponentInputKeydown}
+                            onBlur={() =>
+                              setTimeout(
+                                () => setShowOpponentDropdown(false),
+                                100
+                              )
+                            }
+                          />
+                          {showOpponentDropdown && (
+                            <div className="opponent-dropdown">
+                              {filteredUsernames.map((username, index) => (
+                                <div
+                                  key={username}
+                                  className={`opponent-option ${
+                                    index === selectedDropdownIndex
+                                      ? "selected"
+                                      : ""
+                                  }`}
+                                  onMouseDown={(e) =>
+                                    e.preventDefault()
+                                  } /* prevent blur before click */
+                                  onClick={() => handleUsernameSelect(username)}
+                                >
+                                  {username}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Bestballs together</td>
+                      <td colSpan="2">
+                        {sharedLeagueCount === null ? "-" : sharedLeagueCount}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>No1</td>
+                      <td>-</td>
+                      <td>-</td>
+                    </tr>
+                    <tr>
+                      <td>Rank 1QB</td>
+                      <td>-</td>
+                      <td>-</td>
+                    </tr>
+                    <tr>
+                      <td>Rank 2QB</td>
+                      <td>-</td>
+                      <td>-</td>
+                    </tr>
+                    <tr>
+                      <td>H2H Rank</td>
+                      <td>-</td>
+                      <td>-</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
               <div className="my-data">
                 <h3>My Data</h3>
                 <table>

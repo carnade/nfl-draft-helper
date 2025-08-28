@@ -1,12 +1,26 @@
 # NFL Draft Helper Todo
 
-## Portfolio
+Add Changelog
 
-## DraftGrid
+## League page
+* owners box
 
-- Add points for bestball
-- Toggle points/value for dynasty
-- Cameron Ward
+
+## Stats page
+
+Check w/ show non 12 teams
+1qb/2qb
+
+- MY
+  Per draft position: Count, average position, no1
+
+- General
+- Per draft position: Average position, no1
+
+H2H
+
+
+
 
 adp code:
 Adp:
@@ -27,16 +41,3 @@ const isHalfPpr = scoringType.toLowerCase().includes("half_ppr");
 
                               return adpRank ? ` ${adpRank}` : "-";
                             })()}
-
-## Stats page
-
-Check w/ show non 12 teams
-1qb/2qb
-
-- MY
-  Per draft position: Count, average position, no1
-
-- General
-- Per draft position: Average position, no1
-
-H2H
