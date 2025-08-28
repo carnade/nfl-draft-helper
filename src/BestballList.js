@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useContext, useMemo } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faExternalLinkAlt,
@@ -8,7 +8,6 @@ import {
 import { useParams } from "react-router-dom";
 import "./BestballList.css";
 import DraftModal from "./DraftModal";
-import { ThemeContext } from "./ThemeContext";
 
 // Add a mock flag
 const mock = false; // Set to true for mock data, false for production
@@ -20,7 +19,6 @@ const BASE_URL = mock
 
 function BestballList() {
   const { userName } = useParams();
-  const { theme } = useContext(ThemeContext);
   const [userId, setUserId] = useState(null);
   const [leagues, setLeagues] = useState([]);
   const [expandedLeagueIds, setExpandedLeagueIds] = useState(new Set());
@@ -44,6 +42,83 @@ function BestballList() {
   const [showNon12TeamDrafts, setShowNon12TeamDrafts] = useState(false);
   const [show1QB, setShow1QB] = useState(true);
   const [show2QB, setShow2QB] = useState(true);
+
+  // Username caching for owner display
+  const [usernameMap, setUsernameMap] = useState({});
+  const [isLoadingUsernames, setIsLoadingUsernames] = useState(false);
+
+  // Get username for a single user id, prefer localStorage cache
+  const getUsernameFromId = async (userId) => {
+    const userMapKey = "sleeperUserMap";
+    let userMap = JSON.parse(localStorage.getItem(userMapKey) || "{}");
+
+    if (userMap[userId]) return userMap[userId];
+
+    try {
+      const response = await fetch(`https://api.sleeper.app/v1/user/${userId}`);
+      if (response.ok) {
+        const userData = await response.json();
+        const username = userData.username || userData.display_name || `User_${userId}`;
+        userMap[userId] = username;
+        localStorage.setItem(userMapKey, JSON.stringify(userMap));
+        return username;
+      }
+    } catch (error) {
+      console.error(`Error fetching username for user ${userId}:`, error);
+    }
+
+    // fallback
+    const fallback = `User_${userId}`;
+    userMap[userId] = fallback;
+    localStorage.setItem(userMapKey, JSON.stringify(userMap));
+    return fallback;
+  };
+
+  // Batch fetch usernames: only fetch uncached ids, update localStorage and state
+  const getAllUsernames = async (userIds) => {
+    const userMapKey = "sleeperUserMap";
+    let userMap = JSON.parse(localStorage.getItem(userMapKey) || "{}");
+
+    const uniqueUserIds = [...new Set(userIds.filter((id) => id))];
+
+    const cachedUserIds = [];
+    const uncachedUserIds = [];
+    uniqueUserIds.forEach((id) => {
+      if (userMap[id]) cachedUserIds.push(id);
+      else uncachedUserIds.push(id);
+    });
+
+    console.log(`Username caching: ${cachedUserIds.length} cached, ${uncachedUserIds.length} to fetch`);
+
+    let newUsernames = {};
+    if (uncachedUserIds.length > 0) {
+      setIsLoadingUsernames(true);
+      const usernamePromises = uncachedUserIds.map((id) => getUsernameFromId(id));
+      const fetchedUsernames = await Promise.all(usernamePromises);
+      uncachedUserIds.forEach((id, index) => {
+        newUsernames[id] = fetchedUsernames[index];
+      });
+      setIsLoadingUsernames(false);
+    }
+
+    const combined = { ...userMap, ...newUsernames };
+    // persist combined map
+    localStorage.setItem(userMapKey, JSON.stringify(combined));
+    setUsernameMap(combined);
+    return combined;
+  };
+
+  // Utility for templates
+  const getUsername = (userId) => {
+    if (!userId) return "Unknown";
+    if (isLoadingUsernames) return "Loading...";
+    const fromState = usernameMap[userId];
+    if (fromState) return fromState;
+    // fallback to localStorage if available
+    const userMapKey = "sleeperUserMap";
+    const stored = JSON.parse(localStorage.getItem(userMapKey) || "{}");
+    return stored[userId] || `User_${userId}`;
+  };
 
   const LEAGUE_YEAR = 2025;
 
@@ -292,6 +367,23 @@ function BestballList() {
       setLeagues(leaguesWithDraftPositions);
       console.log("Updated leagues state:", leaguesWithDraftPositions);
 
+      // Collect all owner IDs from the leagues we just set and fetch usernames for uncached ones
+      try {
+        const allUserIds = new Set();
+        leaguesWithDraftPositions.forEach((lg) => {
+          (lg.teams || []).forEach((t) => {
+            if (t.owner_id) allUserIds.add(t.owner_id);
+          });
+        });
+
+        if (allUserIds.size > 0) {
+          await getAllUsernames(Array.from(allUserIds));
+          console.log('Usernames fetched/loaded for owners');
+        }
+      } catch (e) {
+        console.error('Error fetching owner usernames:', e);
+      }
+
       // Add a log to inspect leagues state after setting it
       console.log("Leagues state after update:", leagues);
 
@@ -473,10 +565,9 @@ function BestballList() {
     }));
   };
 
-  // Memoize the filtered data and calculations to update when filters change
-  const filteredLeagues = useMemo(() => getFilteredLeagues(), [leagues, showNon12TeamDrafts, show1QB, show2QB]);
-  const myData = useMemo(() => calculateMyData(filteredLeagues), [filteredLeagues]);
-  const generalData = useMemo(() => calculateGeneralData(filteredLeagues), [filteredLeagues]);
+  const filteredLeagues = getFilteredLeagues();
+  const myData = calculateMyData(filteredLeagues);
+  const generalData = calculateGeneralData(filteredLeagues);
 
   return (
     <div className="dashboard-container">
@@ -595,13 +686,15 @@ function BestballList() {
                               {team.position}
                             </div>
                             <div className="team-grid-item">
-                              {team.owner_id === userId ? (
-                                <span className="user-position">
-                                  {userName}
-                                </span>
-                              ) : (
-                                `Team ${team.position}`
-                              )}
+                              {(() => {
+                                const ownerName = getUsername(team.owner_id);
+                                const isMe = team.owner_id === userId;
+                                return (
+                                  <span className={isMe ? "user-position" : ""}>
+                                    {ownerName || `Team ${team.position}`}
+                                  </span>
+                                );
+                              })()}
                             </div>
                             <div className="team-grid-item">
                               {team.settings.fpts}
@@ -903,14 +996,6 @@ function BestballList() {
                         <td colSpan="4">No data available</td>
                       </tr>
                     )}
-                    {myData.length > 0 && (
-                      <tr className="stats-summary-row">
-                        <td><strong>Total</strong></td>
-                        <td><strong>{myData.reduce((sum, row) => sum + row.count, 0)}</strong></td>
-                        <td><strong>{(myData.reduce((sum, row) => sum + parseFloat(row.averagePosition) * row.count, 0) / myData.reduce((sum, row) => sum + row.count, 0)).toFixed(2)}</strong></td>
-                        <td><strong>{myData.reduce((sum, row) => sum + row.no1, 0)}</strong></td>
-                      </tr>
-                    )}
                   </tbody>
                 </table>
               </div>
@@ -933,13 +1018,6 @@ function BestballList() {
                         <td>{row.no1}</td>
                       </tr>
                     ))}
-                    {generalData.length > 0 && (
-                      <tr className="stats-summary-row">
-                        <td><strong>Total</strong></td>
-                        <td><strong>{(generalData.reduce((sum, row) => sum + parseFloat(row.averagePosition), 0) / generalData.length).toFixed(2)}</strong></td>
-                        <td><strong>{generalData.reduce((sum, row) => sum + row.no1, 0)}</strong></td>
-                      </tr>
-                    )}
                   </tbody>
                 </table>
               </div>

@@ -562,8 +562,19 @@ body.light .stats-tables h3 {
 }
 
 .stats-tables th {
-  background-color: #f4f4f4;
   font-weight: bold;
+  background-color: #f4f4f4;
+}
+
+/* Use same light/dark mode behavior as portfolio headers */
+body.light .stats-tables th {
+  background-color: #f1f1f1;
+  color: #000;
+}
+
+body.dark .stats-tables th {
+  background-color: #35353b;
+  color: #fff;
 }
 
 /* Dark mode styles for stats table headers */
