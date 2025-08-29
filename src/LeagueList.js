@@ -31,6 +31,13 @@ function LeagueList() {
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [highlightedLeagues, setHighlightedLeagues] = useState(new Set());
   const [searchQuery, setSearchQuery] = useState("");
+  // Owner username fuzzy search state (similar to BestballList opponent search)
+  const [ownerInput, setOwnerInput] = useState("");
+  const [ownerFilteredUsernames, setOwnerFilteredUsernames] = useState([]);
+  const [showOwnerDropdown, setShowOwnerDropdown] = useState(false);
+  const [ownerSelectedIndex, setOwnerSelectedIndex] = useState(-1);
+  const [usernameMap, setUsernameMap] = useState({});
+  const [isLoadingUsernames, setIsLoadingUsernames] = useState(false);
   const [showAllInjuries, setShowAllInjuries] = useState(false);
   const [selectedPosition, setSelectedPosition] = useState(null); // Filter by position
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -119,6 +126,232 @@ function LeagueList() {
       window.searchTimeout = setTimeout(() => searchPlayer(query.trim()), 1000); // Delay search for 2 seconds
     }
   };
+
+  // --- Username caching / fuzzy search helpers ---
+  const getUsernameFromId = async (userId) => {
+    const userMapKey = "sleeperUserMap";
+    let userMap = JSON.parse(localStorage.getItem(userMapKey) || "{}");
+
+    if (userMap[userId]) return userMap[userId];
+
+    try {
+      const response = await fetch(`https://api.sleeper.app/v1/user/${userId}`);
+      if (response.ok) {
+        const userData = await response.json();
+        const username =
+          userData.username || userData.display_name || `User_${userId}`;
+        userMap[userId] = username;
+        localStorage.setItem(userMapKey, JSON.stringify(userMap));
+        return username;
+      }
+    } catch (error) {
+      console.error(`Error fetching username for user ${userId}:`, error);
+    }
+
+    const fallback = `User_${userId}`;
+    userMap[userId] = fallback;
+    localStorage.setItem(userMapKey, JSON.stringify(userMap));
+    return fallback;
+  };
+
+  const getAllUsernames = async (userIds) => {
+    const userMapKey = "sleeperUserMap";
+    let userMap = JSON.parse(localStorage.getItem(userMapKey) || "{}");
+
+    const uniqueUserIds = [...new Set(userIds.filter((id) => id))];
+
+    const uncached = uniqueUserIds.filter((id) => !userMap[id]);
+    if (uncached.length === 0) {
+      setUsernameMap(userMap);
+      return userMap;
+    }
+
+    setIsLoadingUsernames(true);
+    const fetched = await Promise.all(
+      uncached.map((id) => getUsernameFromId(id))
+    );
+    uncached.forEach((id, i) => {
+      userMap[id] = fetched[i];
+    });
+    setIsLoadingUsernames(false);
+    localStorage.setItem(userMapKey, JSON.stringify(userMap));
+    setUsernameMap(userMap);
+    return userMap;
+  };
+
+  const loadLocalUsernames = () => {
+    const userMapKey = "sleeperUserMap";
+    const stored = JSON.parse(localStorage.getItem(userMapKey) || "{}");
+    setUsernameMap(stored);
+  };
+
+  // Filter usernames (prefix match) for dropdown suggestions
+  const filterUsernames = (input) => {
+    if (!input.trim()) return [];
+    const usernames = Object.values(usernameMap);
+    return usernames
+      .filter((username) =>
+        username.toLowerCase().startsWith(input.toLowerCase())
+      )
+      .slice(0, 10);
+  };
+
+  // When the owner input is focused and we have few cached usernames, try to fetch owner ids from leagues' rosters
+  const fetchOwnerIdsFromLeagues = async () => {
+    try {
+      const ownerIds = [];
+      for (const league of leagues) {
+        try {
+          const resp = await fetch(
+            `https://api.sleeper.app/v1/league/${league.league_id}/rosters`
+          );
+          if (!resp.ok) continue;
+          const rosters = await resp.json();
+          rosters.forEach((r) => {
+            if (r.owner_id) ownerIds.push(r.owner_id);
+          });
+        } catch (e) {
+          // ignore and continue
+        }
+      }
+      await getAllUsernames(ownerIds);
+    } catch (e) {
+      console.error("Error fetching owner ids from leagues:", e);
+    }
+  };
+
+  // Handlers for owner (username) input
+  const handleOwnerInputChange = (e) => {
+    const v = e.target.value;
+    setOwnerInput(v);
+    if (v.trim()) {
+      const filtered = filterUsernames(v);
+      setOwnerFilteredUsernames(filtered);
+      setShowOwnerDropdown(filtered.length > 0);
+      setOwnerSelectedIndex(-1);
+    } else {
+      setShowOwnerDropdown(false);
+      setOwnerFilteredUsernames([]);
+    }
+  };
+
+  const handleOwnerKeydown = (e) => {
+    if (!showOwnerDropdown) return;
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        setOwnerSelectedIndex((prev) =>
+          prev < ownerFilteredUsernames.length - 1 ? prev + 1 : prev
+        );
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setOwnerSelectedIndex((prev) => (prev > 0 ? prev - 1 : -1));
+        break;
+      case "Enter":
+        e.preventDefault();
+        if (
+          ownerSelectedIndex >= 0 &&
+          ownerFilteredUsernames[ownerSelectedIndex]
+        ) {
+          const username = ownerFilteredUsernames[ownerSelectedIndex];
+          setOwnerInput(username);
+          setShowOwnerDropdown(false);
+          setOwnerSelectedIndex(-1);
+          // TODO: you may want to act on selection (e.g., highlight leagues)
+        }
+        break;
+      case "Escape":
+        setShowOwnerDropdown(false);
+        break;
+    }
+  };
+
+  const handleOwnerSelect = (username) => {
+    setOwnerInput(username);
+    setShowOwnerDropdown(false);
+    setOwnerSelectedIndex(-1);
+    // Highlight leagues where this owner appears
+    (async () => {
+      try {
+        const ownerId = await resolveUsernameToId(username);
+        if (!ownerId) {
+          setHighlightedLeagues(new Set());
+          return;
+        }
+
+        const highlighted = new Set();
+        // For each league, fetch rosters and check for ownerId
+        await Promise.all(
+          leagues.map(async (league) => {
+            try {
+              const resp = await fetch(
+                `https://api.sleeper.app/v1/league/${league.league_id}/rosters`
+              );
+              if (!resp.ok) return;
+              const rosters = await resp.json();
+              const hasOwner = rosters.some((r) => r.owner_id === ownerId);
+              if (hasOwner) highlighted.add(league.league_id);
+            } catch (e) {
+              // ignore per-league errors
+            }
+          })
+        );
+
+        // ensure we set a fresh Set instance so React re-renders
+        const highlightedSet = new Set(highlighted);
+        console.log(
+          "Owner select:",
+          username,
+          ownerId,
+          "highlighted count:",
+          highlightedSet.size
+        );
+        setHighlightedLeagues(highlightedSet);
+      } catch (e) {
+        console.error("Error highlighting owner leagues:", e);
+        setHighlightedLeagues(new Set());
+      }
+    })();
+  };
+
+  // Resolve a username to a sleeper user_id using cached map or API
+  const resolveUsernameToId = async (username) => {
+    if (!username) return null;
+    const lower = username.toLowerCase();
+    for (const [id, name] of Object.entries(usernameMap || {})) {
+      if (name && name.toLowerCase() === lower) return id;
+    }
+    // check localStorage
+    const userMapKey = "sleeperUserMap";
+    const stored = JSON.parse(localStorage.getItem(userMapKey) || "{}");
+    for (const [id, name] of Object.entries(stored)) {
+      if (name && name.toLowerCase() === lower) return id;
+    }
+
+    try {
+      const resp = await fetch(`https://api.sleeper.app/v1/user/${username}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        const id = data.user_id;
+        const combined = {
+          ...(stored || {}),
+          [id]: data.username || data.display_name,
+        };
+        localStorage.setItem(userMapKey, JSON.stringify(combined));
+        setUsernameMap(combined);
+        return id;
+      }
+    } catch (e) {
+      console.error("Error resolving username to id:", e);
+    }
+
+    return null;
+  };
+
+  useEffect(() => {
+    loadLocalUsernames();
+  }, []);
 
   const searchPlayer = (query) => {
     const searchTerms = query.toLowerCase().split(" ").filter(Boolean);
@@ -565,6 +798,38 @@ function LeagueList() {
           value={searchQuery}
           onChange={handleSearchInputChange}
         />
+        <label className="search-label">Find an owner</label>
+        <div className="owner-search">
+          <input
+            type="text"
+            placeholder="Search owner username"
+            value={ownerInput}
+            onChange={handleOwnerInputChange}
+            onKeyDown={handleOwnerKeydown}
+            onFocus={() => {
+              loadLocalUsernames();
+              if (Object.keys(usernameMap).length < 5) {
+                fetchOwnerIdsFromLeagues();
+              }
+            }}
+          />
+          {showOwnerDropdown && (
+            <div className="opponent-dropdown">
+              {ownerFilteredUsernames.map((u, i) => (
+                <div
+                  key={u}
+                  className={`opponent-option ${
+                    i === ownerSelectedIndex ? "selected" : ""
+                  }`}
+                  onMouseDown={(ev) => ev.preventDefault()}
+                  onClick={() => handleOwnerSelect(u)}
+                >
+                  {u}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="league-main-content">

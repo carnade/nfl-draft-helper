@@ -21,21 +21,13 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
-      date: "2025-08-29",
-      title: "Stats & Bestball improvements",
+      date: "2025-09-01",
+      title: "First changelog and Stats & Bestball improvements",
       items: [
         "Added Draft Position column to Bestball table and cached draft order in localStorage",
         "Cached usernames for owners under 'sleeperUserMap' to reduce API calls",
-        "Added Stats tab with Head-to-Head computations and opponent fuzzy search",
-        "Clickable owners highlight shared leagues",
-      ],
-    },
-    {
-      date: "2025-07-12",
-      title: "Initial release notes (example)",
-      items: [
-        "Project scaffolded with React and basic routes",
-        "Import CSVs into Draft Helper",
+        "Added Stats tab with Head-to-Head checker and other stats",
+        "Added a owners box to the leage page to check what leagues the owners are in",
       ],
     },
   ];
