@@ -100,6 +100,23 @@
   font-size: 18px;
 }
 
+.menu-link {
+  position: relative;
+}
+
+.unread-dot {
+  width: 8px;
+  height: 8px;
+  background: #e53e3e; /* red */
+  border-radius: 50%;
+  position: absolute;
+  right: 10px;
+  top: 12px;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.15);
+}
+
+/* .changelog-set-btn removed (admin control not needed in UI) */
+
 /* Hide only the text <span> when collapsed */
 .left-menu.collapsed .menu-link span {
   display: none;

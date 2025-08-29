@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import "./Changelog.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faScroll } from "@fortawesome/free-solid-svg-icons";
@@ -72,4 +72,17 @@ export default function Changelog() {
       </div>
     </div>
   );
+}
+
+// When the user opens the changelog page we should mark it as read
+// Use a side-effect so mount writes last_read_changelog
+export function ChangelogWithReadMark() {
+  useEffect(() => {
+    try {
+      localStorage.setItem("last_read_changelog", new Date().toISOString());
+      // Dispatch a storage event for same-tab listeners
+      window.dispatchEvent(new Event("storage"));
+    } catch (e) {}
+  }, []);
+  return <Changelog />;
 }
