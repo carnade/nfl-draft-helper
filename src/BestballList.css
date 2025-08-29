@@ -629,23 +629,27 @@ body.dark .stats-summary-row td {
 
 /* Highlight class for leagues when an owner is clicked and shares a league with the current user */
 .highlight-league {
-  background-color: rgba(255, 235, 59, 0.15); /* light yellow highlight */
-  transition: background-color 0.2s ease;
+  background-color: rgba(255, 235, 59, 0.12); /* light yellow highlight */
+  transition: background-color 0.18s ease, box-shadow 0.18s ease;
+  border: 2px solid rgba(255, 193, 7, 0.35);
+  padding: 8px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  font-weight: 600;
 }
 
 /* Dark mode highlight override */
 body.dark .highlight-league {
-  background-color: rgba(
-    255,
-    193,
-    7,
-    0.12
-  ); /* slightly muted yellow for dark */
+  background-color: rgba(255, 193, 7, 0.10); /* slightly muted yellow for dark */
+  border: 2px solid rgba(255, 160, 0, 0.25);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.25);
 }
 
 /* Make the highlight more visible on hover as well */
 .highlight-league:hover {
-  background-color: rgba(255, 235, 59, 0.25);
+  background-color: rgba(255, 235, 59, 0.22);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
 }
 
 body.dark .highlight-league:hover {
