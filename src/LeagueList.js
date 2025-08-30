@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faUserInjured,
@@ -41,7 +41,9 @@ function LeagueList() {
   const [showOwnerDropdown, setShowOwnerDropdown] = useState(false);
   const [ownerSelectedIndex, setOwnerSelectedIndex] = useState(-1);
   const [usernameMap, setUsernameMap] = useState({});
-  const [setIsLoadingUsernames] = useState(false);
+  const [isLoadingUsernames, setIsLoadingUsernames] = useState(false);
+  const hasPrefetchedOwnersRef = useRef(false);
+
   const [showAllInjuries, setShowAllInjuries] = useState(false);
   const [selectedPosition, setSelectedPosition] = useState(null); // Filter by position
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -683,6 +685,13 @@ function LeagueList() {
     fetchLeagueData();
     fetchInjuryReport();
   }, [fetchLeagueData, fetchInjuryReport]);
+
+  useEffect(() => {
+    if (!leagues || leagues.length === 0) return;
+    if (hasPrefetchedOwnersRef.current) return; // run once per mount
+    hasPrefetchedOwnersRef.current = true;
+    fetchOwnerIdsFromLeagues();
+  }, [leagues]);
 
   const renderPlayerInfo = (playerId, leagueId) => {
     const player = playerData[leagueId]?.players[playerId];
