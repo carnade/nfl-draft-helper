@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faUserInjured,
@@ -298,7 +298,7 @@ function LeagueList() {
   };
 
   // When the owner input is focused and we have few cached usernames, try to fetch owner ids from leagues' rosters
-  const fetchOwnerIdsFromLeagues = async () => {
+  const fetchOwnerIdsFromLeagues = useCallback(async () => {
     try {
       const ownerIds = [];
       for (const league of leagues) {
@@ -321,7 +321,7 @@ function LeagueList() {
     } catch (e) {
       console.error("Error fetching owner ids from leagues:", e);
     }
-  };
+  }, [leagues]);
 
   // Handlers for owner (username) input
   const handleOwnerInputChange = (e) => {
@@ -702,7 +702,7 @@ function LeagueList() {
     // Always try to fetch usernames for the current leagues
     // This ensures we get usernames for new leagues even if we have many cached
     fetchOwnerIdsFromLeagues();
-  }, [leagues]);
+  }, [leagues, fetchOwnerIdsFromLeagues]);
 
   const renderPlayerInfo = (playerId, leagueId) => {
     const player = playerData[leagueId]?.players[playerId];
