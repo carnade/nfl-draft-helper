@@ -206,7 +206,7 @@ function LeagueList() {
       case "Escape":
         setShowPlayerDropdown(false);
         break;
-      case "default":
+      default:
         break;
     }
   };
@@ -362,7 +362,8 @@ function LeagueList() {
       case "Escape":
         setShowOwnerDropdown(false);
         break;
-      case "default":
+      default:
+        // Do nothing, so normal typing/backspace works
         break;
     }
   };

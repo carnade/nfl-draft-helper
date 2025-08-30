@@ -92,7 +92,7 @@ function BestballList() {
   };
 
   // Batch fetch usernames: only fetch uncached ids, update localStorage and state
-  const getAllUsernames = async (userIds) => {
+  const getAllUsernames = React.useCallback(async (userIds) => {
     const userMapKey = "sleeperUserMap";
     let userMap = JSON.parse(localStorage.getItem(userMapKey) || "{}");
 
@@ -127,7 +127,7 @@ function BestballList() {
     localStorage.setItem(userMapKey, JSON.stringify(combined));
     setUsernameMap(combined);
     return combined;
-  };
+  }, []);
 
   // Utility for templates
   const getUsername = (userId) => {
@@ -500,189 +500,174 @@ function BestballList() {
     }
   };
 
-  const fetchLeagueData = useCallback(
-    async () => {
-      try {
-        const userResponse = await fetch(
-          `https://api.sleeper.app/v1/user/${userName}`
+  const fetchLeagueData = useCallback(async () => {
+    try {
+      const userResponse = await fetch(
+        `https://api.sleeper.app/v1/user/${userName}`
+      );
+      const userData = await userResponse.json();
+      const userId = userData.user_id;
+      setUserId(userId);
+
+      const leaguesResponse = await fetch(
+        `https://api.sleeper.app/v1/user/${userId}/leagues/nfl/${LEAGUE_YEAR}`
+      );
+      const leaguesData = await leaguesResponse.json();
+
+      const filteredLeagues = leaguesData.filter(
+        (league) =>
+          league.settings.best_ball === 1 && league.status === "in_season"
+      );
+
+      // Update total drafts
+      setTotalDrafts(filteredLeagues.length);
+
+      let oneQBCount = 0;
+      let twoQBCount = 0;
+
+      const playerCountMap = {};
+      const oneQBCountMap = {};
+      const twoQBCountMap = {};
+
+      const standingsPromises = filteredLeagues.map(async (league) => {
+        const standingsResponse = await fetch(
+          `https://api.sleeper.app/v1/league/${league.league_id}/rosters`
         );
-        const userData = await userResponse.json();
-        const userId = userData.user_id;
-        setUserId(userId);
+        const standingsData = await standingsResponse.json();
 
-        const leaguesResponse = await fetch(
-          `https://api.sleeper.app/v1/user/${userId}/leagues/nfl/${LEAGUE_YEAR}`
-        );
-        const leaguesData = await leaguesResponse.json();
-
-        const filteredLeagues = leaguesData.filter(
-          (league) =>
-            league.settings.best_ball === 1 && league.status === "in_season"
-        );
-
-        // Update total drafts
-        setTotalDrafts(filteredLeagues.length);
-
-        let oneQBCount = 0;
-        let twoQBCount = 0;
-
-        const playerCountMap = {};
-        const oneQBCountMap = {};
-        const twoQBCountMap = {};
-
-        const standingsPromises = filteredLeagues.map(async (league) => {
-          const standingsResponse = await fetch(
-            `https://api.sleeper.app/v1/league/${league.league_id}/rosters`
-          );
-          const standingsData = await standingsResponse.json();
-
-          console.log(
-            "Fetched standings data for league:",
-            league.league_id,
-            standingsData
-          );
-
-          const isTwoQBLeague = league.roster_positions.includes("SUPER_FLEX");
-
-          if (isTwoQBLeague) {
-            twoQBCount++;
-          } else {
-            oneQBCount++;
-          }
-
-          standingsData.forEach((roster) => {
-            if (roster.owner_id === userId) {
-              const players = roster.players || [];
-
-              players.forEach((playerId) => {
-                if (playerId !== 0) {
-                  playerCountMap[playerId] =
-                    (playerCountMap[playerId] || 0) + 1;
-
-                  if (isTwoQBLeague) {
-                    twoQBCountMap[playerId] =
-                      (twoQBCountMap[playerId] || 0) + 1;
-                  } else {
-                    oneQBCountMap[playerId] =
-                      (oneQBCountMap[playerId] || 0) + 1;
-                  }
-                }
-              });
-            }
-          });
-
-          const sortedTeams = standingsData.sort(
-            (a, b) => b.settings.fpts - a.settings.fpts
-          );
-
-          console.log(
-            "Sorted teams for league:",
-            league.league_id,
-            sortedTeams
-          );
-
-          sortedTeams.forEach((team, index) => {
-            team.position = index + 1;
-          });
-
-          const userTeam = sortedTeams.find((team) => team.owner_id === userId);
-          const userPosition = userTeam ? userTeam.position : null;
-
-          console.log(
-            "League ID:",
-            league.league_id,
-            "User Team:",
-            userTeam,
-            "User Position:",
-            userPosition
-          );
-
-          console.log("League object before adding to leagues state:", {
-            ...league,
-            teams: sortedTeams,
-            userPosition,
-            userRosterSettings: userTeam ? userTeam.settings : {},
-          });
-
-          return {
-            ...league,
-            teams: sortedTeams,
-            userPosition,
-            userRosterSettings: userTeam ? userTeam.settings : {},
-          };
-        });
-
-        const leaguesWithTeams = await Promise.all(standingsPromises);
-
-        const sortedLeagues = leaguesWithTeams.sort(
-          (a, b) => a.userPosition - b.userPosition
+        console.log(
+          "Fetched standings data for league:",
+          league.league_id,
+          standingsData
         );
 
-        // Add draft position to the sorted league data
-        const leaguesWithDraftPositions = await Promise.all(
-          sortedLeagues.map(async (league) => {
-            const draftPositions = await fetchDraftPosition(
-              league.draft_id,
-              userId
-            );
+        const isTwoQBLeague = league.roster_positions.includes("SUPER_FLEX");
 
-            const userDraftPosition =
-              draftPositions?.[userId]?.draftSlot || "N/A";
-            return {
-              ...league,
-              draftPositions,
-              userDraftPosition,
-            };
-          })
-        );
-
-        setLeagues(leaguesWithDraftPositions);
-        console.log("Updated leagues state:", leaguesWithDraftPositions);
-
-        // Collect all owner IDs from the leagues we just set and fetch usernames for uncached ones
-        try {
-          const allUserIds = new Set();
-          leaguesWithDraftPositions.forEach((lg) => {
-            (lg.teams || []).forEach((t) => {
-              if (t.owner_id) allUserIds.add(t.owner_id);
-            });
-          });
-
-          if (allUserIds.size > 0) {
-            await getAllUsernames(Array.from(allUserIds));
-            console.log("Usernames fetched/loaded for owners");
-          }
-        } catch (e) {
-          console.error("Error fetching owner usernames:", e);
+        if (isTwoQBLeague) {
+          twoQBCount++;
+        } else {
+          oneQBCount++;
         }
 
-        // Add a log to inspect leagues state after setting it
-        console.log("Leagues state after update:", leagues);
+        standingsData.forEach((roster) => {
+          if (roster.owner_id === userId) {
+            const players = roster.players || [];
 
-        setOneQBDrafts(oneQBCount);
-        setTwoQBDrafts(twoQBCount);
+            players.forEach((playerId) => {
+              if (playerId !== 0) {
+                playerCountMap[playerId] = (playerCountMap[playerId] || 0) + 1;
 
-        const playerIds = Object.keys(playerCountMap);
-        fetchBestballPlayerData(
-          playerIds,
-          playerCountMap,
-          oneQBCountMap,
-          twoQBCountMap,
-          filteredLeagues.length,
-          oneQBCount,
-          twoQBCount
+                if (isTwoQBLeague) {
+                  twoQBCountMap[playerId] = (twoQBCountMap[playerId] || 0) + 1;
+                } else {
+                  oneQBCountMap[playerId] = (oneQBCountMap[playerId] || 0) + 1;
+                }
+              }
+            });
+          }
+        });
+
+        const sortedTeams = standingsData.sort(
+          (a, b) => b.settings.fpts - a.settings.fpts
         );
 
-        console.log("Fetched league data:", sortedLeagues);
-        console.log("Player count map:", playerCountMap);
-      } catch (error) {
-        console.error("Error fetching league data:", error);
+        console.log("Sorted teams for league:", league.league_id, sortedTeams);
+
+        sortedTeams.forEach((team, index) => {
+          team.position = index + 1;
+        });
+
+        const userTeam = sortedTeams.find((team) => team.owner_id === userId);
+        const userPosition = userTeam ? userTeam.position : null;
+
+        console.log(
+          "League ID:",
+          league.league_id,
+          "User Team:",
+          userTeam,
+          "User Position:",
+          userPosition
+        );
+
+        console.log("League object before adding to leagues state:", {
+          ...league,
+          teams: sortedTeams,
+          userPosition,
+          userRosterSettings: userTeam ? userTeam.settings : {},
+        });
+
+        return {
+          ...league,
+          teams: sortedTeams,
+          userPosition,
+          userRosterSettings: userTeam ? userTeam.settings : {},
+        };
+      });
+
+      const leaguesWithTeams = await Promise.all(standingsPromises);
+
+      const sortedLeagues = leaguesWithTeams.sort(
+        (a, b) => a.userPosition - b.userPosition
+      );
+
+      // Add draft position to the sorted league data
+      const leaguesWithDraftPositions = await Promise.all(
+        sortedLeagues.map(async (league) => {
+          const draftPositions = await fetchDraftPosition(
+            league.draft_id,
+            userId
+          );
+
+          const userDraftPosition =
+            draftPositions?.[userId]?.draftSlot || "N/A";
+          return {
+            ...league,
+            draftPositions,
+            userDraftPosition,
+          };
+        })
+      );
+
+      setLeagues(leaguesWithDraftPositions);
+      console.log("Updated leagues state:", leaguesWithDraftPositions);
+
+      // Collect all owner IDs from the leagues we just set and fetch usernames for uncached ones
+      try {
+        const allUserIds = new Set();
+        leaguesWithDraftPositions.forEach((lg) => {
+          (lg.teams || []).forEach((t) => {
+            if (t.owner_id) allUserIds.add(t.owner_id);
+          });
+        });
+
+        if (allUserIds.size > 0) {
+          await getAllUsernames(Array.from(allUserIds));
+          console.log("Usernames fetched/loaded for owners");
+        }
+      } catch (e) {
+        console.error("Error fetching owner usernames:", e);
       }
-    },
-    [userName, LEAGUE_YEAR, fetchBestballPlayerData],
-    getAllUsernames,
-    leagues
-  );
+
+      setOneQBDrafts(oneQBCount);
+      setTwoQBDrafts(twoQBCount);
+
+      const playerIds = Object.keys(playerCountMap);
+      fetchBestballPlayerData(
+        playerIds,
+        playerCountMap,
+        oneQBCountMap,
+        twoQBCountMap,
+        filteredLeagues.length,
+        oneQBCount,
+        twoQBCount
+      );
+
+      console.log("Fetched league data:", sortedLeagues);
+      console.log("Player count map:", playerCountMap);
+    } catch (error) {
+      console.error("Error fetching league data:", error);
+    }
+  }, [userName, LEAGUE_YEAR, fetchBestballPlayerData, getAllUsernames]);
 
   useEffect(() => {
     fetchLeagueData();
