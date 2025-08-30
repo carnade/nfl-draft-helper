@@ -31,6 +31,10 @@ function LeagueList() {
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [highlightedLeagues, setHighlightedLeagues] = useState(new Set());
   const [searchQuery, setSearchQuery] = useState("");
+  // Player fuzzy search state
+  const [playerFilteredList, setPlayerFilteredList] = useState([]);
+  const [showPlayerDropdown, setShowPlayerDropdown] = useState(false);
+  const [playerSelectedIndex, setPlayerSelectedIndex] = useState(-1);
   // Owner username fuzzy search state (similar to BestballList opponent search)
   const [ownerInput, setOwnerInput] = useState("");
   const [ownerFilteredUsernames, setOwnerFilteredUsernames] = useState([]);
@@ -76,6 +80,13 @@ function LeagueList() {
       setSelectedPlayer(null);
       setHighlightedLeagues(new Set());
     } else {
+      // Clear any owner selection/inputs when selecting a player
+      setOwnerInput("");
+      setSearchQuery("");
+      setOwnerFilteredUsernames([]);
+      setShowOwnerDropdown(false);
+      setOwnerSelectedIndex(-1);
+
       setSelectedPlayer(playerId);
       highlightLeaguesWithPlayer(player.first_name, player.last_name);
     }
@@ -114,6 +125,17 @@ function LeagueList() {
     const query = e.target.value; // Allow spaces in the query
     setSearchQuery(query);
 
+    // Update dropdown suggestions based on player's teams
+    if (query.trim()) {
+      const filtered = filterPlayers(query);
+      setPlayerFilteredList(filtered);
+      setShowPlayerDropdown(filtered.length > 0);
+      setPlayerSelectedIndex(-1);
+    } else {
+      setShowPlayerDropdown(false);
+      setPlayerFilteredList([]);
+    }
+
     clearTimeout(window.searchTimeout);
 
     if (query.trim().length < 3) {
@@ -123,8 +145,82 @@ function LeagueList() {
       if (searchTimeout) {
         clearTimeout(searchTimeout); // Clear the previous timeout
       }
-      window.searchTimeout = setTimeout(() => searchPlayer(query.trim()), 1000); // Delay search for 2 seconds
+      window.searchTimeout = setTimeout(() => searchPlayer(query.trim()), 1000); // Delay search for 1 second
     }
+  };
+
+  // Collect all player display names from the user's teams (playerData)
+  const collectPlayerNames = () => {
+    const names = new Set();
+    Object.values(playerData).forEach((leagueData) => {
+      if (!leagueData || !leagueData.players) return;
+      Object.values(leagueData.players).forEach((p) => {
+        if (p && p.first_name && p.last_name) {
+          names.add(`${p.first_name} ${p.last_name}`);
+        }
+      });
+    });
+    return Array.from(names).sort();
+  };
+
+  const filterPlayers = (input) => {
+    if (!input.trim()) return [];
+    const all = collectPlayerNames();
+    const q = input.toLowerCase();
+    // fuzzy-ish: include if full name includes the query or any part starts with query
+    const filtered = all.filter((name) => {
+      const lower = name.toLowerCase();
+      if (lower.includes(q)) return true;
+      const parts = q.split(" ").filter(Boolean);
+      return parts.every(
+        (part) =>
+          parts.length && lower.split(" ").some((pn) => pn.startsWith(part))
+      );
+    });
+    return filtered.slice(0, 12);
+  };
+
+  const handlePlayerKeydown = (e) => {
+    if (!showPlayerDropdown) return;
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        setPlayerSelectedIndex((prev) =>
+          prev < playerFilteredList.length - 1 ? prev + 1 : prev
+        );
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setPlayerSelectedIndex((prev) => (prev > 0 ? prev - 1 : -1));
+        break;
+      case "Enter":
+        e.preventDefault();
+        if (
+          playerSelectedIndex >= 0 &&
+          playerFilteredList[playerSelectedIndex]
+        ) {
+          const name = playerFilteredList[playerSelectedIndex];
+          handlePlayerSelect(name);
+        }
+        break;
+      case "Escape":
+        setShowPlayerDropdown(false);
+        break;
+    }
+  };
+
+  const handlePlayerSelect = (name) => {
+    // Clear owner selection when picking a player from suggestions
+    setOwnerInput("");
+    setOwnerFilteredUsernames([]);
+    setShowOwnerDropdown(false);
+    setOwnerSelectedIndex(-1);
+
+    setSearchQuery(name);
+    setShowPlayerDropdown(false);
+    setPlayerSelectedIndex(-1);
+    // Run the existing search directly (immediate)
+    searchPlayer(name);
   };
 
   // --- Username caching / fuzzy search helpers ---
@@ -274,6 +370,13 @@ function LeagueList() {
     // Highlight leagues where this owner appears
     (async () => {
       try {
+        // Clear any player selection/inputs when selecting an owner
+        setSelectedPlayer(null);
+        setSearchQuery("");
+        setShowPlayerDropdown(false);
+        setPlayerFilteredList([]);
+        setPlayerSelectedIndex(-1);
+
         const ownerId = await resolveUsernameToId(username);
         if (!ownerId) {
           setHighlightedLeagues(new Set());
@@ -791,13 +894,40 @@ function LeagueList() {
 
       <div className="search-container">
         <label className="search-label">Find a player</label>
-        <input
-          type="text"
-          className="injury-report-search"
-          placeholder="Player name"
-          value={searchQuery}
-          onChange={handleSearchInputChange}
-        />
+        <div className="player-search">
+          <input
+            type="text"
+            className="injury-report-search"
+            placeholder="Player name"
+            value={searchQuery}
+            onChange={handleSearchInputChange}
+            onKeyDown={handlePlayerKeydown}
+            onFocus={() => {
+              if (searchQuery.trim()) {
+                const filtered = filterPlayers(searchQuery);
+                setPlayerFilteredList(filtered);
+                setShowPlayerDropdown(filtered.length > 0);
+                setPlayerSelectedIndex(-1);
+              }
+            }}
+          />
+          {showPlayerDropdown && (
+            <div className="opponent-dropdown">
+              {playerFilteredList.map((name, i) => (
+                <div
+                  key={name}
+                  className={`opponent-option ${
+                    i === playerSelectedIndex ? "selected" : ""
+                  }`}
+                  onMouseDown={(ev) => ev.preventDefault()}
+                  onClick={() => handlePlayerSelect(name)}
+                >
+                  {name}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         <label className="search-label">Find an owner</label>
         <div className="owner-search">
           <input

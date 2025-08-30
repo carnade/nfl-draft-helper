@@ -1321,10 +1321,22 @@ function BestballList() {
                       </td>
                     </tr>
                     <tr>
-                      <td>No1</td>
-                      <td>{no1UserCount === null ? "-" : no1UserCount}</td>
+                      <td>No1 %</td>
                       <td>
-                        {no1OpponentCount === null ? "-" : no1OpponentCount}
+                        {sharedLeagueCount === null || sharedLeagueCount === 0
+                          ? "-"
+                          : `${(
+                              (no1UserCount / sharedLeagueCount) *
+                              100
+                            ).toFixed(1)}% (${no1UserCount})`}
+                      </td>
+                      <td>
+                        {sharedLeagueCount === null || sharedLeagueCount === 0
+                          ? "-"
+                          : `${(
+                              (no1OpponentCount / sharedLeagueCount) *
+                              100
+                            ).toFixed(1)}% (${no1OpponentCount})`}
                       </td>
                     </tr>
                     <tr>

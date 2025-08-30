@@ -399,6 +399,44 @@ input:checked + .slider:before {
   margin-top: 10px;
 }
 
+/* Dropdown for owner/player suggestions */
+.opponent-dropdown {
+  position: absolute;
+  background: #fff;
+  border: 1px solid #ccc;
+  width: 260px;
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 50;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.opponent-option {
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.opponent-option.selected,
+.opponent-option:hover {
+  background-color: #f0f4ff;
+}
+
+body.dark .opponent-dropdown {
+  background: #2a2a2a;
+  border-color: #444;
+}
+
+body.dark .opponent-option.selected,
+body.dark .opponent-option:hover {
+  background-color: #3a3a50;
+}
+
+/* wrapper for player search to position dropdown */
+.player-search {
+  position: relative;
+}
+
 /* The header row is a grid container with 3 columns */
 .injury-grid-header {
   display: grid;
