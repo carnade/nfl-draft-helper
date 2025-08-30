@@ -28,6 +28,7 @@ export default function Changelog() {
         "Cached usernames for owners under 'sleeperUserMap' to reduce API calls",
         "Added Stats tab with Head-to-Head checker and other stats",
         "Added a owners box to the leage page to check what leagues the owners are in",
+        "Fuzzy search for players on league page",
       ],
     },
   ];
@@ -38,7 +39,6 @@ export default function Changelog() {
         <FontAwesomeIcon icon={faScroll} className="changelog-icon" />
         <div>
           <h2>Changelog</h2>
-          <div className="changelog-sub">Recent changes and notes</div>
         </div>
       </div>
 
@@ -51,16 +51,6 @@ export default function Changelog() {
             items={e.items}
           />
         ))}
-      </div>
-
-      <div className="changelog-help">
-        <h4>Adding entries</h4>
-        <p>
-          To add a changelog entry, add an object to the <code>entries</code>
-          array in <code>src/Changelog.js</code>. Each entry has a{" "}
-          <code>date</code>,<code>title</code>, and <code>items</code> (an array
-          of bullet strings).
-        </p>
       </div>
     </div>
   );
