@@ -41,7 +41,7 @@ function LeagueList() {
   const [showOwnerDropdown, setShowOwnerDropdown] = useState(false);
   const [ownerSelectedIndex, setOwnerSelectedIndex] = useState(-1);
   const [usernameMap, setUsernameMap] = useState({});
-  const [isLoadingUsernames, setIsLoadingUsernames] = useState(false);
+  const [setIsLoadingUsernames] = useState(false);
   const [showAllInjuries, setShowAllInjuries] = useState(false);
   const [selectedPosition, setSelectedPosition] = useState(null); // Filter by position
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -206,6 +206,8 @@ function LeagueList() {
       case "Escape":
         setShowPlayerDropdown(false);
         break;
+      case "default":
+        break;
     }
   };
 
@@ -359,6 +361,8 @@ function LeagueList() {
         break;
       case "Escape":
         setShowOwnerDropdown(false);
+        break;
+      case "default":
         break;
     }
   };

@@ -10,7 +10,7 @@ import DraftsList from "./DraftsList";
 import LeagueList from "./LeagueList";
 import BestballList from "./BestballList";
 import Settings from "./Settings";
-import Changelog, { ChangelogWithReadMark } from "./Changelog";
+import { ChangelogWithReadMark } from "./Changelog";
 import "./Layout.css";
 import "./LeftMenu.css";
 import "./GenericStyles.css";
