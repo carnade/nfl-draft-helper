@@ -24,8 +24,8 @@ export default function Changelog() {
       date: "2025-09-01",
       title: "First changelog and Stats & Bestball improvements",
       items: [
-        "Added Draft Position column to Bestball table and cached draft order in localStorage",
-        "Cached usernames for owners under 'sleeperUserMap' to reduce API calls",
+        "Added Draft Position column to Bestball table",
+        "Added owner names in Bestball table",
         "Added Stats tab with Head-to-Head checker and other stats",
         "Added a owners box to the leage page to check what leagues the owners are in",
         "Fuzzy search for players on league page",
