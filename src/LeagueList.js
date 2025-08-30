@@ -40,8 +40,8 @@ function LeagueList() {
   const [ownerFilteredUsernames, setOwnerFilteredUsernames] = useState([]);
   const [showOwnerDropdown, setShowOwnerDropdown] = useState(false);
   const [ownerSelectedIndex, setOwnerSelectedIndex] = useState(-1);
-  const [usernameMap, setUsernameMap] = useState({});
-  const [setIsLoadingUsernames] = useState(false);
+      const [usernameMap, setUsernameMap] = useState({});
+
   const [showAllInjuries, setShowAllInjuries] = useState(false);
   const [selectedPosition, setSelectedPosition] = useState(null); // Filter by position
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -227,10 +227,12 @@ function LeagueList() {
 
   // --- Username caching / fuzzy search helpers ---
   const getUsernameFromId = async (userId) => {
+
     const userMapKey = "sleeperUserMap";
     let userMap = JSON.parse(localStorage.getItem(userMapKey) || "{}");
 
     if (userMap[userId]) return userMap[userId];
+
 
     try {
       const response = await fetch(`https://api.sleeper.app/v1/user/${userId}`);
@@ -238,8 +240,9 @@ function LeagueList() {
         const userData = await response.json();
         const username =
           userData.username || userData.display_name || `User_${userId}`;
+
         userMap[userId] = username;
-        localStorage.setItem(userMapKey, JSON.stringify(userMap));
+                localStorage.setItem(userMapKey, JSON.stringify(userMap));
         return username;
       }
     } catch (error) {
@@ -252,30 +255,30 @@ function LeagueList() {
     return fallback;
   };
 
-  const getAllUsernames = async (userIds) => {
+  const getAllUsernames = useCallback(async (userIds) => {
     const userMapKey = "sleeperUserMap";
     let userMap = JSON.parse(localStorage.getItem(userMapKey) || "{}");
 
     const uniqueUserIds = [...new Set(userIds.filter((id) => id))];
 
     const uncached = uniqueUserIds.filter((id) => !userMap[id]);
+    
     if (uncached.length === 0) {
       setUsernameMap(userMap);
       return userMap;
     }
 
-    setIsLoadingUsernames(true);
     const fetched = await Promise.all(
       uncached.map((id) => getUsernameFromId(id))
     );
+    
     uncached.forEach((id, i) => {
       userMap[id] = fetched[i];
     });
-    setIsLoadingUsernames(false);
     localStorage.setItem(userMapKey, JSON.stringify(userMap));
     setUsernameMap(userMap);
     return userMap;
-  };
+  }, []);
 
   const loadLocalUsernames = () => {
     const userMapKey = "sleeperUserMap";
@@ -295,7 +298,7 @@ function LeagueList() {
   };
 
   // When the owner input is focused and we have few cached usernames, try to fetch owner ids from leagues' rosters
-  const fetchOwnerIdsFromLeagues = async () => {
+  const fetchOwnerIdsFromLeagues = useCallback(async () => {
     try {
       const ownerIds = [];
       for (const league of leagues) {
@@ -312,11 +315,13 @@ function LeagueList() {
           // ignore and continue
         }
       }
-      await getAllUsernames(ownerIds);
+      if (ownerIds.length > 0) {
+        await getAllUsernames(ownerIds);
+      }
     } catch (e) {
       console.error("Error fetching owner ids from leagues:", e);
     }
-  };
+  }, [leagues, getAllUsernames]);
 
   // Handlers for owner (username) input
   const handleOwnerInputChange = (e) => {
@@ -427,14 +432,21 @@ function LeagueList() {
   const resolveUsernameToId = async (username) => {
     if (!username) return null;
     const lower = username.toLowerCase();
+    
+    // Check in current state
     for (const [id, name] of Object.entries(usernameMap || {})) {
-      if (name && name.toLowerCase() === lower) return id;
+      if (name && name.toLowerCase() === lower) {
+        return id;
+      }
     }
-    // check localStorage
+    
+    // Check localStorage
     const userMapKey = "sleeperUserMap";
     const stored = JSON.parse(localStorage.getItem(userMapKey) || "{}");
     for (const [id, name] of Object.entries(stored)) {
-      if (name && name.toLowerCase() === lower) return id;
+      if (name && name.toLowerCase() === lower) {
+        return id;
+      }
     }
 
     try {
@@ -683,6 +695,14 @@ function LeagueList() {
     fetchLeagueData();
     fetchInjuryReport();
   }, [fetchLeagueData, fetchInjuryReport]);
+
+  useEffect(() => {
+    if (!leagues || leagues.length === 0) return;
+    
+    // Always try to fetch usernames for the current leagues
+    // This ensures we get usernames for new leagues even if we have many cached
+    fetchOwnerIdsFromLeagues();
+  }, [leagues, fetchOwnerIdsFromLeagues]);
 
   const renderPlayerInfo = (playerId, leagueId) => {
     const player = playerData[leagueId]?.players[playerId];
