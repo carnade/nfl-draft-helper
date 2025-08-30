@@ -255,7 +255,7 @@ function LeagueList() {
     return fallback;
   };
 
-  const getAllUsernames = async (userIds) => {
+  const getAllUsernames = useCallback(async (userIds) => {
     const userMapKey = "sleeperUserMap";
     let userMap = JSON.parse(localStorage.getItem(userMapKey) || "{}");
 
@@ -278,7 +278,7 @@ function LeagueList() {
     localStorage.setItem(userMapKey, JSON.stringify(userMap));
     setUsernameMap(userMap);
     return userMap;
-  };
+  }, []);
 
   const loadLocalUsernames = () => {
     const userMapKey = "sleeperUserMap";
@@ -321,7 +321,7 @@ function LeagueList() {
     } catch (e) {
       console.error("Error fetching owner ids from leagues:", e);
     }
-  }, [leagues]);
+  }, [leagues, getAllUsernames]);
 
   // Handlers for owner (username) input
   const handleOwnerInputChange = (e) => {
