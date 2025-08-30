@@ -1,5 +1,5 @@
 // LeftMenu.js
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -11,12 +11,45 @@ import {
   faHouse,
   faBars,
   faTimes,
+  faScroll,
   faCog, // <-- import the cog icon
 } from "@fortawesome/free-solid-svg-icons";
 import "./LeftMenu.css";
 
 function LeftMenu({ userName, setUserName }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [unreadChangelog, setUnreadChangelog] = useState(false);
+
+  // Manually update this timestamp when you want the changelog to be considered "updated".
+  // Edit this constant in the source and deploy/build to change the value.
+  const MANUAL_LAST_UPDATED = "2025-08-29T00:00:00.000Z";
+
+  const checkUnread = () => {
+    try {
+      const lastUpdated = localStorage.getItem("last_updated_changelog");
+      const lastRead = localStorage.getItem("last_read_changelog");
+      if (!lastUpdated) {
+        setUnreadChangelog(false);
+        return;
+      }
+      const u = new Date(lastUpdated);
+      const r = lastRead ? new Date(lastRead) : null;
+      setUnreadChangelog(!r || u > r);
+    } catch (e) {
+      setUnreadChangelog(false);
+    }
+  };
+
+  useEffect(() => {
+    // Ensure the runtime knows the package's last-updated changelog timestamp.
+    try {
+      localStorage.setItem("last_updated_changelog", MANUAL_LAST_UPDATED);
+    } catch (e) {}
+    checkUnread();
+    const onStorage = () => checkUnread();
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
   return (
     <div className={`left-menu ${isCollapsed ? "collapsed" : ""}`}>
@@ -87,6 +120,14 @@ function LeftMenu({ userName, setUserName }) {
           >
             <FontAwesomeIcon icon={faMedal} className="menu-icon" />
             <span>Bestball</span>
+          </Link>
+        </li>
+
+        <li className="bottom-link">
+          <Link to={`/changelog`} className="menu-link" aria-label="Changelog">
+            <FontAwesomeIcon icon={faScroll} className="menu-icon" />
+            <span>Changelog</span>
+            {unreadChangelog && <span className="unread-dot" />}
           </Link>
         </li>
 

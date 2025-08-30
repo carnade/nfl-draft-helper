@@ -39,7 +39,7 @@
 .bestball-grid {
   width: 90%;
   display: grid;
-  grid-template-columns: 6fr 2fr 2fr 2fr; /* 4 columns */
+  grid-template-columns: 6fr 1fr 2fr 2fr 2fr; /* Adjusted to include draft position as the second column */
   gap: 10px;
   margin-left: auto;
   margin-right: auto;
@@ -49,6 +49,12 @@
   padding: 10px;
   border-bottom: 1px solid #ddd;
   text-align: left;
+}
+
+/* Style for the draft position column */
+.bestball-grid-item:nth-child(2) {
+  text-align: center; /* Example alignment for the draft position column */
+  font-weight: bold; /* Make the draft position stand out */
 }
 
 /* Style for links in the bestball grid */
@@ -489,4 +495,349 @@ body.dark .portfolio-summary-item {
 
 .portfolio-grid-header.active .sort-icon {
   color: #ddd; /* Darker color for active sorted column */
+}
+
+/* Styles for the Stats tab */
+.stats-filters {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.stats-filters label {
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Dark mode styles for stats filters */
+body.dark .stats-filters label {
+  color: #ffffff;
+}
+
+body.dark .stats-filters input[type="checkbox"] {
+  accent-color: #007bff;
+}
+
+/* Light mode styles for stats filters */
+body.light .stats-filters label {
+  color: #000000;
+}
+
+body.light .stats-filters input[type="checkbox"] {
+  accent-color: #007bff;
+}
+
+.stats-tables {
+  display: flex;
+  gap: 40px;
+  flex-wrap: wrap;
+}
+
+.stats-tables .head-to-head,
+.stats-tables .my-data,
+.stats-tables .general-data {
+  flex: 1;
+  min-width: 300px;
+}
+
+/* Dark mode styles for stats section headers */
+body.dark .stats-tables h3 {
+  color: #ffffff;
+}
+
+/* Light mode styles for stats section headers */
+body.light .stats-tables h3 {
+  color: #000000;
+}
+
+.stats-tables table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.stats-tables th,
+.stats-tables td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: center;
+}
+
+.stats-tables th {
+  font-weight: bold;
+  background-color: #f4f4f4;
+}
+
+/* Use same light/dark mode behavior as portfolio headers */
+body.light .stats-tables th {
+  background-color: #f1f1f1;
+  color: #000;
+}
+
+body.dark .stats-tables th {
+  background-color: #35353b;
+  color: #fff;
+}
+
+/* Dark mode styles for stats table headers */
+body.dark .stats-tables th {
+  background-color: #3a3a3a;
+  color: #ffffff;
+}
+
+/* Dark mode styles for stats table borders and cells */
+body.dark .stats-tables th,
+body.dark .stats-tables td {
+  border: 1px solid #555;
+}
+
+body.dark .stats-tables td {
+  background-color: #2a2a2a;
+  color: #ffffff;
+}
+
+/* Light mode styles for stats table borders and cells */
+body.light .stats-tables th,
+body.light .stats-tables td {
+  border: 1px solid #ddd;
+}
+
+body.light .stats-tables td {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+/* Stats summary row styling */
+.stats-summary-row {
+  font-weight: bold;
+}
+
+/* Light mode summary row styling */
+body.light .stats-summary-row td {
+  background-color: #e8e8e8;
+  color: #000000;
+  border-top: 2px solid #ccc;
+}
+
+/* Dark mode summary row styling */
+body.dark .stats-summary-row td {
+  background-color: #1a1a1a;
+  color: #ffffff;
+  border-top: 2px solid #444;
+}
+
+/* Highlight class for leagues when an owner is clicked and shares a league with the current user */
+.highlight-league {
+  background-color: rgba(255, 235, 59, 0.12); /* light yellow highlight */
+  transition: background-color 0.18s ease, box-shadow 0.18s ease;
+  border: 2px solid rgba(255, 193, 7, 0.35);
+  padding: 8px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  font-weight: 600;
+}
+
+/* Dark mode highlight override */
+body.dark .highlight-league {
+  background-color: rgba(255, 193, 7, 0.1); /* slightly muted yellow for dark */
+  border: 2px solid rgba(255, 160, 0, 0.25);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+
+/* Make the highlight more visible on hover as well */
+.highlight-league:hover {
+  background-color: rgba(255, 235, 59, 0.22);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+
+body.dark .highlight-league:hover {
+  background-color: rgba(255, 193, 7, 0.18);
+}
+
+/* Mark clicked owner name in leagues table */
+.owner-clicked {
+  padding: 3px 6px;
+  border-radius: 6px;
+  background-color: rgba(255, 235, 59, 0.18); /* soft yellow */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: background-color 0.18s ease, transform 0.12s ease;
+  font-weight: 600;
+}
+
+body.dark .owner-clicked {
+  background-color: rgba(255, 193, 7, 0.12);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+
+.owner-clicked:active {
+  transform: translateY(1px);
+}
+
+/* subtle pulse to draw attention when toggled */
+@keyframes owner-click-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.06);
+  }
+  60% {
+    box-shadow: 0 0 0 8px rgba(255, 193, 7, 0.03);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
+  }
+}
+
+.owner-clicked::after {
+  content: "";
+  position: absolute;
+  border-radius: 6px;
+  pointer-events: none;
+  animation: owner-click-pulse 1.2s ease-in-out;
+}
+
+/* Opponent input container for positioning */
+.opponent-input-container {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+/* Head to head input styles */
+.head-to-head .opponent-input {
+  width: 80%;
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  text-align: center;
+  background-color: #fff;
+  color: #000;
+}
+
+/* Opponent dropdown styles */
+.opponent-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.opponent-option {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background-color 0.2s;
+}
+
+.opponent-option:hover,
+.opponent-option.selected {
+  background-color: #f0f0f0;
+}
+
+.opponent-option:last-child {
+  border-bottom: none;
+}
+
+/* Small info marker for stat definitions */
+.stat-info {
+  margin-left: 6px;
+  font-size: 12px;
+  color: #888;
+  cursor: help;
+  vertical-align: middle;
+}
+
+body.dark .stat-info {
+  color: #bbb;
+}
+
+/* Custom tooltip (uses title text via attr(title)) */
+.stat-info {
+  position: relative; /* needed for pseudo elements */
+  display: inline-block;
+}
+
+.stat-info::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 140%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 6px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  font-size: 12px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+  z-index: 2000;
+}
+
+.stat-info::before {
+  content: "";
+  position: absolute;
+  bottom: 128%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px;
+  border-style: solid;
+  border-color: rgba(0, 0, 0, 0.8) transparent transparent transparent;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  pointer-events: none;
+  z-index: 2000;
+}
+
+.stat-info:hover::after,
+.stat-info:hover::before {
+  opacity: 1;
+}
+
+/* Dark mode tooltip tweak */
+body.dark .stat-info::after,
+body.dark .stat-info::before {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.08) transparent transparent transparent;
+}
+
+/* Dark mode styles for opponent input and dropdown */
+body.dark .head-to-head .opponent-input {
+  background-color: #2a2a2a;
+  color: #fff;
+  border-color: #555;
+}
+
+body.dark .opponent-dropdown {
+  background-color: #2a2a2a;
+  border-color: #555;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+body.dark .opponent-option {
+  border-bottom-color: #444;
+  color: #fff;
+}
+
+body.dark .opponent-option:hover,
+body.dark .opponent-option.selected {
+  background-color: #444;
+}
+
+body.dark .head-to-head .opponent-input::placeholder {
+  color: #aaa;
+}
+
+body.light .head-to-head .opponent-input::placeholder {
+  color: #666;
 }
