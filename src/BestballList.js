@@ -780,7 +780,9 @@ function BestballList() {
 
     filteredLeagues.forEach((league) => {
       const userDraftPosition = league.userDraftPosition;
-      if (userDraftPosition === "N/A") return;
+      const userFinalPosition = league.userPosition;
+      
+      if (userDraftPosition === "N/A" || !userFinalPosition) return;
 
       if (!draftPositionStats[userDraftPosition]) {
         draftPositionStats[userDraftPosition] = {
@@ -791,8 +793,8 @@ function BestballList() {
       }
 
       draftPositionStats[userDraftPosition].count += 1;
-      draftPositionStats[userDraftPosition].totalPosition += userDraftPosition;
-      if (userDraftPosition === 1) {
+      draftPositionStats[userDraftPosition].totalPosition += userFinalPosition;
+      if (userFinalPosition === 1) {
         draftPositionStats[userDraftPosition].no1 += 1;
       }
     });
@@ -809,8 +811,16 @@ function BestballList() {
     const draftPositionStats = {};
 
     filteredLeagues.forEach((league) => {
+      // Skip if we don't have draft position data
+      if (!league.draftPositions) return;
+
       league.teams.forEach((team) => {
-        const draftPosition = team.position;
+        const finalPosition = team.position;
+        if (!finalPosition) return;
+
+        // Find the draft position for this team's owner
+        const ownerId = team.owner_id;
+        const draftPosition = league.draftPositions[ownerId]?.draftSlot;
         if (!draftPosition) return;
 
         if (!draftPositionStats[draftPosition]) {
@@ -822,8 +832,8 @@ function BestballList() {
         }
 
         draftPositionStats[draftPosition].count += 1;
-        draftPositionStats[draftPosition].totalPosition += draftPosition;
-        if (draftPosition === 1) {
+        draftPositionStats[draftPosition].totalPosition += finalPosition;
+        if (finalPosition === 1) {
           draftPositionStats[draftPosition].no1 += 1;
         }
       });
