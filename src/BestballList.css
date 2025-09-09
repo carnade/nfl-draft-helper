@@ -535,11 +535,24 @@ body.light .stats-filters input[type="checkbox"] {
   flex-wrap: wrap;
 }
 
+.stats-tables .stats-column-1 {
+  flex: 1;
+  min-width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.stats-tables .stats-column-2,
+.stats-tables .stats-column-3 {
+  flex: 1;
+  min-width: 300px;
+}
+
 .stats-tables .head-to-head,
 .stats-tables .my-data,
 .stats-tables .general-data {
-  flex: 1;
-  min-width: 300px;
+  width: 100%;
 }
 
 /* Dark mode styles for stats section headers */

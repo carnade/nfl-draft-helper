@@ -1276,7 +1276,59 @@ function BestballList() {
             </div>
 
             <div className="stats-tables">
-              <div className="head-to-head">
+              <div className="stats-column-1">
+                <div className="my-general-stats">
+                  <h3>My general statistics</h3>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Statistic</th>
+                        <th>Value</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>No1 %</td>
+                        <td>
+                          {filteredLeagues.length === 0
+                            ? "-"
+                            : `${(
+                                (myData.reduce((sum, row) => sum + row.no1, 0) / filteredLeagues.length) *
+                                100
+                              ).toFixed(1)}% (${myData.reduce((sum, row) => sum + row.no1, 0)})`}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>1QB Rank</td>
+                        <td>
+                          {(() => {
+                            const oneQbLeagues = filteredLeagues.filter(league => !league.roster_positions.includes("SUPER_FLEX"));
+                            const oneQbPositions = oneQbLeagues.map(league => league.userPosition).filter(pos => pos);
+                            const avg = oneQbPositions.length > 0 
+                              ? (oneQbPositions.reduce((sum, pos) => sum + pos, 0) / oneQbPositions.length).toFixed(2)
+                              : null;
+                            return avg || "-";
+                          })()}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>2QB Rank</td>
+                        <td>
+                          {(() => {
+                            const twoQbLeagues = filteredLeagues.filter(league => league.roster_positions.includes("SUPER_FLEX"));
+                            const twoQbPositions = twoQbLeagues.map(league => league.userPosition).filter(pos => pos);
+                            const avg = twoQbPositions.length > 0 
+                              ? (twoQbPositions.reduce((sum, pos) => sum + pos, 0) / twoQbPositions.length).toFixed(2)
+                              : null;
+                            return avg || "-";
+                          })()}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="head-to-head">
                 <h3>Head to Head</h3>
                 <table>
                   <thead>
@@ -1380,58 +1432,63 @@ function BestballList() {
                     </tr>
                   </tbody>
                 </table>
+                </div>
               </div>
 
-              <div className="my-data">
-                <h3>My Data</h3>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Draft Position</th>
-                      <th>Count</th>
-                      <th>Average Position</th>
-                      <th>No1</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {myData.length > 0 ? (
-                      myData.map((row) => (
+              <div className="stats-column-2">
+                <div className="my-data">
+                  <h3>My position ranks</h3>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Draft Position</th>
+                        <th>Count</th>
+                        <th>Average Position</th>
+                        <th>No1</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {myData.length > 0 ? (
+                        myData.map((row) => (
+                          <tr key={row.position}>
+                            <td>{row.position}</td>
+                            <td>{row.count}</td>
+                            <td>{row.averagePosition}</td>
+                            <td>{row.no1}</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="4">No data available</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="stats-column-3">
+                <div className="general-data">
+                  <h3>General position ranks</h3>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Draft Position</th>
+                        <th>Average Position</th>
+                        <th>No1</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {generalData.map((row) => (
                         <tr key={row.position}>
                           <td>{row.position}</td>
-                          <td>{row.count}</td>
                           <td>{row.averagePosition}</td>
                           <td>{row.no1}</td>
                         </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="4">No data available</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="general-data">
-                <h3>General Data</h3>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Draft Position</th>
-                      <th>Average Position</th>
-                      <th>No1</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {generalData.map((row) => (
-                      <tr key={row.position}>
-                        <td>{row.position}</td>
-                        <td>{row.averagePosition}</td>
-                        <td>{row.no1}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
