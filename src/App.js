@@ -9,6 +9,7 @@ import DraftHelper from "./DraftHelper";
 import DraftsList from "./DraftsList";
 import LeagueList from "./LeagueList";
 import BestballList from "./BestballList";
+import TradeAnalyzer from "./TradeAnalyzer";
 import Settings from "./Settings";
 import { ChangelogWithReadMark } from "./Changelog";
 import "./Layout.css";
@@ -24,6 +25,7 @@ console.log({
   DraftsList,
   LeagueList,
   BestballList,
+  TradeAnalyzer,
   Settings,
 });
 
@@ -85,6 +87,7 @@ function App() {
               <Route path="/leagues/:userName" element={<LeagueList />} />
 
               <Route path="/bestball/:userName" element={<BestballList />} />
+              <Route path="/trade-analyzer" element={<TradeAnalyzer />} />
               <Route
                 path="/rankingssetup"
                 element={
