@@ -87,7 +87,7 @@ function App() {
               <Route path="/leagues/:userName" element={<LeagueList />} />
 
               <Route path="/bestball/:userName" element={<BestballList />} />
-              <Route path="/trade-analyzer" element={<TradeAnalyzer />} />
+              <Route path="/trade-analyzer" element={<TradeAnalyzer userName={userName} setUserName={setUserName} />} />
               <Route
                 path="/rankingssetup"
                 element={

@@ -1,7 +1,6 @@
 .trade-analyzer {
   padding: 20px;
-  max-width: 1400px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 .trade-analyzer h1 {
@@ -43,23 +42,233 @@
   background-color: #a22;
 }
 
+
 /* Trade Interface */
 .trade-interface {
   margin-top: 20px;
 }
 
+.trade-main-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.trade-content-wrapper {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
 .trade-panels {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 30px;
+  gap: 20px;
+}
+
+.trade-panels .trade-panel {
+  grid-column: span 1;
+}
+
+.trade-analysis-container {
+  width: 100%;
   margin-bottom: 30px;
 }
 
+.trade-analysis {
+  width: 100%;
+}
+
+.league-info-column {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+body.dark .league-info-column {
+  background: #2a2a2a;
+  color: #fff;
+}
+
+.league-info-header {
+  background: #2c3e50;
+  color: white;
+  padding: 15px 20px;
+}
+
+.league-info-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.trade-league-grid {
+  padding: 20px;
+}
+
+.trade-league-header {
+  display: grid;
+  grid-template-columns: 4fr 1fr 3fr 2fr;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 2px solid #2c3e50;
+  font-weight: bold;
+  color: #2c3e50;
+  text-align: center;
+}
+
+.trade-league-row {
+  display: grid;
+  grid-template-columns: 4fr 1fr 3fr 2fr;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.trade-league-row:last-child {
+  border-bottom: none;
+}
+
+.trade-league-name-header,
+.trade-league-player-header,
+.trade-league-owner-header,
+.trade-league-record-header {
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s;
+  padding: 5px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.sortable:hover {
+  background-color: rgba(52, 152, 219, 0.1);
+}
+
+.sort-icon {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.sortable.active .sort-icon {
+  opacity: 1;
+  color: #3498db;
+}
+
+.trade-league-name {
+  font-weight: 600;
+  color: #2c3e50;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: help;
+  display: inline-block;
+  width: 100%;
+}
+
+.trade-league-name:empty {
+  border-left: 2px solid #ecf0f1;
+  margin-left: 10px;
+  padding-left: 10px;
+}
+
+body.dark .trade-league-name:empty {
+  border-left-color: #555;
+}
+
+/* Owner matching highlighting */
+.same-owner {
+  background-color: #d4edda !important;
+  color: #155724 !important;
+  font-weight: 600;
+}
+
+.same-owner-league {
+  background-color: #d4edda !important;
+  color: #155724 !important;
+  font-weight: 700;
+}
+
+body.dark .same-owner {
+  background-color: #1e4d2b !important;
+  color: #a5d6a7 !important;
+}
+
+body.dark .same-owner-league {
+  background-color: #1e4d2b !important;
+  color: #a5d6a7 !important;
+}
+
+.trade-league-owner {
+  color: #7f8c8d;
+  font-size: 14px;
+}
+
+.trade-league-record {
+  color: #2c3e50;
+  font-weight: 600;
+  text-align: center;
+}
+
+.trade-league-player {
+  color: #2c3e50;
+  font-weight: 600;
+  text-align: center;
+}
+
+body.dark .trade-league-name-header,
+body.dark .trade-league-player-header,
+body.dark .trade-league-owner-header,
+body.dark .trade-league-record-header {
+  color: #fff;
+  font-weight: bold;
+}
+
+body.dark .sortable:hover {
+  background-color: rgba(74, 158, 255, 0.1);
+}
+
+body.dark .sortable.active .sort-icon {
+  color: #4a9eff;
+}
+
+body.dark .trade-league-name {
+  color: #fff;
+}
+
+
+body.dark .trade-league-owner {
+  color: #ccc;
+}
+
+body.dark .trade-league-record {
+  color: #fff;
+}
+
+body.dark .trade-league-player {
+  color: #fff;
+}
+
 .trade-panel {
-  background: white;
+  background: #fff;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   overflow: visible;
+}
+
+body.dark .trade-panel {
+  background: #2a2a2a;
+  color: #fff;
 }
 
 .panel-header {
@@ -128,7 +337,7 @@
   top: 100%;
   left: 10px;
   right: 10px;
-  background: white;
+  background: #fff;
   border: 1px solid #ddd;
   border-top: none;
   border-radius: 0 0 8px 8px;
@@ -136,6 +345,12 @@
   z-index: 1000;
   max-height: 300px;
   overflow-y: auto;
+}
+
+body.dark .search-results {
+  background: #2a2a2a;
+  color: #fff;
+  border-color: #555;
 }
 
 .search-result-item {
@@ -150,6 +365,15 @@
 
 .search-result-item:hover {
   background-color: #f8f9fa;
+}
+
+body.dark .search-result-item {
+  border-bottom-color: #555;
+  color: #fff;
+}
+
+body.dark .search-result-item:hover {
+  background-color: #4a4a4a;
 }
 
 .search-result-item:last-child {
@@ -173,6 +397,18 @@
   font-size: 14px;
 }
 
+body.dark .search-result-item .player-name {
+  color: #fff;
+}
+
+body.dark .search-result-item .player-details {
+  color: #ccc;
+}
+
+body.dark .search-result-item .player-value {
+  color: #4a9eff;
+}
+
 /* Selected Players */
 .selected-players {
   padding: 0 20px 20px;
@@ -193,6 +429,17 @@
 .player-card:hover {
   background: #e9ecef;
   border-color: #dee2e6;
+}
+
+body.dark .player-card {
+  background: #3a3a3a;
+  border-color: #555;
+  color: #fff;
+}
+
+body.dark .player-card:hover {
+  background: #4a4a4a;
+  border-color: #666;
 }
 
 .player-info {
@@ -219,6 +466,18 @@
   margin: 0 12px;
 }
 
+body.dark .player-card .player-name {
+  color: #fff;
+}
+
+body.dark .player-card .player-details {
+  color: #ccc;
+}
+
+body.dark .player-card .player-value {
+  color: #4a9eff;
+}
+
 .remove-player {
   background: #e74c3c;
   color: white;
@@ -240,11 +499,16 @@
 
 /* Trade Analysis */
 .trade-analysis {
-  background: white;
+  background: #fff;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   padding: 20px;
-  margin-top: 20px;
+  margin-top: 0;
+}
+
+body.dark .trade-analysis {
+  background: #2a2a2a;
+  color: #fff;
 }
 
 .trade-analysis h3 {
@@ -282,9 +546,20 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .trade-content-wrapper {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
   .trade-panels {
     grid-template-columns: 1fr;
     gap: 20px;
+  }
+  
+  .trade-league-header,
+  .trade-league-row {
+    grid-template-columns: 1fr;
+    gap: 5px;
   }
   
   .analysis-content {

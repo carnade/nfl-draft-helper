@@ -1,11 +1,38 @@
 import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSearch, faTimes } from "@fortawesome/free-solid-svg-icons";
+import { faSearch, faTimes, faSortUp, faSortDown, faSort } from "@fortawesome/free-solid-svg-icons";
 import "./TradeAnalyzer.css";
 
-function TradeAnalyzer() {
+// Session cache - persists across component mounts/unmounts
+const sessionCache = {
+  projections: null,
+  stats: null,
+  leagues: null,
+  teams: null,
+  rosters: null
+};
+
+// Store data in session cache
+const storeInSession = (key, data) => {
+  try {
+    sessionCache[key] = data;
+    return true;
+  } catch (error) {
+    console.error(`Failed to store ${key} in session cache:`, error);
+    return false;
+  }
+};
+
+// Load data from session cache
+const loadFromSession = (key) => {
+  return sessionCache[key] || null;
+};
+
+function TradeAnalyzer({ userName, setUserName }) {
   const [projectionsData, setProjectionsData] = useState([]);
   const [statsData, setStatsData] = useState([]);
+  const [leaguesData, setLeaguesData] = useState([]);
+  const [teamsData, setTeamsData] = useState({}); // Cache for teams data by league_id
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   
@@ -16,39 +43,48 @@ function TradeAnalyzer() {
   const [team2Search, setTeam2Search] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [activeSearch, setActiveSearch] = useState(null); // 'team1' or 'team2'
+  const [tradePartner, setTradePartner] = useState("");
+  const [rosterData, setRosterData] = useState({}); // Cache for roster data
+  const [usernameMap, setUsernameMap] = useState({});
+  const [userId, setUserId] = useState(null);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
-  // TTL constants
-  const TTL_HOURS = 12;
-  const TTL_MS = TTL_HOURS * 60 * 60 * 1000;
+  // Resolve a username to a sleeper user_id using cached map or API
+  const resolveUsernameToId = async (username) => {
+    if (!username) return null;
+    const lower = username.toLowerCase();
+    
+    // Check in current state
+    for (const [id, name] of Object.entries(usernameMap || {})) {
+      if (name && name.toLowerCase() === lower) {
+        return id;
+      }
+    }
 
-  // Store data with TTL
-  const storeWithTTL = (key, data) => {
-    const item = {
-      data: data,
-      timestamp: Date.now(),
-      ttl: TTL_MS
-    };
-    localStorage.setItem(key, JSON.stringify(item));
-  };
-
-  // Load data with TTL check
-  const loadWithTTL = (key) => {
     try {
-      const stored = localStorage.getItem(key);
-      if (!stored) return null;
-      
-      const item = JSON.parse(stored);
-      const now = Date.now();
-      
-      // Check if expired
-      if (now - item.timestamp > item.ttl) {
-        localStorage.removeItem(key);
+      const resp = await fetch(`https://api.sleeper.app/v1/user/${username}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        
+        // Check if the response is valid and has a user_id
+        if (data && data.user_id) {
+          const id = data.user_id;
+          const combined = {
+            ...(usernameMap || {}),
+            [id]: data.username || data.display_name,
+          };
+          setUsernameMap(combined);
+          return id;
+        } else {
+          console.warn(`Invalid response for username "${username}":`, data);
+          return null;
+        }
+      } else {
+        console.warn(`Failed to fetch user "${username}": HTTP ${resp.status}`);
         return null;
       }
-      
-      return item.data;
-    } catch (error) {
-      localStorage.removeItem(key);
+    } catch (e) {
+      console.error("Error resolving username:", e);
       return null;
     }
   };
@@ -56,6 +92,7 @@ function TradeAnalyzer() {
   // Fetch projections data from Sleeper API
   const fetchProjectionsData = async () => {
     try {
+      console.log('📡 Fetching projections data from Sleeper API...');
       const response = await fetch(
         'https://api.sleeper.com/projections/nfl/2025?season_type=regular&position[]=DEF&position[]=K&position[]=QB&position[]=RB&position[]=TE&position[]=WR&order_by=adp_ppr'
       );
@@ -65,9 +102,10 @@ function TradeAnalyzer() {
       }
       
       const data = await response.json();
+      console.log('✅ Projections data fetched successfully');
       
-      // Store in localStorage with TTL
-      storeWithTTL('sleeperProjections', data);
+      // Store in session cache
+      storeInSession('projections', data);
       setProjectionsData(data);
       
     } catch (err) {
@@ -78,6 +116,7 @@ function TradeAnalyzer() {
   // Fetch stats data from Sleeper API
   const fetchStatsData = async () => {
     try {
+      console.log('📡 Fetching stats data from Sleeper API...');
       const response = await fetch(
         'https://api.sleeper.com/stats/nfl/2025?season_type=regular&position[]=DEF&position[]=K&position[]=QB&position[]=RB&position[]=TE&position[]=WR&order_by=adp_ppr'
       );
@@ -87,9 +126,10 @@ function TradeAnalyzer() {
       }
       
       const data = await response.json();
+      console.log('✅ Stats data fetched successfully');
       
-      // Store in localStorage with TTL
-      storeWithTTL('sleeperStats', data);
+      // Store in session cache
+      storeInSession('stats', data);
       setStatsData(data);
       
     } catch (err) {
@@ -97,13 +137,140 @@ function TradeAnalyzer() {
     }
   };
 
-  // Fetch both projections and stats data
+  // Fetch leagues data from Sleeper API
+  const fetchLeaguesData = async () => {
+    try {
+      if (!userName) {
+        console.log("No username provided, skipping leagues fetch");
+        return;
+      }
+      
+      // First resolve username to user ID
+      const resolvedUserId = await resolveUsernameToId(userName);
+      if (!resolvedUserId) {
+        console.warn(`Could not resolve username "${userName}" to user ID. This might be an invalid username.`);
+        // Clear leagues data when username is invalid
+        setLeaguesData([]);
+        setTeamsData({});
+        setRosterData({});
+        return;
+      }
+      
+      setUserId(resolvedUserId);
+      
+      const response = await fetch(
+        `https://api.sleeper.app/v1/user/${resolvedUserId}/leagues/nfl/2025`
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const allLeagues = await response.json();
+      
+      // Filter out best ball leagues (only show dynasty and redraft)
+      const filteredLeagues = allLeagues.filter(
+        (league) =>
+          league.settings.best_ball === 0 || league.settings.best_ball == null
+      );
+      
+      // Store in session cache
+      storeInSession('leagues', filteredLeagues);
+      setLeaguesData(filteredLeagues);
+      
+      // Fetch teams and roster data for each league
+      await Promise.all([
+        fetchTeamsData(filteredLeagues),
+        fetchRosterData(filteredLeagues)
+      ]);
+      
+    } catch (err) {
+      throw new Error(`Failed to fetch leagues data: ${err.message}`);
+    }
+  };
+
+  // Fetch teams data for leagues
+  const fetchTeamsData = async (leagues) => {
+    try {
+      const newTeamsData = {};
+      
+      for (const league of leagues) {
+        try {
+          const response = await fetch(
+            `https://api.sleeper.app/v1/league/${league.league_id}/users`
+          );
+          if (!response.ok) continue;
+          
+          const teams = await response.json();
+          // Only store essential team data to reduce size
+          const optimizedTeams = teams.map(team => ({
+            user_id: team.user_id,
+            display_name: team.display_name,
+            username: team.username,
+            avatar: team.avatar
+          }));
+          newTeamsData[league.league_id] = optimizedTeams;
+        } catch (e) {
+          // ignore per-league errors
+        }
+      }
+      
+      setTeamsData(newTeamsData);
+      // Cache teams data
+      storeInSession('teams', newTeamsData);
+    } catch (e) {
+      console.error('Error fetching teams data:', e);
+    }
+  };
+
+  // Fetch roster data for leagues
+  const fetchRosterData = async (leagues) => {
+    try {
+      const newRosterData = {};
+      
+      for (const league of leagues) {
+        try {
+          const response = await fetch(
+            `https://api.sleeper.app/v1/league/${league.league_id}/rosters`
+          );
+          if (!response.ok) continue;
+          
+          const rosters = await response.json();
+          // Only store essential roster data to reduce size
+          const optimizedRosters = rosters.map(roster => ({
+            owner_id: roster.owner_id,
+            players: roster.players,
+            settings: {
+              wins: roster.settings?.wins,
+              losses: roster.settings?.losses,
+              ties: roster.settings?.ties
+            }
+          }));
+          newRosterData[league.league_id] = optimizedRosters;
+        } catch (e) {
+          // ignore per-league errors
+        }
+      }
+      
+      setRosterData(newRosterData);
+      // Cache roster data
+      storeInSession('rosters', newRosterData);
+    } catch (e) {
+      console.error('Error fetching roster data:', e);
+    }
+  };
+
+  // Fetch all data (projections, stats, and leagues)
   const fetchAllData = async () => {
     setIsLoading(true);
     setError(null);
     
     try {
-      await Promise.all([fetchProjectionsData(), fetchStatsData()]);
+      const promises = [fetchProjectionsData(), fetchStatsData()];
+      if (userName) {
+        promises.push(fetchLeaguesData());
+      }
+      await Promise.all(promises);
     } catch (err) {
       setError(err.message);
       console.error('Error fetching data:', err);
@@ -207,26 +374,222 @@ function TradeAnalyzer() {
     return players.reduce((total, player) => total + (player.projTotal || 0), 0);
   };
 
+  // Get team captain info for a player
+  const getTeamCaptainInfo = (playerId) => {
+    if (!leaguesData.length || !rosterData) return [];
+    
+    const captainInfo = [];
+    
+    leaguesData.forEach(league => {
+      const rosters = rosterData[league.league_id] || [];
+      
+      // Find which team has this player
+      const teamWithPlayer = rosters.find(roster => 
+        roster.players && roster.players.includes(playerId)
+      );
+      
+      if (teamWithPlayer) {
+        captainInfo.push({
+          leagueName: league.name || 'League',
+          captainName: 'Team Owner', // Would need to resolve owner_id to username
+          record: `${teamWithPlayer.settings?.wins || 0}-${teamWithPlayer.settings?.losses || 0}-${teamWithPlayer.settings?.ties || 0}`
+        });
+      }
+    });
+    
+    return captainInfo;
+  };
+
   // Load data on component mount
   useEffect(() => {
     const loadData = async () => {
-      // Try to load from localStorage first
-      const cachedProjections = loadWithTTL('sleeperProjections');
-      const cachedStats = loadWithTTL('sleeperStats');
+      // Try to load from session cache first
+      const cachedProjections = loadFromSession('projections');
+      const cachedStats = loadFromSession('stats');
+      const cachedLeagues = loadFromSession('leagues');
+      const cachedTeams = loadFromSession('teams');
+      const cachedRosters = loadFromSession('rosters');
+      
+      console.log('🔍 Cache check:', {
+        projections: !!cachedProjections,
+        stats: !!cachedStats,
+        leagues: !!cachedLeagues,
+        teams: !!cachedTeams,
+        rosters: !!cachedRosters
+      });
       
       if (cachedProjections && cachedStats) {
         setProjectionsData(cachedProjections);
         setStatsData(cachedStats);
-        console.log('Loaded data from cache');
+        if (cachedLeagues) {
+          setLeaguesData(cachedLeagues);
+        }
+        if (cachedTeams) {
+          setTeamsData(cachedTeams);
+        }
+        if (cachedRosters) {
+          setRosterData(cachedRosters);
+        }
+        console.log('✅ Loaded data from session cache - No network requests made');
+        console.log('💡 To see API calls, refresh the page or clear browser cache');
       } else {
-        // No cached data or expired, fetch fresh data
-        console.log('No valid cached data, fetching fresh data');
+        // No cached data, fetch fresh data
+        console.log('🔄 No cached data, fetching fresh data from Sleeper API');
+        console.log('📡 Check Network tab to see API requests');
         await fetchAllData();
       }
     };
 
     loadData();
   }, []);
+
+  // Fetch leagues when userName changes
+  useEffect(() => {
+    if (userName) {
+      fetchLeaguesData();
+    }
+  }, [userName]);
+
+  // Get team name by owner ID
+  const getTeamName = (leagueId, ownerId) => {
+    const teams = teamsData[leagueId] || [];
+    const team = teams.find(t => t.user_id === ownerId);
+    return team?.display_name || team?.username || 'Unknown Team';
+  };
+
+  // Truncate text in the middle
+  const truncateMiddle = (text, maxLength = 20) => {
+    if (!text || text.length <= maxLength) return text;
+    
+    const start = Math.floor((maxLength - 3) / 2);
+    const end = Math.ceil((maxLength - 3) / 2);
+    
+    return text.substring(0, start) + '...' + text.substring(text.length - end);
+  };
+
+  // Handle sorting
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  // Get sort icon
+  const getSortIcon = (key) => {
+    if (sortConfig.key !== key) {
+      return faSort;
+    }
+    return sortConfig.direction === 'asc' ? faSortUp : faSortDown;
+  };
+
+  // Sort players by league data
+  const getSortedPlayersByLeague = () => {
+    if (!sortConfig.key) return getPlayersByLeague();
+
+    return getPlayersByLeague().sort((a, b) => {
+      let aValue, bValue;
+
+      if (sortConfig.key === 'record') {
+        // Parse record strings like "5-3-1" to calculate win percentage
+        const parseRecord = (record) => {
+          if (!record || record === '') return 0;
+          const [wins, losses, ties] = record.split('-').map(Number);
+          const totalGames = wins + losses + ties;
+          return totalGames > 0 ? wins / totalGames : 0;
+        };
+
+        // Use the first player's record for sorting
+        const aRecord = a.players[0]?.roster ? 
+          `${a.players[0].roster.settings?.wins || 0}-${a.players[0].roster.settings?.losses || 0}-${a.players[0].roster.settings?.ties || 0}` : '';
+        const bRecord = b.players[0]?.roster ? 
+          `${b.players[0].roster.settings?.wins || 0}-${b.players[0].roster.settings?.losses || 0}-${b.players[0].roster.settings?.ties || 0}` : '';
+        
+        aValue = parseRecord(aRecord);
+        bValue = parseRecord(bRecord);
+      } else if (sortConfig.key === 'name') {
+        aValue = a.league.name || '';
+        bValue = b.league.name || '';
+      }
+
+      if (aValue < bValue) {
+        return sortConfig.direction === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+  };
+
+  // Get team record for a league
+  const getTeamRecord = (leagueId) => {
+    const rosters = rosterData[leagueId] || [];
+    const hasTradePartnerPlayers = team2Players.length > 0;
+    
+    if (hasTradePartnerPlayers && team2Players.length > 0) {
+      const firstPlayer = team2Players[0];
+      const firstPlayerRoster = rosters.find(r => 
+        r.players && r.players.includes(firstPlayer.id)
+      );
+      
+      if (firstPlayerRoster) {
+        return `${firstPlayerRoster.settings?.wins || 0}-${firstPlayerRoster.settings?.losses || 0}-${firstPlayerRoster.settings?.ties || 0}`;
+      }
+    }
+    return '';
+  };
+
+  // Get all players grouped by league
+  const getPlayersByLeague = () => {
+    if (team2Players.length === 0) return [];
+    
+    const playersByLeague = {};
+    
+    team2Players.forEach((player, index) => {
+      // Find which league this player belongs to
+      leaguesData.forEach(league => {
+        const rosters = rosterData[league.league_id] || [];
+        const playerRoster = rosters.find(r => 
+          r.players && r.players.includes(player.id)
+        );
+        
+        if (playerRoster) {
+          if (!playersByLeague[league.league_id]) {
+            playersByLeague[league.league_id] = {
+              league: league,
+              players: []
+            };
+          }
+          playersByLeague[league.league_id].players.push({
+            player: player,
+            playerNumber: index + 1,
+            roster: playerRoster
+          });
+        }
+      });
+    });
+    
+    // Add owner matching analysis to each league group
+    return Object.values(playersByLeague).map(leagueGroup => {
+      const owners = leagueGroup.players.map(p => p.roster.owner_id);
+      const uniqueOwners = [...new Set(owners)];
+      // Only mark as same owner if there are multiple players AND all have the same owner
+      const allSameOwner = leagueGroup.players.length > 1 && uniqueOwners.length === 1;
+      
+      return {
+        ...leagueGroup,
+        allSameOwner,
+        ownerMatches: leagueGroup.players.map(playerData => {
+          const playerOwner = playerData.roster.owner_id;
+          const otherOwners = leagueGroup.players.filter(p => p.player.id !== playerData.player.id).map(p => p.roster.owner_id);
+          const hasMatchingOwner = otherOwners.includes(playerOwner);
+          return hasMatchingOwner;
+        })
+      };
+    });
+  };
 
   return (
     <div className="trade-analyzer">
@@ -247,167 +610,215 @@ function TradeAnalyzer() {
       
       {projectionsData.length > 0 && statsData.length > 0 && (
         <div className="trade-interface">
-          <div className="trade-panels">
-            {/* Team 1 Panel */}
-            <div className="trade-panel">
-              <div className="panel-header">
-                <h3>Team 1 gets...</h3>
-              </div>
-              
-              <div className="search-container">
-                <div className="search-input-wrapper">
-                  <FontAwesomeIcon icon={faSearch} className="search-icon" />
-                  <input
-                    type="text"
-                    placeholder="Search for a player"
-                    value={team1Search}
-                    onChange={(e) => {
-                      setTeam1Search(e.target.value);
-                      searchPlayers(e.target.value, 'team1');
-                    }}
-                    className="search-input"
-                  />
-                </div>
-                
-                {activeSearch === 'team1' && searchResults.length > 0 && (
-                  <div className="search-results">
-                    {searchResults.map(player => (
-                      <div
-                        key={player.player_id}
-                        className="search-result-item"
-                        onClick={() => addPlayerToTeam(player, 'team1')}
-                      >
-                        <div className="player-name">
-                          {player.player.first_name} {player.player.last_name}
-                        </div>
-                        <div className="player-details">
-                          {player.player.position} • {player.player.team} • {player.player.years_exp ? (25 + player.player.years_exp) : 'N/A'} y.o.
+          <div className="trade-main-container">
+            <div className="trade-content-wrapper">
+              <div className="trade-panels">
+                {/* Team 1 Panel */}
+                <div className="trade-panel">
+                  <div className="panel-header">
+                    <h3>{userName ? `${userName.charAt(0).toUpperCase() + userName.slice(1)} gets...` : 'Username gets...'}</h3>
+                  </div>
+                  
+                  <div className="search-container">
+                    <div className="search-input-wrapper">
+                      <FontAwesomeIcon icon={faSearch} className="search-icon" />
+                      <input
+                        type="text"
+                        placeholder="Search for a player"
+                        value={team1Search}
+                        onChange={(e) => {
+                          setTeam1Search(e.target.value);
+                          searchPlayers(e.target.value, 'team1');
+                        }}
+                        className="search-input"
+                      />
+                    </div>
+                    
+                    {activeSearch === 'team1' && searchResults.length > 0 && (
+                      <div className="search-results">
+                        {searchResults.map(player => (
+                          <div
+                            key={player.player_id}
+                            className="search-result-item"
+                            onClick={() => addPlayerToTeam(player, 'team1')}
+                          >
+                            <div className="player-name">
+                              {player.player.first_name} {player.player.last_name}
+                            </div>
+                            <div className="player-details">
+                              {player.player.position} • {player.player.team} • {player.player.years_exp ? (25 + player.player.years_exp) : 'N/A'} y.o.
+                            </div>
+                            <div className="player-value">
+                              {(() => {
+                                const playerStats = getPlayerStats(player.player_id);
+                                return `Pts/g | Proj: ${playerStats.projPtsPerGame} Stats: ${playerStats.actualPtsPerGame}`;
+                              })()}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="selected-players">
+                    {team1Players.map(player => (
+                      <div key={player.id} className="player-card">
+                        <div className="player-info">
+                          <div className="player-name">{player.name}</div>
+                          <div className="player-details">
+                            {player.rank} • {player.team} • {player.age} y.o.
+                          </div>
                         </div>
                         <div className="player-value">
-                          {(() => {
-                            const playerStats = getPlayerStats(player.player_id);
-                            return `Pts/g | Proj: ${playerStats.projPtsPerGame} Stats: ${playerStats.actualPtsPerGame}`;
-                          })()}
+                          Pts/g | Proj: {player.projPtsPerGame} Stats: {player.actualPtsPerGame}
                         </div>
+                        <button
+                          className="remove-player"
+                          onClick={() => removePlayerFromTeam(player.id, 'team1')}
+                        >
+                          <FontAwesomeIcon icon={faTimes} />
+                        </button>
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
-              
-              <div className="selected-players">
-                {team1Players.map(player => (
-                  <div key={player.id} className="player-card">
-                    <div className="player-info">
-                      <div className="player-name">{player.name}</div>
-                      <div className="player-details">
-                        {player.rank} • {player.team} • {player.age} y.o.
-                      </div>
-                    </div>
-                    <div className="player-value">
-                      Pts/g | Proj: {player.projPtsPerGame} Stats: {player.actualPtsPerGame}
-                    </div>
-                    <button
-                      className="remove-player"
-                      onClick={() => removePlayerFromTeam(player.id, 'team1')}
-                    >
-                      <FontAwesomeIcon icon={faTimes} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
+                </div>
 
-            {/* Team 2 Panel */}
-            <div className="trade-panel">
-              <div className="panel-header">
-                <h3>Team 2 gets...</h3>
-              </div>
-              
-              <div className="search-container">
-                <div className="search-input-wrapper">
-                  <FontAwesomeIcon icon={faSearch} className="search-icon" />
-                  <input
-                    type="text"
-                    placeholder="Search for a player"
-                    value={team2Search}
-                    onChange={(e) => {
-                      setTeam2Search(e.target.value);
-                      searchPlayers(e.target.value, 'team2');
-                    }}
-                    className="search-input"
-                  />
-                </div>
-                
-                {activeSearch === 'team2' && searchResults.length > 0 && (
-                  <div className="search-results">
-                    {searchResults.map(player => (
-                      <div
-                        key={player.player_id}
-                        className="search-result-item"
-                        onClick={() => addPlayerToTeam(player, 'team2')}
-                      >
-                        <div className="player-name">
-                          {player.player.first_name} {player.player.last_name}
-                        </div>
-                        <div className="player-details">
-                          {player.player.position} • {player.player.team} • {player.player.years_exp ? (25 + player.player.years_exp) : 'N/A'} y.o.
+                {/* Team 2 Panel */}
+                <div className="trade-panel">
+                  <div className="panel-header">
+                    <h3>{tradePartner ? `${tradePartner.charAt(0).toUpperCase() + tradePartner.slice(1)} gets...` : 'Trade Partner gets...'}</h3>
+                  </div>
+                  
+                  <div className="search-container">
+                    <div className="search-input-wrapper">
+                      <FontAwesomeIcon icon={faSearch} className="search-icon" />
+                      <input
+                        type="text"
+                        placeholder="Search for a player"
+                        value={team2Search}
+                        onChange={(e) => {
+                          setTeam2Search(e.target.value);
+                          searchPlayers(e.target.value, 'team2');
+                        }}
+                        className="search-input"
+                      />
+                    </div>
+                    
+                    {activeSearch === 'team2' && searchResults.length > 0 && (
+                      <div className="search-results">
+                        {searchResults.map(player => (
+                          <div
+                            key={player.player_id}
+                            className="search-result-item"
+                            onClick={() => addPlayerToTeam(player, 'team2')}
+                          >
+                            <div className="player-name">
+                              {player.player.first_name} {player.player.last_name}
+                            </div>
+                            <div className="player-details">
+                              {player.player.position} • {player.player.team} • {player.player.years_exp ? (25 + player.player.years_exp) : 'N/A'} y.o.
+                            </div>
+                            <div className="player-value">
+                              {(() => {
+                                const playerStats = getPlayerStats(player.player_id);
+                                return `Pts/g | Proj: ${playerStats.projPtsPerGame} Stats: ${playerStats.actualPtsPerGame}`;
+                              })()}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="selected-players">
+                    {team2Players.map(player => (
+                      <div key={player.id} className="player-card">
+                        <div className="player-info">
+                          <div className="player-name">{player.name}</div>
+                          <div className="player-details">
+                            {player.rank} • {player.team} • {player.age} y.o.
+                          </div>
                         </div>
                         <div className="player-value">
-                          {(() => {
-                            const playerStats = getPlayerStats(player.player_id);
-                            return `Pts/g | Proj: ${playerStats.projPtsPerGame} Stats: ${playerStats.actualPtsPerGame}`;
-                          })()}
+                          Pts/g | Proj: {player.projPtsPerGame} Stats: {player.actualPtsPerGame}
                         </div>
+                        <button
+                          className="remove-player"
+                          onClick={() => removePlayerFromTeam(player.id, 'team2')}
+                        >
+                          <FontAwesomeIcon icon={faTimes} />
+                        </button>
                       </div>
                     ))}
                   </div>
-                )}
+                </div>
               </div>
               
-              <div className="selected-players">
-                {team2Players.map(player => (
-                  <div key={player.id} className="player-card">
-                    <div className="player-info">
-                      <div className="player-name">{player.name}</div>
-                      <div className="player-details">
-                        {player.rank} • {player.team} • {player.age} y.o.
-                      </div>
+              {/* League Info Column */}
+              <div className="league-info-column">
+                <div className="league-info-header">
+                  <h3>League Info</h3>
+                </div>
+                <div className="trade-league-grid">
+                  <div className="trade-league-header">
+                    <div className={`trade-league-name-header sortable ${sortConfig.key === 'name' ? 'active' : ''}`} onClick={() => handleSort('name')}>
+                      League Name
+                      <FontAwesomeIcon icon={getSortIcon('name')} className="sort-icon" />
                     </div>
-                    <div className="player-value">
-                      Pts/g | Proj: {player.projPtsPerGame} Stats: {player.actualPtsPerGame}
+                    <div className="trade-league-player-header">#</div>
+                    <div className="trade-league-owner-header">Team Owner</div>
+                    <div className={`trade-league-record-header sortable ${sortConfig.key === 'record' ? 'active' : ''}`} onClick={() => handleSort('record')}>
+                      Record
+                      <FontAwesomeIcon icon={getSortIcon('record')} className="sort-icon" />
                     </div>
-                    <button
-                      className="remove-player"
-                      onClick={() => removePlayerFromTeam(player.id, 'team2')}
-                    >
-                      <FontAwesomeIcon icon={faTimes} />
-                    </button>
                   </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          
-          {/* Trade Analysis */}
-          {team1Players.length > 0 || team2Players.length > 0 ? (
-            <div className="trade-analysis">
-              <h3>Trade Analysis</h3>
-              <div className="analysis-content">
-                <div className="team-analysis">
-                  <div className="team-summary">
-                    <strong>Team 1 Total:</strong> {calculateTeamTotal(team1Players)} points
-                  </div>
-                  <div className="team-summary">
-                    <strong>Team 2 Total:</strong> {calculateTeamTotal(team2Players)} points
-                  </div>
-                  <div className="trade-difference">
-                    <strong>Difference:</strong> {Math.abs(calculateTeamTotal(team1Players) - calculateTeamTotal(team2Players))} points
-                  </div>
+                  {getSortedPlayersByLeague().map((leagueGroup, groupIndex) => (
+                    <React.Fragment key={leagueGroup.league.league_id}>
+                      {leagueGroup.players.map((playerData, playerIndex) => (
+                        <div key={`${leagueGroup.league.league_id}-${playerData.player.id}`} className="trade-league-row">
+                          {playerIndex === 0 && (
+                            <div className={`trade-league-name ${leagueGroup.allSameOwner ? 'same-owner-league' : ''}`} title={leagueGroup.league.name}>
+                              {truncateMiddle(leagueGroup.league.name, 25)}
+                            </div>
+                          )}
+                          {playerIndex > 0 && <div className="trade-league-name"></div>}
+                          <div className="trade-league-player">{playerData.playerNumber}</div>
+                          <div className={`trade-league-owner ${leagueGroup.ownerMatches[playerIndex] ? 'same-owner' : ''}`}>
+                            {getTeamName(leagueGroup.league.league_id, playerData.roster.owner_id)}
+                          </div>
+                          <div className={`trade-league-record ${leagueGroup.ownerMatches[playerIndex] ? 'same-owner' : ''}`}>
+                            {`${playerData.roster.settings?.wins || 0}-${playerData.roster.settings?.losses || 0}-${playerData.roster.settings?.ties || 0}`}
+                          </div>
+                        </div>
+                      ))}
+                    </React.Fragment>
+                  ))}
                 </div>
               </div>
             </div>
-          ) : null}
+            
+            {/* Trade Analysis Section */}
+            {team1Players.length > 0 || team2Players.length > 0 ? (
+              <div className="trade-analysis-container">
+                <div className="trade-analysis">
+                  <h3>Trade Analysis</h3>
+                  <div className="analysis-content">
+                    <div className="team-analysis">
+                      <div className="team-summary">
+                        <strong>{userName ? `${userName.charAt(0).toUpperCase() + userName.slice(1)} Total:` : 'Team 1 Total:'} {calculateTeamTotal(team1Players)} points</strong>
+                      </div>
+                      <div className="team-summary">
+                        <strong>{tradePartner ? `${tradePartner.charAt(0).toUpperCase() + tradePartner.slice(1)} Total:` : 'Team 2 Total:'} {calculateTeamTotal(team2Players)} points</strong>
+                      </div>
+                      <div className="trade-difference">
+                        <strong>Difference:</strong> {Math.abs(calculateTeamTotal(team1Players) - calculateTeamTotal(team2Players))} points
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
       )}
     </div>

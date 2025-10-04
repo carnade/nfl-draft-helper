@@ -41,6 +41,7 @@ function LeagueList() {
   const [showOwnerDropdown, setShowOwnerDropdown] = useState(false);
   const [ownerSelectedIndex, setOwnerSelectedIndex] = useState(-1);
       const [usernameMap, setUsernameMap] = useState({});
+  const [rosterCache, setRosterCache] = useState({}); // Cache for roster data
 
   const [showAllInjuries, setShowAllInjuries] = useState(false);
   const [selectedPosition, setSelectedPosition] = useState(null); // Filter by position
@@ -301,6 +302,8 @@ function LeagueList() {
   const fetchOwnerIdsFromLeagues = useCallback(async () => {
     try {
       const ownerIds = [];
+      const newRosterCache = {};
+      
       for (const league of leagues) {
         try {
           const resp = await fetch(
@@ -308,6 +311,10 @@ function LeagueList() {
           );
           if (!resp.ok) continue;
           const rosters = await resp.json();
+          
+          // Cache the roster data
+          newRosterCache[league.league_id] = rosters;
+          
           rosters.forEach((r) => {
             if (r.owner_id) ownerIds.push(r.owner_id);
           });
@@ -315,6 +322,10 @@ function LeagueList() {
           // ignore and continue
         }
       }
+      
+      // Update the cache
+      setRosterCache(newRosterCache);
+      
       if (ownerIds.length > 0) {
         await getAllUsernames(ownerIds);
       }
@@ -394,22 +405,12 @@ function LeagueList() {
         }
 
         const highlighted = new Set();
-        // For each league, fetch rosters and check for ownerId
-        await Promise.all(
-          leagues.map(async (league) => {
-            try {
-              const resp = await fetch(
-                `https://api.sleeper.app/v1/league/${league.league_id}/rosters`
-              );
-              if (!resp.ok) return;
-              const rosters = await resp.json();
-              const hasOwner = rosters.some((r) => r.owner_id === ownerId);
-              if (hasOwner) highlighted.add(league.league_id);
-            } catch (e) {
-              // ignore per-league errors
-            }
-          })
-        );
+        // Use cached roster data instead of making new requests
+        leagues.forEach((league) => {
+          const rosters = rosterCache[league.league_id] || [];
+          const hasOwner = rosters.some((r) => r.owner_id === ownerId);
+          if (hasOwner) highlighted.add(league.league_id);
+        });
 
         // ensure we set a fresh Set instance so React re-renders
         const highlightedSet = new Set(highlighted);
