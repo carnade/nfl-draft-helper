@@ -61,6 +61,12 @@
   align-items: start;
 }
 
+.trade-panels-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
 .trade-panels {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -414,7 +420,7 @@ body.dark .search-result-item .player-value {
   padding: 0 20px 20px;
 }
 
-.player-card {
+.trade-player-card {
   background: #f8f9fa;
   border: 1px solid #e9ecef;
   border-radius: 8px;
@@ -422,22 +428,23 @@ body.dark .search-result-item .player-value {
   margin-bottom: 8px;
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   transition: all 0.2s;
+  position: relative;
 }
 
-.player-card:hover {
+.trade-player-card:hover {
   background: #e9ecef;
   border-color: #dee2e6;
 }
 
-body.dark .player-card {
+body.dark .trade-player-card {
   background: #3a3a3a;
   border-color: #555;
   color: #fff;
 }
 
-body.dark .player-card:hover {
+body.dark .trade-player-card:hover {
   background: #4a4a4a;
   border-color: #666;
 }
@@ -446,36 +453,116 @@ body.dark .player-card:hover {
   flex: 1;
 }
 
-.player-card .player-name {
+.trade-player-card .player-name {
   font-weight: 600;
   color: #2c3e50;
   text-decoration: underline;
   margin-bottom: 4px;
   cursor: pointer;
+  text-align: left;
 }
 
-.player-card .player-details {
+.trade-player-card .player-details {
   font-size: 12px;
   color: #7f8c8d;
 }
 
-.player-card .player-value {
+.trade-player-card .player-value {
   font-weight: bold;
-  color: #3498db;
   font-size: 16px;
   margin: 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-body.dark .player-card .player-name {
+.value-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.value-row:not(:first-child) {
+  justify-content: space-between;
+}
+
+.value-label {
+  color: #7f8c8d;
+  font-weight: normal;
+}
+
+.value-separator {
+  color: #fff;
+  font-weight: bold;
+}
+
+.value-proj {
+  color: #3498db;
+  font-weight: bold;
+}
+
+.value-stats {
+  font-weight: bold;
+}
+
+.value-stats.stats-better {
+  color: #27ae60;
+}
+
+.value-stats.stats-worse {
+  color: #e74c3c;
+}
+
+.value-ktc {
+  color: #9b59b6;
+  font-weight: bold;
+}
+
+.value-fc {
+  color: #f39c12;
+  font-weight: bold;
+}
+
+body.dark .trade-player-card .player-name {
+  color: #fff;
+  text-align: left;
+}
+
+body.dark .trade-player-card .player-details {
+  color: #ccc;
+  font-size: 12px;
+}
+
+body.dark .trade-player-card .player-value {
+  color: #4a9eff;
+}
+
+body.dark .value-label {
+  color: #95a5a6;
+}
+
+body.dark .value-separator {
   color: #fff;
 }
 
-body.dark .player-card .player-details {
-  color: #ccc;
+body.dark .value-proj {
+  color: #4a9eff;
 }
 
-body.dark .player-card .player-value {
-  color: #4a9eff;
+body.dark .value-stats.stats-better {
+  color: #2ecc71;
+}
+
+body.dark .value-stats.stats-worse {
+  color: #e74c3c;
+}
+
+body.dark .value-ktc {
+  color: #bb8fce;
+}
+
+body.dark .value-fc {
+  color: #f7dc6f;
 }
 
 .remove-player {
@@ -491,6 +578,9 @@ body.dark .player-card .player-value {
   cursor: pointer;
   font-size: 12px;
   transition: background-color 0.2s;
+  position: absolute;
+  top: -8px;
+  right: -8px;
 }
 
 .remove-player:hover {
@@ -504,6 +594,7 @@ body.dark .player-card .player-value {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   padding: 20px;
   margin-top: 0;
+  box-sizing: border-box;
 }
 
 body.dark .trade-analysis {

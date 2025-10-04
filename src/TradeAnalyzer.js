@@ -3,19 +3,19 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch, faTimes, faSortUp, faSortDown, faSort } from "@fortawesome/free-solid-svg-icons";
 import "./TradeAnalyzer.css";
 
-// Session cache - persists across component mounts/unmounts
-const sessionCache = {
-  projections: null,
-  stats: null,
-  leagues: null,
-  teams: null,
-  rosters: null
-};
+// Session cache - persists across browser sessions using localStorage
+const CACHE_KEY_PREFIX = 'tradeAnalyzerCache_';
+const CACHE_EXPIRY_HOURS = 24; // Cache expires after 24 hours
 
-// Store data in session cache
+// Store data in session cache with expiry
 const storeInSession = (key, data) => {
   try {
-    sessionCache[key] = data;
+    const cacheKey = `${CACHE_KEY_PREFIX}${key}`;
+    const cacheData = {
+      data: data,
+      timestamp: Date.now()
+    };
+    localStorage.setItem(cacheKey, JSON.stringify(cacheData));
     return true;
   } catch (error) {
     console.error(`Failed to store ${key} in session cache:`, error);
@@ -23,9 +23,34 @@ const storeInSession = (key, data) => {
   }
 };
 
-// Load data from session cache
+// Load data from session cache with expiry check
 const loadFromSession = (key) => {
-  return sessionCache[key] || null;
+  try {
+    const cacheKey = `${CACHE_KEY_PREFIX}${key}`;
+    const cached = localStorage.getItem(cacheKey);
+    
+    if (!cached) {
+      return null;
+    }
+    
+    const cacheData = JSON.parse(cached);
+    const now = Date.now();
+    const cacheAge = now - cacheData.timestamp;
+    const cacheAgeHours = cacheAge / (1000 * 60 * 60);
+    
+    // Check if cache has expired
+    if (cacheAgeHours > CACHE_EXPIRY_HOURS) {
+      console.log(`Cache for ${key} expired (${cacheAgeHours.toFixed(1)} hours old), removing...`);
+      localStorage.removeItem(cacheKey);
+      return null;
+    }
+    
+    console.log(`Cache for ${key} loaded (${cacheAgeHours.toFixed(1)} hours old)`);
+    return cacheData.data;
+  } catch (error) {
+    console.error(`Failed to load ${key} from session cache:`, error);
+    return null;
+  }
 };
 
 function TradeAnalyzer({ userName, setUserName }) {
@@ -48,6 +73,7 @@ function TradeAnalyzer({ userName, setUserName }) {
   const [usernameMap, setUsernameMap] = useState({});
   const [userId, setUserId] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [playerDataCache, setPlayerDataCache] = useState({}); // Cache for additional player data
 
   // Resolve a username to a sleeper user_id using cached map or API
   const resolveUsernameToId = async (username) => {
@@ -319,18 +345,66 @@ function TradeAnalyzer({ userName, setUserName }) {
     };
   };
 
+  // Fetch additional player data
+  const fetchPlayerData = async (playerId) => {
+    try {
+      // Check cache first
+      if (playerDataCache[playerId]) {
+        return playerDataCache[playerId];
+      }
+
+      console.log(`📡 Fetching additional data for player ${playerId}...`);
+      const response = await fetch(`https://shaggy-latashia-carnade-2ea2054a.koyeb.app/getplayers/data`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          playerlist: [playerId]
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      const playerData = data[playerId];
+      
+      if (playerData) {
+        // Cache the data
+        setPlayerDataCache(prev => ({
+          ...prev,
+          [playerId]: playerData
+        }));
+        console.log(`✅ Additional data fetched for player ${playerId}`);
+        return playerData;
+      } else {
+        console.warn(`No additional data found for player ${playerId}`);
+        return null;
+      }
+    } catch (error) {
+      console.error(`Error fetching additional data for player ${playerId}:`, error);
+      return null;
+    }
+  };
+
   // Add player to team
-  const addPlayerToTeam = (player, team) => {
+  const addPlayerToTeam = async (player, team) => {
     const playerStats = getPlayerStats(player.player_id);
+    
+    // Fetch additional player data
+    const additionalData = await fetchPlayerData(player.player_id);
     
     const playerData = {
       id: player.player_id,
       name: `${player.player.first_name} ${player.player.last_name}`,
       position: player.player.position,
       team: player.player.team,
-      age: player.player.years_exp ? (25 + player.player.years_exp) : 'N/A',
+      age: 'N/A',
       rank: getPositionRank(player),
       stats: player.stats,
+      additionalData: additionalData,
       ...playerStats
     };
 
@@ -612,148 +686,220 @@ function TradeAnalyzer({ userName, setUserName }) {
         <div className="trade-interface">
           <div className="trade-main-container">
             <div className="trade-content-wrapper">
-              <div className="trade-panels">
-                {/* Team 1 Panel */}
-                <div className="trade-panel">
-                  <div className="panel-header">
-                    <h3>{userName ? `${userName.charAt(0).toUpperCase() + userName.slice(1)} gets...` : 'Username gets...'}</h3>
-                  </div>
-                  
-                  <div className="search-container">
-                    <div className="search-input-wrapper">
-                      <FontAwesomeIcon icon={faSearch} className="search-icon" />
-                      <input
-                        type="text"
-                        placeholder="Search for a player"
-                        value={team1Search}
-                        onChange={(e) => {
-                          setTeam1Search(e.target.value);
-                          searchPlayers(e.target.value, 'team1');
-                        }}
-                        className="search-input"
-                      />
+              <div className="trade-panels-section">
+                <div className="trade-panels">
+                  {/* Team 1 Panel */}
+                  <div className="trade-panel">
+                    <div className="panel-header">
+                      <h3>{userName ? `${userName.charAt(0).toUpperCase() + userName.slice(1)} gets...` : 'Username gets...'}</h3>
                     </div>
                     
-                    {activeSearch === 'team1' && searchResults.length > 0 && (
-                      <div className="search-results">
-                        {searchResults.map(player => (
-                          <div
-                            key={player.player_id}
-                            className="search-result-item"
-                            onClick={() => addPlayerToTeam(player, 'team1')}
-                          >
-                            <div className="player-name">
-                              {player.player.first_name} {player.player.last_name}
+                    <div className="search-container">
+                      <div className="search-input-wrapper">
+                        <FontAwesomeIcon icon={faSearch} className="search-icon" />
+                        <input
+                          type="text"
+                          placeholder="Search for a player"
+                          value={team1Search}
+                          onChange={(e) => {
+                            setTeam1Search(e.target.value);
+                            searchPlayers(e.target.value, 'team1');
+                          }}
+                          className="search-input"
+                        />
+                      </div>
+                      
+                      {activeSearch === 'team1' && searchResults.length > 0 && (
+                        <div className="search-results">
+                          {searchResults.map(player => (
+                            <div
+                              key={player.player_id}
+                              className="search-result-item"
+                              onClick={() => addPlayerToTeam(player, 'team1')}
+                            >
+                              <div className="player-name">
+                                {player.player.first_name} {player.player.last_name}
+                              </div>
+                              <div className="player-details">
+                                {player.player.position} • {player.player.team} • {player.player.years_exp ? (25 + player.player.years_exp) : 'N/A'} y.o.
+                              </div>
+                              <div className="player-value">
+                                {(() => {
+                                  const playerStats = getPlayerStats(player.player_id);
+                                  return `Pts/g | Proj: ${playerStats.projPtsPerGame} Stats: ${playerStats.actualPtsPerGame}`;
+                                })()}
+                              </div>
                             </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="selected-players">
+                      {team1Players.map(player => (
+                        <div key={player.id} className="trade-player-card">
+                          <div className="player-info">
+                            <div className="player-name">{player.name}</div>
                             <div className="player-details">
-                              {player.player.position} • {player.player.team} • {player.player.years_exp ? (25 + player.player.years_exp) : 'N/A'} y.o.
-                            </div>
-                            <div className="player-value">
-                              {(() => {
-                                const playerStats = getPlayerStats(player.player_id);
-                                return `Pts/g | Proj: ${playerStats.projPtsPerGame} Stats: ${playerStats.actualPtsPerGame}`;
-                              })()}
+                              {player.additionalData ? 
+                                `Ovr${player.additionalData.rank_ppr || 'N/A'} • ${player.position}${player.additionalData.pos_rank_ppr || 'N/A'} • ${player.team} • ${player.age} y.o.` :
+                                `${player.rank} • ${player.team} • ${player.age} y.o.`
+                              }
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    )}
+                          <div className="player-value">
+                            <div className="value-row">
+                              <span className="value-label">Pts/g</span>
+                              <span className="value-separator">|</span>
+                              <span className="value-label">Proj:</span>
+                              <span className="value-proj">{player.projPtsPerGame}</span>
+                              <span className="value-label">Stats:</span>
+                              <span className={`value-stats ${parseFloat(player.actualPtsPerGame) > parseFloat(player.projPtsPerGame) ? 'stats-better' : 'stats-worse'}`}>
+                                {player.actualPtsPerGame}
+                              </span>
+                            </div>
+                            {player.additionalData && (
+                              <>
+                                <div className="value-row">
+                                  <span className="value-label">KeepTradeCut</span>
+                                  <span className="value-ktc">{player.additionalData['KTC Value'] ? Math.round(player.additionalData['KTC Value']) : 'N/A'}</span>
+                                </div>
+                                <div className="value-row">
+                                  <span className="value-label">FantasyCalc</span>
+                                  <span className="value-fc">{player.additionalData['FC Value'] ? Math.round(player.additionalData['FC Value']) : 'N/A'}</span>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                          <button
+                            className="remove-player"
+                            onClick={() => removePlayerFromTeam(player.id, 'team1')}
+                          >
+                            <FontAwesomeIcon icon={faTimes} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  
-                  <div className="selected-players">
-                    {team1Players.map(player => (
-                      <div key={player.id} className="player-card">
-                        <div className="player-info">
-                          <div className="player-name">{player.name}</div>
-                          <div className="player-details">
-                            {player.rank} • {player.team} • {player.age} y.o.
-                          </div>
-                        </div>
-                        <div className="player-value">
-                          Pts/g | Proj: {player.projPtsPerGame} Stats: {player.actualPtsPerGame}
-                        </div>
-                        <button
-                          className="remove-player"
-                          onClick={() => removePlayerFromTeam(player.id, 'team1')}
-                        >
-                          <FontAwesomeIcon icon={faTimes} />
-                        </button>
+
+                  {/* Team 2 Panel */}
+                  <div className="trade-panel">
+                    <div className="panel-header">
+                      <h3>{tradePartner ? `${tradePartner.charAt(0).toUpperCase() + tradePartner.slice(1)} gets...` : 'Trade Partner gets...'}</h3>
+                    </div>
+                    
+                    <div className="search-container">
+                      <div className="search-input-wrapper">
+                        <FontAwesomeIcon icon={faSearch} className="search-icon" />
+                        <input
+                          type="text"
+                          placeholder="Search for a player"
+                          value={team2Search}
+                          onChange={(e) => {
+                            setTeam2Search(e.target.value);
+                            searchPlayers(e.target.value, 'team2');
+                          }}
+                          className="search-input"
+                        />
                       </div>
-                    ))}
+                      
+                      {activeSearch === 'team2' && searchResults.length > 0 && (
+                        <div className="search-results">
+                          {searchResults.map(player => (
+                            <div
+                              key={player.player_id}
+                              className="search-result-item"
+                              onClick={() => addPlayerToTeam(player, 'team2')}
+                            >
+                              <div className="player-name">
+                                {player.player.first_name} {player.player.last_name}
+                              </div>
+                              <div className="player-details">
+                                {player.player.position} • {player.player.team} • {player.player.years_exp ? (25 + player.player.years_exp) : 'N/A'} y.o.
+                              </div>
+                              <div className="player-value">
+                                {(() => {
+                                  const playerStats = getPlayerStats(player.player_id);
+                                  return `Pts/g | Proj: ${playerStats.projPtsPerGame} Stats: ${playerStats.actualPtsPerGame}`;
+                                })()}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="selected-players">
+                      {team2Players.map(player => (
+                        <div key={player.id} className="trade-player-card">
+                          <div className="player-info">
+                            <div className="player-name">{player.name}</div>
+                            <div className="player-details">
+                              {player.additionalData ? 
+                                `Ovr${player.additionalData.rank_ppr || 'N/A'} • ${player.position}${player.additionalData.pos_rank_ppr || 'N/A'} • ${player.team} • ${player.age} y.o.` :
+                                `${player.rank} • ${player.team} • ${player.age} y.o.`
+                              }
+                            </div>
+                          </div>
+                          <div className="player-value">
+                            <div className="value-row">
+                              <span className="value-label">Pts/g</span>
+                              <span className="value-separator">|</span>
+                              <span className="value-label">Proj:</span>
+                              <span className="value-proj">{player.projPtsPerGame}</span>
+                              <span className="value-label">Stats:</span>
+                              <span className={`value-stats ${parseFloat(player.actualPtsPerGame) > parseFloat(player.projPtsPerGame) ? 'stats-better' : 'stats-worse'}`}>
+                                {player.actualPtsPerGame}
+                              </span>
+                            </div>
+                            {player.additionalData && (
+                              <>
+                                <div className="value-row">
+                                  <span className="value-label">KeepTradeCut</span>
+                                  <span className="value-ktc">{player.additionalData['KTC Value'] ? Math.round(player.additionalData['KTC Value']) : 'N/A'}</span>
+                                </div>
+                                <div className="value-row">
+                                  <span className="value-label">FantasyCalc</span>
+                                  <span className="value-fc">{player.additionalData['FC Value'] ? Math.round(player.additionalData['FC Value']) : 'N/A'}</span>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                          <button
+                            className="remove-player"
+                            onClick={() => removePlayerFromTeam(player.id, 'team2')}
+                          >
+                            <FontAwesomeIcon icon={faTimes} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
-                {/* Team 2 Panel */}
-                <div className="trade-panel">
-                  <div className="panel-header">
-                    <h3>{tradePartner ? `${tradePartner.charAt(0).toUpperCase() + tradePartner.slice(1)} gets...` : 'Trade Partner gets...'}</h3>
-                  </div>
-                  
-                  <div className="search-container">
-                    <div className="search-input-wrapper">
-                      <FontAwesomeIcon icon={faSearch} className="search-icon" />
-                      <input
-                        type="text"
-                        placeholder="Search for a player"
-                        value={team2Search}
-                        onChange={(e) => {
-                          setTeam2Search(e.target.value);
-                          searchPlayers(e.target.value, 'team2');
-                        }}
-                        className="search-input"
-                      />
+                {/* Trade Analysis Section - Only spans width of trade panels */}
+                {team1Players.length > 0 || team2Players.length > 0 ? (
+                  <div className="trade-analysis-container">
+                    <div className="trade-analysis">
+                      <h3>Trade Analysis</h3>
+                      <div className="analysis-content">
+                        <div className="team-analysis">
+                          <div className="team-summary">
+                            <strong>{userName ? `${userName.charAt(0).toUpperCase() + userName.slice(1)} Total:` : 'Team 1 Total:'} {calculateTeamTotal(team1Players)} points</strong>
+                          </div>
+                          <div className="team-summary">
+                            <strong>{tradePartner ? `${tradePartner.charAt(0).toUpperCase() + tradePartner.slice(1)} Total:` : 'Team 2 Total:'} {calculateTeamTotal(team2Players)} points</strong>
+                          </div>
+                          <div className="trade-difference">
+                            <strong>Difference:</strong> {Math.abs(calculateTeamTotal(team1Players) - calculateTeamTotal(team2Players))} points
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    
-                    {activeSearch === 'team2' && searchResults.length > 0 && (
-                      <div className="search-results">
-                        {searchResults.map(player => (
-                          <div
-                            key={player.player_id}
-                            className="search-result-item"
-                            onClick={() => addPlayerToTeam(player, 'team2')}
-                          >
-                            <div className="player-name">
-                              {player.player.first_name} {player.player.last_name}
-                            </div>
-                            <div className="player-details">
-                              {player.player.position} • {player.player.team} • {player.player.years_exp ? (25 + player.player.years_exp) : 'N/A'} y.o.
-                            </div>
-                            <div className="player-value">
-                              {(() => {
-                                const playerStats = getPlayerStats(player.player_id);
-                                return `Pts/g | Proj: ${playerStats.projPtsPerGame} Stats: ${playerStats.actualPtsPerGame}`;
-                              })()}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
-                  
-                  <div className="selected-players">
-                    {team2Players.map(player => (
-                      <div key={player.id} className="player-card">
-                        <div className="player-info">
-                          <div className="player-name">{player.name}</div>
-                          <div className="player-details">
-                            {player.rank} • {player.team} • {player.age} y.o.
-                          </div>
-                        </div>
-                        <div className="player-value">
-                          Pts/g | Proj: {player.projPtsPerGame} Stats: {player.actualPtsPerGame}
-                        </div>
-                        <button
-                          className="remove-player"
-                          onClick={() => removePlayerFromTeam(player.id, 'team2')}
-                        >
-                          <FontAwesomeIcon icon={faTimes} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                ) : null}
               </div>
-              
+
               {/* League Info Column */}
               <div className="league-info-column">
                 <div className="league-info-header">
@@ -796,28 +942,6 @@ function TradeAnalyzer({ userName, setUserName }) {
                 </div>
               </div>
             </div>
-            
-            {/* Trade Analysis Section */}
-            {team1Players.length > 0 || team2Players.length > 0 ? (
-              <div className="trade-analysis-container">
-                <div className="trade-analysis">
-                  <h3>Trade Analysis</h3>
-                  <div className="analysis-content">
-                    <div className="team-analysis">
-                      <div className="team-summary">
-                        <strong>{userName ? `${userName.charAt(0).toUpperCase() + userName.slice(1)} Total:` : 'Team 1 Total:'} {calculateTeamTotal(team1Players)} points</strong>
-                      </div>
-                      <div className="team-summary">
-                        <strong>{tradePartner ? `${tradePartner.charAt(0).toUpperCase() + tradePartner.slice(1)} Total:` : 'Team 2 Total:'} {calculateTeamTotal(team2Players)} points</strong>
-                      </div>
-                      <div className="trade-difference">
-                        <strong>Difference:</strong> {Math.abs(calculateTeamTotal(team1Players) - calculateTeamTotal(team2Players))} points
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : null}
           </div>
         </div>
       )}
