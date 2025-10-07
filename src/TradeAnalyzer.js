@@ -786,7 +786,7 @@ function TradeAnalyzer({ userName, setUserName }) {
 
   return (
     <div className="trade-analyzer">
-      <h1>Trade Analyzer</h1>
+      <h1>Trade Helper</h1>
       
       {isLoading && (
         <div className="loading">
