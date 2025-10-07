@@ -603,11 +603,112 @@ body.dark .trade-analysis {
 }
 
 .trade-analysis h3 {
-  margin: 0 0 15px 0;
+  margin: 0 0 20px 0;
   color: #2c3e50;
-  font-size: 18px;
+  font-size: 20px;
+  font-weight: bold;
+  text-align: center;
 }
 
+body.dark .trade-analysis h3 {
+  color: #fff;
+}
+
+.analysis-content-new {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+.analysis-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.section-heading {
+  font-size: 16px;
+  font-weight: bold;
+  color: #2c3e50;
+  margin: 0 0 8px 0;
+  padding-bottom: 6px;
+  border-bottom: 2px solid #2c3e50;
+}
+
+body.dark .section-heading {
+  color: #fff;
+  border-bottom-color: #4a9eff;
+}
+
+.comparison-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  gap: 15px;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.team-value {
+  font-size: 18px;
+  font-weight: bold;
+  color: #2c3e50;
+  text-align: center;
+}
+
+body.dark .team-value {
+  color: #fff;
+}
+
+.diff-value {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.diff-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8f9fa;
+  padding: 8px 16px;
+  border-radius: 8px;
+}
+
+body.dark .diff-content {
+  background: #3a3a3a;
+}
+
+.diff-label {
+  font-size: 14px;
+  color: #7f8c8d;
+  font-weight: 500;
+}
+
+body.dark .diff-label {
+  color: #95a5a6;
+}
+
+.diff-arrow {
+  font-size: 20px;
+  font-weight: bold;
+  color: #3498db;
+}
+
+body.dark .diff-arrow {
+  color: #4a9eff;
+}
+
+.diff-number {
+  font-size: 16px;
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+body.dark .diff-number {
+  color: #fff;
+}
+
+/* Old styles kept for backwards compatibility */
 .analysis-content {
   display: flex;
   gap: 20px;

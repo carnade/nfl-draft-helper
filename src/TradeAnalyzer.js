@@ -56,6 +56,7 @@ const loadFromSession = (key) => {
 function TradeAnalyzer({ userName, setUserName }) {
   const [projectionsData, setProjectionsData] = useState([]);
   const [statsData, setStatsData] = useState([]);
+  const [picksData, setPicksData] = useState([]); // Picks data
   const [leaguesData, setLeaguesData] = useState([]);
   const [teamsData, setTeamsData] = useState({}); // Cache for teams data by league_id
   const [isLoading, setIsLoading] = useState(false);
@@ -160,6 +161,32 @@ function TradeAnalyzer({ userName, setUserName }) {
       
     } catch (err) {
       throw new Error(`Failed to fetch stats data: ${err.message}`);
+    }
+  };
+
+  // Fetch picks data from API
+  const fetchPicksData = async () => {
+    try {
+      console.log('📡 Fetching picks data from API...');
+      const response = await fetch(
+        'https://shaggy-latashia-carnade-2ea2054a.koyeb.app/picks/data'
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      // Convert object to array for easier searching
+      const picksArray = Object.values(data);
+      console.log('✅ Picks data fetched successfully');
+      
+      // Store in session cache
+      storeInSession('picks', picksArray);
+      setPicksData(picksArray);
+      
+    } catch (err) {
+      throw new Error(`Failed to fetch picks data: ${err.message}`);
     }
   };
 
@@ -286,13 +313,13 @@ function TradeAnalyzer({ userName, setUserName }) {
     }
   };
 
-  // Fetch all data (projections, stats, and leagues)
+  // Fetch all data (projections, stats, picks, and leagues)
   const fetchAllData = async () => {
     setIsLoading(true);
     setError(null);
     
     try {
-      const promises = [fetchProjectionsData(), fetchStatsData()];
+      const promises = [fetchProjectionsData(), fetchStatsData(), fetchPicksData()];
       if (userName) {
         promises.push(fetchLeaguesData());
       }
@@ -305,15 +332,16 @@ function TradeAnalyzer({ userName, setUserName }) {
     }
   };
 
-  // Search players function
+  // Search players and picks function
   const searchPlayers = (query, team) => {
-    if (!query.trim() || projectionsData.length === 0) {
+    if (!query.trim() || (projectionsData.length === 0 && picksData.length === 0)) {
       setSearchResults([]);
       setActiveSearch(null);
       return;
     }
 
-    const filtered = projectionsData.filter(player => {
+    // Search players
+    const filteredPlayers = projectionsData.filter(player => {
       const fullName = `${player.player.first_name} ${player.player.last_name}`.toLowerCase();
       const position = player.player.position.toLowerCase();
       const team = player.player.team?.toLowerCase() || '';
@@ -321,9 +349,25 @@ function TradeAnalyzer({ userName, setUserName }) {
       return fullName.includes(query.toLowerCase()) || 
              position.includes(query.toLowerCase()) ||
              team.includes(query.toLowerCase());
-    }).slice(0, 10); // Limit to 10 results
+    });
 
-    setSearchResults(filtered);
+    // Search picks
+    const filteredPicks = picksData.filter(pick => {
+      const pickName = pick['Player Name']?.toLowerCase() || '';
+      const year = pick.Year?.toString() || '';
+      const round = pick.Round?.toString() || '';
+      const pickType = pick['Pick Type']?.toLowerCase() || '';
+      
+      return pickName.includes(query.toLowerCase()) ||
+             year.includes(query.toLowerCase()) ||
+             round.includes(query.toLowerCase()) ||
+             pickType.includes(query.toLowerCase());
+    });
+
+    // Combine and limit to 10 results
+    const combined = [...filteredPlayers, ...filteredPicks].slice(0, 10);
+
+    setSearchResults(combined);
     setActiveSearch(team);
   };
 
@@ -389,30 +433,56 @@ function TradeAnalyzer({ userName, setUserName }) {
     }
   };
 
-  // Add player to team
-  const addPlayerToTeam = async (player, team) => {
-    const playerStats = getPlayerStats(player.player_id);
+  // Add player or pick to team
+  const addPlayerToTeam = async (item, team) => {
+    let itemData;
     
-    // Fetch additional player data
-    const additionalData = await fetchPlayerData(player.player_id);
-    
-    const playerData = {
-      id: player.player_id,
-      name: `${player.player.first_name} ${player.player.last_name}`,
-      position: player.player.position,
-      team: player.player.team,
-      age: 'N/A',
-      rank: getPositionRank(player),
-      stats: player.stats,
-      additionalData: additionalData,
-      ...playerStats
-    };
+    // Check if it's a pick (has 'Pick ID' field) or a player
+    if (item['Pick ID']) {
+      // It's a pick
+      itemData = {
+        id: item['Pick ID'],
+        name: item['Player Name'],
+        position: 'PICK',
+        team: item.Year?.toString() || '',
+        age: item['Pick Type'] || '',
+        rank: `${item.Round}`,
+        isPick: true,
+        additionalData: {
+          'FC Value': item['FantasyCalc SF Value'] || 0,
+          'KTC Value': item['SFValue'] || 0
+        },
+        projPtsPerGame: '0.0',
+        actualPtsPerGame: '0.0',
+        projTotal: 0,
+        actualTotal: 0
+      };
+    } else {
+      // It's a player
+      const playerStats = getPlayerStats(item.player_id);
+      
+      // Fetch additional player data
+      const additionalData = await fetchPlayerData(item.player_id);
+      
+      itemData = {
+        id: item.player_id,
+        name: `${item.player.first_name} ${item.player.last_name}`,
+        position: item.player.position,
+        team: item.player.team,
+        age: additionalData?.age || item.player.age || 'N/A',
+        rank: getPositionRank(item),
+        stats: item.stats,
+        additionalData: additionalData,
+        isPick: false,
+        ...playerStats
+      };
+    }
 
     if (team === 'team1') {
-      setTeam1Players(prev => [...prev, playerData]);
+      setTeam1Players(prev => [...prev, itemData]);
       setTeam1Search("");
     } else {
-      setTeam2Players(prev => [...prev, playerData]);
+      setTeam2Players(prev => [...prev, itemData]);
       setTeam2Search("");
     }
     
@@ -448,6 +518,52 @@ function TradeAnalyzer({ userName, setUserName }) {
     return players.reduce((total, player) => total + (player.projTotal || 0), 0);
   };
 
+  // Calculate total KTC value for a team
+  const calculateKTCTotal = (players) => {
+    return players.reduce((total, player) => {
+      const ktcValue = player.additionalData?.['KTC Value'] || 0;
+      return total + ktcValue;
+    }, 0);
+  };
+
+  // Calculate total FantasyCalc value for a team
+  const calculateFCTotal = (players) => {
+    return players.reduce((total, player) => {
+      const fcValue = player.additionalData?.['FC Value'] || 0;
+      return total + fcValue;
+    }, 0);
+  };
+
+  // Calculate total projected points per game for a team (excluding picks)
+  const calculateTotalProjPtsPerGame = (players) => {
+    const realPlayers = players.filter(p => !p.isPick);
+    if (realPlayers.length === 0) return 0;
+    const total = realPlayers.reduce((sum, player) => {
+      return sum + parseFloat(player.projPtsPerGame || 0);
+    }, 0);
+    return total.toFixed(1);
+  };
+
+  // Calculate total 2025 points per game for a team (excluding picks)
+  const calculateTotal2025PtsPerGame = (players) => {
+    const realPlayers = players.filter(p => !p.isPick);
+    if (realPlayers.length === 0) return 0;
+    const total = realPlayers.reduce((sum, player) => {
+      return sum + parseFloat(player.actualPtsPerGame || 0);
+    }, 0);
+    return total.toFixed(1);
+  };
+
+  // Calculate average age for a team (excluding picks)
+  const calculateAvgAge = (players) => {
+    const realPlayers = players.filter(p => !p.isPick && p.age && p.age !== 'N/A');
+    if (realPlayers.length === 0) return 'N/A';
+    const total = realPlayers.reduce((sum, player) => {
+      return sum + parseFloat(player.age);
+    }, 0);
+    return (total / realPlayers.length).toFixed(1);
+  };
+
   // Get team captain info for a player
   const getTeamCaptainInfo = (playerId) => {
     if (!leaguesData.length || !rosterData) return [];
@@ -480,6 +596,7 @@ function TradeAnalyzer({ userName, setUserName }) {
       // Try to load from session cache first
       const cachedProjections = loadFromSession('projections');
       const cachedStats = loadFromSession('stats');
+      const cachedPicks = loadFromSession('picks');
       const cachedLeagues = loadFromSession('leagues');
       const cachedTeams = loadFromSession('teams');
       const cachedRosters = loadFromSession('rosters');
@@ -487,14 +604,16 @@ function TradeAnalyzer({ userName, setUserName }) {
       console.log('🔍 Cache check:', {
         projections: !!cachedProjections,
         stats: !!cachedStats,
+        picks: !!cachedPicks,
         leagues: !!cachedLeagues,
         teams: !!cachedTeams,
         rosters: !!cachedRosters
       });
       
-      if (cachedProjections && cachedStats) {
+      if (cachedProjections && cachedStats && cachedPicks) {
         setProjectionsData(cachedProjections);
         setStatsData(cachedStats);
+        setPicksData(cachedPicks);
         if (cachedLeagues) {
           setLeaguesData(cachedLeagues);
         }
@@ -508,7 +627,7 @@ function TradeAnalyzer({ userName, setUserName }) {
         console.log('💡 To see API calls, refresh the page or clear browser cache');
       } else {
         // No cached data, fetch fresh data
-        console.log('🔄 No cached data, fetching fresh data from Sleeper API');
+        console.log('🔄 No cached data, fetching fresh data from APIs');
         console.log('📡 Check Network tab to see API requests');
         await fetchAllData();
       }
@@ -711,26 +830,35 @@ function TradeAnalyzer({ userName, setUserName }) {
                       
                       {activeSearch === 'team1' && searchResults.length > 0 && (
                         <div className="search-results">
-                          {searchResults.map(player => (
-                            <div
-                              key={player.player_id}
-                              className="search-result-item"
-                              onClick={() => addPlayerToTeam(player, 'team1')}
-                            >
-                              <div className="player-name">
-                                {player.player.first_name} {player.player.last_name}
+                          {searchResults.map(item => {
+                            const isPick = !!item['Pick ID'];
+                            return (
+                              <div
+                                key={isPick ? item['Pick ID'] : item.player_id}
+                                className="search-result-item"
+                                onClick={() => addPlayerToTeam(item, 'team1')}
+                              >
+                                <div className="player-name">
+                                  {isPick ? item['Player Name'] : `${item.player.first_name} ${item.player.last_name}`}
+                                </div>
+                                <div className="player-details">
+                                  {isPick ? 
+                                    `${item['Pick Type']} • Round ${item.Round} • ${item.Year}` :
+                                    `${item.player.position} • ${item.player.team}${item.player.age ? ` • ${item.player.age} y.o.` : ''}`
+                                  }
+                                </div>
+                                <div className="player-value">
+                                  {isPick ? 
+                                    `FC: ${Math.round(item['FantasyCalc SF Value'] || 0)} | KTC: ${Math.round(item['SFValue'] || 0)}` :
+                                    (() => {
+                                      const playerStats = getPlayerStats(item.player_id);
+                                      return `Pts/g | Proj: ${playerStats.projPtsPerGame} Stats: ${playerStats.actualPtsPerGame}`;
+                                    })()
+                                  }
+                                </div>
                               </div>
-                              <div className="player-details">
-                                {player.player.position} • {player.player.team} • {player.player.years_exp ? (25 + player.player.years_exp) : 'N/A'} y.o.
-                              </div>
-                              <div className="player-value">
-                                {(() => {
-                                  const playerStats = getPlayerStats(player.player_id);
-                                  return `Pts/g | Proj: ${playerStats.projPtsPerGame} Stats: ${playerStats.actualPtsPerGame}`;
-                                })()}
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </div>
@@ -741,33 +869,50 @@ function TradeAnalyzer({ userName, setUserName }) {
                           <div className="player-info">
                             <div className="player-name">{player.name}</div>
                             <div className="player-details">
-                              {player.additionalData ? 
-                                `Ovr${player.additionalData.rank_ppr || 'N/A'} • ${player.position}${player.additionalData.pos_rank_ppr || 'N/A'} • ${player.team} • ${player.age} y.o.` :
-                                `${player.rank} • ${player.team} • ${player.age} y.o.`
+                              {player.isPick ? 
+                                `${player.age} • Round ${player.rank} • ${player.team}` :
+                                player.additionalData && !player.isPick ? 
+                                  `Ovr${player.additionalData.rank_ppr || 'N/A'} • ${player.position}${player.additionalData.pos_rank_ppr || 'N/A'} • ${player.team} • ${player.age} y.o.` :
+                                  `${player.rank} • ${player.team} • ${player.age} y.o.`
                               }
                             </div>
                           </div>
                           <div className="player-value">
-                            <div className="value-row">
-                              <span className="value-label">Pts/g</span>
-                              <span className="value-separator">|</span>
-                              <span className="value-label">Proj:</span>
-                              <span className="value-proj">{player.projPtsPerGame}</span>
-                              <span className="value-label">Stats:</span>
-                              <span className={`value-stats ${parseFloat(player.actualPtsPerGame) > parseFloat(player.projPtsPerGame) ? 'stats-better' : 'stats-worse'}`}>
-                                {player.actualPtsPerGame}
-                              </span>
-                            </div>
-                            {player.additionalData && (
+                            {player.isPick ? (
                               <>
                                 <div className="value-row">
                                   <span className="value-label">KeepTradeCut</span>
-                                  <span className="value-ktc">{player.additionalData['KTC Value'] ? Math.round(player.additionalData['KTC Value']) : 'N/A'}</span>
+                                  <span className="value-ktc">{Math.round(player.additionalData?.['KTC Value'] || 0)}</span>
                                 </div>
                                 <div className="value-row">
                                   <span className="value-label">FantasyCalc</span>
-                                  <span className="value-fc">{player.additionalData['FC Value'] ? Math.round(player.additionalData['FC Value']) : 'N/A'}</span>
+                                  <span className="value-fc">{Math.round(player.additionalData?.['FC Value'] || 0)}</span>
                                 </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="value-row">
+                                  <span className="value-label">Pts/g</span>
+                                  <span className="value-separator">|</span>
+                                  <span className="value-label">Proj:</span>
+                                  <span className="value-proj">{player.projPtsPerGame}</span>
+                                  <span className="value-label">2025:</span>
+                                  <span className={`value-stats ${parseFloat(player.actualPtsPerGame) > parseFloat(player.projPtsPerGame) ? 'stats-better' : 'stats-worse'}`}>
+                                    {player.actualPtsPerGame}
+                                  </span>
+                                </div>
+                                {player.additionalData && (
+                                  <>
+                                    <div className="value-row">
+                                      <span className="value-label">KeepTradeCut</span>
+                                      <span className="value-ktc">{player.additionalData['KTC Value'] ? Math.round(player.additionalData['KTC Value']) : 'N/A'}</span>
+                                    </div>
+                                    <div className="value-row">
+                                      <span className="value-label">FantasyCalc</span>
+                                      <span className="value-fc">{player.additionalData['FC Value'] ? Math.round(player.additionalData['FC Value']) : 'N/A'}</span>
+                                    </div>
+                                  </>
+                                )}
                               </>
                             )}
                           </div>
@@ -805,26 +950,35 @@ function TradeAnalyzer({ userName, setUserName }) {
                       
                       {activeSearch === 'team2' && searchResults.length > 0 && (
                         <div className="search-results">
-                          {searchResults.map(player => (
-                            <div
-                              key={player.player_id}
-                              className="search-result-item"
-                              onClick={() => addPlayerToTeam(player, 'team2')}
-                            >
-                              <div className="player-name">
-                                {player.player.first_name} {player.player.last_name}
+                          {searchResults.map(item => {
+                            const isPick = !!item['Pick ID'];
+                            return (
+                              <div
+                                key={isPick ? item['Pick ID'] : item.player_id}
+                                className="search-result-item"
+                                onClick={() => addPlayerToTeam(item, 'team2')}
+                              >
+                                <div className="player-name">
+                                  {isPick ? item['Player Name'] : `${item.player.first_name} ${item.player.last_name}`}
+                                </div>
+                                <div className="player-details">
+                                  {isPick ? 
+                                    `${item['Pick Type']} • Round ${item.Round} • ${item.Year}` :
+                                    `${item.player.position} • ${item.player.team}${item.player.age ? ` • ${item.player.age} y.o.` : ''}`
+                                  }
+                                </div>
+                                <div className="player-value">
+                                  {isPick ? 
+                                    `FC: ${Math.round(item['FantasyCalc SF Value'] || 0)} | KTC: ${Math.round(item['SFValue'] || 0)}` :
+                                    (() => {
+                                      const playerStats = getPlayerStats(item.player_id);
+                                      return `Pts/g | Proj: ${playerStats.projPtsPerGame} Stats: ${playerStats.actualPtsPerGame}`;
+                                    })()
+                                  }
+                                </div>
                               </div>
-                              <div className="player-details">
-                                {player.player.position} • {player.player.team} • {player.player.years_exp ? (25 + player.player.years_exp) : 'N/A'} y.o.
-                              </div>
-                              <div className="player-value">
-                                {(() => {
-                                  const playerStats = getPlayerStats(player.player_id);
-                                  return `Pts/g | Proj: ${playerStats.projPtsPerGame} Stats: ${playerStats.actualPtsPerGame}`;
-                                })()}
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </div>
@@ -835,33 +989,50 @@ function TradeAnalyzer({ userName, setUserName }) {
                           <div className="player-info">
                             <div className="player-name">{player.name}</div>
                             <div className="player-details">
-                              {player.additionalData ? 
-                                `Ovr${player.additionalData.rank_ppr || 'N/A'} • ${player.position}${player.additionalData.pos_rank_ppr || 'N/A'} • ${player.team} • ${player.age} y.o.` :
-                                `${player.rank} • ${player.team} • ${player.age} y.o.`
+                              {player.isPick ? 
+                                `${player.age} • Round ${player.rank} • ${player.team}` :
+                                player.additionalData && !player.isPick ? 
+                                  `Ovr${player.additionalData.rank_ppr || 'N/A'} • ${player.position}${player.additionalData.pos_rank_ppr || 'N/A'} • ${player.team} • ${player.age} y.o.` :
+                                  `${player.rank} • ${player.team} • ${player.age} y.o.`
                               }
                             </div>
                           </div>
                           <div className="player-value">
-                            <div className="value-row">
-                              <span className="value-label">Pts/g</span>
-                              <span className="value-separator">|</span>
-                              <span className="value-label">Proj:</span>
-                              <span className="value-proj">{player.projPtsPerGame}</span>
-                              <span className="value-label">Stats:</span>
-                              <span className={`value-stats ${parseFloat(player.actualPtsPerGame) > parseFloat(player.projPtsPerGame) ? 'stats-better' : 'stats-worse'}`}>
-                                {player.actualPtsPerGame}
-                              </span>
-                            </div>
-                            {player.additionalData && (
+                            {player.isPick ? (
                               <>
                                 <div className="value-row">
                                   <span className="value-label">KeepTradeCut</span>
-                                  <span className="value-ktc">{player.additionalData['KTC Value'] ? Math.round(player.additionalData['KTC Value']) : 'N/A'}</span>
+                                  <span className="value-ktc">{Math.round(player.additionalData?.['KTC Value'] || 0)}</span>
                                 </div>
                                 <div className="value-row">
                                   <span className="value-label">FantasyCalc</span>
-                                  <span className="value-fc">{player.additionalData['FC Value'] ? Math.round(player.additionalData['FC Value']) : 'N/A'}</span>
+                                  <span className="value-fc">{Math.round(player.additionalData?.['FC Value'] || 0)}</span>
                                 </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="value-row">
+                                  <span className="value-label">Pts/g</span>
+                                  <span className="value-separator">|</span>
+                                  <span className="value-label">Proj:</span>
+                                  <span className="value-proj">{player.projPtsPerGame}</span>
+                                  <span className="value-label">2025:</span>
+                                  <span className={`value-stats ${parseFloat(player.actualPtsPerGame) > parseFloat(player.projPtsPerGame) ? 'stats-better' : 'stats-worse'}`}>
+                                    {player.actualPtsPerGame}
+                                  </span>
+                                </div>
+                                {player.additionalData && (
+                                  <>
+                                    <div className="value-row">
+                                      <span className="value-label">KeepTradeCut</span>
+                                      <span className="value-ktc">{player.additionalData['KTC Value'] ? Math.round(player.additionalData['KTC Value']) : 'N/A'}</span>
+                                    </div>
+                                    <div className="value-row">
+                                      <span className="value-label">FantasyCalc</span>
+                                      <span className="value-fc">{player.additionalData['FC Value'] ? Math.round(player.additionalData['FC Value']) : 'N/A'}</span>
+                                    </div>
+                                  </>
+                                )}
                               </>
                             )}
                           </div>
@@ -882,16 +1053,148 @@ function TradeAnalyzer({ userName, setUserName }) {
                   <div className="trade-analysis-container">
                     <div className="trade-analysis">
                       <h3>Trade Analysis</h3>
-                      <div className="analysis-content">
-                        <div className="team-analysis">
-                          <div className="team-summary">
-                            <strong>{userName ? `${userName.charAt(0).toUpperCase() + userName.slice(1)} Total:` : 'Team 1 Total:'} {calculateTeamTotal(team1Players)} points</strong>
+                      <div className="analysis-content-new">
+                        {/* Rankings Section */}
+                        <div className="analysis-section">
+                          <h4 className="section-heading">Rankings</h4>
+                          
+                          {/* KTC Row */}
+                          <div className="comparison-row">
+                            <div className="team-value">
+                              {Math.round(calculateKTCTotal(team1Players))}
+                            </div>
+                            <div className="diff-value">
+                              {(() => {
+                                const team1KTC = calculateKTCTotal(team1Players);
+                                const team2KTC = calculateKTCTotal(team2Players);
+                                const diff = Math.abs(team1KTC - team2KTC);
+                                const arrow = team1KTC > team2KTC ? '←' : team1KTC < team2KTC ? '→' : '=';
+                                return (
+                                  <div className="diff-content">
+                                    <div className="diff-label">KTC</div>
+                                    <div className="diff-arrow">{arrow}</div>
+                                    <div className="diff-number">{Math.round(diff)}</div>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                            <div className="team-value">
+                              {Math.round(calculateKTCTotal(team2Players))}
+                            </div>
                           </div>
-                          <div className="team-summary">
-                            <strong>{tradePartner ? `${tradePartner.charAt(0).toUpperCase() + tradePartner.slice(1)} Total:` : 'Team 2 Total:'} {calculateTeamTotal(team2Players)} points</strong>
+
+                          {/* FantasyCalc Row */}
+                          <div className="comparison-row">
+                            <div className="team-value">
+                              {Math.round(calculateFCTotal(team1Players))}
+                            </div>
+                            <div className="diff-value">
+                              {(() => {
+                                const team1FC = calculateFCTotal(team1Players);
+                                const team2FC = calculateFCTotal(team2Players);
+                                const diff = Math.abs(team1FC - team2FC);
+                                const arrow = team1FC > team2FC ? '←' : team1FC < team2FC ? '→' : '=';
+                                return (
+                                  <div className="diff-content">
+                                    <div className="diff-label">FantasyCalc</div>
+                                    <div className="diff-arrow">{arrow}</div>
+                                    <div className="diff-number">{Math.round(diff)}</div>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                            <div className="team-value">
+                              {Math.round(calculateFCTotal(team2Players))}
+                            </div>
                           </div>
-                          <div className="trade-difference">
-                            <strong>Difference:</strong> {Math.abs(calculateTeamTotal(team1Players) - calculateTeamTotal(team2Players))} points
+                        </div>
+
+                        {/* Player Info Section */}
+                        <div className="analysis-section">
+                          <h4 className="section-heading">Player Info</h4>
+                          
+                          {/* Projected Points per Game Row */}
+                          <div className="comparison-row">
+                            <div className="team-value">
+                              {calculateTotalProjPtsPerGame(team1Players)}
+                            </div>
+                            <div className="diff-value">
+                              {(() => {
+                                const team1PPG = parseFloat(calculateTotalProjPtsPerGame(team1Players));
+                                const team2PPG = parseFloat(calculateTotalProjPtsPerGame(team2Players));
+                                const diff = Math.abs(team1PPG - team2PPG);
+                                const arrow = team1PPG > team2PPG ? '←' : team1PPG < team2PPG ? '→' : '=';
+                                return (
+                                  <div className="diff-content">
+                                    <div className="diff-label">Proj Pts/Game</div>
+                                    <div className="diff-arrow">{arrow}</div>
+                                    <div className="diff-number">{diff.toFixed(1)}</div>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                            <div className="team-value">
+                              {calculateTotalProjPtsPerGame(team2Players)}
+                            </div>
+                          </div>
+
+                          {/* 2025 Points per Game Row */}
+                          <div className="comparison-row">
+                            <div className="team-value">
+                              {calculateTotal2025PtsPerGame(team1Players)}
+                            </div>
+                            <div className="diff-value">
+                              {(() => {
+                                const team1PPG = parseFloat(calculateTotal2025PtsPerGame(team1Players));
+                                const team2PPG = parseFloat(calculateTotal2025PtsPerGame(team2Players));
+                                const diff = Math.abs(team1PPG - team2PPG);
+                                const arrow = team1PPG > team2PPG ? '←' : team1PPG < team2PPG ? '→' : '=';
+                                return (
+                                  <div className="diff-content">
+                                    <div className="diff-label">2025 Pts/Game</div>
+                                    <div className="diff-arrow">{arrow}</div>
+                                    <div className="diff-number">{diff.toFixed(1)}</div>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                            <div className="team-value">
+                              {calculateTotal2025PtsPerGame(team2Players)}
+                            </div>
+                          </div>
+
+                          {/* Average Age Row */}
+                          <div className="comparison-row">
+                            <div className="team-value">
+                              {calculateAvgAge(team1Players)}
+                            </div>
+                            <div className="diff-value">
+                              {(() => {
+                                const team1Age = calculateAvgAge(team1Players);
+                                const team2Age = calculateAvgAge(team2Players);
+                                if (team1Age === 'N/A' || team2Age === 'N/A') {
+                                  return (
+                                    <div className="diff-content">
+                                      <div className="diff-label">Avg Age</div>
+                                      <div className="diff-arrow">=</div>
+                                      <div className="diff-number">N/A</div>
+                                    </div>
+                                  );
+                                }
+                                const diff = Math.abs(parseFloat(team1Age) - parseFloat(team2Age));
+                                const arrow = parseFloat(team1Age) < parseFloat(team2Age) ? '←' : parseFloat(team1Age) > parseFloat(team2Age) ? '→' : '=';
+                                return (
+                                  <div className="diff-content">
+                                    <div className="diff-label">Avg Age</div>
+                                    <div className="diff-arrow">{arrow}</div>
+                                    <div className="diff-number">{diff.toFixed(1)}</div>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                            <div className="team-value">
+                              {calculateAvgAge(team2Players)}
+                            </div>
                           </div>
                         </div>
                       </div>
