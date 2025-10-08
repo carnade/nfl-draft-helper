@@ -215,6 +215,18 @@ body.dark .same-owner-league {
   color: #a5d6a7 !important;
 }
 
+/* Available player highlighting */
+.available {
+  background-color: #fff3cd !important;
+  color: #856404 !important;
+  font-weight: 600;
+}
+
+body.dark .available {
+  background-color: #664d03 !important;
+  color: #ffecb5 !important;
+}
+
 .trade-league-owner {
   color: #7f8c8d;
   font-size: 14px;

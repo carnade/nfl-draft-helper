@@ -69,10 +69,8 @@ function TradeAnalyzer({ userName, setUserName }) {
   const [team2Search, setTeam2Search] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [activeSearch, setActiveSearch] = useState(null); // 'team1' or 'team2'
-  const [tradePartner, setTradePartner] = useState("");
   const [rosterData, setRosterData] = useState({}); // Cache for roster data
   const [usernameMap, setUsernameMap] = useState({});
-  const [userId, setUserId] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [playerDataCache, setPlayerDataCache] = useState({}); // Cache for additional player data
 
@@ -209,7 +207,6 @@ function TradeAnalyzer({ userName, setUserName }) {
         return;
       }
       
-      setUserId(resolvedUserId);
       
       const response = await fetch(
         `https://api.sleeper.app/v1/user/${resolvedUserId}/leagues/nfl/2025`
@@ -514,6 +511,8 @@ function TradeAnalyzer({ userName, setUserName }) {
   };
 
   // Calculate team totals (using projected totals for now)
+  // Unused but kept for potential future use
+  // eslint-disable-next-line no-unused-vars
   const calculateTeamTotal = (players) => {
     return players.reduce((total, player) => total + (player.projTotal || 0), 0);
   };
@@ -565,6 +564,8 @@ function TradeAnalyzer({ userName, setUserName }) {
   };
 
   // Get team captain info for a player
+  // Unused but kept for potential future use
+  // eslint-disable-next-line no-unused-vars
   const getTeamCaptainInfo = (playerId) => {
     if (!leaguesData.length || !rosterData) return [];
     
@@ -634,6 +635,7 @@ function TradeAnalyzer({ userName, setUserName }) {
     };
 
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fetch leagues when userName changes
@@ -641,13 +643,15 @@ function TradeAnalyzer({ userName, setUserName }) {
     if (userName) {
       fetchLeaguesData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userName]);
 
   // Get team name by owner ID
   const getTeamName = (leagueId, ownerId) => {
+    if (!ownerId) return 'Available';
     const teams = teamsData[leagueId] || [];
     const team = teams.find(t => t.user_id === ownerId);
-    return team?.display_name || team?.username || 'Unknown Team';
+    return team?.display_name || team?.username || 'Available';
   };
 
   // Truncate text in the middle
@@ -717,6 +721,8 @@ function TradeAnalyzer({ userName, setUserName }) {
   };
 
   // Get team record for a league
+  // Unused but kept for potential future use
+  // eslint-disable-next-line no-unused-vars
   const getTeamRecord = (leagueId) => {
     const rosters = rosterData[leagueId] || [];
     const hasTradePartnerPlayers = team2Players.length > 0;
@@ -741,41 +747,45 @@ function TradeAnalyzer({ userName, setUserName }) {
     const playersByLeague = {};
     
     team2Players.forEach((player, index) => {
-      // Find which league this player belongs to
+      // Skip picks as they don't have league ownership
+      if (player.isPick) return;
+      
+      // Check all leagues for this player
       leaguesData.forEach(league => {
         const rosters = rosterData[league.league_id] || [];
         const playerRoster = rosters.find(r => 
           r.players && r.players.includes(player.id)
         );
         
-        if (playerRoster) {
-          if (!playersByLeague[league.league_id]) {
-            playersByLeague[league.league_id] = {
-              league: league,
-              players: []
-            };
-          }
-          playersByLeague[league.league_id].players.push({
-            player: player,
-            playerNumber: index + 1,
-            roster: playerRoster
-          });
+        // Always add the player to this league (owned or available)
+        if (!playersByLeague[league.league_id]) {
+          playersByLeague[league.league_id] = {
+            league: league,
+            players: []
+          };
         }
+        
+        playersByLeague[league.league_id].players.push({
+          player: player,
+          playerNumber: index + 1,
+          roster: playerRoster || { owner_id: null, players: [], settings: {} }
+        });
       });
     });
     
     // Add owner matching analysis to each league group
     return Object.values(playersByLeague).map(leagueGroup => {
-      const owners = leagueGroup.players.map(p => p.roster.owner_id);
+      const owners = leagueGroup.players.map(p => p.roster.owner_id).filter(id => id);
       const uniqueOwners = [...new Set(owners)];
       // Only mark as same owner if there are multiple players AND all have the same owner
-      const allSameOwner = leagueGroup.players.length > 1 && uniqueOwners.length === 1;
+      const allSameOwner = leagueGroup.players.length > 1 && uniqueOwners.length === 1 && owners.length === leagueGroup.players.length;
       
       return {
         ...leagueGroup,
         allSameOwner,
         ownerMatches: leagueGroup.players.map(playerData => {
           const playerOwner = playerData.roster.owner_id;
+          if (!playerOwner) return false; // Available players don't match
           const otherOwners = leagueGroup.players.filter(p => p.player.id !== playerData.player.id).map(p => p.roster.owner_id);
           const hasMatchingOwner = otherOwners.includes(playerOwner);
           return hasMatchingOwner;
@@ -930,7 +940,7 @@ function TradeAnalyzer({ userName, setUserName }) {
                   {/* Team 2 Panel */}
                   <div className="trade-panel">
                     <div className="panel-header">
-                      <h3>{tradePartner ? `${tradePartner.charAt(0).toUpperCase() + tradePartner.slice(1)} gets...` : 'Trade Partner gets...'}</h3>
+                      <h3>Trade Partner gets...</h3>
                     </div>
                     
                     <div className="search-container">
@@ -1232,11 +1242,11 @@ function TradeAnalyzer({ userName, setUserName }) {
                           )}
                           {playerIndex > 0 && <div className="trade-league-name"></div>}
                           <div className="trade-league-player">{playerData.playerNumber}</div>
-                          <div className={`trade-league-owner ${leagueGroup.ownerMatches[playerIndex] ? 'same-owner' : ''}`}>
+                          <div className={`trade-league-owner ${leagueGroup.ownerMatches[playerIndex] ? 'same-owner' : ''} ${!playerData.roster.owner_id ? 'available' : ''}`}>
                             {getTeamName(leagueGroup.league.league_id, playerData.roster.owner_id)}
                           </div>
-                          <div className={`trade-league-record ${leagueGroup.ownerMatches[playerIndex] ? 'same-owner' : ''}`}>
-                            {`${playerData.roster.settings?.wins || 0}-${playerData.roster.settings?.losses || 0}-${playerData.roster.settings?.ties || 0}`}
+                          <div className={`trade-league-record ${leagueGroup.ownerMatches[playerIndex] ? 'same-owner' : ''} ${!playerData.roster.owner_id ? 'available' : ''}`}>
+                            {playerData.roster.owner_id ? `${playerData.roster.settings?.wins || 0}-${playerData.roster.settings?.losses || 0}-${playerData.roster.settings?.ties || 0}` : '-'}
                           </div>
                         </div>
                       ))}
