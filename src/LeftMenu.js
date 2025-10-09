@@ -13,6 +13,7 @@ import {
   faTimes,
   faScroll,
   faCog, // <-- import the cog icon
+  faArrowRightArrowLeft,
 } from "@fortawesome/free-solid-svg-icons";
 import "./LeftMenu.css";
 
@@ -22,7 +23,7 @@ function LeftMenu({ userName, setUserName }) {
 
   // Manually update this timestamp when you want the changelog to be considered "updated".
   // Edit this constant in the source and deploy/build to change the value.
-  const MANUAL_LAST_UPDATED = "2025-08-29T00:00:00.000Z";
+  const MANUAL_LAST_UPDATED = "2025-10-07T00:00:00.000Z";
 
   const checkUnread = () => {
     try {
@@ -120,6 +121,12 @@ function LeftMenu({ userName, setUserName }) {
           >
             <FontAwesomeIcon icon={faMedal} className="menu-icon" />
             <span>Bestball</span>
+          </Link>
+        </li>
+        <li>
+          <Link to="/trade-analyzer" className="menu-link">
+            <FontAwesomeIcon icon={faArrowRightArrowLeft} className="menu-icon" />
+            <span>Trade Helper</span>
           </Link>
         </li>
 

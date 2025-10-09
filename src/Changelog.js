@@ -21,6 +21,17 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2025-10-07",
+      title: "Trade Helper",
+      items: [
+        "Search and add players or draft picks to both sides of a trade",
+        "Compare dynasty values using KTC and FantasyCalc rankings",
+        "Analyze projected vs actual 2025 points per game",
+        "View average team age and see which side wins each metric",
+        "Automatic league info display showing which teams own the players",
+      ],
+    },
+    {
       date: "2025-09-01",
       title: "First changelog and Stats & Bestball improvements",
       items: [
