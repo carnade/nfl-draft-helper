@@ -115,6 +115,35 @@
   box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.15);
 }
 
+.news-badge {
+  position: absolute;
+  right: 10px;
+  top: 8px;
+  background: linear-gradient(135deg, #ff0000, #cc0000);
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transform: rotate(-8deg);
+  box-shadow: 0 2px 8px rgba(255, 0, 0, 0.4);
+  animation: pulse-badge 2s ease-in-out infinite;
+  letter-spacing: 0.5px;
+  font-family: 'Arial Black', 'Arial Bold', sans-serif;
+  text-transform: uppercase;
+}
+
+@keyframes pulse-badge {
+  0%, 100% {
+    transform: rotate(-8deg) scale(1);
+    box-shadow: 0 2px 8px rgba(255, 0, 0, 0.4);
+  }
+  50% {
+    transform: rotate(-8deg) scale(1.08);
+    box-shadow: 0 4px 12px rgba(255, 0, 0, 0.6);
+  }
+}
+
 /* .changelog-set-btn removed (admin control not needed in UI) */
 
 /* Hide only the text <span> when collapsed */
