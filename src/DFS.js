@@ -19,6 +19,14 @@ function DFS() {
     FLX: null,
     DST: null
   });
+  
+  // Filter states
+  const [salaryRange, setSalaryRange] = useState([0, 10000]);
+  const [minSalary, setMinSalary] = useState(0);
+  const [maxSalary, setMaxSalary] = useState(10000);
+  const [selectedTeam, setSelectedTeam] = useState('');
+  const [selectedPosition, setSelectedPosition] = useState(null);
+  const [hideUnavailable, setHideUnavailable] = useState(false);
 
   useEffect(() => {
     // Fetch the CSV file
@@ -88,6 +96,17 @@ function DFS() {
           });
         
         setPlayers(data);
+        
+        // Calculate min and max salary
+        if (data.length > 0) {
+          const salaries = data.map(p => p.salary).filter(s => s);
+          const min = Math.min(...salaries);
+          const max = Math.max(...salaries);
+          setMinSalary(min);
+          setMaxSalary(max);
+          setSalaryRange([min, max]);
+        }
+        
         setLoading(false);
       })
       .catch(error => {
@@ -104,10 +123,42 @@ function DFS() {
     setSortConfig({ key, direction });
   };
 
-  const getSortedPlayers = () => {
-    if (!sortConfig.key) return players;
+  const getFilteredPlayers = () => {
+    return players.filter(player => {
+      // Salary filter
+      if (player.salary < salaryRange[0] || player.salary > salaryRange[1]) {
+        return false;
+      }
+      
+      // Team filter
+      if (selectedTeam && player.team !== selectedTeam) {
+        return false;
+      }
+      
+      // Position filter
+      if (selectedPosition && player.position !== selectedPosition) {
+        return false;
+      }
+      
+      // Hide unavailable filter
+      if (hideUnavailable) {
+        const inRoster = isPlayerInRoster(player);
+        const canAdd = canAddPlayer(player);
+        if (!inRoster && !canAdd) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+  };
 
-    return [...players].sort((a, b) => {
+  const getSortedPlayers = () => {
+    const filtered = getFilteredPlayers();
+    
+    if (!sortConfig.key) return filtered;
+
+    return [...filtered].sort((a, b) => {
       const aValue = a[sortConfig.key];
       const bValue = b[sortConfig.key];
 
@@ -130,6 +181,11 @@ function DFS() {
         return aStr > bStr ? -1 : aStr < bStr ? 1 : 0;
       }
     });
+  };
+
+  const getUniqueTeams = () => {
+    const teams = [...new Set(players.map(p => p.team).filter(t => t))];
+    return teams.sort();
   };
 
   const getSortIcon = (key) => {
@@ -315,53 +371,161 @@ function DFS() {
         <p className="dfs-subtitle">Daily Fantasy Sports • Week 6</p>
       </div>
 
-      <div className="dfs-team-section">
-        <h2>My Team</h2>
-        <table className="dfs-team-table">
-          <thead>
-            <tr>
-              <th>Position</th>
-              <th>Player</th>
-              <th>Salary</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {Object.keys(roster).map((key) => (
-              <tr key={key}>
-                <td>
-                  <div 
-                    className="position-badge"
-                    style={{ backgroundColor: getPositionColor(key) }}
-                  >
-                    {getPositionLabel(key)}
-                  </div>
-                </td>
-                <td className="player-name-cell">
-                  {roster[key] ? roster[key].name : '-'}
-                </td>
+      <div className="dfs-top-section">
+        <div className="dfs-team-section">
+          <h2>My Team</h2>
+          <table className="dfs-team-table">
+            <thead>
+              <tr>
+                <th>Position</th>
+                <th>Player</th>
+                <th>Salary</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.keys(roster).map((key) => (
+                <tr key={key}>
+                  <td>
+                    <div 
+                      className="position-badge"
+                      style={{ backgroundColor: getPositionColor(key) }}
+                    >
+                      {getPositionLabel(key)}
+                    </div>
+                  </td>
+                  <td className="player-name-cell">
+                    {roster[key] ? roster[key].name : '-'}
+                  </td>
+                  <td className="salary-cell">
+                    {roster[key] ? `$${roster[key].salary.toLocaleString()}` : '-'}
+                  </td>
+                  <td className="action-cell">
+                    <button
+                      className="roster-remove-btn"
+                      onClick={() => removePlayerFromRoster(key)}
+                      disabled={!roster[key]}
+                    >
+                      ×
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              <tr className="total-row">
+                <td colSpan="3"><strong>Total</strong></td>
                 <td className="salary-cell">
-                  {roster[key] ? `$${roster[key].salary.toLocaleString()}` : '-'}
-                </td>
-                <td className="action-cell">
-                  <button
-                    className="roster-remove-btn"
-                    onClick={() => removePlayerFromRoster(key)}
-                    disabled={!roster[key]}
-                  >
-                    ×
-                  </button>
+                  <strong>${getTotalSalary().toLocaleString()}</strong>
                 </td>
               </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div className="dfs-filters-section">
+        <h3>Filters</h3>
+
+        <div className="filter-group">
+          <div className="toggle-container">
+            <label className="toggle-switch">
+              <input 
+                type="checkbox" 
+                checked={hideUnavailable}
+                onChange={(e) => setHideUnavailable(e.target.checked)}
+              />
+              <span className="toggle-slider"></span>
+            </label>
+            <span className="toggle-label">Hide unavailable players</span>
+          </div>
+        </div>
+        
+        <div className="filter-group">
+          <label className="filter-label">Salary Range:</label>
+          <div className="salary-slider-container">
+            <div className="dual-slider-wrapper">
+              <input
+                type="range"
+                min={minSalary}
+                max={maxSalary}
+                value={salaryRange[0]}
+                onChange={(e) => {
+                  const value = Number(e.target.value);
+                  if (value < salaryRange[1]) {
+                    setSalaryRange([value, salaryRange[1]]);
+                  }
+                }}
+                className="salary-slider salary-slider-min"
+              />
+              <input
+                type="range"
+                min={minSalary}
+                max={maxSalary}
+                value={salaryRange[1]}
+                onChange={(e) => {
+                  const value = Number(e.target.value);
+                  if (value > salaryRange[0]) {
+                    setSalaryRange([salaryRange[0], value]);
+                  }
+                }}
+                className="salary-slider salary-slider-max"
+              />
+            </div>
+            <div className="salary-values">
+              <span>${salaryRange[0].toLocaleString()}</span>
+              <span>${salaryRange[1].toLocaleString()}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="filter-group">
+          <label className="filter-label">Team:</label>
+          <select 
+            value={selectedTeam} 
+            onChange={(e) => setSelectedTeam(e.target.value)}
+            className="team-dropdown"
+          >
+            <option value="">All Teams</option>
+            {getUniqueTeams().map(team => (
+              <option key={team} value={team}>{team}</option>
             ))}
-            <tr className="total-row">
-              <td colSpan="3"><strong>Total</strong></td>
-              <td className="salary-cell">
-                <strong>${getTotalSalary().toLocaleString()}</strong>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+          </select>
+        </div>
+
+        <div className="filter-group">
+          <label className="filter-label">Position:</label>
+          <div className="filter-buttons">
+            <button
+              className={`filter-button ${selectedPosition === 'QB' ? 'qb-active' : ''}`}
+              onClick={() => setSelectedPosition(prev => prev === 'QB' ? null : 'QB')}
+            >
+              QB
+            </button>
+            <button
+              className={`filter-button ${selectedPosition === 'RB' ? 'rb-active' : ''}`}
+              onClick={() => setSelectedPosition(prev => prev === 'RB' ? null : 'RB')}
+            >
+              RB
+            </button>
+            <button
+              className={`filter-button ${selectedPosition === 'WR' ? 'wr-active' : ''}`}
+              onClick={() => setSelectedPosition(prev => prev === 'WR' ? null : 'WR')}
+            >
+              WR
+            </button>
+            <button
+              className={`filter-button ${selectedPosition === 'TE' ? 'te-active' : ''}`}
+              onClick={() => setSelectedPosition(prev => prev === 'TE' ? null : 'TE')}
+            >
+              TE
+            </button>
+            <button
+              className={`filter-button ${selectedPosition === 'DST' ? 'dst-active' : ''}`}
+              onClick={() => setSelectedPosition(prev => prev === 'DST' ? null : 'DST')}
+            >
+              DST
+            </button>
+          </div>
+        </div>
+        </div>
       </div>
       
       <div className="dfs-content">
