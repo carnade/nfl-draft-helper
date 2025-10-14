@@ -14,6 +14,7 @@ import {
   faScroll,
   faCog, // <-- import the cog icon
   faArrowRightArrowLeft,
+  faDollarSign,
 } from "@fortawesome/free-solid-svg-icons";
 import "./LeftMenu.css";
 
@@ -127,6 +128,12 @@ function LeftMenu({ userName, setUserName }) {
           <Link to="/trade-analyzer" className="menu-link">
             <FontAwesomeIcon icon={faArrowRightArrowLeft} className="menu-icon" />
             <span>Trade Helper</span>
+          </Link>
+        </li>
+        <li>
+          <Link to="/dfs" className="menu-link">
+            <FontAwesomeIcon icon={faDollarSign} className="menu-icon" />
+            <span>DFS</span>
           </Link>
         </li>
 

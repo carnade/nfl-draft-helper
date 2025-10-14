@@ -1,0 +1,452 @@
+.dfs-container {
+  padding: 20px;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.dfs-header {
+  margin-bottom: 30px;
+}
+
+.dfs-header h1 {
+  margin: 0 0 8px 0;
+  font-size: 2rem;
+  color: #2c3e50;
+}
+
+.dfs-subtitle {
+  margin: 0;
+  color: #7f8c8d;
+  font-size: 1rem;
+}
+
+.dfs-team-section {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  margin-bottom: 20px;
+  max-width: 500px;
+}
+
+.dfs-team-section h2 {
+  margin: 0 0 15px 0;
+  font-size: 1.5rem;
+  color: #2c3e50;
+}
+
+.dfs-team-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+  display: grid;
+  grid-template-columns: 1fr 8fr 3fr 40px;
+}
+
+.dfs-team-table thead,
+.dfs-team-table tbody {
+  display: contents;
+}
+
+.dfs-team-table thead tr,
+.dfs-team-table tbody tr {
+  display: contents;
+}
+
+.dfs-team-table thead th {
+  text-align: left;
+  padding: 10px;
+  font-weight: 600;
+  color: #2c3e50;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.dfs-team-table tbody td {
+  padding: 10px;
+  color: #495057;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.position-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-weight: bold;
+  color: #fff;
+  text-align: center;
+  min-width: 50px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.dfs-team-table .player-name-cell {
+  text-align: left;
+  color: #2c3e50;
+}
+
+.dfs-team-table .salary-cell {
+  text-align: right;
+  font-weight: 600;
+  color: #28a745;
+}
+
+.dfs-team-table .action-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 4px;
+}
+
+.roster-remove-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 4px;
+  background-color: #bd2130;
+  color: white;
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+}
+
+.roster-remove-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  background-color: #a71d2a;
+}
+
+.roster-remove-btn:disabled {
+  opacity: 0;
+  cursor: default;
+  pointer-events: none;
+}
+
+.dfs-team-table .total-row td {
+  padding: 12px 10px;
+  font-size: 1.05rem;
+  border-top: 2px solid #2c3e50;
+  background-color: #f8f9fa;
+  border-bottom: none;
+}
+
+.dfs-content {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  overflow-x: auto;
+}
+
+.dfs-loading {
+  text-align: center;
+  padding: 40px;
+  color: #7f8c8d;
+  font-size: 1.1rem;
+}
+
+.dfs-table-wrapper {
+  overflow-x: auto;
+  width: 100%;
+}
+
+.dfs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  table-layout: auto;
+  display: table;
+}
+
+.dfs-table thead {
+  background: #f8f9fa;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: table-header-group;
+}
+
+.dfs-table thead tr {
+  display: table-row;
+}
+
+.dfs-table tbody {
+  display: table-row-group;
+}
+
+.dfs-table tbody tr {
+  display: table-row;
+}
+
+.dfs-table th {
+  padding: 12px 8px;
+  text-align: center;
+  font-weight: 600;
+  color: #2c3e50;
+  border-bottom: 2px solid #dee2e6;
+  white-space: nowrap;
+  user-select: none;
+  display: table-cell;
+}
+
+.dfs-table th:first-child {
+  text-align: left;
+}
+
+.dfs-table th.action-column {
+  width: 50px;
+  text-align: center;
+  padding: 12px 4px;
+}
+
+.dfs-table th.sortable {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.dfs-table th.sortable:hover {
+  background-color: #e9ecef;
+}
+
+.dfs-table th span {
+  margin-right: 6px;
+}
+
+.dfs-table .sort-icon {
+  opacity: 0.3;
+  font-size: 0.8rem;
+  transition: opacity 0.2s;
+  margin-left: 2px;
+}
+
+.dfs-table .sort-icon.active {
+  opacity: 1;
+  color: #007bff;
+}
+
+.dfs-table th:hover .sort-icon {
+  opacity: 0.6;
+}
+
+.dfs-table tbody tr {
+  border-bottom: 1px solid #dee2e6;
+  transition: background-color 0.15s;
+  display: table-row;
+}
+
+.dfs-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.dfs-table td {
+  padding: 10px 8px;
+  color: #495057;
+  white-space: nowrap;
+  display: table-cell;
+  text-align: center;
+}
+
+.dfs-table td:first-child {
+  text-align: left;
+}
+
+.dfs-table td.action-column {
+  width: 50px;
+  text-align: center;
+  padding: 4px;
+}
+
+.player-toggle-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 4px;
+  background-color: #1e7e34;
+  color: white;
+  font-size: 26px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+}
+
+.player-toggle-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.player-toggle-btn.selected {
+  background-color: #bd2130;
+}
+
+.player-toggle-btn.selected:hover {
+  background-color: #a71d2a;
+}
+
+.player-toggle-btn.disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.player-toggle-btn.disabled:hover {
+  transform: none;
+  box-shadow: none;
+  background-color: #6c757d;
+}
+
+.dfs-table td.injury {
+  color: #dc3545;
+  font-weight: 600;
+}
+
+/* Position badges */
+.dfs-table td:nth-child(2) {
+  font-weight: 600;
+}
+
+/* Salary column - make it stand out */
+.dfs-table td:nth-child(4) {
+  font-weight: 600;
+  color: #28a745;
+}
+
+/* Projection and value columns */
+.dfs-table td:nth-child(14),
+.dfs-table td:nth-child(15) {
+  font-weight: 600;
+  color: #007bff;
+}
+
+/* Dark mode support */
+body.dark .dfs-header h1 {
+  color: #ecf0f1;
+}
+
+body.dark .dfs-subtitle {
+  color: #95a5a6;
+}
+
+body.dark .dfs-team-section {
+  background: #2a2a2a;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+body.dark .dfs-team-section h2 {
+  color: #ecf0f1;
+}
+
+body.dark .dfs-team-table thead th {
+  color: #fff;
+  border-bottom-color: #555;
+}
+
+body.dark .dfs-team-table tbody td {
+  color: #e2e2e2;
+  border-bottom-color: #444;
+}
+
+body.dark .dfs-team-table .player-name-cell {
+  color: #ecf0f1;
+}
+
+body.dark .dfs-team-table .salary-cell {
+  color: #51cf66;
+}
+
+body.dark .dfs-team-table .total-row td {
+  border-top-color: #555;
+  background-color: #35353b;
+}
+
+body.dark .roster-remove-btn {
+  background-color: #bd2130;
+}
+
+body.dark .roster-remove-btn:hover {
+  background-color: #a71d2a;
+}
+
+body.dark .dfs-content {
+  background: #2a2a2a;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+body.dark .dfs-loading {
+  color: #95a5a6;
+}
+
+body.dark .dfs-table thead {
+  background: #35353b;
+}
+
+body.dark .dfs-table th {
+  color: #fff;
+  border-bottom-color: #555;
+}
+
+body.dark .dfs-table th.sortable:hover {
+  background-color: #45454b;
+}
+
+body.dark .dfs-table tbody tr {
+  border-bottom-color: #444;
+}
+
+body.dark .dfs-table tbody tr:hover {
+  background-color: #35353b;
+}
+
+body.dark .dfs-table td {
+  color: #e2e2e2;
+}
+
+body.dark .dfs-table td.injury {
+  color: #ff6666;
+}
+
+body.dark .dfs-table td:nth-child(4) {
+  color: #51cf66;
+}
+
+body.dark .dfs-table td:nth-child(14),
+body.dark .dfs-table td:nth-child(15) {
+  color: #66b2ff;
+}
+
+body.dark .player-toggle-btn {
+  background-color: #155724;
+}
+
+body.dark .player-toggle-btn:hover {
+  background-color: #1e7e34;
+}
+
+body.dark .player-toggle-btn.selected {
+  background-color: #bd2130;
+}
+
+body.dark .player-toggle-btn.selected:hover {
+  background-color: #a71d2a;
+}
+
+body.dark .player-toggle-btn.disabled {
+  background-color: #495057;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+body.dark .player-toggle-btn.disabled:hover {
+  transform: none;
+  box-shadow: none;
+  background-color: #495057;
+}
+
