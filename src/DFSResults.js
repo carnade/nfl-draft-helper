@@ -11,7 +11,6 @@ function DFSResults() {
   const [currentWeek, setCurrentWeek] = useState(null);
   const [selectedWeek, setSelectedWeek] = useState(null);
   const [fantasyPoints, setFantasyPoints] = useState({});
-  const [lineups, setLineups] = useState([]);
   const [loadedFromUrl, setLoadedFromUrl] = useState(false);
   const [loadingPoints, setLoadingPoints] = useState(false);
   const [visibleRanks, setVisibleRanks] = useState(new Set());

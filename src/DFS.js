@@ -9,7 +9,6 @@ function DFS({ userName }) {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
-  const [selectedPlayers, setSelectedPlayers] = useState(new Set());
   const [roster, setRoster] = useState({
     QB: null,
     RB1: null,
@@ -345,19 +344,9 @@ function DFS({ userName }) {
       if (slotKey) {
         removePlayerFromRoster(slotKey);
       }
-      setSelectedPlayers(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(index);
-        return newSet;
-      });
     } else {
       // Add to roster
       addPlayerToRoster(player);
-      setSelectedPlayers(prev => {
-        const newSet = new Set(prev);
-        newSet.add(index);
-        return newSet;
-      });
     }
   };
 
