@@ -276,6 +276,47 @@
   border-radius: 12px;
   width: 100%;
   box-sizing: border-box;
+  transition: opacity 2s ease-in, transform 2s ease-in;
+  position: relative;
+}
+
+.lineup-grid.hidden {
+  opacity: 0;
+  transform: translateY(20px);
+  height: 0;
+  overflow: hidden;
+  padding: 0;
+  margin: 0;
+}
+
+.lineup-grid.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.lineup-grid.ghost-grid {
+  opacity: 0.4;
+}
+
+.ghost-rank {
+  background: #e0e0e0;
+  color: #999;
+}
+
+.ghost-text {
+  color: #999;
+}
+
+.ghost-player-card {
+  background: #e0e0e0;
+  border-radius: 8px;
+  min-height: 70px;
+  border: 1px solid #ccc;
+}
+
+.ghost-total {
+  background: #999;
+  color: #666;
 }
 
 .grid-header {
@@ -527,6 +568,29 @@ body.dark .results-grid-section h2 {
 
 body.dark .lineup-grid {
   background: #35353b;
+}
+
+body.dark .lineup-grid.ghost-grid {
+  opacity: 0.3;
+}
+
+body.dark .ghost-rank {
+  background: #3a3a3a;
+  color: #666;
+}
+
+body.dark .ghost-text {
+  color: #666;
+}
+
+body.dark .ghost-player-card {
+  background: #3a3a3a;
+  border-color: #555;
+}
+
+body.dark .ghost-total {
+  background: #555;
+  color: #444;
 }
 
 body.dark .grid-header {

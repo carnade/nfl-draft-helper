@@ -14,6 +14,7 @@ function DFSResults() {
   const [lineups, setLineups] = useState([]);
   const [loadedFromUrl, setLoadedFromUrl] = useState(false);
   const [loadingPoints, setLoadingPoints] = useState(false);
+  const [visibleRanks, setVisibleRanks] = useState(new Set());
 
   const handleProceed = async () => {
     try {
@@ -114,13 +115,108 @@ function DFSResults() {
         .then(data => {
           setFantasyPoints(data);
           setLoadingPoints(false);
+          
+          // If loaded from URL, start the reveal animation
+          if (loadedFromUrl && inputData) {
+            startRevealAnimation();
+          }
         })
         .catch(err => {
           console.error('Error fetching fantasy points:', err);
           setLoadingPoints(false);
         });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedWeek]);
+
+  const startRevealAnimation = () => {
+    const lineupData = parseLineups();
+    const totalLineups = lineupData.length;
+    
+    // Initially show ranks 4 and beyond, show ghosts for 1-3
+    const initialVisible = new Set();
+    for (let i = 4; i <= totalLineups; i++) {
+      initialVisible.add(i);
+    }
+    // Add negative numbers to indicate ghost state
+    if (totalLineups >= 1) initialVisible.add(-1);
+    if (totalLineups >= 2) initialVisible.add(-2);
+    if (totalLineups >= 3) initialVisible.add(-3);
+    
+    setVisibleRanks(initialVisible);
+    
+    // Reveal rank 3 after 4 seconds
+    if (totalLineups >= 3) {
+      setTimeout(() => {
+        setVisibleRanks(prev => {
+          const next = new Set(prev);
+          next.delete(-3);
+          next.add(3);
+          return next;
+        });
+        
+        // Reveal rank 2 after another 2 seconds
+        if (totalLineups >= 2) {
+          setTimeout(() => {
+            setVisibleRanks(prev => {
+              const next = new Set(prev);
+              next.delete(-2);
+              next.add(2);
+              return next;
+            });
+            
+            // Reveal rank 1 after another 2 seconds
+            setTimeout(() => {
+              setVisibleRanks(prev => {
+                const next = new Set(prev);
+                next.delete(-1);
+                next.add(1);
+                return next;
+              });
+            }, 2000);
+          }, 2000);
+        } else {
+          // If only 2 lineups, reveal rank 1 next
+          setTimeout(() => {
+            setVisibleRanks(prev => {
+              const next = new Set(prev);
+              next.delete(-1);
+              next.add(1);
+              return next;
+            });
+          }, 2000);
+        }
+      }, 4000);
+    } else if (totalLineups === 2) {
+      // If only 2 lineups, reveal rank 2 then rank 1
+      setTimeout(() => {
+        setVisibleRanks(prev => {
+          const next = new Set(prev);
+          next.delete(-2);
+          next.add(2);
+          return next;
+        });
+        setTimeout(() => {
+          setVisibleRanks(prev => {
+            const next = new Set(prev);
+            next.delete(-1);
+            next.add(1);
+            return next;
+          });
+        }, 2000);
+      }, 4000);
+    } else if (totalLineups === 1) {
+      // If only 1 lineup, reveal rank 1
+      setTimeout(() => {
+        setVisibleRanks(prev => {
+          const next = new Set(prev);
+          next.delete(-1);
+          next.add(1);
+          return next;
+        });
+      }, 4000);
+    }
+  };
 
   const getPositionColor = (position) => {
     const colors = {
@@ -258,12 +354,44 @@ function DFSResults() {
               ...lineup,
               totalPoints: calculateTotalPoints(lineup.players)
             }))
-            .sort((a, b) => b.totalPoints - a.totalPoints)
-            .map((lineup, idx) => {
-              const rank = idx + 1;
-              
-              return (
-                <div key={idx} className="lineup-grid">
+              .sort((a, b) => b.totalPoints - a.totalPoints)
+              .map((lineup, idx) => {
+                const rank = idx + 1;
+                const isVisible = loadedFromUrl ? visibleRanks.has(rank) : true;
+                const isGhost = loadedFromUrl && visibleRanks.has(-rank);
+                
+                // Show ghost placeholder for top 3 ranks before reveal
+                if (isGhost && rank <= 3) {
+                  return (
+                    <div key={`ghost-${idx}`} className="lineup-grid ghost-grid visible">
+                      <div className="grid-header rank-header">Rank</div>
+                      <div className="grid-header manager-header">Manager</div>
+                      <div className="grid-header">QB</div>
+                      <div className="grid-header">RB</div>
+                      <div className="grid-header">RB</div>
+                      <div className="grid-header">WR</div>
+                      <div className="grid-header">WR</div>
+                      <div className="grid-header">WR</div>
+                      <div className="grid-header">TE</div>
+                      <div className="grid-header">FLEX</div>
+                      <div className="grid-header">DST</div>
+                      <div className="grid-header total-header">Total Points</div>
+
+                      <div className="grid-value rank-value ghost-rank">{rank}</div>
+                      <div className="grid-value manager-value ghost-text">???</div>
+                      {[...Array(9)].map((_, i) => (
+                        <div key={i} className="ghost-player-card"></div>
+                      ))}
+                      <div className="total-points-cell ghost-total">???</div>
+                    </div>
+                  );
+                }
+                
+                return (
+                  <div 
+                    key={idx} 
+                    className={`lineup-grid ${isVisible ? 'visible' : 'hidden'}`}
+                  >
                   <div className="grid-header rank-header">Rank</div>
                   <div className="grid-header manager-header">Manager</div>
                   <div className="grid-header">QB</div>
