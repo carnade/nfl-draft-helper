@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSort, faSortUp, faSortDown } from '@fortawesome/free-solid-svg-icons';
 import './DFS.css';
 
-function DFS() {
+function DFS({ userName }) {
+  const navigate = useNavigate();
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
@@ -27,73 +29,72 @@ function DFS() {
   const [selectedTeam, setSelectedTeam] = useState('');
   const [selectedPosition, setSelectedPosition] = useState(null);
   const [hideUnavailable, setHideUnavailable] = useState(false);
+  const [nameFilter, setNameFilter] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [lineupCode, setLineupCode] = useState('');
 
   useEffect(() => {
-    // Fetch the CSV file
-    fetch('/dfs_example.csv')
-      .then(response => response.text())
-      .then(csvText => {
-        const lines = csvText.split('\n');
-        const headers = lines[0].split(',');
+    const fetchData = async () => {
+      try {
+        // Check cache first
+        const cachedWeek = sessionStorage.getItem('nfl_current_week');
+        const cachedPlayers = sessionStorage.getItem('dfs_players');
+        const cacheTimestamp = sessionStorage.getItem('dfs_cache_timestamp');
         
-        const columnsToRemove = ['week', 'slate', 'game_date'];
+        const now = Date.now();
+        const cacheExpiry = 60 * 60 * 1000; // 1 hour
         
-        const data = lines.slice(1)
-          .filter(line => line.trim())
-          .map(line => {
-            const values = line.split(',');
-            const tempData = {};
-            let firstName = '';
-            let lastName = '';
-            
-            // First pass: collect all data
-            headers.forEach((header, index) => {
-              const value = values[index]?.trim();
-              
-              // Skip columns we don't want
-              if (columnsToRemove.includes(header)) {
-                return;
-              }
-              
-              // Store first and last name separately
-              if (header === 'first_name') {
-                firstName = value || '';
-                return;
-              }
-              if (header === 'last_name') {
-                lastName = value || '';
-                return;
-              }
-              
-              // Convert numeric strings to numbers
-              if (value && !isNaN(value) && value !== '') {
-                tempData[header] = parseFloat(value);
-              } else {
-                tempData[header] = value || '';
-              }
-            });
-            
-            // Second pass: build object in desired order
-            const player = {
-              name: `${firstName} ${lastName}`.trim(),
-              position: tempData.position,
-              team: tempData.team,
-              salary: tempData.salary,
-              injury_status: tempData.injury_status,
-              opp: tempData.opp,
-              spread: tempData.spread,
-              over_under: tempData.over_under,
-              implied_team_score: tempData.implied_team_score,
-              L5_dvp_rank: tempData.L5_dvp_rank,
-              L5_fppg_avg: tempData.L5_fppg_avg,
-              L10_fppg_avg: tempData.L10_fppg_avg,
-              szn_fppg_avg: tempData.szn_fppg_avg,
-              ppg_projection: tempData.ppg_projection,
-              value_projection: tempData.value_projection
-            };
-            
-            return player;
-          });
+        if (cachedWeek && cachedPlayers && cacheTimestamp && (now - parseInt(cacheTimestamp)) < cacheExpiry) {
+          const data = JSON.parse(cachedPlayers);
+          setPlayers(data);
+          
+          // Calculate min and max salary
+          if (data.length > 0) {
+            const salaries = data.map(p => p.salary).filter(s => s);
+            const min = Math.min(...salaries);
+            const max = Math.max(...salaries);
+            setMinSalary(min);
+            setMaxSalary(max);
+            setSalaryRange([min, max]);
+          }
+          
+          setLoading(false);
+          return;
+        }
+        
+        // Fetch current NFL week
+        const weekResponse = await fetch('https://api.sleeper.app/v1/state/nfl');
+        const weekData = await weekResponse.json();
+        const currentWeek = weekData.week;
+
+        // Fetch DFS salaries
+        const salariesResponse = await fetch(`http://shaggy-latashia-carnade-2ea2054a.koyeb.app/dfs-salaries/week/${currentWeek}`);
+        const salariesData = await salariesResponse.json();
+        
+        // Transform data to match our structure
+        const data = Object.values(salariesData).map(player => ({
+          name: player.name,
+          position: player.position,
+          team: player.team,
+          salary: player.salary,
+          injury_status: player.injury_status || '',
+          opp: player.opponent,
+          spread: player.spread,
+          over_under: player.over_under,
+          implied_team_score: player.proj_team_score,
+          L5_dvp_rank: player.opp_rank,
+          L5_fppg_avg: player.l5_avg,
+          L10_fppg_avg: player.l10_avg,
+          szn_fppg_avg: player.season_avg,
+          ppg_projection: player.projected_points,
+          value_projection: player.value_proj,
+          sleeper_id: player.sleeper_id
+        }));
+        
+        // Cache the data
+        sessionStorage.setItem('nfl_current_week', currentWeek.toString());
+        sessionStorage.setItem('dfs_players', JSON.stringify(data));
+        sessionStorage.setItem('dfs_cache_timestamp', now.toString());
         
         setPlayers(data);
         
@@ -108,11 +109,13 @@ function DFS() {
         }
         
         setLoading(false);
-      })
-      .catch(error => {
-        console.error('Error loading CSV:', error);
+      } catch (error) {
+        console.error('Error loading DFS data:', error);
         setLoading(false);
-      });
+      }
+    };
+    
+    fetchData();
   }, []);
 
   const handleSort = (key) => {
@@ -125,6 +128,11 @@ function DFS() {
 
   const getFilteredPlayers = () => {
     return players.filter(player => {
+      // Name filter (wildcard search)
+      if (nameFilter && !player.name.toLowerCase().includes(nameFilter.toLowerCase())) {
+        return false;
+      }
+      
       // Salary filter
       if (player.salary < salaryRange[0] || player.salary > salaryRange[1]) {
         return false;
@@ -188,6 +196,37 @@ function DFS() {
     return teams.sort();
   };
 
+  const generateLineupCode = () => {
+    // Use userName from props, fallback to localStorage, then 'Anonymous'
+    const settings = JSON.parse(localStorage.getItem('FantasyHelperSettings') || '{}');
+    const username = userName || settings.userName || 'Anonymous';
+    
+    // Build lineup string from roster
+    const lineupParts = Object.values(roster)
+      .filter(player => player !== null)
+      .map(player => `${player.sleeper_id}-${player.salary}`)
+      .join(',');
+    
+    // Base64 encode the lineup
+    const encoded = btoa(lineupParts);
+    
+    // Format: Username:EncodedLineup
+    return `${username}:${encoded}`;
+  };
+
+  const handleFinish = () => {
+    const code = generateLineupCode();
+    setLineupCode(code);
+    setShowModal(true);
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(lineupCode).then(() => {
+      // Could add a visual feedback here
+      console.log('Copied to clipboard!');
+    });
+  };
+
   const getSortIcon = (key) => {
     if (sortConfig.key !== key) {
       return <FontAwesomeIcon icon={faSort} className="sort-icon" />;
@@ -202,7 +241,7 @@ function DFS() {
     if (header === 'name') return 'Player';
     if (header === 'injury_status') return 'Injury';
     if (header === 'opp') return 'Opp';
-    if (header === 'L5_dvp_rank') return 'L5 DVP';
+    if (header === 'L5_dvp_rank') return 'VS DEF';
     if (header === 'L5_fppg_avg') return 'L5 FPPG';
     if (header === 'L10_fppg_avg') return 'L10 FPPG';
     if (header === 'szn_fppg_avg') return 'Season FPPG';
@@ -362,13 +401,38 @@ function DFS() {
   }
 
   const sortedPlayers = getSortedPlayers();
-  const headers = players.length > 0 ? Object.keys(players[0]) : [];
+  
+  // Define explicit header order (excluding sleeper_id which is for internal use)
+  const headers = players.length > 0 ? [
+    'name',
+    'position', 
+    'team',
+    'salary',
+    'injury_status',
+    'opp',
+    'spread',
+    'over_under',
+    'implied_team_score',
+    'L5_dvp_rank',
+    'L5_fppg_avg',
+    'L10_fppg_avg',
+    'szn_fppg_avg',
+    'ppg_projection',
+    'value_projection'
+  ] : [];
 
   return (
     <div className="dfs-container">
       <div className="dfs-header">
-        <h1>DFS</h1>
-        <p className="dfs-subtitle">Daily Fantasy Sports • Week 6</p>
+        <div className="dfs-header-content">
+          <div>
+            <h1>DFS</h1>
+            <p className="dfs-subtitle">Daily Fantasy Sports • Week {sessionStorage.getItem('nfl_current_week') || '...'}</p>
+          </div>
+          <button className="check-results-button" onClick={() => navigate('/dfs/results')}>
+            Check Results!
+          </button>
+        </div>
       </div>
 
       <div className="dfs-top-section">
@@ -436,6 +500,17 @@ function DFS() {
             </label>
             <span className="toggle-label">Hide unavailable players</span>
           </div>
+        </div>
+
+        <div className="filter-group">
+          <label className="filter-label">Player Name:</label>
+          <input
+            type="text"
+            placeholder="Search player name..."
+            value={nameFilter}
+            onChange={(e) => setNameFilter(e.target.value)}
+            className="name-filter-input"
+          />
         </div>
         
         <div className="filter-group">
@@ -526,7 +601,32 @@ function DFS() {
           </div>
         </div>
         </div>
+
+        <button className="finish-button" onClick={handleFinish}>
+          <span className="finish-icon">✓</span>
+          Finish Lineup
+        </button>
       </div>
+
+      {showModal && (
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="lineup-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close-btn" onClick={() => setShowModal(false)}>
+              ×
+            </button>
+            <h2>Your Lineup Code</h2>
+            <div className="lineup-code-container">
+              <code className="lineup-code">{lineupCode}</code>
+              <button className="copy-btn" onClick={copyToClipboard} title="Copy to clipboard">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       <div className="dfs-content">
         <div className="dfs-table-wrapper">
