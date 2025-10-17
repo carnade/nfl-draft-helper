@@ -183,14 +183,34 @@ body.dark .league-highlighted-league {
 
 .roster-grid {
   display: grid;
-  grid-template-columns: 4fr 1fr 2fr 2fr 2fr 1fr; /* Updated to include KTC and FC columns */
+  grid-template-columns: 3.5fr 1fr 1.5fr 1.5fr 1fr 2fr 2fr 2fr 1fr; /* Player, Pos, FPTS/G, Proj Pts, Opp Rank, Status, KTC, FC, Links */
   gap: 10px;
   padding: 10px 0;
+}
+
+.roster-grid .align_center {
+  text-align: center;
 }
 
 .roster-grid-item {
   font-size: 16px;
   padding: 2px 0;
+}
+
+.ordinal-suffix {
+  font-size: 0.7em;
+  vertical-align: super;
+  font-weight: normal;
+}
+
+.dvp-good {
+  color: #dc3545;
+  font-weight: 600;
+}
+
+.dvp-bad {
+  color: #28a745;
+  font-weight: 600;
 }
 
 .value-positive {
@@ -729,6 +749,14 @@ body.dark .league-action-icon {
 
 body.dark .league-action-icon:hover {
   color: #3399ff; /* Slightly darker blueish on hover for dark mode */
+}
+
+body.dark .dvp-good {
+  color: #ff6666;
+}
+
+body.dark .dvp-bad {
+  color: #51cf66;
 }
 
 /* Modal overlay */

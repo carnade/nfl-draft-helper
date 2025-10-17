@@ -59,6 +59,18 @@ body.dark .changelog-entry {
   padding-left: 1.1rem;
 }
 
+.changelog-sublist {
+  margin: 8px 0 0 0;
+  padding-left: 20px;
+  list-style-type: circle;
+  color: #666;
+}
+
+.changelog-sublist li {
+  margin: 4px 0;
+  font-size: 0.95em;
+}
+
 .changelog-help {
   margin-top: 26px;
   font-size: 0.95rem;
@@ -66,6 +78,10 @@ body.dark .changelog-entry {
 }
 
 /* publish button removed; this was an admin helper */
+
+body.dark .changelog-sublist {
+  color: #bbb;
+}
 
 code {
   background: rgba(27, 31, 35, 0.05);
