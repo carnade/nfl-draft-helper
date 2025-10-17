@@ -21,6 +21,9 @@ import "./LeftMenu.css";
 function LeftMenu({ userName, setUserName }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [unreadChangelog, setUnreadChangelog] = useState(false);
+  
+  // Check for beta query parameter
+  const isBetaMode = new URLSearchParams(window.location.search).has('beta');
 
   // Manually update this timestamp when you want the changelog to be considered "updated".
   // Edit this constant in the source and deploy/build to change the value.
@@ -130,12 +133,14 @@ function LeftMenu({ userName, setUserName }) {
             <span>Trade Helper</span>
           </Link>
         </li>
-        <li>
-          <Link to="/dfs" className="menu-link">
-            <FontAwesomeIcon icon={faDollarSign} className="menu-icon" />
-            <span>DFS</span>
-          </Link>
-        </li>
+        {isBetaMode && (
+          <li>
+            <Link to="/dfs" className="menu-link">
+              <FontAwesomeIcon icon={faDollarSign} className="menu-icon" />
+              <span>DFS</span>
+            </Link>
+          </li>
+        )}
 
         <li className="bottom-link">
           <Link to={`/changelog`} className="menu-link" aria-label="Changelog">

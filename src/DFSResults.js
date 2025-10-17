@@ -108,10 +108,36 @@ function DFSResults() {
   useEffect(() => {
     // Fetch fantasy points when week changes
     if (selectedWeek) {
+      // Check cache first
+      const cacheKey = `fantasy_points_week_${selectedWeek}`;
+      const cachedData = sessionStorage.getItem(cacheKey);
+      const cacheTimestamp = sessionStorage.getItem(`${cacheKey}_timestamp`);
+      
+      const now = Date.now();
+      const cacheExpiry = 60 * 60 * 1000; // 1 hour
+      
+      if (cachedData && cacheTimestamp && (now - parseInt(cacheTimestamp)) < cacheExpiry) {
+        // Use cached data
+        const data = JSON.parse(cachedData);
+        setFantasyPoints(data);
+        setLoadingPoints(false);
+        
+        // If loaded from URL, start the reveal animation
+        if (loadedFromUrl && inputData) {
+          startRevealAnimation();
+        }
+        return;
+      }
+      
+      // Fetch from API
       setLoadingPoints(true);
       fetch(`https://shaggy-latashia-carnade-2ea2054a.koyeb.app/fantasy-points/week/${selectedWeek}`)
         .then(res => res.json())
         .then(data => {
+          // Cache the data
+          sessionStorage.setItem(cacheKey, JSON.stringify(data));
+          sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
+          
           setFantasyPoints(data);
           setLoadingPoints(false);
           

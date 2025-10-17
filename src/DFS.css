@@ -24,6 +24,20 @@
   margin: 0;
   color: #7f8c8d;
   font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dfs-info-divider {
+  color: #dee2e6;
+  font-weight: 300;
+}
+
+.dfs-info {
+  font-weight: 600;
+  color: #495057;
 }
 
 .check-results-button {
@@ -804,6 +818,14 @@ body.dark .dfs-header h1 {
 
 body.dark .dfs-subtitle {
   color: #95a5a6;
+}
+
+body.dark .dfs-info-divider {
+  color: #555;
+}
+
+body.dark .dfs-info {
+  color: #adb5bd;
 }
 
 body.dark .check-results-button {

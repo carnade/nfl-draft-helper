@@ -416,7 +416,13 @@ function DFS({ userName }) {
         <div className="dfs-header-content">
           <div>
             <h1>DFS</h1>
-            <p className="dfs-subtitle">Daily Fantasy Sports • Week {sessionStorage.getItem('nfl_current_week') || '...'}</p>
+            <p className="dfs-subtitle">
+              Daily Fantasy Sports • Week {sessionStorage.getItem('nfl_current_week') || '...'}
+              <span className="dfs-info-divider">|</span>
+              <span className="dfs-info">Salary Cap: $50,000</span>
+              <span className="dfs-info-divider">|</span>
+              <span className="dfs-info">PPR Scoring</span>
+            </p>
           </div>
           <button className="check-results-button" onClick={() => navigate('/dfs/results')}>
             Check Results!
