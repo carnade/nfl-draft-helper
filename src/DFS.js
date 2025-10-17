@@ -67,7 +67,7 @@ function DFS({ userName }) {
         const currentWeek = weekData.week;
 
         // Fetch DFS salaries
-        const salariesResponse = await fetch(`http://shaggy-latashia-carnade-2ea2054a.koyeb.app/dfs-salaries/week/${currentWeek}`);
+        const salariesResponse = await fetch(`https://shaggy-latashia-carnade-2ea2054a.koyeb.app/dfs-salaries/week/${currentWeek}`);
         const salariesData = await salariesResponse.json();
         
         // Transform data to match our structure
