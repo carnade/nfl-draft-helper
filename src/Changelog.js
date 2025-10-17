@@ -41,7 +41,7 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
-      date: "2025-10-17",
+      date: "2025-10-21",
       title: "DFS & League Page Enhancements",
       items: [
         {
