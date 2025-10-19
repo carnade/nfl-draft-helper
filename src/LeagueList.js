@@ -717,11 +717,37 @@ function LeagueList() {
     return 'th';
   };
 
-  const getDvpClass = (rank) => {
-    if (!rank) return '';
-    if (rank <= 10) return 'dvp-good'; // Good matchup (weak defense)
-    if (rank >= 22) return 'dvp-bad'; // Bad matchup (strong defense)
-    return '';
+  const getDvpColor = (rank) => {
+    if (!rank || typeof rank !== 'number') return null;
+    
+    if (rank >= 1 && rank <= 10) {
+      // Red gradient: rank 1 is darkest red (#c41e3a), rank 10 is lightest red (#ff9999)
+      const intensity = 1 - ((rank - 1) / 9); // 1.0 at rank 1, 0.1 at rank 10
+      const r = Math.round(196 + (59 * (1 - intensity))); // 196 to 255
+      const g = Math.round(30 + (123 * (1 - intensity))); // 30 to 153
+      const b = Math.round(58 + (95 * (1 - intensity))); // 58 to 153
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+    
+    if (rank >= 22 && rank <= 32) {
+      // Green gradient: rank 22 starts at what rank 30 was, rank 32 is slightly darker
+      const intensity = (rank - 22) / 10; // 0.0 at rank 22, 1.0 at rank 32
+      
+      // Calculate what rank 30 would have been in the old scale
+      const rank30Intensity = (30 - 22) / 10; // 0.8
+      const startR = Math.round(102 - (72 * rank30Intensity)); // ~44
+      const startG = Math.round(204 - (78 * rank30Intensity)); // ~142
+      const startB = Math.round(102 - (50 * rank30Intensity)); // ~62
+      
+      // Darken slightly from rank 22 to 32
+      const r = Math.round(startR - (14 * intensity)); // 44 to 30
+      const g = Math.round(startG - (16 * intensity)); // 142 to 126
+      const b = Math.round(startB - (10 * intensity)); // 62 to 52
+      
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+    
+    return null;
   };
 
   const fetchInjuryReport = useCallback(async () => {
@@ -1221,7 +1247,13 @@ function LeagueList() {
                                       <div className="roster-grid-item align_center">
                                         {dfsData?.projected_points?.toFixed(1) || 'N/A'}
                                       </div>
-                                      <div className={`roster-grid-item align_center ${getDvpClass(dfsData?.opp_rank)}`}>
+                                      <div 
+                                        className="roster-grid-item align_center"
+                                        style={getDvpColor(dfsData?.opp_rank) ? { 
+                                          color: getDvpColor(dfsData.opp_rank), 
+                                          fontWeight: 600 
+                                        } : {}}
+                                      >
                                         {dfsData?.opp_rank ? (
                                           <>
                                             {dfsData.opp_rank}

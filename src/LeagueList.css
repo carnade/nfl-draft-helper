@@ -203,16 +203,6 @@ body.dark .league-highlighted-league {
   font-weight: normal;
 }
 
-.dvp-good {
-  color: #dc3545;
-  font-weight: 600;
-}
-
-.dvp-bad {
-  color: #28a745;
-  font-weight: 600;
-}
-
 .value-positive {
   color: green; /* Positive delta */
 }
@@ -749,14 +739,6 @@ body.dark .league-action-icon {
 
 body.dark .league-action-icon:hover {
   color: #3399ff; /* Slightly darker blueish on hover for dark mode */
-}
-
-body.dark .dvp-good {
-  color: #ff6666;
-}
-
-body.dark .dvp-bad {
-  color: #51cf66;
 }
 
 /* Modal overlay */
