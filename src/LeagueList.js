@@ -42,6 +42,7 @@ function LeagueList() {
   const [ownerSelectedIndex, setOwnerSelectedIndex] = useState(-1);
       const [usernameMap, setUsernameMap] = useState({});
   const [rosterCache, setRosterCache] = useState({}); // Cache for roster data
+  const [dfsProjections, setDfsProjections] = useState({}); // DFS projections data
 
   const [showAllInjuries, setShowAllInjuries] = useState(false);
   const [selectedPosition, setSelectedPosition] = useState(null); // Filter by position
@@ -605,6 +606,36 @@ function LeagueList() {
     [userName]
   );
 
+  const fetchDfsProjections = useCallback(async (week) => {
+    try {
+      // Check cache first
+      const cacheKey = `dfs_projections_week_${week}`;
+      const cachedData = sessionStorage.getItem(cacheKey);
+      const cacheTimestamp = sessionStorage.getItem(`${cacheKey}_timestamp`);
+      
+      const now = Date.now();
+      const cacheExpiry = 60 * 60 * 1000; // 1 hour
+      
+      if (cachedData && cacheTimestamp && (now - parseInt(cacheTimestamp)) < cacheExpiry) {
+        const data = JSON.parse(cachedData);
+        setDfsProjections(data);
+        return;
+      }
+      
+      // Fetch from API
+      const response = await fetch(`${BASE_URL}/dfs-salaries/week/${week}`);
+      const data = await response.json();
+      
+      // Cache the data
+      sessionStorage.setItem(cacheKey, JSON.stringify(data));
+      sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
+      
+      setDfsProjections(data);
+    } catch (error) {
+      console.error('Error fetching DFS projections:', error);
+    }
+  }, []);
+
   const fetchLeagueData = useCallback(async () => {
     try {
       const userResponse = await fetch(
@@ -676,6 +707,49 @@ function LeagueList() {
     }
   }, [userName, fetchPlayerData]);
 
+  const getOrdinalSuffix = (num) => {
+    if (!num) return '';
+    const j = num % 10;
+    const k = num % 100;
+    if (j === 1 && k !== 11) return 'st';
+    if (j === 2 && k !== 12) return 'nd';
+    if (j === 3 && k !== 13) return 'rd';
+    return 'th';
+  };
+
+  const getDvpColor = (rank) => {
+    if (!rank || typeof rank !== 'number') return null;
+    
+    if (rank >= 1 && rank <= 10) {
+      // Red gradient: rank 1 is darkest red (#c41e3a), rank 10 is lightest red (#ff9999)
+      const intensity = 1 - ((rank - 1) / 9); // 1.0 at rank 1, 0.1 at rank 10
+      const r = Math.round(196 + (59 * (1 - intensity))); // 196 to 255
+      const g = Math.round(30 + (123 * (1 - intensity))); // 30 to 153
+      const b = Math.round(58 + (95 * (1 - intensity))); // 58 to 153
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+    
+    if (rank >= 22 && rank <= 32) {
+      // Green gradient: rank 22 starts at what rank 30 was, rank 32 is slightly darker
+      const intensity = (rank - 22) / 10; // 0.0 at rank 22, 1.0 at rank 32
+      
+      // Calculate what rank 30 would have been in the old scale
+      const rank30Intensity = (30 - 22) / 10; // 0.8
+      const startR = Math.round(102 - (72 * rank30Intensity)); // ~44
+      const startG = Math.round(204 - (78 * rank30Intensity)); // ~142
+      const startB = Math.round(102 - (50 * rank30Intensity)); // ~62
+      
+      // Darken slightly from rank 22 to 32
+      const r = Math.round(startR - (14 * intensity)); // 44 to 30
+      const g = Math.round(startG - (16 * intensity)); // 142 to 126
+      const b = Math.round(startB - (10 * intensity)); // 62 to 52
+      
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+    
+    return null;
+  };
+
   const fetchInjuryReport = useCallback(async () => {
     try {
       const response = await fetch(`${BASE_URL}/teams`, {
@@ -693,9 +767,24 @@ function LeagueList() {
   }, []);
 
   useEffect(() => {
+    // Fetch current week first
+    const cachedWeek = sessionStorage.getItem('nfl_current_week');
+    if (cachedWeek) {
+      const week = parseInt(cachedWeek);
+      fetchDfsProjections(week);
+    } else {
+      fetch('https://api.sleeper.app/v1/state/nfl')
+        .then(res => res.json())
+        .then(data => {
+          sessionStorage.setItem('nfl_current_week', data.week.toString());
+          fetchDfsProjections(data.week);
+        })
+        .catch(err => console.error('Error fetching week:', err));
+    }
+    
     fetchLeagueData();
     fetchInjuryReport();
-  }, [fetchLeagueData, fetchInjuryReport]);
+  }, [fetchLeagueData, fetchInjuryReport, fetchDfsProjections]);
 
   useEffect(() => {
     if (!leagues || leagues.length === 0) return;
@@ -1086,19 +1175,28 @@ function LeagueList() {
                                       : group.charAt(0).toUpperCase() +
                                         group.slice(1)}
                                   </div>
-                                  <div className="roster-grid-item roster-header">
+                                  <div className="roster-grid-item roster-header align_center">
                                     Position
                                   </div>
-                                  <div className="roster-grid-item roster-header">
-                                    KTC
+                                  <div className="roster-grid-item roster-header align_center">
+                                    FPTS/G
                                   </div>
-                                  <div className="roster-grid-item roster-header">
-                                    FantasyCalc
+                                  <div className="roster-grid-item roster-header align_center">
+                                    Proj Pts
                                   </div>
-                                  <div className="roster-grid-item roster-header">
+                                  <div className="roster-grid-item roster-header align_center" title="Defense vs Position">
+                                    DvP
+                                  </div>
+                                  <div className="roster-grid-item roster-header align_center">
                                     Status
                                   </div>
-                                  <div className="roster-grid-item roster-header">
+                                  <div className="roster-grid-item roster-header align_center">
+                                    KTC
+                                  </div>
+                                  <div className="roster-grid-item roster-header align_center">
+                                    FantasyCalc
+                                  </div>
+                                  <div className="roster-grid-item roster-header align_center">
                                     Links
                                   </div>
                                 </div>
@@ -1117,6 +1215,12 @@ function LeagueList() {
                                   const ktcDelta =
                                     playerInfo?.["KTC Delta"] || 0; // Access "KTC Delta"
                                   const fcDelta = playerInfo?.["FC Delta"] || 0; // Access "FC Delta"
+                                  
+                                  // Get DFS projection data for this player
+                                  const dfsKey = Object.keys(dfsProjections).find(key => 
+                                    dfsProjections[key]?.sleeper_id === player.toString()
+                                  );
+                                  const dfsData = dfsKey ? dfsProjections[dfsKey] : null;
 
                                   return (
                                     <div key={index} className="roster-grid">
@@ -1132,10 +1236,38 @@ function LeagueList() {
                                           league.league_id
                                         )}
                                       </div>
-                                      <div className="roster-grid-item">
+                                      <div className="roster-grid-item align_center">
                                         {playerInfo?.position || ""}
                                       </div>
-                                      <div className="roster-grid-item">
+                                      <div className="roster-grid-item align_center">
+                                        {playerInfo?.pts_ppr && playerInfo?.gp && playerInfo.gp > 0
+                                          ? (playerInfo.pts_ppr / playerInfo.gp).toFixed(1)
+                                          : 'N/A'}
+                                      </div>
+                                      <div className="roster-grid-item align_center">
+                                        {dfsData?.projected_points?.toFixed(1) || 'N/A'}
+                                      </div>
+                                      <div 
+                                        className="roster-grid-item align_center"
+                                        style={getDvpColor(dfsData?.opp_rank) ? { 
+                                          color: getDvpColor(dfsData.opp_rank), 
+                                          fontWeight: 600 
+                                        } : {}}
+                                      >
+                                        {dfsData?.opp_rank ? (
+                                          <>
+                                            {dfsData.opp_rank}
+                                            <sup className="ordinal-suffix">{getOrdinalSuffix(dfsData.opp_rank)}</sup>
+                                          </>
+                                        ) : 'N/A'}
+                                      </div>
+                                      <div className="roster-grid-item align_center">
+                                        {renderInjuryStatus(
+                                          player,
+                                          league.league_id
+                                        )}
+                                      </div>
+                                      <div className="roster-grid-item align_center">
                                         <span>{ktcValue}</span>
                                         {" ("}
                                         <span
@@ -1153,7 +1285,7 @@ function LeagueList() {
                                         </span>
                                         <span>)</span>
                                       </div>
-                                      <div className="roster-grid-item">
+                                      <div className="roster-grid-item align_center">
                                         <span>
                                           {playerInfo?.["FC Value"] || "N/A"}
                                         </span>
@@ -1173,13 +1305,7 @@ function LeagueList() {
                                         </span>
                                         <span>)</span>
                                       </div>
-                                      <div className="roster-grid-item">
-                                        {renderInjuryStatus(
-                                          player,
-                                          league.league_id
-                                        )}
-                                      </div>
-                                      <div className="roster-grid-item">
+                                      <div className="roster-grid-item align_center">
                                         {renderPlayerLinks(
                                           player,
                                           league.league_id
@@ -1421,6 +1547,9 @@ function LeagueList() {
                   </div>
                   <div className="league-portfolio-grid-header align_center">
                     Count
+                  </div>
+                  <div className="league-portfolio-grid-header align_center">
+                    FPTS/G
                   </div>
 
                   {portfolioData

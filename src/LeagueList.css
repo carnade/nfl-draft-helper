@@ -183,14 +183,24 @@ body.dark .league-highlighted-league {
 
 .roster-grid {
   display: grid;
-  grid-template-columns: 4fr 1fr 2fr 2fr 2fr 1fr; /* Updated to include KTC and FC columns */
+  grid-template-columns: 3.5fr 1fr 1.5fr 1.5fr 1fr 2fr 2fr 2fr 1fr; /* Player, Pos, FPTS/G, Proj Pts, Opp Rank, Status, KTC, FC, Links */
   gap: 10px;
   padding: 10px 0;
+}
+
+.roster-grid .align_center {
+  text-align: center;
 }
 
 .roster-grid-item {
   font-size: 16px;
   padding: 2px 0;
+}
+
+.ordinal-suffix {
+  font-size: 0.7em;
+  vertical-align: super;
+  font-weight: normal;
 }
 
 .value-positive {

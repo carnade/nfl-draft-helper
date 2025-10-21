@@ -4,13 +4,33 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faScroll } from "@fortawesome/free-solid-svg-icons";
 
 function ChangelogEntry({ date, title, items }) {
+  const renderItem = (item) => {
+    if (typeof item === 'string') {
+      return item;
+    }
+    // If item is an object with text and subitems
+    if (item.text && item.subitems) {
+      return (
+        <>
+          {item.text}
+          <ul className="changelog-sublist">
+            {item.subitems.map((subitem, j) => (
+              <li key={j}>{subitem}</li>
+            ))}
+          </ul>
+        </>
+      );
+    }
+    return item;
+  };
+
   return (
     <div className="changelog-entry">
       <div className="changelog-date">{date}</div>
       <h3 className="changelog-title">{title}</h3>
       <ul className="changelog-list">
         {items.map((it, i) => (
-          <li key={i}>{it}</li>
+          <li key={i}>{renderItem(it)}</li>
         ))}
       </ul>
     </div>
@@ -20,6 +40,36 @@ function ChangelogEntry({ date, title, items }) {
 export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
+    {
+      date: "2025-10-21",
+      title: "DFS & League Page Enhancements",
+      items: [
+        {
+          text: "DFS (Daily Fantasy Sports) - New Feature:",
+          subitems: [
+            "Build your DFS lineup with salary cap management ($50,000 cap)",
+            "Live player data with weekly projections, salaries, and matchup info",
+            "Advanced filters: salary range slider, team dropdown, position buttons, and player name search",
+            "Visual roster builder with color-coded position badges",
+            "Smart availability tracking - automatically disable players when positions are full or over salary cap",
+            "Generate shareable lineup codes for competition tracking",
+            "Results page to compare multiple lineups side-by-side with actual fantasy points",
+            "Automatic ranking and podium medals (gold/silver/bronze) for top performers",
+            "Week toggle to view results for current or previous week",
+          ]
+        },
+        {
+          text: "League Page Improvements:",
+          subitems: [
+            "Added FPTS/G (Fantasy Points Per Game) column showing season average",
+            "Added Proj Pts column with this week's projected fantasy points",
+            "Added DvP (Defense vs Position) column showing opponent defensive rank with ordinal suffixes",
+            "Color-coded matchups: red for favorable (1st-10th), green for tough (22nd-32nd)",
+            "Reordered columns to prioritize weekly performance data over dynasty values",
+          ]
+        },
+      ],
+    },
     {
       date: "2025-10-07",
       title: "Trade Helper",
