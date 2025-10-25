@@ -288,6 +288,79 @@ function DFSResults() {
     }, 0);
   };
 
+  const getStatsData = () => {
+    const lineups = parseLineups();
+    const positionStats = {
+      QB: { chosen: {}, value: {} },
+      RB: { chosen: {}, value: {} },
+      WR: { chosen: {}, value: {} },
+      TE: { chosen: {}, value: {} },
+      DST: { chosen: {}, value: {} }
+    };
+
+    lineups.forEach(lineup => {
+      lineup.players.forEach(player => {
+        const playerInfo = getPlayerInfo(player.sleeperId);
+        if (!playerInfo) return;
+
+        const position = playerInfo.position;
+        if (!positionStats[position]) return;
+
+        const playerKey = `${playerInfo.name} (${playerInfo.team})`;
+        
+        // Count chosen players
+        if (!positionStats[position].chosen[playerKey]) {
+          positionStats[position].chosen[playerKey] = {
+            name: playerInfo.name,
+            team: playerInfo.team,
+            count: 0,
+            totalSalary: 0,
+            totalPoints: 0
+          };
+        }
+        positionStats[position].chosen[playerKey].count++;
+        positionStats[position].chosen[playerKey].totalSalary += player.salary;
+        positionStats[position].chosen[playerKey].totalPoints += playerInfo.fantasy_points;
+
+        // Calculate value (points per $1000 salary)
+        const value = playerInfo.fantasy_points / (player.salary / 1000);
+        if (!positionStats[position].value[playerKey]) {
+          positionStats[position].value[playerKey] = {
+            name: playerInfo.name,
+            team: playerInfo.team,
+            value: 0,
+            count: 0,
+            totalSalary: 0,
+            totalPoints: 0
+          };
+        }
+        positionStats[position].value[playerKey].value = Math.max(
+          positionStats[position].value[playerKey].value, 
+          value
+        );
+        positionStats[position].value[playerKey].count++;
+        positionStats[position].value[playerKey].totalSalary += player.salary;
+        positionStats[position].value[playerKey].totalPoints += playerInfo.fantasy_points;
+      });
+    });
+
+    // Sort and get top 3 for each position
+    const result = {};
+    Object.keys(positionStats).forEach(position => {
+      const chosen = Object.values(positionStats[position].chosen)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 3);
+      
+      const value = Object.values(positionStats[position].value)
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 3);
+
+      result[position] = { chosen, value };
+    });
+
+    return result;
+  };
+
   return (
     <div className="dfs-results-container">
       <div className="dfs-results-header">
@@ -462,6 +535,77 @@ function DFSResults() {
             })}
             </>
           )}
+        </div>
+      )}
+
+      {compressedData && inputData && Object.keys(fantasyPoints).length > 0 && (
+        <div className="stats-section">
+          <h2>Position Statistics</h2>
+          <div className="stats-container">
+            <div className="stats-area">
+              <h3>Most Chosen Players</h3>
+              <div className="position-stats">
+                {Object.entries(getStatsData()).map(([position, data]) => (
+                  <div key={`chosen-${position}`} className="position-table">
+                    <h4>{position}</h4>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Player</th>
+                          <th>Count</th>
+                          <th>Avg Salary</th>
+                          <th>Avg Points</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.chosen.map((player, idx) => (
+                          <tr key={idx}>
+                            <td>{player.name} ({player.team})</td>
+                            <td>{player.count}</td>
+                            <td>${Math.round(player.totalSalary / player.count).toLocaleString()}</td>
+                            <td>{player.totalPoints.toFixed(1)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="stats-area">
+              <h3>Best Value Players FPTS / $1000 Salary</h3>
+              <div className="position-stats">
+                {Object.entries(getStatsData()).map(([position, data]) => (
+                  <div key={`value-${position}`} className="position-table">
+                    <h4>{position}</h4>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Player</th>
+                          <th>Value Score</th>
+                          <th>Count</th>
+                          <th>Avg Salary</th>
+                          <th>Avg Points</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.value.map((player, idx) => (
+                          <tr key={idx}>
+                            <td>{player.name} ({player.team})</td>
+                            <td>{player.value.toFixed(2)}</td>
+                            <td>{player.count}</td>
+                            <td>${Math.round(player.totalSalary / player.count).toLocaleString()}</td>
+                            <td>{player.totalPoints.toFixed(1)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -28,9 +28,13 @@ function DFS({ userName }) {
   const [selectedTeam, setSelectedTeam] = useState('');
   const [selectedPosition, setSelectedPosition] = useState(null);
   const [hideUnavailable, setHideUnavailable] = useState(false);
+  const [hideOut, setHideOut] = useState(false);
+  const [hideQuestionable, setHideQuestionable] = useState(false);
   const [nameFilter, setNameFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [lineupCode, setLineupCode] = useState('');
+  const [showLoadModal, setShowLoadModal] = useState(false);
+  const [loadLineupCode, setLoadLineupCode] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -45,20 +49,22 @@ function DFS({ userName }) {
         
         if (cachedWeek && cachedPlayers && cacheTimestamp && (now - parseInt(cacheTimestamp)) < cacheExpiry) {
           const data = JSON.parse(cachedPlayers);
-          setPlayers(data);
           
-          // Calculate min and max salary
-          if (data.length > 0) {
+          // Only use cached data if it's not empty
+          if (data && data.length > 0) {
+            setPlayers(data);
+            
+            // Calculate min and max salary
             const salaries = data.map(p => p.salary).filter(s => s);
             const min = Math.min(...salaries);
             const max = Math.max(...salaries);
             setMinSalary(min);
             setMaxSalary(max);
             setSalaryRange([min, max]);
+            
+            setLoading(false);
+            return;
           }
-          
-          setLoading(false);
-          return;
         }
         
         // Fetch current NFL week
@@ -87,7 +93,8 @@ function DFS({ userName }) {
           szn_fppg_avg: player.season_avg,
           ppg_projection: player.projected_points,
           value_projection: player.value_proj,
-          sleeper_id: player.sleeper_id
+          sleeper_id: player.sleeper_id,
+          game_date: player.game_date
         }));
         
         // Cache the data
@@ -154,6 +161,16 @@ function DFS({ userName }) {
         if (!inRoster && !canAdd) {
           return false;
         }
+      }
+      
+      // Hide Out filter
+      if (hideOut && player.injury_status === 'O') {
+        return false;
+      }
+      
+      // Hide Questionable filter
+      if (hideQuestionable && player.injury_status === 'Q') {
+        return false;
       }
       
       return true;
@@ -224,6 +241,68 @@ function DFS({ userName }) {
       // Could add a visual feedback here
       console.log('Copied to clipboard!');
     });
+  };
+
+  const handleLoadLineup = () => {
+    try {
+      // Clear current roster
+      setRoster({
+        QB: null,
+        RB1: null,
+        RB2: null,
+        WR1: null,
+        WR2: null,
+        WR3: null,
+        TE: null,
+        FLX: null,
+        DST: null
+      });
+
+      // Parse the lineup code - handle both formats
+      let encoded;
+      if (loadLineupCode.includes(':')) {
+        // Format: username:encodedData
+        const [, encodedData] = loadLineupCode.split(':');
+        encoded = encodedData;
+      } else {
+        // Format: just encodedData (no username)
+        encoded = loadLineupCode;
+      }
+
+      if (!encoded) {
+        throw new Error('Invalid lineup code format');
+      }
+
+      // Decode the base64
+      const decoded = atob(encoded);
+      console.log('Decoded lineup data:', decoded);
+      const playerPairs = decoded.split(',');
+      console.log('Player pairs:', playerPairs);
+
+      // Find and add players to roster
+      playerPairs.forEach((pair, index) => {
+        console.log(`Processing pair ${index + 1}:`, pair);
+        const [sleeperId, salary] = pair.split('-');
+        console.log(`Sleeper ID: ${sleeperId}, Salary: ${salary}`);
+        
+        const player = players.find(p => p.sleeper_id === sleeperId);
+        console.log(`Found player:`, player ? `${player.name} (${player.position})` : 'NOT FOUND');
+        
+        if (player) {
+          console.log(`Adding player to roster: ${player.name}`);
+          addPlayerToRoster(player);
+        } else {
+          console.log(`Player not found for sleeper_id: ${sleeperId}`);
+        }
+      });
+
+      // Close modal and clear input
+      setShowLoadModal(false);
+      setLoadLineupCode('');
+      
+    } catch (error) {
+      alert('Error loading lineup: ' + error.message);
+    }
   };
 
   const getSortIcon = (key) => {
@@ -302,36 +381,53 @@ function DFS({ userName }) {
   const addPlayerToRoster = (player) => {
     const position = player.position;
     
-    // Find first available slot for this position
-    if (position === 'QB' && !roster.QB) {
-      setRoster(prev => ({ ...prev, QB: player }));
-    } else if (position === 'RB') {
-      if (!roster.RB1) {
-        setRoster(prev => ({ ...prev, RB1: player }));
-      } else if (!roster.RB2) {
-        setRoster(prev => ({ ...prev, RB2: player }));
-      } else if (!roster.FLX) {
-        setRoster(prev => ({ ...prev, FLX: player }));
+    // Use functional update to ensure we work with the latest state
+    setRoster(prev => {
+      // Find first available slot for this position
+      if (position === 'QB' && !prev.QB) {
+        console.log(`Adding ${player.name} to QB slot`);
+        return { ...prev, QB: player };
+      } else if (position === 'RB') {
+        if (!prev.RB1) {
+          console.log(`Adding ${player.name} to RB1 slot`);
+          return { ...prev, RB1: player };
+        } else if (!prev.RB2) {
+          console.log(`Adding ${player.name} to RB2 slot`);
+          return { ...prev, RB2: player };
+        } else if (!prev.FLX) {
+          console.log(`Adding ${player.name} to FLX slot`);
+          return { ...prev, FLX: player };
+        }
+      } else if (position === 'WR') {
+        if (!prev.WR1) {
+          console.log(`Adding ${player.name} to WR1 slot`);
+          return { ...prev, WR1: player };
+        } else if (!prev.WR2) {
+          console.log(`Adding ${player.name} to WR2 slot`);
+          return { ...prev, WR2: player };
+        } else if (!prev.WR3) {
+          console.log(`Adding ${player.name} to WR3 slot`);
+          return { ...prev, WR3: player };
+        } else if (!prev.FLX) {
+          console.log(`Adding ${player.name} to FLX slot`);
+          return { ...prev, FLX: player };
+        }
+      } else if (position === 'TE') {
+        if (!prev.TE) {
+          console.log(`Adding ${player.name} to TE slot`);
+          return { ...prev, TE: player };
+        } else if (!prev.FLX) {
+          console.log(`Adding ${player.name} to FLX slot`);
+          return { ...prev, FLX: player };
+        }
+      } else if (position === 'DST' && !prev.DST) {
+        console.log(`Adding ${player.name} to DST slot`);
+        return { ...prev, DST: player };
       }
-    } else if (position === 'WR') {
-      if (!roster.WR1) {
-        setRoster(prev => ({ ...prev, WR1: player }));
-      } else if (!roster.WR2) {
-        setRoster(prev => ({ ...prev, WR2: player }));
-      } else if (!roster.WR3) {
-        setRoster(prev => ({ ...prev, WR3: player }));
-      } else if (!roster.FLX) {
-        setRoster(prev => ({ ...prev, FLX: player }));
-      }
-    } else if (position === 'TE') {
-      if (!roster.TE) {
-        setRoster(prev => ({ ...prev, TE: player }));
-      } else if (!roster.FLX) {
-        setRoster(prev => ({ ...prev, FLX: player }));
-      }
-    } else if (position === 'DST' && !roster.DST) {
-      setRoster(prev => ({ ...prev, DST: player }));
-    }
+      
+      console.log(`Could not add ${player.name} - no available slots`);
+      return prev;
+    });
   };
 
   const removePlayerFromRoster = (slotKey) => {
@@ -346,6 +442,16 @@ function DFS({ userName }) {
     const position = player.position;
     const currentSalary = getTotalSalary();
     const SALARY_CAP = 50000;
+    
+    // Check if player has already played their game
+    if (player.game_date) {
+      const gameDate = new Date(player.game_date);
+      const now = new Date();
+      // If game date is in the past, player has already played
+      if (gameDate < now) {
+        return false;
+      }
+    }
     
     // Check salary cap
     if (currentSalary + player.salary > SALARY_CAP) {
@@ -457,9 +563,14 @@ function DFS({ userName }) {
               <span className="dfs-info">PPR Scoring</span>
             </p>
           </div>
-          <button className="check-results-button" onClick={() => navigate('/dfs/results')}>
-            Check Results!
-          </button>
+          <div className="dfs-header-buttons">
+            <button className="load-lineup-button" onClick={() => setShowLoadModal(true)}>
+              Load Lineup
+            </button>
+            <button className="check-results-button" onClick={() => navigate('/dfs/results')}>
+              Check Results!
+            </button>
+          </div>
         </div>
       </div>
 
@@ -507,6 +618,7 @@ function DFS({ userName }) {
                 <td colSpan="3"><strong>Total</strong></td>
                 <td className="salary-cell">
                   <strong>${getTotalSalary().toLocaleString()}</strong>
+                  <span className="salary-limit"> of $50,000</span>
                 </td>
               </tr>
             </tbody>
@@ -527,6 +639,34 @@ function DFS({ userName }) {
               <span className="toggle-slider"></span>
             </label>
             <span className="toggle-label">Hide unavailable players</span>
+          </div>
+        </div>
+
+        <div className="filter-group">
+          <div className="toggle-container">
+            <label className="toggle-switch">
+              <input 
+                type="checkbox" 
+                checked={hideOut}
+                onChange={(e) => setHideOut(e.target.checked)}
+              />
+              <span className="toggle-slider"></span>
+            </label>
+            <span className="toggle-label">Hide Out</span>
+          </div>
+        </div>
+
+        <div className="filter-group">
+          <div className="toggle-container">
+            <label className="toggle-switch">
+              <input 
+                type="checkbox" 
+                checked={hideQuestionable}
+                onChange={(e) => setHideQuestionable(e.target.checked)}
+              />
+              <span className="toggle-slider"></span>
+            </label>
+            <span className="toggle-label">Hide Questionable</span>
           </div>
         </div>
 
@@ -651,6 +791,35 @@ function DFS({ userName }) {
                   <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                 </svg>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showLoadModal && (
+        <div className="modal-overlay" onClick={() => setShowLoadModal(false)}>
+          <div className="lineup-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close-btn" onClick={() => setShowLoadModal(false)}>
+              ×
+            </button>
+            <h2>Load Lineup</h2>
+            <div className="load-lineup-container">
+              <p>Enter your lineup code to load players:</p>
+              <textarea
+                className="lineup-code-input"
+                value={loadLineupCode}
+                onChange={(e) => setLoadLineupCode(e.target.value)}
+                placeholder="Paste your lineup code here (e.g., Username:MTktNTQwMCw4MTM2LTY0MDAs...)"
+                rows={3}
+              />
+              <div className="load-lineup-buttons">
+                <button className="load-btn" onClick={handleLoadLineup}>
+                  Load Lineup
+                </button>
+                <button className="cancel-btn" onClick={() => setShowLoadModal(false)}>
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         </div>
