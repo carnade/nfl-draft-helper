@@ -11,6 +11,7 @@ function DFSResults() {
   const [currentWeek, setCurrentWeek] = useState(null);
   const [selectedWeek, setSelectedWeek] = useState(null);
   const [fantasyPoints, setFantasyPoints] = useState({});
+  const [playerNames, setPlayerNames] = useState({});
   const [loadedFromUrl, setLoadedFromUrl] = useState(false);
   const [loadingPoints, setLoadingPoints] = useState(false);
   const [visibleRanks, setVisibleRanks] = useState(new Set());
@@ -36,13 +37,50 @@ function DFSResults() {
       
       setCompressedData(compressed);
       
-      // Generate shareable URL using hash fragment
+      // Generate shareable URL using hash fragment with week
       const baseUrl = window.location.origin + window.location.pathname;
-      const url = `${baseUrl}#${compressed}`;
+      const url = `${baseUrl}#${selectedWeek}|${compressed}`;
       setShareableUrl(url);
+      
+      // Now fetch fantasy points and player names
+      if (selectedWeek) {
+        setLoadingPoints(true);
+        
+        // Get all unique sleeper IDs from lineups
+        const lineupData = parseLineups();
+        const allSleeperIds = new Set();
+        lineupData.forEach(lineup => {
+          lineup.players.forEach(player => {
+            allSleeperIds.add(player.sleeperId);
+          });
+        });
+        
+        // Fetch fantasy points
+        const fantasyData = await fetch(`https://shaggy-latashia-carnade-2ea2054a.koyeb.app/fantasy-points/week/${selectedWeek}`)
+          .then(res => res.json());
+        
+        console.log('Fantasy points fetched:', fantasyData);
+        
+        // Only fetch names for players not in fantasy points data
+        const unknownSleeperIds = Array.from(allSleeperIds).filter(id => !fantasyData[id]);
+        console.log('Unknown sleeper IDs:', unknownSleeperIds);
+        
+        const nameData = unknownSleeperIds.length > 0 ? await fetchPlayerNames(unknownSleeperIds) : {};
+        console.log('Fetched name data:', nameData);
+        
+        setFantasyPoints(fantasyData);
+        setPlayerNames(nameData);
+        setLoadingPoints(false);
+        
+        // If loaded from URL, start the reveal animation
+        if (loadedFromUrl && inputData) {
+          startRevealAnimation();
+        }
+      }
     } catch (error) {
       setCompressedData('Error: Invalid data format - ' + error.message);
       setShareableUrl('');
+      setLoadingPoints(false);
     }
   };
 
@@ -58,8 +96,20 @@ function DFSResults() {
     const hash = window.location.hash.substring(1); // Remove the #
     if (hash) {
       try {
+        // Split week and compressed data
+        const [weekStr, compressedData] = hash.split('|');
+        const urlWeek = parseInt(weekStr);
+        
+        console.log('URL parsing:', { hash, weekStr, urlWeek, compressedData: compressedData?.substring(0, 50) + '...' });
+        
+        // Set the week from URL
+        if (urlWeek && !isNaN(urlWeek)) {
+          console.log('Setting selectedWeek from URL:', urlWeek);
+          setSelectedWeek(urlWeek);
+        }
+        
         // Decompress the data
-        const decompressed = LZString.decompressFromEncodedURIComponent(hash);
+        const decompressed = LZString.decompressFromEncodedURIComponent(compressedData);
         if (decompressed) {
           // Split back into individual lineups
           const lineups = decompressed.split('|');
@@ -81,82 +131,150 @@ function DFSResults() {
           
           // Don't generate a new URL since we're already viewing from one
           setShareableUrl('');
+          
+          // Auto-fetch fantasy points and player names for loaded data
+          // We need to wait for selectedWeek to be set, so we'll do this in a separate useEffect
         }
       } catch (error) {
         console.error('Error loading data from URL:', error);
       }
     }
     
-    // Get current week from cache or fetch it
+    // Get current week from cache or fetch it (only if not loading from URL)
     const cachedWeek = sessionStorage.getItem('nfl_current_week');
     if (cachedWeek) {
       const week = parseInt(cachedWeek);
       setCurrentWeek(week);
-      setSelectedWeek(week - 1); // Default to previous week
+      // Only set selectedWeek if not loading from URL
+      if (!window.location.hash) {
+        setSelectedWeek(week - 1); // Default to previous week
+      }
     } else {
       // Fetch if not cached
       fetch('https://api.sleeper.app/v1/state/nfl')
         .then(res => res.json())
         .then(data => {
           setCurrentWeek(data.week);
-          setSelectedWeek(data.week - 1); // Default to previous week
+          // Only set selectedWeek if not loading from URL
+          if (!window.location.hash) {
+            setSelectedWeek(data.week - 1); // Default to previous week
+          }
         })
         .catch(err => console.error('Error fetching week:', err));
     }
   }, []);
 
+  // Auto-fetch data when loaded from URL and selectedWeek is available
   useEffect(() => {
-    // Fetch fantasy points when week changes
-    if (selectedWeek) {
-      // Check cache first
-      const cacheKey = `fantasy_points_week_${selectedWeek}`;
-      const cachedData = sessionStorage.getItem(cacheKey);
-      const cacheTimestamp = sessionStorage.getItem(`${cacheKey}_timestamp`);
-      
-      const now = Date.now();
-      const cacheExpiry = 60 * 60 * 1000; // 1 hour
-      
-      if (cachedData && cacheTimestamp && (now - parseInt(cacheTimestamp)) < cacheExpiry) {
-        // Use cached data
-        const data = JSON.parse(cachedData);
-        setFantasyPoints(data);
-        setLoadingPoints(false);
+    if (loadedFromUrl && selectedWeek && compressedData) {
+      const fetchDataForUrl = async () => {
+        setLoadingPoints(true);
         
-        // If loaded from URL, start the reveal animation
-        if (loadedFromUrl && inputData) {
-          startRevealAnimation();
-        }
-        return;
-      }
-      
-      // Fetch from API
-      setLoadingPoints(true);
-      fetch(`https://shaggy-latashia-carnade-2ea2054a.koyeb.app/fantasy-points/week/${selectedWeek}`)
-        .then(res => res.json())
-        .then(data => {
-          // Cache the data
-          sessionStorage.setItem(cacheKey, JSON.stringify(data));
-          sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
-          
-          setFantasyPoints(data);
-          setLoadingPoints(false);
-          
-          // If loaded from URL, start the reveal animation
-          if (loadedFromUrl && inputData) {
-            startRevealAnimation();
-          }
-        })
-        .catch(err => {
-          console.error('Error fetching fantasy points:', err);
-          setLoadingPoints(false);
+        // Get all unique sleeper IDs from lineups
+        const lineupData = parseLineups();
+        const allSleeperIds = new Set();
+        lineupData.forEach(lineup => {
+          lineup.players.forEach(player => {
+            allSleeperIds.add(player.sleeperId);
+          });
         });
+        
+        try {
+          // Fetch fantasy points
+          const fantasyData = await fetch(`https://shaggy-latashia-carnade-2ea2054a.koyeb.app/fantasy-points/week/${selectedWeek}`)
+            .then(res => res.json());
+          
+          console.log('Fantasy points fetched (from URL):', fantasyData);
+          
+          // Only fetch names for players not in fantasy points data
+          const unknownSleeperIds = Array.from(allSleeperIds).filter(id => !fantasyData[id]);
+          console.log('Unknown sleeper IDs (from URL):', unknownSleeperIds);
+          
+          const nameData = unknownSleeperIds.length > 0 ? await fetchPlayerNames(unknownSleeperIds) : {};
+          console.log('Fetched name data (from URL):', nameData);
+          
+          setFantasyPoints(fantasyData);
+          setPlayerNames(nameData);
+          setLoadingPoints(false);
+          
+          // Start the reveal animation
+          startRevealAnimation();
+        } catch (error) {
+          console.error('Error fetching data from URL:', error);
+          setLoadingPoints(false);
+        }
+      };
+      
+      fetchDataForUrl();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedWeek]);
+  }, [loadedFromUrl, selectedWeek, compressedData]);
+
+  // Fetch player names for all sleeper IDs in lineups
+  const fetchPlayerNames = async (sleeperIds) => {
+    console.log('fetchPlayerNames called with:', sleeperIds);
+    try {
+      const response = await fetch('https://shaggy-latashia-carnade-2ea2054a.koyeb.app/getplayers/bestball', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          playerlist: sleeperIds
+        })
+      });
+
+      console.log('fetchPlayerNames response status:', response.status);
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch player names');
+      }
+
+      const playerData = await response.json();
+      console.log('fetchPlayerNames raw response:', playerData);
+      const nameMap = {};
+      
+      // Create a mapping of sleeper_id to player name
+      // The API returns {players: Array(30)}, so we need to access the players array
+      const players = playerData.players || Object.values(playerData);
+      players.forEach(player => {
+        if (player.id) {
+          nameMap[player.id] = player.name;
+        }
+      });
+      console.log('fetchPlayerNames final nameMap:', nameMap);
+      return nameMap;
+    } catch (error) {
+      console.error('Error fetching player names:', error);
+      return {};
+    }
+  };
+
+  // This useEffect is removed - all fetching now happens in handleProceed
 
   const startRevealAnimation = () => {
     const lineupData = parseLineups();
     const totalLineups = lineupData.length;
+    
+    // Check if there are any "Not played" players
+    const hasNotPlayedPlayers = lineupData.some(lineup => 
+      lineup.players.some(player => {
+        const playerInfo = fantasyPoints[player.sleeperId];
+        return !playerInfo; // If no fantasy points data, player hasn't played
+      })
+    );
+    
+    // If there are "Not played" players, show all results immediately
+    if (hasNotPlayedPlayers) {
+      console.log('Not all players have played yet, showing all results immediately');
+      const allVisible = new Set();
+      for (let i = 1; i <= totalLineups; i++) {
+        allVisible.add(i);
+      }
+      setVisibleRanks(allVisible);
+      return;
+    }
+    
+    console.log('All players have played, starting slowroll animation');
     
     // Initially show ranks 4 and beyond, show ghosts for 1-3
     const initialVisible = new Set();
@@ -278,7 +396,29 @@ function DFSResults() {
   };
 
   const getPlayerInfo = (sleeperId) => {
-    return fantasyPoints[sleeperId] || null;
+    const fantasyInfo = fantasyPoints[sleeperId];
+    const playerName = playerNames[sleeperId];
+    
+    console.log(`getPlayerInfo for ${sleeperId}:`, {
+      fantasyInfo,
+      playerName,
+      playerNames,
+      finalName: playerName || fantasyInfo?.name || 'Unknown'
+    });
+    
+    return {
+      ...fantasyInfo,
+      name: playerName || fantasyInfo?.name || 'Unknown'
+    };
+  };
+
+  // Get fantasy points display text
+  const getFantasyPointsDisplay = (sleeperId) => {
+    const playerInfo = fantasyPoints[sleeperId];
+    if (!playerInfo) {
+      return 'Not played';
+    }
+    return playerInfo.fantasy_points?.toFixed(1) || '0.0';
   };
 
   const calculateTotalPoints = (players) => {
@@ -349,11 +489,11 @@ function DFSResults() {
     Object.keys(positionStats).forEach(position => {
       const chosen = Object.values(positionStats[position].chosen)
         .sort((a, b) => b.count - a.count)
-        .slice(0, 3);
+        .slice(0, 5);
       
       const value = Object.values(positionStats[position].value)
         .sort((a, b) => b.value - a.value)
-        .slice(0, 3);
+        .slice(0, 5);
 
       result[position] = { chosen, value };
     });
@@ -521,7 +661,7 @@ function DFSResults() {
                             <div className="dfs-results-player-card-salary">${player.salary.toLocaleString()}</div>
                           </div>
                           <div className="dfs-results-player-card-points">
-                            {info?.fantasy_points?.toFixed(1) || '0.0'}
+                            {getFantasyPointsDisplay(player.sleeperId)}
                           </div>
                         </div>
                       );
@@ -560,10 +700,10 @@ function DFSResults() {
                       <tbody>
                         {data.chosen.map((player, idx) => (
                           <tr key={idx}>
-                            <td>{player.name} ({player.team})</td>
+                            <td>{player.name}</td>
                             <td>{player.count}</td>
                             <td>${Math.round(player.totalSalary / player.count).toLocaleString()}</td>
-                            <td>{player.totalPoints.toFixed(1)}</td>
+                            <td>{(player.totalPoints / player.count).toFixed(1)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -592,11 +732,11 @@ function DFSResults() {
                       <tbody>
                         {data.value.map((player, idx) => (
                           <tr key={idx}>
-                            <td>{player.name} ({player.team})</td>
+                            <td>{player.name}</td>
                             <td>{player.value.toFixed(2)}</td>
                             <td>{player.count}</td>
                             <td>${Math.round(player.totalSalary / player.count).toLocaleString()}</td>
-                            <td>{player.totalPoints.toFixed(1)}</td>
+                            <td>{(player.totalPoints / player.count).toFixed(1)}</td>
                           </tr>
                         ))}
                       </tbody>
