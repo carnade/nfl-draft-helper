@@ -447,8 +447,13 @@ function DFS({ userName }) {
     if (player.game_date) {
       const gameDate = new Date(player.game_date);
       const now = new Date();
-      // If game date is in the past, player has already played
-      if (gameDate < now) {
+      
+      // Get the day after the game date (games are typically over by the next day)
+      const dayAfterGame = new Date(gameDate);
+      dayAfterGame.setDate(dayAfterGame.getDate() + 1);
+      
+      // Only disable if it's the day after the game or later
+      if (now >= dayAfterGame) {
         return false;
       }
     }

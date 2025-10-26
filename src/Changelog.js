@@ -46,10 +46,7 @@ export default function Changelog() {
       items: [
         "Added 'Load Lineup' button to DFS page - paste lineup codes to instantly load players",
         "Support for both formats: 'Username:Code' and raw lineup codes",
-        "Smart roster placement - automatically fills QB, RB, WR, TE, FLEX, and DST slots",
         "Added injury status filters: 'Hide Out' and 'Hide Questionable' toggles",
-        "Enhanced salary display with 'of $50,000' cap indicator",
-        "Improved lineup loading reliability with proper state management",
       ],
     },
     {
