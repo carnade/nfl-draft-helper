@@ -216,6 +216,7 @@ function DFSResults() {
       
       fetchDataForUrl();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadedFromUrl, selectedWeek, compressedData]);
 
   // Fetch player names for all sleeper IDs in lineups
