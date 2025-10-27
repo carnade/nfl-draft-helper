@@ -430,6 +430,12 @@
   color: #161f29;
 }
 
+/* Red color for OUT status */
+.dfs-results-player-card-points:contains("OUT") {
+  color: #dc3545 !important;
+}
+
+
 .total-points-cell {
   background: #007bff;
   color: white;

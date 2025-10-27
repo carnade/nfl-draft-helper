@@ -12,6 +12,7 @@ function DFSResults() {
   const [selectedWeek, setSelectedWeek] = useState(null);
   const [fantasyPoints, setFantasyPoints] = useState({});
   const [playerNames, setPlayerNames] = useState({});
+  const [dfsSalaryData, setDfsSalaryData] = useState({});
   const [loadedFromUrl, setLoadedFromUrl] = useState(false);
   const [loadingPoints, setLoadingPoints] = useState(false);
   const [visibleRanks, setVisibleRanks] = useState(new Set());
@@ -55,11 +56,14 @@ function DFSResults() {
           });
         });
         
-        // Fetch fantasy points
-        const fantasyData = await fetch(`https://shaggy-latashia-carnade-2ea2054a.koyeb.app/fantasy-points/week/${selectedWeek}`)
-          .then(res => res.json());
+        // Fetch both fantasy points and DFS salary data
+        const [fantasyData, salaryData] = await Promise.all([
+          fetch(`https://shaggy-latashia-carnade-2ea2054a.koyeb.app/fantasy-points/week/${selectedWeek}`).then(res => res.json()),
+          fetch(`https://shaggy-latashia-carnade-2ea2054a.koyeb.app/dfs-salaries/week/${selectedWeek}`).then(res => res.json())
+        ]);
         
         console.log('Fantasy points fetched:', fantasyData);
+        console.log('DFS salary data fetched:', salaryData);
         
         // Only fetch names for players not in fantasy points data
         const unknownSleeperIds = Array.from(allSleeperIds).filter(id => !fantasyData[id]);
@@ -70,6 +74,7 @@ function DFSResults() {
         
         setFantasyPoints(fantasyData);
         setPlayerNames(nameData);
+        setDfsSalaryData(salaryData);
         setLoadingPoints(false);
         
         // If loaded from URL, start the reveal animation
@@ -180,11 +185,14 @@ function DFSResults() {
         });
         
         try {
-          // Fetch fantasy points
-          const fantasyData = await fetch(`https://shaggy-latashia-carnade-2ea2054a.koyeb.app/fantasy-points/week/${selectedWeek}`)
-            .then(res => res.json());
+          // Fetch both fantasy points and DFS salary data
+          const [fantasyData, salaryData] = await Promise.all([
+            fetch(`https://shaggy-latashia-carnade-2ea2054a.koyeb.app/fantasy-points/week/${selectedWeek}`).then(res => res.json()),
+            fetch(`https://shaggy-latashia-carnade-2ea2054a.koyeb.app/dfs-salaries/week/${selectedWeek}`).then(res => res.json())
+          ]);
           
           console.log('Fantasy points fetched (from URL):', fantasyData);
+          console.log('DFS salary data fetched (from URL):', salaryData);
           
           // Only fetch names for players not in fantasy points data
           const unknownSleeperIds = Array.from(allSleeperIds).filter(id => !fantasyData[id]);
@@ -195,6 +203,7 @@ function DFSResults() {
           
           setFantasyPoints(fantasyData);
           setPlayerNames(nameData);
+          setDfsSalaryData(salaryData);
           setLoadingPoints(false);
           
           // Start the reveal animation
@@ -255,11 +264,19 @@ function DFSResults() {
     const lineupData = parseLineups();
     const totalLineups = lineupData.length;
     
-    // Check if there are any "Not played" players
+    // Check if there are any "Not played" players (excluding OUT players)
     const hasNotPlayedPlayers = lineupData.some(lineup => 
       lineup.players.some(player => {
         const playerInfo = fantasyPoints[player.sleeperId];
-        return !playerInfo; // If no fantasy points data, player hasn't played
+        if (playerInfo) return false; // Player has fantasy points, they played
+        
+        // Check if player is OUT
+        const dfsPlayerKey = `${player.sleeperId}_W${selectedWeek}`;
+        const dfsPlayer = dfsSalaryData[dfsPlayerKey];
+        const isOut = dfsPlayer?.injury_status === 'O';
+        
+        // Only consider it "not played" if they're not OUT
+        return !isOut;
       })
     );
     
@@ -415,7 +432,16 @@ function DFSResults() {
   // Get fantasy points display text
   const getFantasyPointsDisplay = (sleeperId) => {
     const playerInfo = fantasyPoints[sleeperId];
+    
+    // Check if player is OUT (from DFS salary data)
+    const dfsPlayerKey = `${sleeperId}_W${selectedWeek}`;
+    const dfsPlayer = dfsSalaryData[dfsPlayerKey];
+    
     if (!playerInfo) {
+      // If player is marked as OUT in injury status, show "OUT"
+      if (dfsPlayer?.injury_status === 'O') {
+        return 'OUT';
+      }
       return 'Not played';
     }
     return playerInfo.fantasy_points?.toFixed(1) || '0.0';
@@ -430,27 +456,48 @@ function DFSResults() {
 
   const getStatsData = () => {
     const lineups = parseLineups();
-    const positionStats = {
-      QB: { chosen: {}, value: {} },
-      RB: { chosen: {}, value: {} },
-      WR: { chosen: {}, value: {} },
-      TE: { chosen: {}, value: {} },
-      DST: { chosen: {}, value: {} }
+    
+    // Track chosen players from lineups
+    const chosenStats = {
+      QB: {},
+      RB: {},
+      WR: {},
+      TE: {},
+      DST: {}
+    };
+    
+    // Track best chosen players (by value from lineups)
+    const bestChosenStats = {
+      QB: {},
+      RB: {},
+      WR: {},
+      TE: {},
+      DST: {}
+    };
+    
+    // Track best not chosen players (by value from DFS data)
+    const bestNotChosenStats = {
+      QB: {},
+      RB: {},
+      WR: {},
+      TE: {},
+      DST: {}
     };
 
+    // First, count chosen players from lineups
     lineups.forEach(lineup => {
       lineup.players.forEach(player => {
         const playerInfo = getPlayerInfo(player.sleeperId);
         if (!playerInfo) return;
 
         const position = playerInfo.position;
-        if (!positionStats[position]) return;
+        if (!chosenStats[position]) return;
 
         const playerKey = `${playerInfo.name} (${playerInfo.team})`;
         
         // Count chosen players
-        if (!positionStats[position].chosen[playerKey]) {
-          positionStats[position].chosen[playerKey] = {
+        if (!chosenStats[position][playerKey]) {
+          chosenStats[position][playerKey] = {
             name: playerInfo.name,
             team: playerInfo.team,
             count: 0,
@@ -458,14 +505,14 @@ function DFSResults() {
             totalPoints: 0
           };
         }
-        positionStats[position].chosen[playerKey].count++;
-        positionStats[position].chosen[playerKey].totalSalary += player.salary;
-        positionStats[position].chosen[playerKey].totalPoints += playerInfo.fantasy_points;
-
-        // Calculate value (points per $1000 salary)
-        const value = playerInfo.fantasy_points / (player.salary / 1000);
-        if (!positionStats[position].value[playerKey]) {
-          positionStats[position].value[playerKey] = {
+        chosenStats[position][playerKey].count++;
+        chosenStats[position][playerKey].totalSalary += player.salary;
+        chosenStats[position][playerKey].totalPoints += playerInfo.fantasy_points || 0;
+        
+        // Calculate value for best chosen players
+        const value = (playerInfo.fantasy_points || 0) / (player.salary / 1000);
+        if (!bestChosenStats[position][playerKey]) {
+          bestChosenStats[position][playerKey] = {
             name: playerInfo.name,
             team: playerInfo.team,
             value: 0,
@@ -474,28 +521,93 @@ function DFSResults() {
             totalPoints: 0
           };
         }
-        positionStats[position].value[playerKey].value = Math.max(
-          positionStats[position].value[playerKey].value, 
+        bestChosenStats[position][playerKey].value = Math.max(
+          bestChosenStats[position][playerKey].value, 
           value
         );
-        positionStats[position].value[playerKey].count++;
-        positionStats[position].value[playerKey].totalSalary += player.salary;
-        positionStats[position].value[playerKey].totalPoints += playerInfo.fantasy_points;
+        bestChosenStats[position][playerKey].count++;
+        bestChosenStats[position][playerKey].totalSalary += player.salary;
+        bestChosenStats[position][playerKey].totalPoints += playerInfo.fantasy_points || 0;
       });
     });
+    
+    // Also count players from DFS salary data who weren't chosen (for complete count)
+    Object.values(dfsSalaryData).forEach(dfsPlayer => {
+      const position = dfsPlayer.position;
+      if (!chosenStats[position]) return;
+      
+      const playerKey = `${dfsPlayer.name} (${dfsPlayer.team})`;
+      
+      // Only add if not already counted from lineups
+      if (!chosenStats[position][playerKey]) {
+        chosenStats[position][playerKey] = {
+          name: dfsPlayer.name,
+          team: dfsPlayer.team,
+          count: 0,
+          totalSalary: dfsPlayer.salary,
+          totalPoints: 0
+        };
+      }
+    });
+    
+    // Then, calculate value scores for players NOT chosen in lineups
+    const chosenSleeperIds = new Set();
+    lineups.forEach(lineup => {
+      lineup.players.forEach(player => {
+        chosenSleeperIds.add(player.sleeperId);
+      });
+    });
+    
+    Object.values(fantasyPoints).forEach(playerInfo => {
+      const position = playerInfo.position;
+      if (!bestNotChosenStats[position]) return;
+      
+      // Only include players NOT in lineups
+      if (chosenSleeperIds.has(playerInfo.sleeper_id)) return;
+      
+      // Skip players without fantasy points or with 0 points
+      if (!playerInfo.fantasy_points || playerInfo.fantasy_points === 0) return;
+      
+      const playerKey = `${playerInfo.name} (${playerInfo.team})`;
+      
+      // Find salary from DFS salary data
+      const dfsPlayerKey = `${playerInfo.sleeper_id}_W${selectedWeek}`;
+      const salary = dfsSalaryData[dfsPlayerKey]?.salary;
+      
+      if (salary) {
+        const value = playerInfo.fantasy_points / (salary / 1000);
+        
+        if (!bestNotChosenStats[position][playerKey]) {
+          bestNotChosenStats[position][playerKey] = {
+            name: playerInfo.name,
+            team: playerInfo.team,
+            value: 0,
+            count: 0, // Not chosen
+            totalSalary: salary,
+            totalPoints: playerInfo.fantasy_points
+          };
+        }
+        
+        bestNotChosenStats[position][playerKey].value = value;
+      }
+    });
 
-    // Sort and get top 3 for each position
+    // Sort and get top 5 for each position
     const result = {};
-    Object.keys(positionStats).forEach(position => {
-      const chosen = Object.values(positionStats[position].chosen)
+    Object.keys(chosenStats).forEach(position => {
+      const chosen = Object.values(chosenStats[position])
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
       
-      const value = Object.values(positionStats[position].value)
+      const bestChosen = Object.values(bestChosenStats[position])
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5);
+      
+      const bestNotChosen = Object.values(bestNotChosenStats[position])
         .sort((a, b) => b.value - a.value)
         .slice(0, 5);
 
-      result[position] = { chosen, value };
+      result[position] = { chosen, bestChosen, bestNotChosen };
     });
 
     return result;
@@ -650,21 +762,25 @@ function DFSResults() {
                     const info = getPlayerInfo(player.sleeperId);
                     const position = info?.position || 'FLX';
                     
-                      return (
-                        <div 
-                          key={pIdx} 
-                          className="dfs-results-player-card"
-                          style={{ backgroundColor: getPositionColor(position) }}
-                        >
-                          <div className="dfs-results-player-card-left">
-                            <div className="dfs-results-player-card-name">{info?.name || 'Unknown'}</div>
-                            <div className="dfs-results-player-card-salary">${player.salary.toLocaleString()}</div>
+                      return (() => {
+                        const pointsDisplay = getFantasyPointsDisplay(player.sleeperId);
+                        const isOut = pointsDisplay === 'OUT';
+                        return (
+                          <div
+                            key={pIdx} 
+                            className="dfs-results-player-card"
+                            style={{ backgroundColor: isOut ? 'rgba(220, 53, 69, 0.8)' : getPositionColor(position) }}
+                          >
+                            <div className="dfs-results-player-card-left">
+                              <div className="dfs-results-player-card-name">{info?.name || 'Unknown'}</div>
+                              <div className="dfs-results-player-card-salary">${player.salary.toLocaleString()}</div>
+                            </div>
+                            <div className={`dfs-results-player-card-points ${pointsDisplay === 'OUT' ? 'out-status' : ''}`}>
+                              {pointsDisplay}
+                            </div>
                           </div>
-                          <div className="dfs-results-player-card-points">
-                            {getFantasyPointsDisplay(player.sleeperId)}
-                          </div>
-                        </div>
-                      );
+                        );
+                      })();
                   })}
                   
                   <div className="total-points-cell">
@@ -702,8 +818,8 @@ function DFSResults() {
                           <tr key={idx}>
                             <td>{player.name}</td>
                             <td>{player.count}</td>
-                            <td>${Math.round(player.totalSalary / player.count).toLocaleString()}</td>
-                            <td>{(player.totalPoints / player.count).toFixed(1)}</td>
+                            <td>${player.count > 0 ? Math.round(player.totalSalary / player.count).toLocaleString() : player.totalSalary.toLocaleString()}</td>
+                            <td>{player.count > 0 ? (player.totalPoints / player.count).toFixed(1) : '-'}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -714,10 +830,10 @@ function DFSResults() {
             </div>
 
             <div className="stats-area">
-              <h3>Best Value Players FPTS / $1000 Salary</h3>
+              <h3>Best Chosen Players FPTS / $1000 Salary</h3>
               <div className="position-stats">
                 {Object.entries(getStatsData()).map(([position, data]) => (
-                  <div key={`value-${position}`} className="position-table">
+                  <div key={`bestChosen-${position}`} className="position-table">
                     <h4>{position}</h4>
                     <table>
                       <thead>
@@ -730,13 +846,44 @@ function DFSResults() {
                         </tr>
                       </thead>
                       <tbody>
-                        {data.value.map((player, idx) => (
+                        {data.bestChosen.map((player, idx) => (
                           <tr key={idx}>
                             <td>{player.name}</td>
                             <td>{player.value.toFixed(2)}</td>
                             <td>{player.count}</td>
-                            <td>${Math.round(player.totalSalary / player.count).toLocaleString()}</td>
-                            <td>{(player.totalPoints / player.count).toFixed(1)}</td>
+                            <td>${player.count > 0 ? Math.round(player.totalSalary / player.count).toLocaleString() : player.totalSalary.toLocaleString()}</td>
+                            <td>{player.count > 0 ? (player.totalPoints / player.count).toFixed(1) : '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="stats-area">
+              <h3>Best Missed Plays FPTS / $1000 Salary</h3>
+              <div className="position-stats">
+                {Object.entries(getStatsData()).map(([position, data]) => (
+                  <div key={`value-${position}`} className="position-table">
+                    <h4>{position}</h4>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Player</th>
+                          <th>Value Score</th>
+                          <th>Salary</th>
+                          <th>Points</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.bestNotChosen.map((player, idx) => (
+                          <tr key={idx}>
+                            <td>{player.name}</td>
+                            <td>{player.value.toFixed(2)}</td>
+                            <td>${player.totalSalary.toLocaleString()}</td>
+                            <td>{player.totalPoints.toFixed(1)}</td>
                           </tr>
                         ))}
                       </tbody>
