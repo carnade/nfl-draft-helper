@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LZString from 'lz-string';
 import './DFSResults.css';
@@ -79,6 +79,7 @@ function DFSResults() {
         
         // If loaded from URL, start the reveal animation
         if (loadedFromUrl && inputData) {
+          console.log('About to start reveal animation from handleProceed');
           startRevealAnimation();
         }
       }
@@ -205,9 +206,6 @@ function DFSResults() {
           setPlayerNames(nameData);
           setDfsSalaryData(salaryData);
           setLoadingPoints(false);
-          
-          // Start the reveal animation
-          startRevealAnimation();
         } catch (error) {
           console.error('Error fetching data from URL:', error);
           setLoadingPoints(false);
@@ -219,51 +217,38 @@ function DFSResults() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadedFromUrl, selectedWeek, compressedData]);
 
-  // Fetch player names for all sleeper IDs in lineups
-  const fetchPlayerNames = async (sleeperIds) => {
-    console.log('fetchPlayerNames called with:', sleeperIds);
+  const parseLineups = useCallback(() => {
     try {
-      const response = await fetch('https://shaggy-latashia-carnade-2ea2054a.koyeb.app/getplayers/bestball', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          playerlist: sleeperIds
-        })
-      });
-
-      console.log('fetchPlayerNames response status:', response.status);
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch player names');
-      }
-
-      const playerData = await response.json();
-      console.log('fetchPlayerNames raw response:', playerData);
-      const nameMap = {};
+      const lines = inputData.trim().split('\n').filter(line => line.trim());
       
-      // Create a mapping of sleeper_id to player name
-      // The API returns {players: Array(30)}, so we need to access the players array
-      const players = playerData.players || Object.values(playerData);
-      players.forEach(player => {
-        if (player.id) {
-          nameMap[player.id] = player.name;
-        }
+      return lines.map(line => {
+        const [username, encoded] = line.split(':');
+        const decoded = atob(encoded);
+        const playerPairs = decoded.split(',');
+        
+        const players = playerPairs.map(pair => {
+          const [sleeperId, salary] = pair.split('-');
+          return { sleeperId, salary: parseInt(salary) };
+        });
+        
+        return { username, players };
       });
-      console.log('fetchPlayerNames final nameMap:', nameMap);
-      return nameMap;
     } catch (error) {
-      console.error('Error fetching player names:', error);
-      return {};
+      console.error('Error parsing lineups:', error);
+      return [];
     }
-  };
+  }, [inputData]);
 
-  // This useEffect is removed - all fetching now happens in handleProceed
-
-  const startRevealAnimation = () => {
+  const startRevealAnimation = useCallback(() => {
     const lineupData = parseLineups();
     const totalLineups = lineupData.length;
+    
+    console.log('Starting reveal animation with:', {
+      totalLineups,
+      fantasyPointsCount: Object.keys(fantasyPoints).length,
+      dfsSalaryDataCount: Object.keys(dfsSalaryData).length,
+      selectedWeek
+    });
     
     // Check if there are any "Not played" players (excluding OUT players)
     const hasNotPlayedPlayers = lineupData.some(lineup => 
@@ -276,10 +261,19 @@ function DFSResults() {
         const dfsPlayer = dfsSalaryData[dfsPlayerKey];
         const isOut = dfsPlayer?.injury_status === 'O';
         
+        console.log(`Player ${player.sleeperId}:`, {
+          hasFantasyPoints: !!playerInfo,
+          dfsPlayer,
+          isOut,
+          willShowAsNotPlayed: !isOut
+        });
+        
         // Only consider it "not played" if they're not OUT
         return !isOut;
       })
     );
+    
+    console.log('hasNotPlayedPlayers:', hasNotPlayedPlayers);
     
     // If there are "Not played" players, show all results immediately
     if (hasNotPlayedPlayers) {
@@ -377,7 +371,57 @@ function DFSResults() {
         });
       }, 4000);
     }
+  }, [fantasyPoints, dfsSalaryData, selectedWeek, parseLineups]);
+
+  // Trigger animation when data is loaded from URL
+  useEffect(() => {
+    if (loadedFromUrl && !loadingPoints && Object.keys(fantasyPoints).length > 0 && Object.keys(dfsSalaryData).length > 0) {
+      console.log('Data loaded from URL, starting reveal animation');
+      startRevealAnimation();
+    }
+  }, [loadedFromUrl, loadingPoints, fantasyPoints, dfsSalaryData, startRevealAnimation]);
+
+  // Fetch player names for all sleeper IDs in lineups
+  const fetchPlayerNames = async (sleeperIds) => {
+    console.log('fetchPlayerNames called with:', sleeperIds);
+    try {
+      const response = await fetch('https://shaggy-latashia-carnade-2ea2054a.koyeb.app/getplayers/bestball', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          playerlist: sleeperIds
+        })
+      });
+
+      console.log('fetchPlayerNames response status:', response.status);
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch player names');
+      }
+
+      const playerData = await response.json();
+      console.log('fetchPlayerNames raw response:', playerData);
+      const nameMap = {};
+      
+      // Create a mapping of sleeper_id to player name
+      // The API returns {players: Array(30)}, so we need to access the players array
+      const players = playerData.players || Object.values(playerData);
+      players.forEach(player => {
+        if (player.id) {
+          nameMap[player.id] = player.name;
+        }
+      });
+      console.log('fetchPlayerNames final nameMap:', nameMap);
+      return nameMap;
+    } catch (error) {
+      console.error('Error fetching player names:', error);
+      return {};
+    }
   };
+
+  // This useEffect is removed - all fetching now happens in handleProceed
 
   const getPositionColor = (position) => {
     const colors = {
@@ -389,28 +433,6 @@ function DFSResults() {
       DST: 'rgb(239, 91, 47, 0.8)'
     };
     return colors[position] || '#ccc';
-  };
-
-  const parseLineups = () => {
-    try {
-      const lines = inputData.trim().split('\n').filter(line => line.trim());
-      
-      return lines.map(line => {
-        const [username, encoded] = line.split(':');
-        const decoded = atob(encoded);
-        const playerPairs = decoded.split(',');
-        
-        const players = playerPairs.map(pair => {
-          const [sleeperId, salary] = pair.split('-');
-          return { sleeperId, salary: parseInt(salary) };
-        });
-        
-        return { username, players };
-      });
-    } catch (error) {
-      console.error('Error parsing lineups:', error);
-      return [];
-    }
   };
 
   const getPlayerInfo = (sleeperId) => {
