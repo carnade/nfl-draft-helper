@@ -4,6 +4,14 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSort, faSortUp, faSortDown } from '@fortawesome/free-solid-svg-icons';
 import './DFS.css';
 
+// Add a mock flag
+const mock = false; // Set to true for mock data, false for production
+
+// Define the base URL based on the mock flag
+const BASE_URL = mock
+  ? "http://localhost:5000"
+  : "https://shaggy-latashia-carnade-2ea2054a.koyeb.app";
+
 function DFS({ userName }) {
   const navigate = useNavigate();
   const [players, setPlayers] = useState([]);
@@ -75,7 +83,7 @@ function DFS({ userName }) {
         const currentWeek = weekData.week;
 
         // Fetch DFS salaries
-        const salariesResponse = await fetch(`https://shaggy-latashia-carnade-2ea2054a.koyeb.app/dfs-salaries/week/${currentWeek}`);
+        const salariesResponse = await fetch(`${BASE_URL}/dfs-salaries/week/${currentWeek}`);
         const salariesData = await salariesResponse.json();
         
         // Transform data to match our structure

@@ -3,6 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import LZString from 'lz-string';
 import './DFSResults.css';
 
+// Add a mock flag
+const mock = true; // Set to true for mock data, false for production
+
+// Define the base URL based on the mock flag
+const BASE_URL = mock
+  ? "http://localhost:5000"
+  : "https://shaggy-latashia-carnade-2ea2054a.koyeb.app";
+
 function DFSResults() {
   const navigate = useNavigate();
   const [inputData, setInputData] = useState('');
@@ -16,6 +24,11 @@ function DFSResults() {
   const [loadedFromUrl, setLoadedFromUrl] = useState(false);
   const [loadingPoints, setLoadingPoints] = useState(false);
   const [visibleRanks, setVisibleRanks] = useState(new Set());
+  const [tinyUrlName, setTinyUrlName] = useState('');
+  const [tinyUrl, setTinyUrl] = useState('');
+  const [creatingTinyUrl, setCreatingTinyUrl] = useState(false);
+  const [tinyUrlError, setTinyUrlError] = useState('');
+  const [tinyUrlCount, setTinyUrlCount] = useState(null);
 
   const handleProceed = async () => {
     try {
@@ -68,8 +81,8 @@ function DFSResults() {
         
         // Fetch both fantasy points and DFS salary data
         const [fantasyData, salaryData] = await Promise.all([
-          fetch(`https://shaggy-latashia-carnade-2ea2054a.koyeb.app/fantasy-points/week/${selectedWeek}`).then(res => res.json()),
-          fetch(`https://shaggy-latashia-carnade-2ea2054a.koyeb.app/dfs-salaries/week/${selectedWeek}`).then(res => res.json())
+          fetch(`${BASE_URL}/fantasy-points/week/${selectedWeek}`).then(res => res.json()),
+          fetch(`${BASE_URL}/dfs-salaries/week/${selectedWeek}`).then(res => res.json())
         ]);
         
         console.log('Fantasy points fetched:', fantasyData);
@@ -105,6 +118,95 @@ function DFSResults() {
       console.log('Link copied to clipboard!');
       // Could add visual feedback
     });
+  };
+
+  const copyTinyUrl = () => {
+    navigator.clipboard.writeText(tinyUrl).then(() => {
+      console.log('TinyURL copied to clipboard!');
+    });
+  };
+
+  const fetchTinyUrlCount = useCallback(async () => {
+    try {
+      const response = await fetch(`${BASE_URL}/tinyurl/count`);
+      if (response.ok) {
+        const data = await response.json();
+        setTinyUrlCount(data);
+      }
+    } catch (error) {
+      console.error('Error fetching tinyURL count:', error);
+      // Don't set error state, just fail silently
+    }
+  }, []);
+
+  const handleCreateTinyUrl = async () => {
+    if (!tinyUrlName || tinyUrlName.trim() === '') {
+      setTinyUrlError('Please enter a name');
+      return;
+    }
+
+    if (tinyUrlName.length > 20) {
+      setTinyUrlError('Name must be 20 characters or less');
+      return;
+    }
+
+    // Get the hash data from the current URL or construct it from compressedData
+    let hashData = window.location.hash.substring(1);
+    
+    // If no hash in URL, construct it from compressedData and selectedWeek
+    if (!hashData && compressedData && selectedWeek) {
+      hashData = `${selectedWeek}|${compressedData}`;
+    }
+    
+    if (!hashData) {
+      setTinyUrlError('No data available to create tinyURL');
+      return;
+    }
+
+    setCreatingTinyUrl(true);
+    setTinyUrlError('');
+
+    try {
+      const response = await fetch(`${BASE_URL}/tinyurl/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: tinyUrlName.trim(),
+          data: hashData
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        // Generate the tinyURL
+        const baseUrl = window.location.origin + window.location.pathname;
+        const tinyUrlPath = `/tinyurl/${result.name}`;
+        const createdUrl = `${baseUrl}${tinyUrlPath}`;
+        
+        setTinyUrl(createdUrl);
+        setTinyUrlName(''); // Clear the input
+        
+        // Refresh the count after successful creation
+        fetchTinyUrlCount();
+      } else {
+        // Handle errors
+        if (response.status === 400) {
+          setTinyUrlError(result.message || 'Invalid request. Please check your input.');
+        } else if (response.status === 500) {
+          setTinyUrlError('Server error. Please try again later.');
+        } else {
+          setTinyUrlError(result.message || 'Failed to create tinyURL');
+        }
+      }
+    } catch (error) {
+      console.error('Error creating tinyURL:', error);
+      setTinyUrlError('Network error. Please try again.');
+    } finally {
+      setCreatingTinyUrl(false);
+    }
   };
 
   useEffect(() => {
@@ -278,8 +380,8 @@ function DFSResults() {
         try {
           // Fetch both fantasy points and DFS salary data
           const [fantasyData, salaryData] = await Promise.all([
-            fetch(`https://shaggy-latashia-carnade-2ea2054a.koyeb.app/fantasy-points/week/${selectedWeek}`).then(res => res.json()),
-            fetch(`https://shaggy-latashia-carnade-2ea2054a.koyeb.app/dfs-salaries/week/${selectedWeek}`).then(res => res.json())
+            fetch(`${BASE_URL}/fantasy-points/week/${selectedWeek}`).then(res => res.json()),
+            fetch(`${BASE_URL}/dfs-salaries/week/${selectedWeek}`).then(res => res.json())
           ]);
           
           console.log('Fantasy points fetched (from URL):', fantasyData);
@@ -306,6 +408,13 @@ function DFSResults() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadedFromUrl, selectedWeek, compressedData]);
+
+  // Fetch tinyURL count when section is visible
+  useEffect(() => {
+    if (compressedData && inputData && !loadedFromUrl) {
+      fetchTinyUrlCount();
+    }
+  }, [compressedData, inputData, loadedFromUrl, fetchTinyUrlCount]);
 
   const parseLineups = useCallback(() => {
     try {
@@ -475,7 +584,7 @@ function DFSResults() {
   const fetchPlayerNames = async (sleeperIds) => {
     console.log('fetchPlayerNames called with:', sleeperIds);
     try {
-      const response = await fetch('https://shaggy-latashia-carnade-2ea2054a.koyeb.app/getplayers/bestball', {
+      const response = await fetch(`${BASE_URL}/getplayers/bestball`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -777,27 +886,88 @@ function DFSResults() {
           </>
         )}
 
-        {compressedData && shareableUrl && !loadedFromUrl && (
-          <div className="shareable-link-section">
-            <h3>Shareable Link:</h3>
-            <div className="link-container">
-              <input 
-                type="text" 
-                value={shareableUrl} 
-                readOnly 
-                className="link-input"
-              />
-              <button className="copy-link-btn" onClick={copyLink} title="Copy link">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-              </button>
-            </div>
-            <p className="link-info">
-              Share this link to view the results. Data is stored in the URL (no server storage).
-            </p>
-          </div>
+        {compressedData && inputData && (
+          <>
+            {!loadedFromUrl && (
+              <div className="tinyurl-section">
+              <h3>
+                Create a results tinyURL
+                {tinyUrlCount && (
+                  <span className="tinyurl-count">
+                    ({tinyUrlCount.count} of {tinyUrlCount.max_entries} used)
+                  </span>
+                )}
+              </h3>
+              <div className="tinyurl-input-container">
+                <input
+                  type="text"
+                  value={tinyUrlName}
+                  onChange={(e) => {
+                    const value = e.target.value.slice(0, 20); // Limit to 20 characters
+                    setTinyUrlName(value);
+                    setTinyUrlError(''); // Clear error on input change
+                  }}
+                  placeholder="Enter name (max 20 chars)"
+                  className="tinyurl-input"
+                  maxLength={20}
+                  disabled={creatingTinyUrl}
+                />
+                <button 
+                  className="create-tinyurl-btn" 
+                  onClick={handleCreateTinyUrl}
+                  disabled={creatingTinyUrl || !tinyUrlName.trim()}
+                >
+                  {creatingTinyUrl ? 'Creating...' : 'Create'}
+                </button>
+              </div>
+              {tinyUrlError && (
+                <p className="tinyurl-error">{tinyUrlError}</p>
+              )}
+              {tinyUrl && (
+                <div className="tinyurl-result">
+                  <h4>TinyURL Created:</h4>
+                  <div className="link-container">
+                    <input 
+                      type="text" 
+                      value={tinyUrl} 
+                      readOnly 
+                      className="link-input"
+                    />
+                    <button className="copy-link-btn" onClick={copyTinyUrl} title="Copy tinyURL">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              )}
+              </div>
+            )}
+
+            {shareableUrl && !loadedFromUrl && (
+              <div className="shareable-link-section">
+              <h3>Shareable Link:</h3>
+              <div className="link-container">
+                <input 
+                  type="text" 
+                  value={shareableUrl} 
+                  readOnly 
+                  className="link-input"
+                />
+                <button className="copy-link-btn" onClick={copyLink} title="Copy link">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                </button>
+              </div>
+              <p className="link-info">
+                Share this link to view the results. Data is stored in the URL (no server storage).
+              </p>
+              </div>
+            )}
+          </>
         )}
         </div>
       )}
