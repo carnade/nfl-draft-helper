@@ -184,8 +184,8 @@ function DFSResults() {
 
       if (response.ok) {
         // Generate the tinyURL
-        const baseUrl = window.location.origin;
-        const tinyUrlPath = `/dfs/results/tinyurl/${result.name}`;
+        const baseUrl = window.location.origin + window.location.pathname;
+        const tinyUrlPath = `/tinyurl/${result.name}`;
         const createdUrl = `${baseUrl}${tinyUrlPath}`;
         
         setTinyUrl(createdUrl);
@@ -793,19 +793,28 @@ function DFSResults() {
     // First, count chosen players from lineups
     lineups.forEach(lineup => {
       lineup.players.forEach(player => {
-        const playerInfo = getPlayerInfo(player.sleeperId);
-        if (!playerInfo) return;
+        // Get player info from multiple sources
+        const dfsPlayerKey = `${player.sleeperId}_W${selectedWeek}`;
+        const dfsPlayer = dfsSalaryData[dfsPlayerKey];
+        const fantasyInfo = fantasyPoints[player.sleeperId];
+        const playerName = playerNames[player.sleeperId];
+        
+        // Determine player name, position, and team from available sources
+        const name = playerName || dfsPlayer?.name || fantasyInfo?.name || 'Unknown';
+        const position = dfsPlayer?.position || fantasyInfo?.position;
+        const team = dfsPlayer?.team || fantasyInfo?.team || '';
+        const fantasyPointsValue = fantasyInfo?.fantasy_points || 0;
+        
+        // Skip if we don't have at least a position
+        if (!position || !chosenStats[position]) return;
 
-        const position = playerInfo.position;
-        if (!chosenStats[position]) return;
-
-        const playerKey = `${playerInfo.name} (${playerInfo.team})`;
+        const playerKey = `${name} (${team})`;
         
         // Count chosen players
         if (!chosenStats[position][playerKey]) {
           chosenStats[position][playerKey] = {
-            name: playerInfo.name,
-            team: playerInfo.team,
+            name: name,
+            team: team,
             count: 0,
             totalSalary: 0,
             totalPoints: 0
@@ -813,27 +822,29 @@ function DFSResults() {
         }
         chosenStats[position][playerKey].count++;
         chosenStats[position][playerKey].totalSalary += player.salary;
-        chosenStats[position][playerKey].totalPoints += playerInfo.fantasy_points || 0;
+        chosenStats[position][playerKey].totalPoints += fantasyPointsValue;
         
-        // Calculate value for best chosen players
-        const value = (playerInfo.fantasy_points || 0) / (player.salary / 1000);
-        if (!bestChosenStats[position][playerKey]) {
-          bestChosenStats[position][playerKey] = {
-            name: playerInfo.name,
-            team: playerInfo.team,
-            value: 0,
-            count: 0,
-            totalSalary: 0,
-            totalPoints: 0
-          };
+        // Calculate value for best chosen players (only if player has points)
+        if (fantasyPointsValue > 0) {
+          const value = fantasyPointsValue / (player.salary / 1000);
+          if (!bestChosenStats[position][playerKey]) {
+            bestChosenStats[position][playerKey] = {
+              name: name,
+              team: team,
+              value: 0,
+              count: 0,
+              totalSalary: 0,
+              totalPoints: 0
+            };
+          }
+          bestChosenStats[position][playerKey].value = Math.max(
+            bestChosenStats[position][playerKey].value, 
+            value
+          );
+          bestChosenStats[position][playerKey].count++;
+          bestChosenStats[position][playerKey].totalSalary += player.salary;
+          bestChosenStats[position][playerKey].totalPoints += fantasyPointsValue;
         }
-        bestChosenStats[position][playerKey].value = Math.max(
-          bestChosenStats[position][playerKey].value, 
-          value
-        );
-        bestChosenStats[position][playerKey].count++;
-        bestChosenStats[position][playerKey].totalSalary += player.salary;
-        bestChosenStats[position][playerKey].totalPoints += playerInfo.fantasy_points || 0;
       });
     });
     
@@ -864,22 +875,82 @@ function DFSResults() {
       });
     });
     
-    Object.values(fantasyPoints).forEach(playerInfo => {
+    // Handle both cases: fantasyPoints keyed by sleeper_id OR objects with sleeper_id field
+    Object.entries(fantasyPoints).forEach(([key, playerInfo]) => {
+      // Determine sleeper_id - could be the key or a field in the object
+      const sleeperId = playerInfo.sleeper_id || playerInfo.id || key;
+      
       const position = playerInfo.position;
       if (!bestNotChosenStats[position]) return;
       
       // Only include players NOT in lineups
-      if (chosenSleeperIds.has(playerInfo.sleeper_id)) return;
+      if (chosenSleeperIds.has(sleeperId)) {
+        return;
+      }
       
       // Skip players without fantasy points or with 0 points
-      if (!playerInfo.fantasy_points || playerInfo.fantasy_points === 0) return;
-      
+      if (!playerInfo.fantasy_points || playerInfo.fantasy_points === 0) {
+        return;
+      }
       const playerKey = `${playerInfo.name} (${playerInfo.team})`;
       
       // Find salary from DFS salary data
-      const dfsPlayerKey = `${playerInfo.sleeper_id}_W${selectedWeek}`;
-      const salary = dfsSalaryData[dfsPlayerKey]?.salary;
+      // Try the standard key format first
+      const dfsPlayerKey = `${sleeperId}_W${selectedWeek}`;
+      let salary = dfsSalaryData[dfsPlayerKey]?.salary;
       
+      // Also try with sleeperId as number if it's a string, or vice versa
+      if (!salary) {
+        const altKey = typeof sleeperId === 'string' 
+          ? `${parseInt(sleeperId)}_W${selectedWeek}`
+          : `${String(sleeperId)}_W${selectedWeek}`;
+        salary = dfsSalaryData[altKey]?.salary;
+      }
+      
+      // Try looking up by sleeper_id directly (without week suffix) - maybe keys are just sleeper_ids
+      if (!salary) {
+        salary = dfsSalaryData[sleeperId]?.salary;
+      }
+      
+      // Try with sleeperId as number
+      if (!salary) {
+        const sleeperIdNum = typeof sleeperId === 'string' ? parseInt(sleeperId) : sleeperId;
+        salary = dfsSalaryData[sleeperIdNum]?.salary;
+      }
+      
+      // If not found with key, search through all DFS salary data by sleeper_id
+      if (!salary) {
+        // Convert sleeperId to string and number for comparison
+        const sleeperIdStr = String(sleeperId);
+        const sleeperIdNum = typeof sleeperId === 'string' ? parseInt(sleeperId, 10) : Number(sleeperId);
+        const sleeperIdNumValid = !isNaN(sleeperIdNum) ? sleeperIdNum : null;
+        
+        const dfsPlayer = Object.values(dfsSalaryData).find(
+          p => {
+            // Try multiple field name variations and type conversions
+            const pSleeperId = p.sleeper_id;
+            const pId = p.id;
+            
+            // Direct matches
+            if (pSleeperId === sleeperId || pId === sleeperId) return true;
+            if (pSleeperId === sleeperIdNumValid || pId === sleeperIdNumValid) return true;
+            
+            // String comparisons
+            if (pSleeperId != null && String(pSleeperId) === sleeperIdStr) return true;
+            if (pId != null && String(pId) === sleeperIdStr) return true;
+            
+            // Number comparisons
+            if (pSleeperId != null && !isNaN(Number(pSleeperId)) && Number(pSleeperId) === sleeperIdNumValid) return true;
+            if (pId != null && !isNaN(Number(pId)) && Number(pId) === sleeperIdNumValid) return true;
+            
+            return false;
+          }
+        );
+        salary = dfsPlayer?.salary;
+      }
+      
+      // Include player if we have salary, or if we don't have DFS data but player has points
+      // If no salary, we can't calculate value, but we'll still show them
       if (salary) {
         const value = playerInfo.fantasy_points / (salary / 1000);
         
@@ -895,6 +966,19 @@ function DFSResults() {
         }
         
         bestNotChosenStats[position][playerKey].value = value;
+      } else {
+        // Player has points but no salary found - still include them with 0 value
+        // This can happen if player wasn't in DFS pool but still played
+        if (!bestNotChosenStats[position][playerKey]) {
+          bestNotChosenStats[position][playerKey] = {
+            name: playerInfo.name,
+            team: playerInfo.team,
+            value: 0,
+            count: 0,
+            totalSalary: 0,
+            totalPoints: playerInfo.fantasy_points
+          };
+        }
       }
     });
 
