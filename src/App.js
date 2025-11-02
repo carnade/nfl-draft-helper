@@ -91,6 +91,7 @@ function App() {
               <Route path="/bestball/:userName" element={<BestballList />} />
               <Route path="/trade-analyzer" element={<TradeAnalyzer userName={userName} setUserName={setUserName} />} />
               <Route path="/dfs" element={<DFS userName={userName} />} />
+              <Route path="/dfs/results/tinyurl/:name" element={<DFSResults />} />
               <Route path="/dfs/results" element={<DFSResults />} />
               <Route
                 path="/rankingssetup"

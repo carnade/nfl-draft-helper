@@ -1,10 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import LZString from 'lz-string';
 import './DFSResults.css';
 
+// Add a mock flag
+const mock = true; // Set to true for mock data, false for production
+
+// Define the base URL based on the mock flag
+const BASE_URL = mock
+  ? "http://localhost:5000"
+  : "https://shaggy-latashia-carnade-2ea2054a.koyeb.app";
+
 function DFSResults() {
   const navigate = useNavigate();
+  const { name: tinyUrlNameParam } = useParams();
   const [inputData, setInputData] = useState('');
   const [compressedData, setCompressedData] = useState('');
   const [shareableUrl, setShareableUrl] = useState('');
@@ -15,7 +24,13 @@ function DFSResults() {
   const [dfsSalaryData, setDfsSalaryData] = useState({});
   const [loadedFromUrl, setLoadedFromUrl] = useState(false);
   const [loadingPoints, setLoadingPoints] = useState(false);
+  const [loadingTinyUrl, setLoadingTinyUrl] = useState(false);
   const [visibleRanks, setVisibleRanks] = useState(new Set());
+  const [tinyUrlName, setTinyUrlName] = useState('');
+  const [tinyUrl, setTinyUrl] = useState('');
+  const [creatingTinyUrl, setCreatingTinyUrl] = useState(false);
+  const [tinyUrlError, setTinyUrlError] = useState('');
+  const [tinyUrlCount, setTinyUrlCount] = useState(null);
 
   const handleProceed = async () => {
     try {
@@ -41,6 +56,16 @@ function DFSResults() {
       // Generate shareable URL using hash fragment with week
       const baseUrl = window.location.origin + window.location.pathname;
       const url = `${baseUrl}#${selectedWeek}|${compressed}`;
+      
+      console.log('Generated URL:', {
+        baseUrl,
+        selectedWeek,
+        compressedLength: compressed.length,
+        compressedStart: compressed.substring(0, 50),
+        fullUrl: url,
+        urlLength: url.length
+      });
+      
       setShareableUrl(url);
       
       // Now fetch fantasy points and player names
@@ -58,8 +83,8 @@ function DFSResults() {
         
         // Fetch both fantasy points and DFS salary data
         const [fantasyData, salaryData] = await Promise.all([
-          fetch(`https://shaggy-latashia-carnade-2ea2054a.koyeb.app/fantasy-points/week/${selectedWeek}`).then(res => res.json()),
-          fetch(`https://shaggy-latashia-carnade-2ea2054a.koyeb.app/dfs-salaries/week/${selectedWeek}`).then(res => res.json())
+          fetch(`${BASE_URL}/fantasy-points/week/${selectedWeek}`).then(res => res.json()),
+          fetch(`${BASE_URL}/dfs-salaries/week/${selectedWeek}`).then(res => res.json())
         ]);
         
         console.log('Fantasy points fetched:', fantasyData);
@@ -97,16 +122,227 @@ function DFSResults() {
     });
   };
 
+  const copyTinyUrl = () => {
+    navigator.clipboard.writeText(tinyUrl).then(() => {
+      console.log('TinyURL copied to clipboard!');
+    });
+  };
+
+  const fetchTinyUrlCount = useCallback(async () => {
+    try {
+      const response = await fetch(`${BASE_URL}/tinyurl/count`);
+      if (response.ok) {
+        const data = await response.json();
+        setTinyUrlCount(data);
+      }
+    } catch (error) {
+      console.error('Error fetching tinyURL count:', error);
+      // Don't set error state, just fail silently
+    }
+  }, []);
+
+  const handleCreateTinyUrl = async () => {
+    if (!tinyUrlName || tinyUrlName.trim() === '') {
+      setTinyUrlError('Please enter a name');
+      return;
+    }
+
+    if (tinyUrlName.length > 20) {
+      setTinyUrlError('Name must be 20 characters or less');
+      return;
+    }
+
+    // Get the hash data from the current URL or construct it from compressedData
+    let hashData = window.location.hash.substring(1);
+    
+    // If no hash in URL, construct it from compressedData and selectedWeek
+    if (!hashData && compressedData && selectedWeek) {
+      hashData = `${selectedWeek}|${compressedData}`;
+    }
+    
+    if (!hashData) {
+      setTinyUrlError('No data available to create tinyURL');
+      return;
+    }
+
+    setCreatingTinyUrl(true);
+    setTinyUrlError('');
+
+    try {
+      const response = await fetch(`${BASE_URL}/tinyurl/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: tinyUrlName.trim(),
+          data: hashData
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        // Generate the tinyURL
+        const baseUrl = window.location.origin + window.location.pathname;
+        const tinyUrlPath = `/tinyurl/${result.name}`;
+        const createdUrl = `${baseUrl}${tinyUrlPath}`;
+        
+        setTinyUrl(createdUrl);
+        setTinyUrlName(''); // Clear the input
+        
+        // Refresh the count after successful creation
+        fetchTinyUrlCount();
+      } else {
+        // Handle errors
+        if (response.status === 400) {
+          setTinyUrlError(result.message || 'Invalid request. Please check your input.');
+        } else if (response.status === 500) {
+          setTinyUrlError('Server error. Please try again later.');
+        } else {
+          setTinyUrlError(result.message || 'Failed to create tinyURL');
+        }
+      }
+    } catch (error) {
+      console.error('Error creating tinyURL:', error);
+      setTinyUrlError('Network error. Please try again.');
+    } finally {
+      setCreatingTinyUrl(false);
+    }
+  };
+
+  // Load data from tinyURL if name parameter exists
   useEffect(() => {
-    // Check if data is in URL hash
-    const hash = window.location.hash.substring(1); // Remove the #
+    if (tinyUrlNameParam) {
+      const fetchTinyUrlData = async () => {
+        setLoadingTinyUrl(true);
+        try {
+          const response = await fetch(`${BASE_URL}/tinyurl/${tinyUrlNameParam}`);
+          
+          if (response.ok) {
+            const result = await response.json();
+            const hashData = result.data;
+            
+            // Process the hash data similar to hash URL loading
+            let hash = hashData;
+            
+            // Decode if needed
+            try {
+              hash = decodeURIComponent(hash);
+            } catch (e) {
+              // Hash wasn't encoded, use as-is
+            }
+            
+            // Split week and compressed data
+            const [weekStr, compressedData] = hash.split('|');
+            const urlWeek = parseInt(weekStr);
+            
+            // Set the week from URL
+            if (urlWeek && !isNaN(urlWeek)) {
+              setSelectedWeek(urlWeek);
+            }
+            
+            // Decompress the data
+            let decompressed = LZString.decompressFromEncodedURIComponent(compressedData);
+            
+            if (!decompressed) {
+              decompressed = LZString.decompressFromBase64(compressedData);
+            }
+            
+            if (!decompressed) {
+              decompressed = LZString.decompressFromUTF16(compressedData);
+            }
+            
+            if (decompressed) {
+              // Split back into individual lineups
+              const lineups = decompressed.split('|');
+              
+              // Re-encode each lineup to base64 format for inputData
+              const formattedLineups = lineups.map(lineup => {
+                const [username, rawData] = lineup.split(':');
+                const encoded = btoa(rawData);
+                return `${username}:${encoded}`;
+              });
+              
+              setInputData(formattedLineups.join('\n'));
+              setLoadedFromUrl(true);
+              
+              // Auto-process the data
+              const combined = decompressed;
+              const compressed = LZString.compressToEncodedURIComponent(combined);
+              setCompressedData(compressed);
+              
+              setShareableUrl('');
+            } else {
+              console.error('Failed to decompress data from tinyURL');
+              setInputData('ERROR: Failed to load data from tinyURL. The data may be corrupted.');
+            }
+          } else if (response.status === 404) {
+            setInputData(`ERROR: TinyURL "${tinyUrlNameParam}" not found.`);
+          } else {
+            setInputData('ERROR: Failed to load data from tinyURL. Please try again.');
+          }
+        } catch (error) {
+          console.error('Error loading tinyURL data:', error);
+          setInputData('ERROR: Network error while loading tinyURL. Please try again.');
+        } finally {
+          setLoadingTinyUrl(false);
+        }
+      };
+      
+      fetchTinyUrlData();
+      return; // Don't process hash if we're loading from tinyURL
+    }
+    
+    // Check if data is in URL hash (original logic)
+    let hash = window.location.hash.substring(1); // Remove the #
+    
+    // Decode the hash in case it was URL-encoded by the platform
+    // Try multiple decoding strategies since different platforms encode differently
+    const originalHash = hash;
+    try {
+      // First try standard URL decoding
+      hash = decodeURIComponent(hash);
+      console.log('Successfully decoded hash with decodeURIComponent');
+    } catch (e) {
+      console.log('decodeURIComponent failed, trying alternative approaches');
+      
+      // Try replacing common URL-encoded characters that might break the data
+      try {
+        hash = hash
+          .replace(/%7C/g, '|')  // Replace encoded pipe characters
+          .replace(/%3A/g, ':')   // Replace encoded colons
+          .replace(/%2B/g, '+')   // Replace encoded plus signs
+          .replace(/%2F/g, '/')  // Replace encoded forward slashes
+          .replace(/%3D/g, '=')  // Replace encoded equals signs
+          .replace(/%2D/g, '-')  // Replace encoded hyphens
+          .replace(/%5F/g, '_')  // Replace encoded underscores
+          .replace(/%2E/g, '.')  // Replace encoded periods
+          .replace(/%2C/g, ','); // Replace encoded commas
+        
+        console.log('Applied manual character replacements');
+      } catch (e2) {
+        console.log('Manual replacements failed, using original hash');
+        hash = originalHash;
+      }
+    }
+    
     if (hash) {
       try {
         // Split week and compressed data
         const [weekStr, compressedData] = hash.split('|');
         const urlWeek = parseInt(weekStr);
         
-        console.log('URL parsing:', { hash, weekStr, urlWeek, compressedData: compressedData?.substring(0, 50) + '...' });
+        console.log('URL parsing:', { 
+          originalHash: window.location.hash.substring(1),
+          decodedHash: hash, 
+          weekStr, 
+          urlWeek, 
+          compressedData: compressedData?.substring(0, 50) + '...',
+          compressedDataLength: compressedData?.length,
+          hashLength: hash.length,
+          originalHashLength: window.location.hash.substring(1).length
+        });
         
         // Set the week from URL
         if (urlWeek && !isNaN(urlWeek)) {
@@ -115,7 +351,36 @@ function DFSResults() {
         }
         
         // Decompress the data
-        const decompressed = LZString.decompressFromEncodedURIComponent(compressedData);
+        console.log('Attempting to decompress data:', {
+          compressedDataLength: compressedData?.length,
+          compressedDataStart: compressedData?.substring(0, 100),
+          compressedDataEnd: compressedData?.substring(compressedData.length - 100),
+          containsInvalidChars: /[^A-Za-z0-9+/_-]/.test(compressedData),
+          firstChar: compressedData?.[0],
+          lastChar: compressedData?.[compressedData.length - 1]
+        });
+        
+        // Try different decompression methods
+        let decompressed = LZString.decompressFromEncodedURIComponent(compressedData);
+        
+        // If that fails, try the base64 method
+        if (!decompressed) {
+          console.log('EncodedURIComponent failed, trying base64 decompression');
+          decompressed = LZString.decompressFromBase64(compressedData);
+        }
+        
+        // If that fails, try the UTF16 method
+        if (!decompressed) {
+          console.log('Base64 failed, trying UTF16 decompression');
+          decompressed = LZString.decompressFromUTF16(compressedData);
+        }
+        
+        console.log('Decompression result:', {
+          success: !!decompressed,
+          decompressedLength: decompressed?.length,
+          decompressedStart: decompressed?.substring(0, 200)
+        });
+        
         if (decompressed) {
           // Split back into individual lineups
           const lineups = decompressed.split('|');
@@ -140,19 +405,30 @@ function DFSResults() {
           
           // Auto-fetch fantasy points and player names for loaded data
           // We need to wait for selectedWeek to be set, so we'll do this in a separate useEffect
+        } else {
+          console.error('Failed to decompress data from URL. This might be due to URL encoding issues.');
+          console.log('Compressed data that failed:', compressedData);
+          
+          // Show user-friendly error message
+          setInputData('ERROR: Failed to load data from URL. This can happen when links are shared through certain platforms that modify URLs. Please try copying the link directly or ask the sender to share it again.');
         }
       } catch (error) {
         console.error('Error loading data from URL:', error);
+        console.log('Original hash:', window.location.hash);
+        console.log('Processed hash:', hash);
+        
+        // Show user-friendly error message
+        setInputData('ERROR: Failed to parse URL data. This can happen when links are shared through certain platforms that modify URLs. Please try copying the link directly or ask the sender to share it again.');
       }
     }
     
-    // Get current week from cache or fetch it (only if not loading from URL)
+    // Get current week from cache or fetch it (only if not loading from URL or tinyURL)
     const cachedWeek = sessionStorage.getItem('nfl_current_week');
     if (cachedWeek) {
       const week = parseInt(cachedWeek);
       setCurrentWeek(week);
-      // Only set selectedWeek if not loading from URL
-      if (!window.location.hash) {
+      // Only set selectedWeek if not loading from URL or tinyURL
+      if (!window.location.hash && !tinyUrlNameParam) {
         setSelectedWeek(week - 1); // Default to previous week
       }
     } else {
@@ -161,14 +437,14 @@ function DFSResults() {
         .then(res => res.json())
         .then(data => {
           setCurrentWeek(data.week);
-          // Only set selectedWeek if not loading from URL
-          if (!window.location.hash) {
+          // Only set selectedWeek if not loading from URL or tinyURL
+          if (!window.location.hash && !tinyUrlNameParam) {
             setSelectedWeek(data.week - 1); // Default to previous week
           }
         })
         .catch(err => console.error('Error fetching week:', err));
     }
-  }, []);
+  }, [tinyUrlNameParam]);
 
   // Auto-fetch data when loaded from URL and selectedWeek is available
   useEffect(() => {
@@ -188,8 +464,8 @@ function DFSResults() {
         try {
           // Fetch both fantasy points and DFS salary data
           const [fantasyData, salaryData] = await Promise.all([
-            fetch(`https://shaggy-latashia-carnade-2ea2054a.koyeb.app/fantasy-points/week/${selectedWeek}`).then(res => res.json()),
-            fetch(`https://shaggy-latashia-carnade-2ea2054a.koyeb.app/dfs-salaries/week/${selectedWeek}`).then(res => res.json())
+            fetch(`${BASE_URL}/fantasy-points/week/${selectedWeek}`).then(res => res.json()),
+            fetch(`${BASE_URL}/dfs-salaries/week/${selectedWeek}`).then(res => res.json())
           ]);
           
           console.log('Fantasy points fetched (from URL):', fantasyData);
@@ -216,6 +492,13 @@ function DFSResults() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadedFromUrl, selectedWeek, compressedData]);
+
+  // Fetch tinyURL count when section is visible
+  useEffect(() => {
+    if (compressedData && inputData && !loadedFromUrl) {
+      fetchTinyUrlCount();
+    }
+  }, [compressedData, inputData, loadedFromUrl, fetchTinyUrlCount]);
 
   const parseLineups = useCallback(() => {
     try {
@@ -385,7 +668,7 @@ function DFSResults() {
   const fetchPlayerNames = async (sleeperIds) => {
     console.log('fetchPlayerNames called with:', sleeperIds);
     try {
-      const response = await fetch('https://shaggy-latashia-carnade-2ea2054a.koyeb.app/getplayers/bestball', {
+      const response = await fetch(`${BASE_URL}/getplayers/bestball`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -510,19 +793,28 @@ function DFSResults() {
     // First, count chosen players from lineups
     lineups.forEach(lineup => {
       lineup.players.forEach(player => {
-        const playerInfo = getPlayerInfo(player.sleeperId);
-        if (!playerInfo) return;
+        // Get player info from multiple sources
+        const dfsPlayerKey = `${player.sleeperId}_W${selectedWeek}`;
+        const dfsPlayer = dfsSalaryData[dfsPlayerKey];
+        const fantasyInfo = fantasyPoints[player.sleeperId];
+        const playerName = playerNames[player.sleeperId];
+        
+        // Determine player name, position, and team from available sources
+        const name = playerName || dfsPlayer?.name || fantasyInfo?.name || 'Unknown';
+        const position = dfsPlayer?.position || fantasyInfo?.position;
+        const team = dfsPlayer?.team || fantasyInfo?.team || '';
+        const fantasyPointsValue = fantasyInfo?.fantasy_points || 0;
+        
+        // Skip if we don't have at least a position
+        if (!position || !chosenStats[position]) return;
 
-        const position = playerInfo.position;
-        if (!chosenStats[position]) return;
-
-        const playerKey = `${playerInfo.name} (${playerInfo.team})`;
+        const playerKey = `${name} (${team})`;
         
         // Count chosen players
         if (!chosenStats[position][playerKey]) {
           chosenStats[position][playerKey] = {
-            name: playerInfo.name,
-            team: playerInfo.team,
+            name: name,
+            team: team,
             count: 0,
             totalSalary: 0,
             totalPoints: 0
@@ -530,27 +822,29 @@ function DFSResults() {
         }
         chosenStats[position][playerKey].count++;
         chosenStats[position][playerKey].totalSalary += player.salary;
-        chosenStats[position][playerKey].totalPoints += playerInfo.fantasy_points || 0;
+        chosenStats[position][playerKey].totalPoints += fantasyPointsValue;
         
-        // Calculate value for best chosen players
-        const value = (playerInfo.fantasy_points || 0) / (player.salary / 1000);
-        if (!bestChosenStats[position][playerKey]) {
-          bestChosenStats[position][playerKey] = {
-            name: playerInfo.name,
-            team: playerInfo.team,
-            value: 0,
-            count: 0,
-            totalSalary: 0,
-            totalPoints: 0
-          };
+        // Calculate value for best chosen players (only if player has points)
+        if (fantasyPointsValue > 0) {
+          const value = fantasyPointsValue / (player.salary / 1000);
+          if (!bestChosenStats[position][playerKey]) {
+            bestChosenStats[position][playerKey] = {
+              name: name,
+              team: team,
+              value: 0,
+              count: 0,
+              totalSalary: 0,
+              totalPoints: 0
+            };
+          }
+          bestChosenStats[position][playerKey].value = Math.max(
+            bestChosenStats[position][playerKey].value, 
+            value
+          );
+          bestChosenStats[position][playerKey].count++;
+          bestChosenStats[position][playerKey].totalSalary += player.salary;
+          bestChosenStats[position][playerKey].totalPoints += fantasyPointsValue;
         }
-        bestChosenStats[position][playerKey].value = Math.max(
-          bestChosenStats[position][playerKey].value, 
-          value
-        );
-        bestChosenStats[position][playerKey].count++;
-        bestChosenStats[position][playerKey].totalSalary += player.salary;
-        bestChosenStats[position][playerKey].totalPoints += playerInfo.fantasy_points || 0;
       });
     });
     
@@ -581,22 +875,82 @@ function DFSResults() {
       });
     });
     
-    Object.values(fantasyPoints).forEach(playerInfo => {
+    // Handle both cases: fantasyPoints keyed by sleeper_id OR objects with sleeper_id field
+    Object.entries(fantasyPoints).forEach(([key, playerInfo]) => {
+      // Determine sleeper_id - could be the key or a field in the object
+      const sleeperId = playerInfo.sleeper_id || playerInfo.id || key;
+      
       const position = playerInfo.position;
       if (!bestNotChosenStats[position]) return;
       
       // Only include players NOT in lineups
-      if (chosenSleeperIds.has(playerInfo.sleeper_id)) return;
+      if (chosenSleeperIds.has(sleeperId)) {
+        return;
+      }
       
       // Skip players without fantasy points or with 0 points
-      if (!playerInfo.fantasy_points || playerInfo.fantasy_points === 0) return;
-      
+      if (!playerInfo.fantasy_points || playerInfo.fantasy_points === 0) {
+        return;
+      }
       const playerKey = `${playerInfo.name} (${playerInfo.team})`;
       
       // Find salary from DFS salary data
-      const dfsPlayerKey = `${playerInfo.sleeper_id}_W${selectedWeek}`;
-      const salary = dfsSalaryData[dfsPlayerKey]?.salary;
+      // Try the standard key format first
+      const dfsPlayerKey = `${sleeperId}_W${selectedWeek}`;
+      let salary = dfsSalaryData[dfsPlayerKey]?.salary;
       
+      // Also try with sleeperId as number if it's a string, or vice versa
+      if (!salary) {
+        const altKey = typeof sleeperId === 'string' 
+          ? `${parseInt(sleeperId)}_W${selectedWeek}`
+          : `${String(sleeperId)}_W${selectedWeek}`;
+        salary = dfsSalaryData[altKey]?.salary;
+      }
+      
+      // Try looking up by sleeper_id directly (without week suffix) - maybe keys are just sleeper_ids
+      if (!salary) {
+        salary = dfsSalaryData[sleeperId]?.salary;
+      }
+      
+      // Try with sleeperId as number
+      if (!salary) {
+        const sleeperIdNum = typeof sleeperId === 'string' ? parseInt(sleeperId) : sleeperId;
+        salary = dfsSalaryData[sleeperIdNum]?.salary;
+      }
+      
+      // If not found with key, search through all DFS salary data by sleeper_id
+      if (!salary) {
+        // Convert sleeperId to string and number for comparison
+        const sleeperIdStr = String(sleeperId);
+        const sleeperIdNum = typeof sleeperId === 'string' ? parseInt(sleeperId, 10) : Number(sleeperId);
+        const sleeperIdNumValid = !isNaN(sleeperIdNum) ? sleeperIdNum : null;
+        
+        const dfsPlayer = Object.values(dfsSalaryData).find(
+          p => {
+            // Try multiple field name variations and type conversions
+            const pSleeperId = p.sleeper_id;
+            const pId = p.id;
+            
+            // Direct matches
+            if (pSleeperId === sleeperId || pId === sleeperId) return true;
+            if (pSleeperId === sleeperIdNumValid || pId === sleeperIdNumValid) return true;
+            
+            // String comparisons
+            if (pSleeperId != null && String(pSleeperId) === sleeperIdStr) return true;
+            if (pId != null && String(pId) === sleeperIdStr) return true;
+            
+            // Number comparisons
+            if (pSleeperId != null && !isNaN(Number(pSleeperId)) && Number(pSleeperId) === sleeperIdNumValid) return true;
+            if (pId != null && !isNaN(Number(pId)) && Number(pId) === sleeperIdNumValid) return true;
+            
+            return false;
+          }
+        );
+        salary = dfsPlayer?.salary;
+      }
+      
+      // Include player if we have salary, or if we don't have DFS data but player has points
+      // If no salary, we can't calculate value, but we'll still show them
       if (salary) {
         const value = playerInfo.fantasy_points / (salary / 1000);
         
@@ -612,6 +966,19 @@ function DFSResults() {
         }
         
         bestNotChosenStats[position][playerKey].value = value;
+      } else {
+        // Player has points but no salary found - still include them with 0 value
+        // This can happen if player wasn't in DFS pool but still played
+        if (!bestNotChosenStats[position][playerKey]) {
+          bestNotChosenStats[position][playerKey] = {
+            name: playerInfo.name,
+            team: playerInfo.team,
+            value: 0,
+            count: 0,
+            totalSalary: 0,
+            totalPoints: playerInfo.fantasy_points
+          };
+        }
       }
     });
 
@@ -687,34 +1054,97 @@ function DFSResults() {
           </>
         )}
 
-        {compressedData && shareableUrl && !loadedFromUrl && (
-          <div className="shareable-link-section">
-            <h3>Shareable Link:</h3>
-            <div className="link-container">
-              <input 
-                type="text" 
-                value={shareableUrl} 
-                readOnly 
-                className="link-input"
-              />
-              <button className="copy-link-btn" onClick={copyLink} title="Copy link">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-              </button>
-            </div>
-            <p className="link-info">
-              Share this link to view the results. Data is stored in the URL (no server storage).
-            </p>
-          </div>
+        {compressedData && inputData && (
+          <>
+            {!loadedFromUrl && (
+              <div className="tinyurl-section">
+              <h3>
+                Create a results tinyURL
+                {tinyUrlCount && (
+                  <span className="tinyurl-count">
+                    ({tinyUrlCount.count} of {tinyUrlCount.max_entries} used)
+                  </span>
+                )}
+              </h3>
+              <div className="tinyurl-input-container">
+                <input
+                  type="text"
+                  value={tinyUrlName}
+                  onChange={(e) => {
+                    const value = e.target.value.slice(0, 20); // Limit to 20 characters
+                    setTinyUrlName(value);
+                    setTinyUrlError(''); // Clear error on input change
+                  }}
+                  placeholder="Enter name (max 20 chars)"
+                  className="tinyurl-input"
+                  maxLength={20}
+                  disabled={creatingTinyUrl}
+                />
+                <button 
+                  className="create-tinyurl-btn" 
+                  onClick={handleCreateTinyUrl}
+                  disabled={creatingTinyUrl || !tinyUrlName.trim()}
+                >
+                  {creatingTinyUrl ? 'Creating...' : 'Create'}
+                </button>
+              </div>
+              {tinyUrlError && (
+                <p className="tinyurl-error">{tinyUrlError}</p>
+              )}
+              {tinyUrl && (
+                <div className="tinyurl-result">
+                  <h4>TinyURL Created:</h4>
+                  <div className="link-container">
+                    <input 
+                      type="text" 
+                      value={tinyUrl} 
+                      readOnly 
+                      className="link-input"
+                    />
+                    <button className="copy-link-btn" onClick={copyTinyUrl} title="Copy tinyURL">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              )}
+              </div>
+            )}
+
+            {shareableUrl && !loadedFromUrl && (
+              <div className="shareable-link-section">
+              <h3>Shareable Link:</h3>
+              <div className="link-container">
+                <input 
+                  type="text" 
+                  value={shareableUrl} 
+                  readOnly 
+                  className="link-input"
+                />
+                <button className="copy-link-btn" onClick={copyLink} title="Copy link">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                </button>
+              </div>
+              <p className="link-info">
+                Share this link to view the results. Data is stored in the URL (no server storage).
+              </p>
+              </div>
+            )}
+          </>
         )}
         </div>
       )}
 
       {compressedData && inputData && (
         <div className="results-grid-section">
-          {loadingPoints ? (
+          {loadingTinyUrl ? (
+            <div className="loading-message">Loading tinyURL data...</div>
+          ) : loadingPoints ? (
             <div className="loading-message">Loading fantasy points for Week {selectedWeek}...</div>
           ) : Object.keys(fantasyPoints).length === 0 ? (
             <div className="error-message">No fantasy points data available for Week {selectedWeek}</div>

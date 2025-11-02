@@ -4,6 +4,14 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSort, faSortUp, faSortDown } from '@fortawesome/free-solid-svg-icons';
 import './DFS.css';
 
+// Add a mock flag
+const mock = false; // Set to true for mock data, false for production
+
+// Define the base URL based on the mock flag
+const BASE_URL = mock
+  ? "http://localhost:5000"
+  : "https://shaggy-latashia-carnade-2ea2054a.koyeb.app";
+
 function DFS({ userName }) {
   const navigate = useNavigate();
   const [players, setPlayers] = useState([]);
@@ -35,6 +43,8 @@ function DFS({ userName }) {
   const [lineupCode, setLineupCode] = useState('');
   const [showLoadModal, setShowLoadModal] = useState(false);
   const [loadLineupCode, setLoadLineupCode] = useState('');
+  const [showUsernameModal, setShowUsernameModal] = useState(false);
+  const [tempUsername, setTempUsername] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -73,7 +83,7 @@ function DFS({ userName }) {
         const currentWeek = weekData.week;
 
         // Fetch DFS salaries
-        const salariesResponse = await fetch(`https://shaggy-latashia-carnade-2ea2054a.koyeb.app/dfs-salaries/week/${currentWeek}`);
+        const salariesResponse = await fetch(`${BASE_URL}/dfs-salaries/week/${currentWeek}`);
         const salariesData = await salariesResponse.json();
         
         // Transform data to match our structure
@@ -231,7 +241,51 @@ function DFS({ userName }) {
   };
 
   const handleFinish = () => {
+    // Check if username is empty
+    const settings = JSON.parse(localStorage.getItem('FantasyHelperSettings') || '{}');
+    const currentUsername = userName || settings.userName;
+    
+    if (!currentUsername || currentUsername.trim() === '' || currentUsername === 'Anonymous') {
+      // Show username prompt modal
+      setShowUsernameModal(true);
+      return;
+    }
+    
+    // If username exists, proceed normally
     const code = generateLineupCode();
+    setLineupCode(code);
+    setShowModal(true);
+  };
+
+  const handleUsernameSubmit = () => {
+    if (!tempUsername || tempUsername.trim() === '') {
+      alert('Please enter a username/handle');
+      return;
+    }
+    
+    const trimmedUsername = tempUsername.trim();
+    
+    // Save username to localStorage
+    const settings = JSON.parse(localStorage.getItem('FantasyHelperSettings') || '{}');
+    settings.userName = trimmedUsername;
+    localStorage.setItem('FantasyHelperSettings', JSON.stringify(settings));
+    
+    // Close username modal
+    setShowUsernameModal(false);
+    setTempUsername(''); // Clear temp username
+    
+    // Generate lineup code with the new username
+    // Build lineup string from roster
+    const lineupParts = Object.values(roster)
+      .filter(player => player !== null)
+      .map(player => `${player.sleeper_id}-${player.salary}`)
+      .join(',');
+    
+    // Base64 encode the lineup
+    const encoded = btoa(lineupParts);
+    
+    // Format: Username:EncodedLineup
+    const code = `${trimmedUsername}:${encoded}`;
     setLineupCode(code);
     setShowModal(true);
   };
@@ -829,7 +883,42 @@ function DFS({ userName }) {
           </div>
         </div>
       )}
-      
+
+      {showUsernameModal && (
+        <div className="modal-overlay" onClick={() => setShowUsernameModal(false)}>
+          <div className="lineup-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close-btn" onClick={() => setShowUsernameModal(false)}>
+              ×
+            </button>
+            <h2>Enter Username/Handle</h2>
+            <div className="load-lineup-container">
+              <p>Please enter your username or handle to continue:</p>
+              <input
+                type="text"
+                className="lineup-code-input"
+                value={tempUsername}
+                onChange={(e) => setTempUsername(e.target.value)}
+                placeholder="Enter your username/handle"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleUsernameSubmit();
+                  }
+                }}
+                autoFocus
+              />
+              <div className="load-lineup-buttons">
+                <button className="load-btn" onClick={handleUsernameSubmit}>
+                  Continue
+                </button>
+                <button className="cancel-btn" onClick={() => setShowUsernameModal(false)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="dfs-content">
         <div className="dfs-table-wrapper">
           <table className="dfs-table">
