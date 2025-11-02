@@ -41,6 +41,16 @@ function DFSResults() {
       // Generate shareable URL using hash fragment with week
       const baseUrl = window.location.origin + window.location.pathname;
       const url = `${baseUrl}#${selectedWeek}|${compressed}`;
+      
+      console.log('Generated URL:', {
+        baseUrl,
+        selectedWeek,
+        compressedLength: compressed.length,
+        compressedStart: compressed.substring(0, 50),
+        fullUrl: url,
+        urlLength: url.length
+      });
+      
       setShareableUrl(url);
       
       // Now fetch fantasy points and player names
@@ -99,14 +109,54 @@ function DFSResults() {
 
   useEffect(() => {
     // Check if data is in URL hash
-    const hash = window.location.hash.substring(1); // Remove the #
+    let hash = window.location.hash.substring(1); // Remove the #
+    
+    // Decode the hash in case it was URL-encoded by the platform
+    // Try multiple decoding strategies since different platforms encode differently
+    const originalHash = hash;
+    try {
+      // First try standard URL decoding
+      hash = decodeURIComponent(hash);
+      console.log('Successfully decoded hash with decodeURIComponent');
+    } catch (e) {
+      console.log('decodeURIComponent failed, trying alternative approaches');
+      
+      // Try replacing common URL-encoded characters that might break the data
+      try {
+        hash = hash
+          .replace(/%7C/g, '|')  // Replace encoded pipe characters
+          .replace(/%3A/g, ':')   // Replace encoded colons
+          .replace(/%2B/g, '+')   // Replace encoded plus signs
+          .replace(/%2F/g, '/')  // Replace encoded forward slashes
+          .replace(/%3D/g, '=')  // Replace encoded equals signs
+          .replace(/%2D/g, '-')  // Replace encoded hyphens
+          .replace(/%5F/g, '_')  // Replace encoded underscores
+          .replace(/%2E/g, '.')  // Replace encoded periods
+          .replace(/%2C/g, ','); // Replace encoded commas
+        
+        console.log('Applied manual character replacements');
+      } catch (e2) {
+        console.log('Manual replacements failed, using original hash');
+        hash = originalHash;
+      }
+    }
+    
     if (hash) {
       try {
         // Split week and compressed data
         const [weekStr, compressedData] = hash.split('|');
         const urlWeek = parseInt(weekStr);
         
-        console.log('URL parsing:', { hash, weekStr, urlWeek, compressedData: compressedData?.substring(0, 50) + '...' });
+        console.log('URL parsing:', { 
+          originalHash: window.location.hash.substring(1),
+          decodedHash: hash, 
+          weekStr, 
+          urlWeek, 
+          compressedData: compressedData?.substring(0, 50) + '...',
+          compressedDataLength: compressedData?.length,
+          hashLength: hash.length,
+          originalHashLength: window.location.hash.substring(1).length
+        });
         
         // Set the week from URL
         if (urlWeek && !isNaN(urlWeek)) {
@@ -115,7 +165,36 @@ function DFSResults() {
         }
         
         // Decompress the data
-        const decompressed = LZString.decompressFromEncodedURIComponent(compressedData);
+        console.log('Attempting to decompress data:', {
+          compressedDataLength: compressedData?.length,
+          compressedDataStart: compressedData?.substring(0, 100),
+          compressedDataEnd: compressedData?.substring(compressedData.length - 100),
+          containsInvalidChars: /[^A-Za-z0-9+/_-]/.test(compressedData),
+          firstChar: compressedData?.[0],
+          lastChar: compressedData?.[compressedData.length - 1]
+        });
+        
+        // Try different decompression methods
+        let decompressed = LZString.decompressFromEncodedURIComponent(compressedData);
+        
+        // If that fails, try the base64 method
+        if (!decompressed) {
+          console.log('EncodedURIComponent failed, trying base64 decompression');
+          decompressed = LZString.decompressFromBase64(compressedData);
+        }
+        
+        // If that fails, try the UTF16 method
+        if (!decompressed) {
+          console.log('Base64 failed, trying UTF16 decompression');
+          decompressed = LZString.decompressFromUTF16(compressedData);
+        }
+        
+        console.log('Decompression result:', {
+          success: !!decompressed,
+          decompressedLength: decompressed?.length,
+          decompressedStart: decompressed?.substring(0, 200)
+        });
+        
         if (decompressed) {
           // Split back into individual lineups
           const lineups = decompressed.split('|');
@@ -140,9 +219,20 @@ function DFSResults() {
           
           // Auto-fetch fantasy points and player names for loaded data
           // We need to wait for selectedWeek to be set, so we'll do this in a separate useEffect
+        } else {
+          console.error('Failed to decompress data from URL. This might be due to URL encoding issues.');
+          console.log('Compressed data that failed:', compressedData);
+          
+          // Show user-friendly error message
+          setInputData('ERROR: Failed to load data from URL. This can happen when links are shared through certain platforms that modify URLs. Please try copying the link directly or ask the sender to share it again.');
         }
       } catch (error) {
         console.error('Error loading data from URL:', error);
+        console.log('Original hash:', window.location.hash);
+        console.log('Processed hash:', hash);
+        
+        // Show user-friendly error message
+        setInputData('ERROR: Failed to parse URL data. This can happen when links are shared through certain platforms that modify URLs. Please try copying the link directly or ask the sender to share it again.');
       }
     }
     
