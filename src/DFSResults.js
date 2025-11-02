@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import LZString from 'lz-string';
 import './DFSResults.css';
 
@@ -13,6 +13,7 @@ const BASE_URL = mock
 
 function DFSResults() {
   const navigate = useNavigate();
+  const { name: tinyUrlNameParam } = useParams();
   const [inputData, setInputData] = useState('');
   const [compressedData, setCompressedData] = useState('');
   const [shareableUrl, setShareableUrl] = useState('');
@@ -23,6 +24,7 @@ function DFSResults() {
   const [dfsSalaryData, setDfsSalaryData] = useState({});
   const [loadedFromUrl, setLoadedFromUrl] = useState(false);
   const [loadingPoints, setLoadingPoints] = useState(false);
+  const [loadingTinyUrl, setLoadingTinyUrl] = useState(false);
   const [visibleRanks, setVisibleRanks] = useState(new Set());
   const [tinyUrlName, setTinyUrlName] = useState('');
   const [tinyUrl, setTinyUrl] = useState('');
@@ -182,8 +184,8 @@ function DFSResults() {
 
       if (response.ok) {
         // Generate the tinyURL
-        const baseUrl = window.location.origin + window.location.pathname;
-        const tinyUrlPath = `/tinyurl/${result.name}`;
+        const baseUrl = window.location.origin;
+        const tinyUrlPath = `/dfs/results/tinyurl/${result.name}`;
         const createdUrl = `${baseUrl}${tinyUrlPath}`;
         
         setTinyUrl(createdUrl);
@@ -209,8 +211,90 @@ function DFSResults() {
     }
   };
 
+  // Load data from tinyURL if name parameter exists
   useEffect(() => {
-    // Check if data is in URL hash
+    if (tinyUrlNameParam) {
+      const fetchTinyUrlData = async () => {
+        setLoadingTinyUrl(true);
+        try {
+          const response = await fetch(`${BASE_URL}/tinyurl/${tinyUrlNameParam}`);
+          
+          if (response.ok) {
+            const result = await response.json();
+            const hashData = result.data;
+            
+            // Process the hash data similar to hash URL loading
+            let hash = hashData;
+            
+            // Decode if needed
+            try {
+              hash = decodeURIComponent(hash);
+            } catch (e) {
+              // Hash wasn't encoded, use as-is
+            }
+            
+            // Split week and compressed data
+            const [weekStr, compressedData] = hash.split('|');
+            const urlWeek = parseInt(weekStr);
+            
+            // Set the week from URL
+            if (urlWeek && !isNaN(urlWeek)) {
+              setSelectedWeek(urlWeek);
+            }
+            
+            // Decompress the data
+            let decompressed = LZString.decompressFromEncodedURIComponent(compressedData);
+            
+            if (!decompressed) {
+              decompressed = LZString.decompressFromBase64(compressedData);
+            }
+            
+            if (!decompressed) {
+              decompressed = LZString.decompressFromUTF16(compressedData);
+            }
+            
+            if (decompressed) {
+              // Split back into individual lineups
+              const lineups = decompressed.split('|');
+              
+              // Re-encode each lineup to base64 format for inputData
+              const formattedLineups = lineups.map(lineup => {
+                const [username, rawData] = lineup.split(':');
+                const encoded = btoa(rawData);
+                return `${username}:${encoded}`;
+              });
+              
+              setInputData(formattedLineups.join('\n'));
+              setLoadedFromUrl(true);
+              
+              // Auto-process the data
+              const combined = decompressed;
+              const compressed = LZString.compressToEncodedURIComponent(combined);
+              setCompressedData(compressed);
+              
+              setShareableUrl('');
+            } else {
+              console.error('Failed to decompress data from tinyURL');
+              setInputData('ERROR: Failed to load data from tinyURL. The data may be corrupted.');
+            }
+          } else if (response.status === 404) {
+            setInputData(`ERROR: TinyURL "${tinyUrlNameParam}" not found.`);
+          } else {
+            setInputData('ERROR: Failed to load data from tinyURL. Please try again.');
+          }
+        } catch (error) {
+          console.error('Error loading tinyURL data:', error);
+          setInputData('ERROR: Network error while loading tinyURL. Please try again.');
+        } finally {
+          setLoadingTinyUrl(false);
+        }
+      };
+      
+      fetchTinyUrlData();
+      return; // Don't process hash if we're loading from tinyURL
+    }
+    
+    // Check if data is in URL hash (original logic)
     let hash = window.location.hash.substring(1); // Remove the #
     
     // Decode the hash in case it was URL-encoded by the platform
@@ -338,13 +422,13 @@ function DFSResults() {
       }
     }
     
-    // Get current week from cache or fetch it (only if not loading from URL)
+    // Get current week from cache or fetch it (only if not loading from URL or tinyURL)
     const cachedWeek = sessionStorage.getItem('nfl_current_week');
     if (cachedWeek) {
       const week = parseInt(cachedWeek);
       setCurrentWeek(week);
-      // Only set selectedWeek if not loading from URL
-      if (!window.location.hash) {
+      // Only set selectedWeek if not loading from URL or tinyURL
+      if (!window.location.hash && !tinyUrlNameParam) {
         setSelectedWeek(week - 1); // Default to previous week
       }
     } else {
@@ -353,14 +437,14 @@ function DFSResults() {
         .then(res => res.json())
         .then(data => {
           setCurrentWeek(data.week);
-          // Only set selectedWeek if not loading from URL
-          if (!window.location.hash) {
+          // Only set selectedWeek if not loading from URL or tinyURL
+          if (!window.location.hash && !tinyUrlNameParam) {
             setSelectedWeek(data.week - 1); // Default to previous week
           }
         })
         .catch(err => console.error('Error fetching week:', err));
     }
-  }, []);
+  }, [tinyUrlNameParam]);
 
   // Auto-fetch data when loaded from URL and selectedWeek is available
   useEffect(() => {
@@ -974,7 +1058,9 @@ function DFSResults() {
 
       {compressedData && inputData && (
         <div className="results-grid-section">
-          {loadingPoints ? (
+          {loadingTinyUrl ? (
+            <div className="loading-message">Loading tinyURL data...</div>
+          ) : loadingPoints ? (
             <div className="loading-message">Loading fantasy points for Week {selectedWeek}...</div>
           ) : Object.keys(fantasyPoints).length === 0 ? (
             <div className="error-message">No fantasy points data available for Week {selectedWeek}</div>
