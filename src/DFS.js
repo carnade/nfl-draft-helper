@@ -35,6 +35,7 @@ function DFS({ userName }) {
   const [maxSalary, setMaxSalary] = useState(10000);
   const [selectedTeam, setSelectedTeam] = useState('');
   const [selectedPosition, setSelectedPosition] = useState(null);
+  const [selectedDays, setSelectedDays] = useState([]);
   const [hideUnavailable, setHideUnavailable] = useState(false);
   const [hideOut, setHideOut] = useState(false);
   const [hideQuestionable, setHideQuestionable] = useState(false);
@@ -104,7 +105,9 @@ function DFS({ userName }) {
           ppg_projection: player.projected_points,
           value_projection: player.value_proj,
           sleeper_id: player.sleeper_id,
-          game_date: player.game_date
+          game_date: player.game_date,
+          slate_day: player.slate_day || '',
+          game_day: player.game_day || player.slate_day || ''
         }));
         
         // Cache the data
@@ -162,6 +165,16 @@ function DFS({ userName }) {
       // Position filter
       if (selectedPosition && player.position !== selectedPosition) {
         return false;
+      }
+      
+      // Day filter (multiple days can be selected)
+      // Use game_day for filtering
+      if (selectedDays.length > 0) {
+        const playerDay = player.game_day || player.slate_day;
+        // Filter out players without a game_day when any day filter is active
+        if (!playerDay || !selectedDays.includes(playerDay)) {
+          return false;
+        }
       }
       
       // Hide unavailable filter
@@ -825,6 +838,45 @@ function DFS({ userName }) {
             >
               DST
             </button>
+          </div>
+        </div>
+
+        <div className="filter-group">
+          <label className="filter-label">Day:</label>
+          <div className="filter-buttons">
+            {(() => {
+              // Get unique days from players (use game_day if available, otherwise slate_day)
+              const uniqueDays = [...new Set(players.map(p => p.game_day || p.slate_day).filter(Boolean))].sort();
+              return uniqueDays.map(day => (
+                <button
+                  key={day}
+                  className={`filter-button ${selectedDays.includes(day) ? 'active' : ''}`}
+                  onClick={() => {
+                    setSelectedDays(prev => {
+                      if (prev.includes(day)) {
+                        // Button is on, turning it off
+                        // If this is the last selected button, clear all and show all
+                        if (prev.length === 1) {
+                          return [];
+                        }
+                        // Otherwise, remove this day
+                        return prev.filter(d => d !== day);
+                      } else {
+                        // Button is off, turning it on
+                        // If this would make all buttons selected, clear all instead
+                        if (prev.length === uniqueDays.length - 1) {
+                          return [];
+                        }
+                        // Otherwise, add this day
+                        return [...prev, day];
+                      }
+                    });
+                  }}
+                >
+                  {day}
+                </button>
+              ));
+            })()}
           </div>
         </div>
         </div>

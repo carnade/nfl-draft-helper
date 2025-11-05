@@ -41,6 +41,13 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2025-11-06",
+      title: "DFS Day Filter",
+      items: [
+        "Added day filter buttons to DFS page - filter players by game day (Thursday, Sunday, Monday, etc.)",
+      ],
+    },
+    {
       date: "2025-10-25",
       title: "DFS Lineup Loading & Injury Filters",
       items: [
