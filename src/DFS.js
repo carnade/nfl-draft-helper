@@ -561,6 +561,12 @@ function DFS({ userName }) {
     }
   };
 
+  const getTotalFpts = () => {
+    return Object.values(roster).reduce((sum, player) => {
+      return sum + (player ? (player.ppg_projection || 0) : 0);
+    }, 0);
+  };
+
   const getTotalSalary = () => {
     return Object.values(roster).reduce((sum, player) => {
       return sum + (player?.salary || 0);
@@ -655,6 +661,7 @@ function DFS({ userName }) {
                 <th>Position</th>
                 <th>Player</th>
                 <th>Salary</th>
+                <th>Fpts</th>
                 <th></th>
               </tr>
             </thead>
@@ -675,6 +682,9 @@ function DFS({ userName }) {
                   <td className="salary-cell">
                     {roster[key] ? `$${roster[key].salary.toLocaleString()}` : '-'}
                   </td>
+                  <td className="fpts-cell">
+                    {roster[key] ? (roster[key].ppg_projection || 0).toFixed(1) : '-'}
+                  </td>
                   <td className="action-cell">
                     <button
                       className="roster-remove-btn"
@@ -687,10 +697,16 @@ function DFS({ userName }) {
                 </tr>
               ))}
               <tr className="total-row">
-                <td colSpan="3"><strong>Total</strong></td>
+                <td colSpan="2"><strong>Total</strong></td>
                 <td className="salary-cell">
                   <strong>${getTotalSalary().toLocaleString()}</strong>
                   <span className="salary-limit"> of $50,000</span>
+                </td>
+                <td className="fpts-cell">
+                  <strong>Fpts</strong>
+                </td>
+                <td className="fpts-cell">
+                  <strong>{getTotalFpts().toFixed(1)}</strong>
                 </td>
               </tr>
             </tbody>

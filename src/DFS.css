@@ -91,7 +91,7 @@
   border-collapse: collapse;
   font-size: 0.95rem;
   display: grid;
-  grid-template-columns: 1fr 8fr 3fr 40px;
+  grid-template-columns: 1fr 8fr 3fr 2fr 40px;
 }
 
 .dfs-team-table thead,
@@ -138,6 +138,12 @@
   text-align: right;
   font-weight: 600;
   color: #28a745;
+}
+
+.dfs-team-table .fpts-cell {
+  text-align: right;
+  font-weight: 500;
+  color: #495057;
 }
 
 .salary-limit {
@@ -560,9 +566,10 @@ body.dark .salary-limit {
 .lineup-modal h2 {
   margin: 0 0 24px 0;
   color: #2c3e50;
-  font-size: 28px;
+  font-size: 1.75rem;
   text-align: center;
   font-weight: 700;
+  font-family: inherit;
 }
 
 .modal-close-btn {
@@ -605,7 +612,7 @@ body.dark .salary-limit {
 .lineup-code {
   flex: 1;
   font-family: 'Courier New', monospace;
-  font-size: 16px;
+  font-size: 0.95rem;
   color: #2c3e50;
   word-break: break-all;
   background: transparent;
@@ -876,6 +883,10 @@ body.dark .dfs-team-table .salary-cell {
   color: #51cf66;
 }
 
+body.dark .dfs-team-table .fpts-cell {
+  color: #e2e2e2;
+}
+
 body.dark .dfs-team-table .total-row td {
   border-top-color: #555;
   background-color: #35353b;
@@ -1144,7 +1155,8 @@ body.dark .load-lineup-button:hover {
 .load-lineup-container p {
   margin-bottom: 15px;
   color: #666;
-  font-size: 14px;
+  font-size: 1rem;
+  font-family: inherit;
 }
 
 body.dark .load-lineup-container p {
@@ -1157,7 +1169,7 @@ body.dark .load-lineup-container p {
   border: 2px solid #ddd;
   border-radius: 6px;
   font-family: 'Courier New', monospace;
-  font-size: 12px;
+  font-size: 0.95rem;
   resize: vertical;
   margin-bottom: 20px;
   background: #f8f9fa;
@@ -1193,8 +1205,9 @@ body.dark .lineup-code-input:focus {
   padding: 10px 20px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 1rem;
   font-weight: 500;
+  font-family: inherit;
   transition: background-color 0.2s;
 }
 
@@ -1209,8 +1222,9 @@ body.dark .lineup-code-input:focus {
   padding: 10px 20px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 1rem;
   font-weight: 500;
+  font-family: inherit;
   transition: background-color 0.2s;
 }
 
