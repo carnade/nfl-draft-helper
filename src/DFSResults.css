@@ -354,6 +354,70 @@
   font-style: italic;
 }
 
+.results-header-section {
+  margin-bottom: 20px;
+}
+
+.results-title-container {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.results-header-section h2 {
+  margin: 0;
+  font-size: 1.75rem;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.live-update-toggle {
+  padding: 12px 24px;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.live-update-toggle:hover {
+  background: #5a6268;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.live-update-toggle.active {
+  background: #28a745;
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.4);
+}
+
+.live-update-toggle.active:hover {
+  background: #218838;
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.5);
+}
+
+body.dark .live-update-toggle {
+  background: #45454b;
+  color: #e2e2e2;
+}
+
+body.dark .live-update-toggle:hover {
+  background: #555;
+}
+
+body.dark .live-update-toggle.active {
+  background: #28a745;
+  color: white;
+}
+
+body.dark .live-update-toggle.active:hover {
+  background: #218838;
+}
+
 .results-grid-section {
   margin-top: 30px;
   width: 100%;
@@ -361,8 +425,6 @@
 }
 
 .results-grid-section h2 {
-  margin: 0 0 30px 0;
-  font-size: 24px;
   color: #2c3e50;
   font-weight: 700;
 }

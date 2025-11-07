@@ -20,6 +20,7 @@ function DFSResults() {
   const [currentWeek, setCurrentWeek] = useState(null);
   const [selectedWeek, setSelectedWeek] = useState(null);
   const [fantasyPoints, setFantasyPoints] = useState({});
+  const [liveUpdate, setLiveUpdate] = useState(false);
   const [playerNames, setPlayerNames] = useState({});
   const [dfsSalaryData, setDfsSalaryData] = useState({});
   const [loadedFromUrl, setLoadedFromUrl] = useState(false);
@@ -81,23 +82,71 @@ function DFSResults() {
           });
         });
         
-        // Fetch both fantasy points and DFS salary data
-        const [fantasyData, salaryData] = await Promise.all([
-          fetch(`${BASE_URL}/fantasy-points/week/${selectedWeek}`).then(res => res.json()),
-          fetch(`${BASE_URL}/dfs-salaries/week/${selectedWeek}`).then(res => res.json())
-        ]);
+        // Always fetch fantasy points from Sleeper matchups API
+        const matchupsData = await fetch(`https://api.sleeper.app/v1/league/1180214473415516160/matchups/${selectedWeek}`).then(res => res.json());
         
-        console.log('Fantasy points fetched:', fantasyData);
+        // Extract and combine all players_points from all matchups
+        let fantasyData = {};
+        if (Array.isArray(matchupsData)) {
+          matchupsData.forEach(matchup => {
+            if (matchup.players_points) {
+              Object.entries(matchup.players_points).forEach(([sleeperId, points]) => {
+                // Create object structure expected by the code
+                fantasyData[sleeperId] = {
+                  fantasy_points: points,
+                  sleeper_id: sleeperId
+                };
+              });
+            }
+          });
+        }
+        
+        // Fetch other data from original endpoints
+        // Check cache first for DFS salaries
+        const salaryCacheKey = `dfs_salaries_week_${selectedWeek}`;
+        const cachedSalaryData = sessionStorage.getItem(salaryCacheKey);
+        const salaryCacheTimestamp = sessionStorage.getItem(`${salaryCacheKey}_timestamp`);
+        const now = Date.now();
+        const cacheExpiry = 60 * 60 * 1000; // 1 hour
+        
+        let salaryData;
+        if (cachedSalaryData && salaryCacheTimestamp && (now - parseInt(salaryCacheTimestamp)) < cacheExpiry) {
+          // Use cached data
+          salaryData = JSON.parse(cachedSalaryData);
+          console.log('DFS salary data loaded from cache');
+        } else {
+          // Fetch and cache
+          salaryData = await fetch(`${BASE_URL}/dfs-salaries/week/${selectedWeek}`).then(res => res.json());
+          sessionStorage.setItem(salaryCacheKey, JSON.stringify(salaryData));
+          sessionStorage.setItem(`${salaryCacheKey}_timestamp`, now.toString());
+          console.log('DFS salary data fetched and cached');
+        }
+        
+        const originalFantasyData = await fetch(`${BASE_URL}/fantasy-points/week/${selectedWeek}`).then(res => res.json());
+        
+        // Merge Sleeper points with original data to get names, positions, etc.
+        const mergedFantasyData = { ...originalFantasyData };
+        Object.entries(fantasyData).forEach(([sleeperId, sleeperPlayer]) => {
+          if (mergedFantasyData[sleeperId]) {
+            // Update points but keep all other properties
+            mergedFantasyData[sleeperId] = {
+              ...mergedFantasyData[sleeperId],
+              fantasy_points: sleeperPlayer.fantasy_points
+            };
+          } else {
+            // Use Sleeper data if not in original
+            mergedFantasyData[sleeperId] = sleeperPlayer;
+          }
+        });
+        
+        console.log('Fantasy points fetched (from Sleeper matchups):', mergedFantasyData);
         console.log('DFS salary data fetched:', salaryData);
         
-        // Only fetch names for players not in fantasy points data
-        const unknownSleeperIds = Array.from(allSleeperIds).filter(id => !fantasyData[id]);
-        console.log('Unknown sleeper IDs:', unknownSleeperIds);
-        
-        const nameData = unknownSleeperIds.length > 0 ? await fetchPlayerNames(unknownSleeperIds) : {};
+        // Fetch names for all players in lineups (to show "Not played" even if they don't have points)
+        const nameData = await fetchPlayerNames(Array.from(allSleeperIds));
         console.log('Fetched name data:', nameData);
         
-        setFantasyPoints(fantasyData);
+        setFantasyPoints(mergedFantasyData);
         setPlayerNames(nameData);
         setDfsSalaryData(salaryData);
         setLoadingPoints(false);
@@ -213,6 +262,8 @@ function DFSResults() {
 
   // Load data from tinyURL if name parameter exists
   useEffect(() => {
+    let weekSetFromUrl = false; // Track if week was set from URL/tinyURL
+    
     if (tinyUrlNameParam) {
       const fetchTinyUrlData = async () => {
         setLoadingTinyUrl(true);
@@ -240,6 +291,7 @@ function DFSResults() {
             // Set the week from URL
             if (urlWeek && !isNaN(urlWeek)) {
               setSelectedWeek(urlWeek);
+              weekSetFromUrl = true;
             }
             
             // Decompress the data
@@ -348,6 +400,7 @@ function DFSResults() {
         if (urlWeek && !isNaN(urlWeek)) {
           console.log('Setting selectedWeek from URL:', urlWeek);
           setSelectedWeek(urlWeek);
+          weekSetFromUrl = true;
         }
         
         // Decompress the data
@@ -423,26 +476,43 @@ function DFSResults() {
     }
     
     // Get current week from cache or fetch it (only if not loading from URL or tinyURL)
-    const cachedWeek = sessionStorage.getItem('nfl_current_week');
-    if (cachedWeek) {
-      const week = parseInt(cachedWeek);
-      setCurrentWeek(week);
-      // Only set selectedWeek if not loading from URL or tinyURL
-      if (!window.location.hash && !tinyUrlNameParam) {
-        setSelectedWeek(week - 1); // Default to previous week
+    // Only set default week if we haven't already set it from URL/tinyURL
+    if (!weekSetFromUrl) {
+      const cachedWeek = sessionStorage.getItem('nfl_current_week');
+      if (cachedWeek) {
+        const week = parseInt(cachedWeek);
+        setCurrentWeek(week);
+        // Only set selectedWeek if not loading from URL or tinyURL
+        if (!window.location.hash && !tinyUrlNameParam) {
+          setSelectedWeek(week - 1); // Default to previous week
+        }
+      } else {
+        // Fetch if not cached
+        fetch('https://api.sleeper.app/v1/state/nfl')
+          .then(res => res.json())
+          .then(data => {
+            setCurrentWeek(data.week);
+            // Only set selectedWeek if not loading from URL or tinyURL
+            if (!window.location.hash && !tinyUrlNameParam) {
+              setSelectedWeek(data.week - 1); // Default to previous week
+            }
+          })
+          .catch(err => console.error('Error fetching week:', err));
       }
     } else {
-      // Fetch if not cached
-      fetch('https://api.sleeper.app/v1/state/nfl')
-        .then(res => res.json())
-        .then(data => {
-          setCurrentWeek(data.week);
-          // Only set selectedWeek if not loading from URL or tinyURL
-          if (!window.location.hash && !tinyUrlNameParam) {
-            setSelectedWeek(data.week - 1); // Default to previous week
-          }
-        })
-        .catch(err => console.error('Error fetching week:', err));
+      // Still set currentWeek even if week was set from URL
+      const cachedWeek = sessionStorage.getItem('nfl_current_week');
+      if (cachedWeek) {
+        const week = parseInt(cachedWeek);
+        setCurrentWeek(week);
+      } else {
+        fetch('https://api.sleeper.app/v1/state/nfl')
+          .then(res => res.json())
+          .then(data => {
+            setCurrentWeek(data.week);
+          })
+          .catch(err => console.error('Error fetching week:', err));
+      }
     }
   }, [tinyUrlNameParam]);
 
@@ -462,23 +532,71 @@ function DFSResults() {
         });
         
         try {
-          // Fetch both fantasy points and DFS salary data
-          const [fantasyData, salaryData] = await Promise.all([
-            fetch(`${BASE_URL}/fantasy-points/week/${selectedWeek}`).then(res => res.json()),
-            fetch(`${BASE_URL}/dfs-salaries/week/${selectedWeek}`).then(res => res.json())
-          ]);
+          // Always fetch fantasy points from Sleeper matchups API
+          const matchupsData = await fetch(`https://api.sleeper.app/v1/league/1180214473415516160/matchups/${selectedWeek}`).then(res => res.json());
           
-          console.log('Fantasy points fetched (from URL):', fantasyData);
+          // Extract and combine all players_points from all matchups
+          let fantasyData = {};
+          if (Array.isArray(matchupsData)) {
+            matchupsData.forEach(matchup => {
+              if (matchup.players_points) {
+                Object.entries(matchup.players_points).forEach(([sleeperId, points]) => {
+                  // Create object structure expected by the code
+                  fantasyData[sleeperId] = {
+                    fantasy_points: points,
+                    sleeper_id: sleeperId
+                  };
+                });
+              }
+            });
+          }
+          
+          // Fetch other data from original endpoints
+          // Check cache first for DFS salaries
+          const salaryCacheKey = `dfs_salaries_week_${selectedWeek}`;
+          const cachedSalaryData = sessionStorage.getItem(salaryCacheKey);
+          const salaryCacheTimestamp = sessionStorage.getItem(`${salaryCacheKey}_timestamp`);
+          const now = Date.now();
+          const cacheExpiry = 60 * 60 * 1000; // 1 hour
+          
+          let salaryData;
+          if (cachedSalaryData && salaryCacheTimestamp && (now - parseInt(salaryCacheTimestamp)) < cacheExpiry) {
+            // Use cached data
+            salaryData = JSON.parse(cachedSalaryData);
+            console.log('DFS salary data loaded from cache (from URL)');
+          } else {
+            // Fetch and cache
+            salaryData = await fetch(`${BASE_URL}/dfs-salaries/week/${selectedWeek}`).then(res => res.json());
+            sessionStorage.setItem(salaryCacheKey, JSON.stringify(salaryData));
+            sessionStorage.setItem(`${salaryCacheKey}_timestamp`, now.toString());
+            console.log('DFS salary data fetched and cached (from URL)');
+          }
+          
+          const originalFantasyData = await fetch(`${BASE_URL}/fantasy-points/week/${selectedWeek}`).then(res => res.json());
+          
+          // Merge Sleeper points with original data to get names, positions, etc.
+          const mergedFantasyData = { ...originalFantasyData };
+          Object.entries(fantasyData).forEach(([sleeperId, sleeperPlayer]) => {
+            if (mergedFantasyData[sleeperId]) {
+              // Update points but keep all other properties
+              mergedFantasyData[sleeperId] = {
+                ...mergedFantasyData[sleeperId],
+                fantasy_points: sleeperPlayer.fantasy_points
+              };
+            } else {
+              // Use Sleeper data if not in original
+              mergedFantasyData[sleeperId] = sleeperPlayer;
+            }
+          });
+          
+          console.log('Fantasy points fetched (from URL, Sleeper matchups):', mergedFantasyData);
           console.log('DFS salary data fetched (from URL):', salaryData);
           
-          // Only fetch names for players not in fantasy points data
-          const unknownSleeperIds = Array.from(allSleeperIds).filter(id => !fantasyData[id]);
-          console.log('Unknown sleeper IDs (from URL):', unknownSleeperIds);
-          
-          const nameData = unknownSleeperIds.length > 0 ? await fetchPlayerNames(unknownSleeperIds) : {};
+          // Fetch names for all players in lineups (to show "Not played" even if they don't have points)
+          const nameData = await fetchPlayerNames(Array.from(allSleeperIds));
           console.log('Fetched name data (from URL):', nameData);
           
-          setFantasyPoints(fantasyData);
+          setFantasyPoints(mergedFantasyData);
           setPlayerNames(nameData);
           setDfsSalaryData(salaryData);
           setLoadingPoints(false);
@@ -492,6 +610,58 @@ function DFSResults() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadedFromUrl, selectedWeek, compressedData]);
+
+  // Auto-refresh Sleeper points every 60 seconds when live update is enabled
+  useEffect(() => {
+    if (liveUpdate && selectedWeek) {
+      const refreshPoints = async () => {
+        try {
+          // Fetch Sleeper matchups data
+          const matchupsData = await fetch(`https://api.sleeper.app/v1/league/1180214473415516160/matchups/${selectedWeek}`).then(res => res.json());
+          
+          // Extract players_points from all matchups
+          const sleeperPoints = {};
+          if (Array.isArray(matchupsData)) {
+            matchupsData.forEach(matchup => {
+              if (matchup.players_points) {
+                Object.assign(sleeperPoints, matchup.players_points);
+              }
+            });
+          }
+          
+          // Merge Sleeper points with existing fantasyPoints data
+          // Keep all existing properties (name, position, team, etc.) and only update fantasy_points
+          setFantasyPoints(prevFantasyPoints => {
+            const updatedFantasyPoints = { ...prevFantasyPoints };
+            Object.entries(sleeperPoints).forEach(([sleeperId, points]) => {
+              if (updatedFantasyPoints[sleeperId]) {
+                // Update existing player's points
+                updatedFantasyPoints[sleeperId] = {
+                  ...updatedFantasyPoints[sleeperId],
+                  fantasy_points: points
+                };
+              } else {
+                // Add new player if not in existing data
+                updatedFantasyPoints[sleeperId] = {
+                  fantasy_points: points,
+                  sleeper_id: sleeperId
+                };
+              }
+            });
+            return updatedFantasyPoints;
+          });
+        } catch (error) {
+          console.error('Error refreshing Sleeper points:', error);
+        }
+      };
+      
+      // Refresh immediately, then set up interval
+      refreshPoints();
+      const interval = setInterval(refreshPoints, 60000); // 60 seconds
+      
+      return () => clearInterval(interval);
+    }
+  }, [liveUpdate, selectedWeek]);
 
   // Fetch tinyURL count when section is visible
   useEffect(() => {
@@ -743,14 +913,75 @@ function DFSResults() {
     const dfsPlayerKey = `${sleeperId}_W${selectedWeek}`;
     const dfsPlayer = dfsSalaryData[dfsPlayerKey];
     
-    if (!playerInfo) {
-      // If player is marked as OUT in injury status, show "OUT"
-      if (dfsPlayer?.injury_status === 'O') {
-        return 'OUT';
-      }
-      return 'Not played';
+    // If player is marked as OUT in injury status, show "OUT"
+    if (dfsPlayer?.injury_status === 'O') {
+      return 'OUT';
     }
-    return playerInfo.fantasy_points?.toFixed(1) || '0.0';
+    
+    // Get fantasy points (0 if no playerInfo, otherwise the actual points)
+    const points = playerInfo?.fantasy_points ?? 0;
+    
+    // If points is 0.0, check if game has started
+    if (points === 0) {
+      const gameDate = dfsPlayer?.game_date;
+      const gameStartTime = dfsPlayer?.game_start_time;
+      
+      if (gameDate) {
+        // Parse game date and time
+        try {
+          // Default to 6 PM EST if game_start_time is missing
+          const timeStr = gameStartTime || '6:00PM';
+          
+          // Parse the time (format: "9:30AM", "6:00PM", "9:30 AM", etc.)
+          const timeMatch = timeStr.trim().match(/(\d+):(\d+)\s*(AM|PM)/i);
+          if (timeMatch) {
+            let hours = parseInt(timeMatch[1]);
+            const minutes = parseInt(timeMatch[2]);
+            const ampm = timeMatch[3].toUpperCase();
+            
+            // Convert to 24-hour format
+            if (ampm === 'PM' && hours !== 12) {
+              hours += 12;
+            } else if (ampm === 'AM' && hours === 12) {
+              hours = 0;
+            }
+            
+            // Create date string in EST (game_date is in YYYY-MM-DD format)
+            // EST is UTC-5, CET is UTC+1, so CET is EST + 6 hours
+            const estDateStr = `${gameDate}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+            
+            // Create Date object in EST (UTC-5)
+            // Note: EST is UTC-5, but we need to account for DST (EDT is UTC-4)
+            // For simplicity, we'll use EST (UTC-5) year-round
+            // Create the date as if it's in EST timezone
+            const estDate = new Date(`${estDateStr}-05:00`);
+            
+            // Convert EST to CET: EST is UTC-5, CET is UTC+1, so CET = EST + 6 hours
+            const cetDate = new Date(estDate.getTime() + (6 * 60 * 60 * 1000));
+            
+            // Get current time (user's local time, which should be CET)
+            const now = new Date();
+            
+            // Compare: if game hasn't started yet, show "Not played"
+            if (cetDate > now) {
+              return 'Not played';
+            }
+          }
+        } catch (error) {
+          console.error('Error parsing game date/time:', error);
+          // If parsing fails, fall through to show points
+        }
+      }
+      
+      // If no game date or parsing failed, check if playerInfo exists
+      // If no playerInfo, show "Not played", otherwise show "0.0"
+      if (!playerInfo) {
+        return 'Not played';
+      }
+    }
+    
+    // Show points (either 0.0 or actual points)
+    return points.toFixed(1);
   };
 
   const calculateTotalPoints = (players) => {
@@ -1150,7 +1381,19 @@ function DFSResults() {
             <div className="error-message">No fantasy points data available for Week {selectedWeek}</div>
           ) : (
             <>
-              <h2>Results - Week {selectedWeek}</h2>
+              <div className="results-header-section">
+                <div className="results-title-container">
+                  <h2>Results - Week {selectedWeek}</h2>
+                  <button
+                    className={`live-update-toggle ${liveUpdate ? 'active' : ''}`}
+                    onClick={() => {
+                      setLiveUpdate(!liveUpdate);
+                    }}
+                  >
+                    Live Update
+                  </button>
+                </div>
+              </div>
           
           {parseLineups()
             .map(lineup => ({
