@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import LZString from 'lz-string';
 import './DFSResults.css';
@@ -32,6 +32,46 @@ function DFSResults() {
   const [creatingTinyUrl, setCreatingTinyUrl] = useState(false);
   const [tinyUrlError, setTinyUrlError] = useState('');
   const [tinyUrlCount, setTinyUrlCount] = useState(null);
+
+  const lineupRefs = useRef({});
+  const previousPositionsRef = useRef({});
+  const hasMeasuredRef = useRef(false);
+  const animationTimeoutsRef = useRef({});
+
+  // Fetch player names from bestball endpoint for players not in salary data
+  const fetchPlayerNames = useCallback(async (sleeperIds) => {
+    try {
+      const response = await fetch(`${BASE_URL}/getplayers/bestball`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          playerlist: sleeperIds
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch player names');
+      }
+
+      const playerData = await response.json();
+      const nameMap = {};
+      
+      // Create a mapping of sleeper_id to player name
+      const players = playerData.players || Object.values(playerData);
+      players.forEach(player => {
+        if (player.id) {
+          nameMap[player.id] = player.name;
+        }
+      });
+      
+      return nameMap;
+    } catch (error) {
+      console.error('Error fetching player names:', error);
+      return {};
+    }
+  }, []);
 
   const handleProceed = async () => {
     try {
@@ -147,7 +187,9 @@ function DFSResults() {
         
         setFantasyPoints(mergedFantasyData);
         setDfsSalaryData(salaryData);
-        setPlayerNames(nameData);
+        if (Object.keys(nameData).length > 0) {
+          setPlayerNames(prev => ({ ...prev, ...nameData }));
+        }
         setLoadingPoints(false);
         
         // If loaded from URL, start the reveal animation
@@ -596,7 +638,9 @@ function DFSResults() {
           
           setFantasyPoints(mergedFantasyData);
           setDfsSalaryData(salaryData);
-          setPlayerNames(nameData);
+          if (Object.keys(nameData).length > 0) {
+            setPlayerNames(prev => ({ ...prev, ...nameData }));
+          }
           setLoadingPoints(false);
         } catch (error) {
           console.error('Error fetching data from URL:', error);
@@ -832,41 +876,6 @@ function DFSResults() {
     }
   }, [loadedFromUrl, loadingPoints, fantasyPoints, dfsSalaryData, startRevealAnimation]);
 
-  // Fetch player names from bestball endpoint for players not in salary data
-  const fetchPlayerNames = async (sleeperIds) => {
-    try {
-      const response = await fetch(`${BASE_URL}/getplayers/bestball`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          playerlist: sleeperIds
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch player names');
-      }
-
-      const playerData = await response.json();
-      const nameMap = {};
-      
-      // Create a mapping of sleeper_id to player name
-      const players = playerData.players || Object.values(playerData);
-      players.forEach(player => {
-        if (player.id) {
-          nameMap[player.id] = player.name;
-        }
-      });
-      
-      return nameMap;
-    } catch (error) {
-      console.error('Error fetching player names:', error);
-      return {};
-    }
-  };
-
   const getPositionColor = (position) => {
     const colors = {
       QB: 'rgba(239, 116, 161, 0.8)',
@@ -880,7 +889,7 @@ function DFSResults() {
     return colors[position] || 'rgb(235, 88, 254, 0.8)';
   };
 
-  const getPlayerInfo = (sleeperId) => {
+  const getPlayerInfo = useCallback((sleeperId) => {
     const fantasyInfo = fantasyPoints[sleeperId];
     const dfsPlayerKey = `${sleeperId}_W${selectedWeek}`;
     const dfsPlayer = dfsSalaryData[dfsPlayerKey];
@@ -891,7 +900,7 @@ function DFSResults() {
       position: dfsPlayer?.position || fantasyInfo?.position,
       team: dfsPlayer?.team || fantasyInfo?.team
     };
-  };
+  }, [dfsSalaryData, fantasyPoints, playerNames, selectedWeek]);
 
   // Get fantasy points display text
   const getFantasyPointsDisplay = (sleeperId) => {
@@ -972,12 +981,107 @@ function DFSResults() {
     return points.toFixed(1);
   };
 
-  const calculateTotalPoints = (players) => {
+  const calculateTotalPoints = useCallback((players) => {
     return players.reduce((sum, player) => {
       const info = getPlayerInfo(player.sleeperId);
       return sum + (info?.fantasy_points || 0);
     }, 0);
-  };
+  }, [getPlayerInfo]);
+
+  const generateLineupKey = useCallback((lineup, index) => {
+    const usernameKey = lineup.username || 'unknown';
+    const playersKey = lineup.players
+      .map(player => `${player.sleeperId}-${player.salary}`)
+      .join(',');
+    return `${usernameKey}|${index}|${playersKey}`;
+  }, []);
+
+  const sortedLineups = useMemo(() => {
+    const parsed = parseLineups();
+    return parsed
+      .map((lineup, originalIndex) => ({
+        ...lineup,
+        key: generateLineupKey(lineup, originalIndex),
+        totalPoints: calculateTotalPoints(lineup.players),
+        originalIndex
+      }))
+      .sort((a, b) => b.totalPoints - a.totalPoints);
+  }, [parseLineups, calculateTotalPoints, generateLineupKey]);
+
+  useLayoutEffect(() => {
+    if (loadingPoints || sortedLineups.length === 0) {
+      previousPositionsRef.current = {};
+      return;
+    }
+
+    const currentPositions = {};
+    sortedLineups.forEach(lineup => {
+      const node = lineupRefs.current[lineup.key];
+      if (node) {
+        const rect = node.getBoundingClientRect();
+        currentPositions[lineup.key] = rect;
+      }
+    });
+
+    if (hasMeasuredRef.current) {
+      sortedLineups.forEach(lineup => {
+        const key = lineup.key;
+        const node = lineupRefs.current[key];
+        if (!node) return;
+
+        const prevRect = previousPositionsRef.current[key];
+        const newRect = currentPositions[key];
+
+        if (prevRect && newRect) {
+          const deltaY = prevRect.top - newRect.top;
+          if (deltaY !== 0) {
+            if (animationTimeoutsRef.current[key]) {
+              clearTimeout(animationTimeoutsRef.current[key]);
+            }
+            node.style.transition = 'none';
+            node.style.transform = `translateY(${deltaY}px)`;
+            node.style.willChange = 'transform';
+
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                node.style.transition = 'transform 2s cubic-bezier(0.4, 0, 0.2, 1)';
+                node.style.transform = '';
+
+                const timeoutId = window.setTimeout(() => {
+                  node.style.transition = '';
+                  node.style.willChange = '';
+                  animationTimeoutsRef.current[key] = null;
+                }, 2000);
+
+                animationTimeoutsRef.current[key] = timeoutId;
+              });
+            });
+          }
+        }
+      });
+    } else {
+      hasMeasuredRef.current = true;
+    }
+
+    previousPositionsRef.current = currentPositions;
+
+    const currentKeys = new Set(sortedLineups.map(lineup => lineup.key));
+    Object.keys(lineupRefs.current).forEach(key => {
+      if (!currentKeys.has(key)) {
+        delete lineupRefs.current[key];
+      }
+    });
+  }, [sortedLineups, loadingPoints]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(animationTimeoutsRef.current).forEach(timeoutId => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+      });
+    };
+  }, []);
 
   const getStatsData = () => {
     const lineups = parseLineups();
@@ -1382,49 +1486,16 @@ function DFSResults() {
                 </div>
               </div>
           
-          {parseLineups()
-            .map(lineup => ({
-              ...lineup,
-              totalPoints: calculateTotalPoints(lineup.players)
-            }))
-              .sort((a, b) => b.totalPoints - a.totalPoints)
-              .map((lineup, idx) => {
-                const rank = idx + 1;
-                const isVisible = loadedFromUrl ? visibleRanks.has(rank) : true;
-                const isGhost = loadedFromUrl && visibleRanks.has(-rank);
-                
-                // Show ghost placeholder for top 3 ranks before reveal
-                if (isGhost && rank <= 3) {
-                  return (
-                    <div key={`ghost-${idx}`} className="lineup-grid ghost-grid visible">
-                      <div className="grid-header rank-header">Rank</div>
-                      <div className="grid-header manager-header">Manager</div>
-                      <div className="grid-header">QB</div>
-                      <div className="grid-header">RB</div>
-                      <div className="grid-header">RB</div>
-                      <div className="grid-header">WR</div>
-                      <div className="grid-header">WR</div>
-                      <div className="grid-header">WR</div>
-                      <div className="grid-header">TE</div>
-                      <div className="grid-header">FLEX</div>
-                      <div className="grid-header">DST</div>
-                      <div className="grid-header total-header">Total Points</div>
-
-                      <div className="grid-value rank-value ghost-rank">{rank}</div>
-                      <div className="grid-value manager-value ghost-text">???</div>
-                      {[...Array(9)].map((_, i) => (
-                        <div key={i} className="ghost-player-card"></div>
-                      ))}
-                      <div className="total-points-cell ghost-total">???</div>
-                    </div>
-                  );
-                }
-                
-                return (
-                  <div 
-                    key={idx} 
-                    className={`lineup-grid ${isVisible ? 'visible' : 'hidden'}`}
-                  >
+          {sortedLineups.map((lineup, idx) => {
+            const rank = idx + 1;
+            const isVisible = loadedFromUrl ? visibleRanks.has(rank) : true;
+            const isGhost = loadedFromUrl && visibleRanks.has(-rank);
+            const lineupKey = lineup.key;
+            
+            // Show ghost placeholder for top 3 ranks before reveal
+            if (isGhost && rank <= 3) {
+              return (
+                <div key={`ghost-${lineupKey}`} className="lineup-grid ghost-grid visible">
                   <div className="grid-header rank-header">Rank</div>
                   <div className="grid-header manager-header">Manager</div>
                   <div className="grid-header">QB</div>
@@ -1438,47 +1509,82 @@ function DFSResults() {
                   <div className="grid-header">DST</div>
                   <div className="grid-header total-header">Total Points</div>
 
-                  <div className={`grid-value rank-value rank-${rank}`}>{rank}</div>
-                  <div className="grid-value manager-value">{lineup.username}</div>
-                  
-                  {lineup.players.map((player, pIdx) => {
-                    const info = getPlayerInfo(player.sleeperId);
-                    const position = info?.position || 'FLX';
-                    
-                      return (() => {
-                        const pointsDisplay = getFantasyPointsDisplay(player.sleeperId);
-                        const isOut = pointsDisplay === 'OUT';
-                        const isNotPlayed = pointsDisplay === 'Not played';
-                        // Use purple (FLX color) for "Not played" players, red for OUT, otherwise position color
-                        const backgroundColor = isOut 
-                          ? 'rgba(220, 53, 69, 0.8)' 
-                          : isNotPlayed 
-                            ? 'rgb(235, 88, 254, 0.8)' 
-                            : getPositionColor(position);
-                        return (
-                          <div
-                            key={pIdx} 
-                            className="dfs-results-player-card"
-                            style={{ backgroundColor }}
-                          >
-                            <div className="dfs-results-player-card-left">
-                              <div className="dfs-results-player-card-name">{info?.name || 'Unknown'}</div>
-                              <div className="dfs-results-player-card-salary">${player.salary.toLocaleString()}</div>
-                            </div>
-                            <div className={`dfs-results-player-card-points ${pointsDisplay === 'OUT' ? 'out-status' : ''}`}>
-                              {pointsDisplay}
-                            </div>
-                          </div>
-                        );
-                      })();
-                  })}
-                  
-                  <div className="total-points-cell">
-                    {lineup.totalPoints.toFixed(1)}
-                  </div>
+                  <div className="grid-value rank-value ghost-rank">{rank}</div>
+                  <div className="grid-value manager-value ghost-text">???</div>
+                  {[...Array(9)].map((_, i) => (
+                    <div key={i} className="ghost-player-card"></div>
+                  ))}
+                  <div className="total-points-cell ghost-total">???</div>
                 </div>
               );
-            })}
+            }
+            
+            return (
+              <div 
+                key={lineupKey} 
+                className={`lineup-grid ${isVisible ? 'visible' : 'hidden'}`}
+                ref={el => {
+                  if (el) {
+                    lineupRefs.current[lineupKey] = el;
+                  } else {
+                    delete lineupRefs.current[lineupKey];
+                  }
+                }}
+              >
+              <div className="grid-header rank-header">Rank</div>
+              <div className="grid-header manager-header">Manager</div>
+              <div className="grid-header">QB</div>
+              <div className="grid-header">RB</div>
+              <div className="grid-header">RB</div>
+              <div className="grid-header">WR</div>
+              <div className="grid-header">WR</div>
+              <div className="grid-header">WR</div>
+              <div className="grid-header">TE</div>
+              <div className="grid-header">FLEX</div>
+              <div className="grid-header">DST</div>
+              <div className="grid-header total-header">Total Points</div>
+
+              <div className={`grid-value rank-value rank-${rank}`}>{rank}</div>
+              <div className="grid-value manager-value">{lineup.username}</div>
+              
+              {lineup.players.map((player, pIdx) => {
+                const info = getPlayerInfo(player.sleeperId);
+                const position = info?.position || 'FLX';
+                
+                  return (() => {
+                    const pointsDisplay = getFantasyPointsDisplay(player.sleeperId);
+                    const isOut = pointsDisplay === 'OUT';
+                    const isNotPlayed = pointsDisplay === 'Not played';
+                    // Use purple (FLX color) for "Not played" players, red for OUT, otherwise position color
+                    const backgroundColor = isOut 
+                      ? 'rgba(220, 53, 69, 0.8)' 
+                      : isNotPlayed 
+                        ? 'rgb(235, 88, 254, 0.8)' 
+                        : getPositionColor(position);
+                    return (
+                      <div
+                        key={pIdx} 
+                        className="dfs-results-player-card"
+                        style={{ backgroundColor }}
+                      >
+                        <div className="dfs-results-player-card-left">
+                          <div className="dfs-results-player-card-name">{info?.name || 'Unknown'}</div>
+                          <div className="dfs-results-player-card-salary">${player.salary.toLocaleString()}</div>
+                        </div>
+                        <div className={`dfs-results-player-card-points ${pointsDisplay === 'OUT' ? 'out-status' : ''}`}>
+                          {pointsDisplay}
+                        </div>
+                      </div>
+                    );
+                  })();
+              })}
+              
+              <div className="total-points-cell">
+                {lineup.totalPoints.toFixed(1)}
+              </div>
+            </div>
+          );
+        })}
             </>
           )}
         </div>
