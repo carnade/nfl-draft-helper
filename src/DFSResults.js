@@ -11,6 +11,81 @@ const BASE_URL = mock
   ? "http://localhost:5000"
   : "https://shaggy-latashia-carnade-2ea2054a.koyeb.app";
 
+const PRIMARY_SLEEPER_LEAGUE_ID = '1180214473415516160';
+const DST_SLEEPER_LEAGUE_ID = '1293242375618957312';
+const DEFENSE_POSITIONS = new Set(['DST', 'DEF', 'D/ST', 'D', 'TEAM', 'TM']);
+
+const isDefensePosition = (position) => {
+  if (!position || typeof position !== 'string') return false;
+  return DEFENSE_POSITIONS.has(position.trim().toUpperCase());
+};
+
+const isDefenseSleeperId = (sleeperId) => {
+  if (!sleeperId) return false;
+  return !/^\d+$/.test(String(sleeperId));
+};
+
+const getUsdDstBoundsUtc = (year) => {
+  const march1Utc = Date.UTC(year, 2, 1);
+  const march1Day = new Date(march1Utc).getUTCDay();
+  const firstSundayMarch = march1Day === 0 ? 1 : 8 - march1Day;
+  const secondSundayMarch = firstSundayMarch + 7;
+  const dstStartUtc = Date.UTC(year, 2, secondSundayMarch, 7, 0); // 2 AM local -> 7 AM UTC
+
+  const nov1Utc = Date.UTC(year, 10, 1);
+  const nov1Day = new Date(nov1Utc).getUTCDay();
+  const firstSundayNovember = nov1Day === 0 ? 1 : 8 - nov1Day;
+  const dstEndUtc = Date.UTC(year, 10, firstSundayNovember, 6, 0); // 2 AM local -> 6 AM UTC
+
+  return { dstStartUtc, dstEndUtc };
+};
+
+const convertEasternLocalToUtc = (year, monthIndex, day, hour24, minute) => {
+  const { dstStartUtc, dstEndUtc } = getUsdDstBoundsUtc(year);
+  const dstCandidateUtc = Date.UTC(year, monthIndex, day, hour24 + 4, minute);
+  const stdCandidateUtc = Date.UTC(year, monthIndex, day, hour24 + 5, minute);
+  const isDst = dstCandidateUtc >= dstStartUtc && dstCandidateUtc < dstEndUtc;
+  return new Date(isDst ? dstCandidateUtc : stdCandidateUtc);
+};
+
+const parseGameStartToUtc = (gameDate, gameStartTime) => {
+  if (!gameDate) return null;
+
+  let timeStr = typeof gameStartTime === 'string' && gameStartTime.trim().length > 0
+    ? gameStartTime.trim()
+    : '6:00PM';
+
+  const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!timeMatch) {
+    // Unexpected format—fallback to default 6:00PM Eastern
+    timeStr = '6:00PM';
+  }
+
+  const parsedMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!parsedMatch) return null;
+
+  let [ , hourStr, minuteStr, ampm ] = parsedMatch;
+  let hours = parseInt(hourStr, 10);
+  const minutes = parseInt(minuteStr, 10);
+  const meridiem = ampm.toUpperCase();
+
+  if (meridiem === 'PM' && hours !== 12) {
+    hours += 12;
+  } else if (meridiem === 'AM' && hours === 12) {
+    hours = 0;
+  }
+
+  const year = parseInt(gameDate.slice(0, 4), 10);
+  const monthIndex = parseInt(gameDate.slice(5, 7), 10) - 1;
+  const day = parseInt(gameDate.slice(8, 10), 10);
+
+  if (Number.isNaN(year) || Number.isNaN(monthIndex) || Number.isNaN(day) || Number.isNaN(hours) || Number.isNaN(minutes)) {
+    return null;
+  }
+
+  return convertEasternLocalToUtc(year, monthIndex, day, hours, minutes);
+};
+
 function DFSResults() {
   const navigate = useNavigate();
   const { name: tinyUrlNameParam } = useParams();
@@ -22,7 +97,7 @@ function DFSResults() {
   const [fantasyPoints, setFantasyPoints] = useState({});
   const [liveUpdate, setLiveUpdate] = useState(false);
   const [dfsSalaryData, setDfsSalaryData] = useState({});
-  const [playerNames, setPlayerNames] = useState({});
+  const [playerMetadata, setPlayerMetadata] = useState({});
   const [loadedFromUrl, setLoadedFromUrl] = useState(false);
   const [loadingPoints, setLoadingPoints] = useState(false);
   const [loadingTinyUrl, setLoadingTinyUrl] = useState(false);
@@ -32,6 +107,7 @@ function DFSResults() {
   const [creatingTinyUrl, setCreatingTinyUrl] = useState(false);
   const [tinyUrlError, setTinyUrlError] = useState('');
   const [tinyUrlCount, setTinyUrlCount] = useState(null);
+  const [showUpdatingIndicator, setShowUpdatingIndicator] = useState(false);
 
   const lineupRefs = useRef({});
   const previousPositionsRef = useRef({});
@@ -39,7 +115,7 @@ function DFSResults() {
   const animationTimeoutsRef = useRef({});
 
   // Fetch player names from bestball endpoint for players not in salary data
-  const fetchPlayerNames = useCallback(async (sleeperIds) => {
+  const fetchPlayerMetadata = useCallback(async (sleeperIds) => {
     try {
       const response = await fetch(`${BASE_URL}/getplayers/bestball`, {
         method: 'POST',
@@ -56,17 +132,33 @@ function DFSResults() {
       }
 
       const playerData = await response.json();
-      const nameMap = {};
+      const metadataMap = {};
       
-      // Create a mapping of sleeper_id to player name
+      // Create a mapping of sleeper_id to player metadata
       const players = playerData.players || Object.values(playerData);
       players.forEach(player => {
         if (player.id) {
-          nameMap[player.id] = player.name;
+          const derivedName = player.name ||
+            [player.first_name, player.last_name].filter(Boolean).join(' ').trim();
+          const derivedPosition = player.position ||
+            player.pos ||
+            (Array.isArray(player.fantasy_positions) ? player.fantasy_positions[0] : undefined);
+          const derivedTeam = player.team ||
+            player.team_abbr ||
+            player.nfl_team ||
+            player.team_name ||
+            player.full_team_name ||
+            '';
+
+          metadataMap[player.id] = {
+            name: derivedName || 'Unknown',
+            position: derivedPosition,
+            team: derivedTeam
+          };
         }
       });
       
-      return nameMap;
+      return metadataMap;
     } catch (error) {
       console.error('Error fetching player names:', error);
       return {};
@@ -123,7 +215,7 @@ function DFSResults() {
         });
         
         // Always fetch fantasy points from Sleeper matchups API
-        const matchupsData = await fetch(`https://api.sleeper.app/v1/league/1180214473415516160/matchups/${selectedWeek}`).then(res => res.json());
+        const matchupsData = await fetch(`https://api.sleeper.app/v1/league/${PRIMARY_SLEEPER_LEAGUE_ID}/matchups/${selectedWeek}`).then(res => res.json());
         
         // Extract and combine all players_points from all matchups
         let fantasyData = {};
@@ -162,6 +254,64 @@ function DFSResults() {
           console.log('DFS salary data fetched and cached');
         }
         
+        // Determine DST players present in the lineups
+        const dstSleeperIds = new Set();
+        Array.from(allSleeperIds).forEach(rawSleeperId => {
+          const sleeperId = String(rawSleeperId);
+          const dfsPlayerKey = `${sleeperId}_W${selectedWeek}`;
+          const dfsPlayer = salaryData[dfsPlayerKey];
+          const salaryPosition =
+            dfsPlayer?.position ||
+            dfsPlayer?.fantasy_positions?.[0];
+          const metadataPosition = playerMetadata[sleeperId]?.position;
+          const lineupIndicatesDefense = isDefenseSleeperId(sleeperId);
+
+          const isDefense =
+            lineupIndicatesDefense ||
+            isDefensePosition(salaryPosition) ||
+            isDefensePosition(metadataPosition);
+
+          if (isDefense) {
+            dstSleeperIds.add(sleeperId);
+            console.log('DST detection (handleProceed):', {
+              sleeperId,
+              dfsPlayerKey,
+              salaryPosition,
+              metadataPosition,
+              lineupIndicatesDefense,
+              salaryEntry: dfsPlayer
+            });
+          }
+        });
+
+        // Fetch additional DST matchup data if needed
+        if (dstSleeperIds.size > 0) {
+          try {
+            const dstMatchupsData = await fetch(`https://api.sleeper.app/v1/league/${DST_SLEEPER_LEAGUE_ID}/matchups/${selectedWeek}`).then(res => res.json());
+            if (Array.isArray(dstMatchupsData)) {
+              dstMatchupsData.forEach(matchup => {
+                if (!matchup.players_points) return;
+                Object.entries(matchup.players_points).forEach(([sleeperId, points]) => {
+                  if (dstSleeperIds.has(String(sleeperId))) {
+                    const sid = String(sleeperId);
+                    const existing = fantasyData[sid] || { sleeper_id: sid };
+                    existing.fantasy_points = points ?? 0;
+                    fantasyData[sid] = existing;
+                    console.log('DST points merged (handleProceed):', {
+                      sleeperId: sid,
+                      points,
+                      matchupId: matchup.matchup_id,
+                      mergedEntry: existing
+                    });
+                  }
+                });
+              });
+            }
+          } catch (error) {
+            console.error('Error fetching DST matchup data:', error);
+          }
+        }
+
         // Use Sleeper points directly - names, positions, teams come from dfsSalaryData
         const mergedFantasyData = { ...fantasyData };
         
@@ -181,14 +331,14 @@ function DFSResults() {
         let nameData = {};
         if (missingNames.length > 0) {
           console.log('Fetching names for players not in salary data:', missingNames);
-          nameData = await fetchPlayerNames(missingNames);
+          nameData = await fetchPlayerMetadata(missingNames);
           console.log('Fetched name data from bestball:', nameData);
         }
         
         setFantasyPoints(mergedFantasyData);
         setDfsSalaryData(salaryData);
         if (Object.keys(nameData).length > 0) {
-          setPlayerNames(prev => ({ ...prev, ...nameData }));
+          setPlayerMetadata(prev => ({ ...prev, ...nameData }));
         }
         setLoadingPoints(false);
         
@@ -574,7 +724,7 @@ function DFSResults() {
         
         try {
           // Always fetch fantasy points from Sleeper matchups API
-          const matchupsData = await fetch(`https://api.sleeper.app/v1/league/1180214473415516160/matchups/${selectedWeek}`).then(res => res.json());
+          const matchupsData = await fetch(`https://api.sleeper.app/v1/league/${PRIMARY_SLEEPER_LEAGUE_ID}/matchups/${selectedWeek}`).then(res => res.json());
           
           // Extract and combine all players_points from all matchups
           let fantasyData = {};
@@ -614,6 +764,43 @@ function DFSResults() {
           }
           
           // Use Sleeper points directly - names, positions, teams come from dfsSalaryData
+          // Determine DST players present in the lineups
+          const dstSleeperIds = new Set();
+          Array.from(allSleeperIds).forEach(sleeperId => {
+            const dfsPlayerKey = `${sleeperId}_W${selectedWeek}`;
+            const dfsPlayer = salaryData[dfsPlayerKey];
+            if (dfsPlayer?.position === 'DST') {
+              dstSleeperIds.add(String(sleeperId));
+            }
+          });
+
+          // Fetch additional DST matchup data if needed
+          if (dstSleeperIds.size > 0) {
+            try {
+              const dstMatchupsData = await fetch(`https://api.sleeper.app/v1/league/${DST_SLEEPER_LEAGUE_ID}/matchups/${selectedWeek}`).then(res => res.json());
+              if (Array.isArray(dstMatchupsData)) {
+                dstMatchupsData.forEach(matchup => {
+                  if (!matchup.players_points) return;
+                  Object.entries(matchup.players_points).forEach(([sleeperId, points]) => {
+                  if (dstSleeperIds.has(String(sleeperId))) {
+                    const sid = String(sleeperId);
+                    const existing = fantasyData[sid] || { sleeper_id: sid };
+                    existing.fantasy_points = points ?? 0;
+                    fantasyData[sid] = existing;
+                    console.log('DST points merged (handleProceed):', {
+                      sleeperId: sid,
+                      points,
+                      matchupId: matchup.matchup_id
+                    });
+                  }
+                  });
+                });
+              }
+            } catch (error) {
+              console.error('Error fetching DST matchup data (URL load):', error);
+            }
+          }
+
           const mergedFantasyData = { ...fantasyData };
           
           console.log('Fantasy points fetched (from URL, Sleeper matchups):', mergedFantasyData);
@@ -621,25 +808,25 @@ function DFSResults() {
           
           // Find players without names in salary data and fetch from bestball endpoint
           const missingNames = [];
-          Array.from(allSleeperIds).forEach(sleeperId => {
-            const dfsPlayerKey = `${sleeperId}_W${selectedWeek}`;
-            const dfsPlayer = salaryData[dfsPlayerKey];
-            if (!dfsPlayer?.name) {
-              missingNames.push(sleeperId);
-            }
-          });
+        Array.from(allSleeperIds).forEach(sleeperId => {
+          const dfsPlayerKey = `${sleeperId}_W${selectedWeek}`;
+          const dfsPlayer = salaryData[dfsPlayerKey];
+          if (!dfsPlayer?.name) {
+            missingNames.push(sleeperId);
+          }
+        });
           
           let nameData = {};
-          if (missingNames.length > 0) {
-            console.log('Fetching names for players not in salary data (from URL):', missingNames);
-            nameData = await fetchPlayerNames(missingNames);
-            console.log('Fetched name data from bestball (from URL):', nameData);
-          }
+        if (missingNames.length > 0) {
+          console.log('Fetching names for players not in salary data (from URL):', missingNames);
+          nameData = await fetchPlayerMetadata(missingNames);
+          console.log('Fetched name data from bestball (from URL):', nameData);
+        }
           
           setFantasyPoints(mergedFantasyData);
           setDfsSalaryData(salaryData);
           if (Object.keys(nameData).length > 0) {
-            setPlayerNames(prev => ({ ...prev, ...nameData }));
+            setPlayerMetadata(prev => ({ ...prev, ...nameData }));
           }
           setLoadingPoints(false);
         } catch (error) {
@@ -657,9 +844,10 @@ function DFSResults() {
   useEffect(() => {
     if (liveUpdate && selectedWeek) {
       const refreshPoints = async () => {
+        setShowUpdatingIndicator(true);
         try {
           // Fetch Sleeper matchups data
-          const matchupsData = await fetch(`https://api.sleeper.app/v1/league/1180214473415516160/matchups/${selectedWeek}`).then(res => res.json());
+          const matchupsData = await fetch(`https://api.sleeper.app/v1/league/${PRIMARY_SLEEPER_LEAGUE_ID}/matchups/${selectedWeek}`).then(res => res.json());
           
           // Extract players_points from all matchups
           const sleeperPoints = {};
@@ -669,6 +857,61 @@ function DFSResults() {
                 Object.assign(sleeperPoints, matchup.players_points);
               }
             });
+          }
+
+          const dstSleeperIds = new Set();
+          Object.entries(fantasyPoints).forEach(([rawSleeperId, entry]) => {
+            const sleeperId = String(rawSleeperId);
+            const infoKey = `${sleeperId}_W${selectedWeek}`;
+            const salaryEntry = dfsSalaryData[infoKey];
+            const salaryPosition =
+              salaryEntry?.position ||
+              salaryEntry?.fantasy_positions?.[0];
+            const metadataPosition = playerMetadata[sleeperId]?.position;
+            const entryPosition = entry?.position;
+            const lineupIndicatesDefense = isDefenseSleeperId(sleeperId);
+
+            const isDefense =
+              lineupIndicatesDefense ||
+              isDefensePosition(salaryPosition) ||
+              isDefensePosition(metadataPosition) ||
+              isDefensePosition(entryPosition);
+
+            if (isDefense) {
+              dstSleeperIds.add(sleeperId);
+              console.log('DST detection (liveUpdate):', {
+                sleeperId,
+                salaryPosition,
+                metadataPosition,
+                entryPosition,
+                lineupIndicatesDefense,
+                salaryEntry,
+                entry
+              });
+            }
+          });
+
+          if (dstSleeperIds.size > 0) {
+            try {
+              const dstMatchupsData = await fetch(`https://api.sleeper.app/v1/league/${DST_SLEEPER_LEAGUE_ID}/matchups/${selectedWeek}`).then(res => res.json());
+              if (Array.isArray(dstMatchupsData)) {
+                dstMatchupsData.forEach(matchup => {
+                  if (!matchup.players_points) return;
+                  Object.entries(matchup.players_points).forEach(([sleeperId, points]) => {
+                    if (dstSleeperIds.has(String(sleeperId))) {
+              sleeperPoints[sleeperId] = points ?? 0;
+                      console.log('DST points merged (liveUpdate):', {
+                        sleeperId: String(sleeperId),
+                        points,
+                matchupId: matchup.matchup_id
+                      });
+                    }
+                  });
+                });
+              }
+            } catch (error) {
+              console.error('Error refreshing DST Sleeper points:', error);
+            }
           }
           
           // Merge Sleeper points with existing fantasyPoints data
@@ -694,6 +937,8 @@ function DFSResults() {
           });
         } catch (error) {
           console.error('Error refreshing Sleeper points:', error);
+        } finally {
+          setTimeout(() => setShowUpdatingIndicator(false), 1000);
         }
       };
       
@@ -703,7 +948,7 @@ function DFSResults() {
       
       return () => clearInterval(interval);
     }
-  }, [liveUpdate, selectedWeek]);
+  }, [liveUpdate, selectedWeek, dfsSalaryData]);
 
   // Fetch tinyURL count when section is visible
   useEffect(() => {
@@ -896,11 +1141,11 @@ function DFSResults() {
     
     return {
       ...fantasyInfo,
-      name: dfsPlayer?.name || playerNames[sleeperId] || fantasyInfo?.name || 'Unknown',
-      position: dfsPlayer?.position || fantasyInfo?.position,
-      team: dfsPlayer?.team || fantasyInfo?.team
+      name: dfsPlayer?.name || playerMetadata[sleeperId]?.name || fantasyInfo?.name || 'Unknown',
+      position: dfsPlayer?.position || playerMetadata[sleeperId]?.position || fantasyInfo?.position,
+      team: dfsPlayer?.team || playerMetadata[sleeperId]?.team || fantasyInfo?.team
     };
-  }, [dfsSalaryData, fantasyPoints, playerNames, selectedWeek]);
+  }, [dfsSalaryData, fantasyPoints, playerMetadata, selectedWeek]);
 
   // Get fantasy points display text
   const getFantasyPointsDisplay = (sleeperId) => {
@@ -924,55 +1169,34 @@ function DFSResults() {
       const gameStartTime = dfsPlayer?.game_start_time;
       
       if (gameDate) {
-        // Parse game date and time
         try {
-          // Default to 6 PM EST if game_start_time is missing
-          const timeStr = gameStartTime || '6:00PM';
-          
-          // Parse the time (format: "9:30AM", "6:00PM", "9:30 AM", etc.)
-          const timeMatch = timeStr.trim().match(/(\d+):(\d+)\s*(AM|PM)/i);
-          if (timeMatch) {
-            let hours = parseInt(timeMatch[1]);
-            const minutes = parseInt(timeMatch[2]);
-            const ampm = timeMatch[3].toUpperCase();
-            
-            // Convert to 24-hour format
-            if (ampm === 'PM' && hours !== 12) {
-              hours += 12;
-            } else if (ampm === 'AM' && hours === 12) {
-              hours = 0;
-            }
-            
-            // Create date string in EST (game_date is in YYYY-MM-DD format)
-            // EST is UTC-5, CET is UTC+1, so CET is EST + 6 hours
-            const estDateStr = `${gameDate}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
-            
-            // Create Date object in EST (UTC-5)
-            // Note: EST is UTC-5, but we need to account for DST (EDT is UTC-4)
-            // For simplicity, we'll use EST (UTC-5) year-round
-            // Create the date as if it's in EST timezone
-            const estDate = new Date(`${estDateStr}-05:00`);
-            
-            // Convert EST to CET: EST is UTC-5, CET is UTC+1, so CET = EST + 6 hours
-            const cetDate = new Date(estDate.getTime() + (6 * 60 * 60 * 1000));
-            
-            // Get current time (user's local time, which should be CET)
+          const kickoffUtc = parseGameStartToUtc(gameDate, gameStartTime);
+          if (kickoffUtc) {
             const now = new Date();
-            
-            // Compare: if game hasn't started yet, show "Not played"
-            if (cetDate > now) {
+            if (kickoffUtc > now) {
               return 'Not played';
             }
           }
         } catch (error) {
-          console.error('Error parsing game date/time:', error);
-          // If parsing fails, fall through to show points
+          console.error('Error determining kickoff time:', {
+            error,
+            sleeperId,
+            gameDate,
+            gameStartTime
+          });
+          // Fall through to displaying points
         }
       }
       
       // If no game date or parsing failed, check if playerInfo exists
       // If no playerInfo, show "Not played", otherwise show "0.0"
       if (!playerInfo) {
+        console.log('No fantasyInfo for sleeperId', sleeperId, {
+          dtype: 'display-missing',
+          availableIds: Object.keys(fantasyPoints).slice(0, 25),
+          dfsEntry: dfsSalaryData[dfsPlayerKey],
+          metadataEntry: playerMetadata[sleeperId]
+        });
         return 'Not played';
       }
     }
@@ -1122,9 +1346,10 @@ function DFSResults() {
         const fantasyInfo = fantasyPoints[player.sleeperId];
         
         // Determine player name, position, and team from available sources
-        const name = dfsPlayer?.name || playerNames[player.sleeperId] || fantasyInfo?.name || 'Unknown';
-        const position = dfsPlayer?.position || fantasyInfo?.position;
-        const team = dfsPlayer?.team || fantasyInfo?.team || '';
+        const metadata = playerMetadata[player.sleeperId];
+        const name = dfsPlayer?.name || metadata?.name || fantasyInfo?.name || 'Unknown';
+        const position = dfsPlayer?.position || metadata?.position || fantasyInfo?.position;
+        const team = dfsPlayer?.team || metadata?.team || fantasyInfo?.team || '';
         const fantasyPointsValue = fantasyInfo?.fantasy_points || 0;
         
         // Skip if we don't have at least a position
@@ -1483,6 +1708,9 @@ function DFSResults() {
                   >
                     Live Update
                   </button>
+                {showUpdatingIndicator && (
+                  <span className="live-update-status">Updating…</span>
+                )}
                 </div>
               </div>
           
@@ -1561,6 +1789,15 @@ function DFSResults() {
                       : isNotPlayed 
                         ? 'rgb(235, 88, 254, 0.8)' 
                         : getPositionColor(position);
+                    console.log('Render info', {
+                      lineupUsername: lineup.username,
+                      sleeperId: player.sleeperId,
+                      info,
+                      pointsDisplay,
+                      position,
+                      isOut,
+                      isNotPlayed
+                    });
                     return (
                       <div
                         key={pIdx} 

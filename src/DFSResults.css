@@ -388,6 +388,38 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
+.live-update-status {
+  font-size: 15px;
+  font-weight: 600;
+  color: #007bff;
+  opacity: 0;
+  transform: scale(0.98);
+  animation: fade-in-out-soft 1.5s linear forwards;
+}
+
+@keyframes fade-in-out-soft {
+  0% {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  40% {
+    opacity: 0.85;
+    transform: scale(1.02);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+  60% {
+    opacity: 0.85;
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
 .live-update-toggle:hover {
   background: #5a6268;
   transform: translateY(-2px);
