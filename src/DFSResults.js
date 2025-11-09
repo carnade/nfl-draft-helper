@@ -21,8 +21,8 @@ function DFSResults() {
   const [selectedWeek, setSelectedWeek] = useState(null);
   const [fantasyPoints, setFantasyPoints] = useState({});
   const [liveUpdate, setLiveUpdate] = useState(false);
-  const [playerNames, setPlayerNames] = useState({});
   const [dfsSalaryData, setDfsSalaryData] = useState({});
+  const [playerNames, setPlayerNames] = useState({});
   const [loadedFromUrl, setLoadedFromUrl] = useState(false);
   const [loadingPoints, setLoadingPoints] = useState(false);
   const [loadingTinyUrl, setLoadingTinyUrl] = useState(false);
@@ -122,33 +122,32 @@ function DFSResults() {
           console.log('DFS salary data fetched and cached');
         }
         
-        const originalFantasyData = await fetch(`${BASE_URL}/fantasy-points/week/${selectedWeek}`).then(res => res.json());
-        
-        // Merge Sleeper points with original data to get names, positions, etc.
-        const mergedFantasyData = { ...originalFantasyData };
-        Object.entries(fantasyData).forEach(([sleeperId, sleeperPlayer]) => {
-          if (mergedFantasyData[sleeperId]) {
-            // Update points but keep all other properties
-            mergedFantasyData[sleeperId] = {
-              ...mergedFantasyData[sleeperId],
-              fantasy_points: sleeperPlayer.fantasy_points
-            };
-          } else {
-            // Use Sleeper data if not in original
-            mergedFantasyData[sleeperId] = sleeperPlayer;
-          }
-        });
+        // Use Sleeper points directly - names, positions, teams come from dfsSalaryData
+        const mergedFantasyData = { ...fantasyData };
         
         console.log('Fantasy points fetched (from Sleeper matchups):', mergedFantasyData);
         console.log('DFS salary data fetched:', salaryData);
         
-        // Fetch names for all players in lineups (to show "Not played" even if they don't have points)
-        const nameData = await fetchPlayerNames(Array.from(allSleeperIds));
-        console.log('Fetched name data:', nameData);
+        // Find players without names in salary data and fetch from bestball endpoint
+        const missingNames = [];
+        Array.from(allSleeperIds).forEach(sleeperId => {
+          const dfsPlayerKey = `${sleeperId}_W${selectedWeek}`;
+          const dfsPlayer = salaryData[dfsPlayerKey];
+          if (!dfsPlayer?.name) {
+            missingNames.push(sleeperId);
+          }
+        });
+        
+        let nameData = {};
+        if (missingNames.length > 0) {
+          console.log('Fetching names for players not in salary data:', missingNames);
+          nameData = await fetchPlayerNames(missingNames);
+          console.log('Fetched name data from bestball:', nameData);
+        }
         
         setFantasyPoints(mergedFantasyData);
-        setPlayerNames(nameData);
         setDfsSalaryData(salaryData);
+        setPlayerNames(nameData);
         setLoadingPoints(false);
         
         // If loaded from URL, start the reveal animation
@@ -572,33 +571,32 @@ function DFSResults() {
             console.log('DFS salary data fetched and cached (from URL)');
           }
           
-          const originalFantasyData = await fetch(`${BASE_URL}/fantasy-points/week/${selectedWeek}`).then(res => res.json());
-          
-          // Merge Sleeper points with original data to get names, positions, etc.
-          const mergedFantasyData = { ...originalFantasyData };
-          Object.entries(fantasyData).forEach(([sleeperId, sleeperPlayer]) => {
-            if (mergedFantasyData[sleeperId]) {
-              // Update points but keep all other properties
-              mergedFantasyData[sleeperId] = {
-                ...mergedFantasyData[sleeperId],
-                fantasy_points: sleeperPlayer.fantasy_points
-              };
-            } else {
-              // Use Sleeper data if not in original
-              mergedFantasyData[sleeperId] = sleeperPlayer;
-            }
-          });
+          // Use Sleeper points directly - names, positions, teams come from dfsSalaryData
+          const mergedFantasyData = { ...fantasyData };
           
           console.log('Fantasy points fetched (from URL, Sleeper matchups):', mergedFantasyData);
           console.log('DFS salary data fetched (from URL):', salaryData);
           
-          // Fetch names for all players in lineups (to show "Not played" even if they don't have points)
-          const nameData = await fetchPlayerNames(Array.from(allSleeperIds));
-          console.log('Fetched name data (from URL):', nameData);
+          // Find players without names in salary data and fetch from bestball endpoint
+          const missingNames = [];
+          Array.from(allSleeperIds).forEach(sleeperId => {
+            const dfsPlayerKey = `${sleeperId}_W${selectedWeek}`;
+            const dfsPlayer = salaryData[dfsPlayerKey];
+            if (!dfsPlayer?.name) {
+              missingNames.push(sleeperId);
+            }
+          });
+          
+          let nameData = {};
+          if (missingNames.length > 0) {
+            console.log('Fetching names for players not in salary data (from URL):', missingNames);
+            nameData = await fetchPlayerNames(missingNames);
+            console.log('Fetched name data from bestball (from URL):', nameData);
+          }
           
           setFantasyPoints(mergedFantasyData);
-          setPlayerNames(nameData);
           setDfsSalaryData(salaryData);
+          setPlayerNames(nameData);
           setLoadingPoints(false);
         } catch (error) {
           console.error('Error fetching data from URL:', error);
@@ -834,9 +832,8 @@ function DFSResults() {
     }
   }, [loadedFromUrl, loadingPoints, fantasyPoints, dfsSalaryData, startRevealAnimation]);
 
-  // Fetch player names for all sleeper IDs in lineups
+  // Fetch player names from bestball endpoint for players not in salary data
   const fetchPlayerNames = async (sleeperIds) => {
-    console.log('fetchPlayerNames called with:', sleeperIds);
     try {
       const response = await fetch(`${BASE_URL}/getplayers/bestball`, {
         method: 'POST',
@@ -848,33 +845,27 @@ function DFSResults() {
         })
       });
 
-      console.log('fetchPlayerNames response status:', response.status);
-
       if (!response.ok) {
         throw new Error('Failed to fetch player names');
       }
 
       const playerData = await response.json();
-      console.log('fetchPlayerNames raw response:', playerData);
       const nameMap = {};
       
       // Create a mapping of sleeper_id to player name
-      // The API returns {players: Array(30)}, so we need to access the players array
       const players = playerData.players || Object.values(playerData);
       players.forEach(player => {
         if (player.id) {
           nameMap[player.id] = player.name;
         }
       });
-      console.log('fetchPlayerNames final nameMap:', nameMap);
+      
       return nameMap;
     } catch (error) {
       console.error('Error fetching player names:', error);
       return {};
     }
   };
-
-  // This useEffect is removed - all fetching now happens in handleProceed
 
   const getPositionColor = (position) => {
     const colors = {
@@ -885,23 +876,20 @@ function DFSResults() {
       FLX: 'rgb(235, 88, 254, 0.8)',
       DST: 'rgb(239, 91, 47, 0.8)'
     };
-    return colors[position] || '#ccc';
+    // Return purple (FLX color) for unknown positions
+    return colors[position] || 'rgb(235, 88, 254, 0.8)';
   };
 
   const getPlayerInfo = (sleeperId) => {
     const fantasyInfo = fantasyPoints[sleeperId];
-    const playerName = playerNames[sleeperId];
-    
-    console.log(`getPlayerInfo for ${sleeperId}:`, {
-      fantasyInfo,
-      playerName,
-      playerNames,
-      finalName: playerName || fantasyInfo?.name || 'Unknown'
-    });
+    const dfsPlayerKey = `${sleeperId}_W${selectedWeek}`;
+    const dfsPlayer = dfsSalaryData[dfsPlayerKey];
     
     return {
       ...fantasyInfo,
-      name: playerName || fantasyInfo?.name || 'Unknown'
+      name: dfsPlayer?.name || playerNames[sleeperId] || fantasyInfo?.name || 'Unknown',
+      position: dfsPlayer?.position || fantasyInfo?.position,
+      team: dfsPlayer?.team || fantasyInfo?.team
     };
   };
 
@@ -1028,10 +1016,9 @@ function DFSResults() {
         const dfsPlayerKey = `${player.sleeperId}_W${selectedWeek}`;
         const dfsPlayer = dfsSalaryData[dfsPlayerKey];
         const fantasyInfo = fantasyPoints[player.sleeperId];
-        const playerName = playerNames[player.sleeperId];
         
         // Determine player name, position, and team from available sources
-        const name = playerName || dfsPlayer?.name || fantasyInfo?.name || 'Unknown';
+        const name = dfsPlayer?.name || playerNames[player.sleeperId] || fantasyInfo?.name || 'Unknown';
         const position = dfsPlayer?.position || fantasyInfo?.position;
         const team = dfsPlayer?.team || fantasyInfo?.team || '';
         const fantasyPointsValue = fantasyInfo?.fantasy_points || 0;
@@ -1461,11 +1448,18 @@ function DFSResults() {
                       return (() => {
                         const pointsDisplay = getFantasyPointsDisplay(player.sleeperId);
                         const isOut = pointsDisplay === 'OUT';
+                        const isNotPlayed = pointsDisplay === 'Not played';
+                        // Use purple (FLX color) for "Not played" players, red for OUT, otherwise position color
+                        const backgroundColor = isOut 
+                          ? 'rgba(220, 53, 69, 0.8)' 
+                          : isNotPlayed 
+                            ? 'rgb(235, 88, 254, 0.8)' 
+                            : getPositionColor(position);
                         return (
                           <div
                             key={pIdx} 
                             className="dfs-results-player-card"
-                            style={{ backgroundColor: isOut ? 'rgba(220, 53, 69, 0.8)' : getPositionColor(position) }}
+                            style={{ backgroundColor }}
                           >
                             <div className="dfs-results-player-card-left">
                               <div className="dfs-results-player-card-name">{info?.name || 'Unknown'}</div>
