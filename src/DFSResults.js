@@ -108,6 +108,7 @@ function DFSResults() {
   const [tinyUrlError, setTinyUrlError] = useState('');
   const [tinyUrlCount, setTinyUrlCount] = useState(null);
   const [showUpdatingIndicator, setShowUpdatingIndicator] = useState(false);
+  const [lastUpdateTime, setLastUpdateTime] = useState(null);
 
   const lineupRefs = useRef({});
   const previousPositionsRef = useRef({});
@@ -341,6 +342,7 @@ function DFSResults() {
           setPlayerMetadata(prev => ({ ...prev, ...nameData }));
         }
         setLoadingPoints(false);
+        setLastUpdateTime(new Date());
         
         // If loaded from URL, start the reveal animation
         if (loadedFromUrl && inputData) {
@@ -829,6 +831,7 @@ function DFSResults() {
             setPlayerMetadata(prev => ({ ...prev, ...nameData }));
           }
           setLoadingPoints(false);
+          setLastUpdateTime(new Date());
         } catch (error) {
           console.error('Error fetching data from URL:', error);
           setLoadingPoints(false);
@@ -839,116 +842,6 @@ function DFSResults() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadedFromUrl, selectedWeek, compressedData]);
-
-  // Auto-refresh Sleeper points every 60 seconds when live update is enabled
-  useEffect(() => {
-    if (liveUpdate && selectedWeek) {
-      const refreshPoints = async () => {
-        setShowUpdatingIndicator(true);
-        try {
-          // Fetch Sleeper matchups data
-          const matchupsData = await fetch(`https://api.sleeper.app/v1/league/${PRIMARY_SLEEPER_LEAGUE_ID}/matchups/${selectedWeek}`).then(res => res.json());
-          
-          // Extract players_points from all matchups
-          const sleeperPoints = {};
-          if (Array.isArray(matchupsData)) {
-            matchupsData.forEach(matchup => {
-              if (matchup.players_points) {
-                Object.assign(sleeperPoints, matchup.players_points);
-              }
-            });
-          }
-
-          const dstSleeperIds = new Set();
-          Object.entries(fantasyPoints).forEach(([rawSleeperId, entry]) => {
-            const sleeperId = String(rawSleeperId);
-            const infoKey = `${sleeperId}_W${selectedWeek}`;
-            const salaryEntry = dfsSalaryData[infoKey];
-            const salaryPosition =
-              salaryEntry?.position ||
-              salaryEntry?.fantasy_positions?.[0];
-            const metadataPosition = playerMetadata[sleeperId]?.position;
-            const entryPosition = entry?.position;
-            const lineupIndicatesDefense = isDefenseSleeperId(sleeperId);
-
-            const isDefense =
-              lineupIndicatesDefense ||
-              isDefensePosition(salaryPosition) ||
-              isDefensePosition(metadataPosition) ||
-              isDefensePosition(entryPosition);
-
-            if (isDefense) {
-              dstSleeperIds.add(sleeperId);
-              console.log('DST detection (liveUpdate):', {
-                sleeperId,
-                salaryPosition,
-                metadataPosition,
-                entryPosition,
-                lineupIndicatesDefense,
-                salaryEntry,
-                entry
-              });
-            }
-          });
-
-          if (dstSleeperIds.size > 0) {
-            try {
-              const dstMatchupsData = await fetch(`https://api.sleeper.app/v1/league/${DST_SLEEPER_LEAGUE_ID}/matchups/${selectedWeek}`).then(res => res.json());
-              if (Array.isArray(dstMatchupsData)) {
-                dstMatchupsData.forEach(matchup => {
-                  if (!matchup.players_points) return;
-                  Object.entries(matchup.players_points).forEach(([sleeperId, points]) => {
-                    if (dstSleeperIds.has(String(sleeperId))) {
-              sleeperPoints[sleeperId] = points ?? 0;
-                      console.log('DST points merged (liveUpdate):', {
-                        sleeperId: String(sleeperId),
-                        points,
-                matchupId: matchup.matchup_id
-                      });
-                    }
-                  });
-                });
-              }
-            } catch (error) {
-              console.error('Error refreshing DST Sleeper points:', error);
-            }
-          }
-          
-          // Merge Sleeper points with existing fantasyPoints data
-          // Keep all existing properties (name, position, team, etc.) and only update fantasy_points
-          setFantasyPoints(prevFantasyPoints => {
-            const updatedFantasyPoints = { ...prevFantasyPoints };
-            Object.entries(sleeperPoints).forEach(([sleeperId, points]) => {
-              if (updatedFantasyPoints[sleeperId]) {
-                // Update existing player's points
-                updatedFantasyPoints[sleeperId] = {
-                  ...updatedFantasyPoints[sleeperId],
-                  fantasy_points: points
-                };
-              } else {
-                // Add new player if not in existing data
-                updatedFantasyPoints[sleeperId] = {
-                  fantasy_points: points,
-                  sleeper_id: sleeperId
-                };
-              }
-            });
-            return updatedFantasyPoints;
-          });
-        } catch (error) {
-          console.error('Error refreshing Sleeper points:', error);
-        } finally {
-          setTimeout(() => setShowUpdatingIndicator(false), 1000);
-        }
-      };
-      
-      // Refresh immediately, then set up interval
-      refreshPoints();
-      const interval = setInterval(refreshPoints, 60000); // 60 seconds
-      
-      return () => clearInterval(interval);
-    }
-  }, [liveUpdate, selectedWeek, dfsSalaryData]);
 
   // Fetch tinyURL count when section is visible
   useEffect(() => {
@@ -979,6 +872,29 @@ function DFSResults() {
     }
   }, [inputData]);
 
+  const buildDstSleeperIdSet = useCallback((lineups) => {
+    const dstIds = new Set();
+    lineups.forEach(lineup => {
+      lineup.players.forEach(player => {
+        const sleeperId = String(player.sleeperId);
+        if (isDefenseSleeperId(sleeperId)) {
+          dstIds.add(sleeperId);
+          return;
+        }
+        const dfsPlayerKey = `${sleeperId}_W${selectedWeek}`;
+        const salaryEntry = dfsSalaryData[dfsPlayerKey];
+        const position =
+          salaryEntry?.position ||
+          salaryEntry?.fantasy_positions?.[0] ||
+          playerMetadata[sleeperId]?.position;
+        if (isDefensePosition(position)) {
+          dstIds.add(sleeperId);
+        }
+      });
+    });
+    return dstIds;
+  }, [dfsSalaryData, playerMetadata, selectedWeek]);
+
   const startRevealAnimation = useCallback(() => {
     const lineupData = parseLineups();
     const totalLineups = lineupData.length;
@@ -990,28 +906,55 @@ function DFSResults() {
       selectedWeek
     });
     
-    // Check if there are any "Not played" players (excluding OUT players)
+    // Check if there are any players without fantasy data (excluding OUT players)
+    let missingPlayers = [];
     const hasNotPlayedPlayers = lineupData.some(lineup => 
       lineup.players.some(player => {
+        const displayStatus = getFantasyPointsDisplay(player.sleeperId);
+        if (displayStatus === 'Not played') {
+          const dfsPlayerKey = `${player.sleeperId}_W${selectedWeek}`;
+          const dfsPlayer = dfsSalaryData[dfsPlayerKey];
+          missingPlayers.push({
+            sleeperId: player.sleeperId,
+            reason: 'display_not_played',
+            displayStatus,
+            dfsPlayerKey,
+            dfsPlayer
+          });
+          return true;
+        }
+
         const playerInfo = fantasyPoints[player.sleeperId];
-        if (playerInfo) return false; // Player has fantasy points, they played
-        
-        // Check if player is OUT
         const dfsPlayerKey = `${player.sleeperId}_W${selectedWeek}`;
         const dfsPlayer = dfsSalaryData[dfsPlayerKey];
         const isOut = dfsPlayer?.injury_status === 'O';
-        
-        console.log(`Player ${player.sleeperId}:`, {
-          hasFantasyPoints: !!playerInfo,
-          dfsPlayer,
-          isOut,
-          willShowAsNotPlayed: !isOut
-        });
-        
-        // Only consider it "not played" if they're not OUT
-        return !isOut;
+
+        if (!playerInfo && !isOut) {
+          missingPlayers.push({
+            sleeperId: player.sleeperId,
+            reason: 'no_fantasy_entry',
+            dfsPlayerKey,
+            dfsPlayer
+          });
+          return true;
+        }
+
+        if (playerInfo && typeof playerInfo.fantasy_points !== 'number') {
+          missingPlayers.push({
+            sleeperId: player.sleeperId,
+            reason: 'invalid_fantasy_points',
+            playerInfo
+          });
+          return true;
+        }
+
+        return false;
       })
     );
+
+    if (missingPlayers.length > 0) {
+      console.log('Skipping reveal animation due to missing players:', missingPlayers);
+    }
     
     console.log('hasNotPlayedPlayers:', hasNotPlayedPlayers);
     
@@ -1111,7 +1054,7 @@ function DFSResults() {
         });
       }, 4000);
     }
-  }, [fantasyPoints, dfsSalaryData, selectedWeek, parseLineups]);
+  }, [fantasyPoints, dfsSalaryData, selectedWeek, parseLineups, getFantasyPointsDisplay]);
 
   // Trigger animation when data is loaded from URL
   useEffect(() => {
@@ -1148,7 +1091,7 @@ function DFSResults() {
   }, [dfsSalaryData, fantasyPoints, playerMetadata, selectedWeek]);
 
   // Get fantasy points display text
-  const getFantasyPointsDisplay = (sleeperId) => {
+  function getFantasyPointsDisplay(sleeperId) {
     const playerInfo = fantasyPoints[sleeperId];
     
     // Check if player is OUT (from DFS salary data)
@@ -1203,7 +1146,7 @@ function DFSResults() {
     
     // Show points (either 0.0 or actual points)
     return points.toFixed(1);
-  };
+  }
 
   const calculateTotalPoints = useCallback((players) => {
     return players.reduce((sum, player) => {
@@ -1298,8 +1241,9 @@ function DFSResults() {
   }, [sortedLineups, loadingPoints]);
 
   useEffect(() => {
+    const timeoutsMap = animationTimeoutsRef.current;
     return () => {
-      Object.values(animationTimeoutsRef.current).forEach(timeoutId => {
+      Object.values(timeoutsMap).forEach(timeoutId => {
         if (timeoutId) {
           clearTimeout(timeoutId);
         }
@@ -1550,6 +1494,100 @@ function DFSResults() {
     return result;
   };
 
+  const formattedLastUpdate = lastUpdateTime
+    ? lastUpdateTime.toLocaleTimeString('en-GB', { hour12: false })
+    : null;
+
+  // Auto-refresh Sleeper points every 60 seconds when live update is enabled
+  useEffect(() => {
+    if (!liveUpdate || !selectedWeek) {
+      return undefined;
+    }
+
+    let hideIndicatorTimeoutId = null;
+    let isMounted = true;
+
+    const refreshPoints = async () => {
+      setShowUpdatingIndicator(true);
+      try {
+        const matchupsData = await fetch(`https://api.sleeper.app/v1/league/${PRIMARY_SLEEPER_LEAGUE_ID}/matchups/${selectedWeek}`).then(res => res.json());
+
+        const sleeperPoints = {};
+        if (Array.isArray(matchupsData)) {
+          matchupsData.forEach(matchup => {
+            if (matchup.players_points) {
+              Object.assign(sleeperPoints, matchup.players_points);
+            }
+          });
+        }
+
+        const lineups = parseLineups();
+        const dstSleeperIds = buildDstSleeperIdSet(lineups);
+
+        if (dstSleeperIds.size > 0) {
+          try {
+            const dstMatchupsData = await fetch(`https://api.sleeper.app/v1/league/${DST_SLEEPER_LEAGUE_ID}/matchups/${selectedWeek}`).then(res => res.json());
+            if (Array.isArray(dstMatchupsData)) {
+              dstMatchupsData.forEach(matchup => {
+                if (!matchup.players_points) return;
+                Object.entries(matchup.players_points).forEach(([sleeperId, points]) => {
+                  if (dstSleeperIds.has(String(sleeperId))) {
+                    sleeperPoints[sleeperId] = points ?? 0;
+                    console.log('DST points merged (liveUpdate):', {
+                      sleeperId: String(sleeperId),
+                      points,
+                      matchupId: matchup.matchup_id
+                    });
+                  }
+                });
+              });
+            }
+          } catch (error) {
+            console.error('Error refreshing DST Sleeper points:', error);
+          }
+        }
+
+        setFantasyPoints(prevFantasyPoints => {
+          const updatedFantasyPoints = { ...prevFantasyPoints };
+          Object.entries(sleeperPoints).forEach(([sleeperId, points]) => {
+            if (updatedFantasyPoints[sleeperId]) {
+              updatedFantasyPoints[sleeperId] = {
+                ...updatedFantasyPoints[sleeperId],
+                fantasy_points: points
+              };
+            } else {
+              updatedFantasyPoints[sleeperId] = {
+                fantasy_points: points,
+                sleeper_id: sleeperId
+              };
+            }
+          });
+          return updatedFantasyPoints;
+        });
+        setLastUpdateTime(new Date());
+      } catch (error) {
+        console.error('Error refreshing Sleeper points:', error);
+      } finally {
+        hideIndicatorTimeoutId = window.setTimeout(() => {
+          if (isMounted) {
+            setShowUpdatingIndicator(false);
+          }
+        }, 1000);
+      }
+    };
+
+    refreshPoints();
+    const intervalId = window.setInterval(refreshPoints, 60000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+      if (hideIndicatorTimeoutId) {
+        clearTimeout(hideIndicatorTimeoutId);
+      }
+    };
+  }, [liveUpdate, selectedWeek, dfsSalaryData, playerMetadata, parseLineups, buildDstSleeperIdSet]);
+
   return (
     <div className="dfs-results-container">
       <div className="dfs-results-header">
@@ -1708,6 +1746,11 @@ function DFSResults() {
                   >
                     Live Update
                   </button>
+                {formattedLastUpdate && (
+                  <span className="live-update-timestamp">
+                    Last updated {formattedLastUpdate}
+                  </span>
+                )}
                 {showUpdatingIndicator && (
                   <span className="live-update-status">Updating…</span>
                 )}

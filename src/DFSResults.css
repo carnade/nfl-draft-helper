@@ -397,6 +397,16 @@
   animation: fade-in-out-soft 1.5s linear forwards;
 }
 
+.live-update-timestamp {
+  font-size: 14px;
+  font-weight: 500;
+  color: #6c757d;
+}
+
+body.dark .live-update-timestamp {
+  color: #e2e8f0;
+}
+
 @keyframes fade-in-out-soft {
   0% {
     opacity: 0;
