@@ -896,6 +896,60 @@ function DFSResults() {
     return dstIds;
   }, [dfsSalaryData, playerMetadata, selectedWeek]);
 
+  const getFantasyPointsDisplay = useCallback((sleeperId) => {
+    const playerInfo = fantasyPoints[sleeperId];
+
+    // Check if player is OUT (from DFS salary data)
+    const dfsPlayerKey = `${sleeperId}_W${selectedWeek}`;
+    const dfsPlayer = dfsSalaryData[dfsPlayerKey];
+
+    // If player is marked as OUT in injury status, show "OUT"
+    if (dfsPlayer?.injury_status === 'O') {
+      return 'OUT';
+    }
+
+    // Get fantasy points (0 if no playerInfo, otherwise the actual points)
+    const points = playerInfo?.fantasy_points ?? 0;
+
+    // If points is 0.0, check if game has started
+    if (points === 0) {
+      const gameDate = dfsPlayer?.game_date;
+      const gameStartTime = dfsPlayer?.game_start_time;
+
+      if (gameDate) {
+        try {
+          const kickoffUtc = parseGameStartToUtc(gameDate, gameStartTime);
+          if (kickoffUtc) {
+            const now = new Date();
+            if (now < kickoffUtc) {
+              return 'Not played';
+            }
+          }
+        } catch (error) {
+          console.error('Error parsing game start time:', {
+            sleeperId,
+            gameDate,
+            gameStartTime,
+            error
+          });
+        }
+      }
+
+      // If we have player metadata indicating they haven't played, show Not played
+      if (!playerInfo) {
+        return 'Not played';
+      }
+    }
+
+    // If no player info and no special conditions, show Not played
+    if (!playerInfo) {
+      return 'Not played';
+    }
+
+    // Otherwise return the fantasy points formatted to 1 decimal place
+    return (playerInfo.fantasy_points ?? 0).toFixed(1);
+  }, [dfsSalaryData, fantasyPoints, selectedWeek]);
+
   const startRevealAnimation = useCallback(() => {
     const lineupData = parseLineups();
     const totalLineups = lineupData.length;
@@ -1090,64 +1144,6 @@ function DFSResults() {
       team: dfsPlayer?.team || playerMetadata[sleeperId]?.team || fantasyInfo?.team
     };
   }, [dfsSalaryData, fantasyPoints, playerMetadata, selectedWeek]);
-
-  // Get fantasy points display text
-  function getFantasyPointsDisplay(sleeperId) {
-    const playerInfo = fantasyPoints[sleeperId];
-    
-    // Check if player is OUT (from DFS salary data)
-    const dfsPlayerKey = `${sleeperId}_W${selectedWeek}`;
-    const dfsPlayer = dfsSalaryData[dfsPlayerKey];
-    
-    // If player is marked as OUT in injury status, show "OUT"
-    if (dfsPlayer?.injury_status === 'O') {
-      return 'OUT';
-    }
-    
-    // Get fantasy points (0 if no playerInfo, otherwise the actual points)
-    const points = playerInfo?.fantasy_points ?? 0;
-    
-    // If points is 0.0, check if game has started
-    if (points === 0) {
-      const gameDate = dfsPlayer?.game_date;
-      const gameStartTime = dfsPlayer?.game_start_time;
-      
-      if (gameDate) {
-        try {
-          const kickoffUtc = parseGameStartToUtc(gameDate, gameStartTime);
-          if (kickoffUtc) {
-            const now = new Date();
-            if (kickoffUtc > now) {
-              return 'Not played';
-            }
-          }
-        } catch (error) {
-          console.error('Error determining kickoff time:', {
-            error,
-            sleeperId,
-            gameDate,
-            gameStartTime
-          });
-          // Fall through to displaying points
-        }
-      }
-      
-      // If no game date or parsing failed, check if playerInfo exists
-      // If no playerInfo, show "Not played", otherwise show "0.0"
-      if (!playerInfo) {
-        console.log('No fantasyInfo for sleeperId', sleeperId, {
-          dtype: 'display-missing',
-          availableIds: Object.keys(fantasyPoints).slice(0, 25),
-          dfsEntry: dfsSalaryData[dfsPlayerKey],
-          metadataEntry: playerMetadata[sleeperId]
-        });
-        return 'Not played';
-      }
-    }
-    
-    // Show points (either 0.0 or actual points)
-    return points.toFixed(1);
-  }
 
   const calculateTotalPoints = useCallback((players) => {
     return players.reduce((sum, player) => {
