@@ -114,6 +114,7 @@ function DFSResults() {
   const previousPositionsRef = useRef({});
   const hasMeasuredRef = useRef(false);
   const animationTimeoutsRef = useRef({});
+  const lastSortedKeysRef = useRef([]);
 
   // Fetch player names from bestball endpoint for players not in salary data
   const fetchPlayerMetadata = useCallback(async (sleeperIds) => {
@@ -1190,6 +1191,19 @@ function DFSResults() {
       }
     });
 
+    const currentKeysArray = sortedLineups.map(lineup => lineup.key);
+    const orderChanged =
+      currentKeysArray.length !== lastSortedKeysRef.current.length ||
+      currentKeysArray.some((key, idx) => key !== lastSortedKeysRef.current[idx]);
+
+    if (!orderChanged) {
+      lastSortedKeysRef.current = currentKeysArray;
+      previousPositionsRef.current = currentPositions;
+      return;
+    }
+
+    lastSortedKeysRef.current = currentKeysArray;
+
     if (hasMeasuredRef.current) {
       sortedLineups.forEach(lineup => {
         const key = lineup.key;
@@ -1746,229 +1760,216 @@ function DFSResults() {
                   >
                     Live Update
                   </button>
-                {formattedLastUpdate && (
-                  <span className="live-update-timestamp">
-                    Last updated {formattedLastUpdate}
-                  </span>
-                )}
-                {showUpdatingIndicator && (
-                  <span className="live-update-status">Updating…</span>
-                )}
+                  {formattedLastUpdate && (
+                    <span className="live-update-timestamp">
+                      Last updated {formattedLastUpdate}
+                    </span>
+                  )}
+                  {showUpdatingIndicator && (
+                    <span className="live-update-status">Updating…</span>
+                  )}
                 </div>
               </div>
           
-          {sortedLineups.map((lineup, idx) => {
-            const rank = idx + 1;
-            const isVisible = loadedFromUrl ? visibleRanks.has(rank) : true;
-            const isGhost = loadedFromUrl && visibleRanks.has(-rank);
-            const lineupKey = lineup.key;
-            
-            // Show ghost placeholder for top 3 ranks before reveal
-            if (isGhost && rank <= 3) {
-              return (
-                <div key={`ghost-${lineupKey}`} className="lineup-grid ghost-grid visible">
-                  <div className="grid-header rank-header">Rank</div>
-                  <div className="grid-header manager-header">Manager</div>
-                  <div className="grid-header">QB</div>
-                  <div className="grid-header">RB</div>
-                  <div className="grid-header">RB</div>
-                  <div className="grid-header">WR</div>
-                  <div className="grid-header">WR</div>
-                  <div className="grid-header">WR</div>
-                  <div className="grid-header">TE</div>
-                  <div className="grid-header">FLEX</div>
-                  <div className="grid-header">DST</div>
-                  <div className="grid-header total-header">Total Points</div>
-
-                  <div className="grid-value rank-value ghost-rank">{rank}</div>
-                  <div className="grid-value manager-value ghost-text">???</div>
-                  {[...Array(9)].map((_, i) => (
-                    <div key={i} className="ghost-player-card"></div>
-                  ))}
-                  <div className="total-points-cell ghost-total">???</div>
-                </div>
-              );
-            }
-            
-            return (
-              <div 
-                key={lineupKey} 
-                className={`lineup-grid ${isVisible ? 'visible' : 'hidden'}`}
-                ref={el => {
-                  if (el) {
-                    lineupRefs.current[lineupKey] = el;
-                  } else {
-                    delete lineupRefs.current[lineupKey];
-                  }
-                }}
-              >
-              <div className="grid-header rank-header">Rank</div>
-              <div className="grid-header manager-header">Manager</div>
-              <div className="grid-header">QB</div>
-              <div className="grid-header">RB</div>
-              <div className="grid-header">RB</div>
-              <div className="grid-header">WR</div>
-              <div className="grid-header">WR</div>
-              <div className="grid-header">WR</div>
-              <div className="grid-header">TE</div>
-              <div className="grid-header">FLEX</div>
-              <div className="grid-header">DST</div>
-              <div className="grid-header total-header">Total Points</div>
-
-              <div className={`grid-value rank-value rank-${rank}`}>{rank}</div>
-              <div className="grid-value manager-value">{lineup.username}</div>
-              
-              {lineup.players.map((player, pIdx) => {
-                const info = getPlayerInfo(player.sleeperId);
-                const position = info?.position || 'FLX';
+              {sortedLineups.map((lineup, idx) => {
+                const rank = idx + 1;
+                const isVisible = loadedFromUrl ? visibleRanks.has(rank) : true;
+                const isGhost = loadedFromUrl && visibleRanks.has(-rank);
+                const lineupKey = lineup.key;
                 
-                  return (() => {
-                    const pointsDisplay = getFantasyPointsDisplay(player.sleeperId);
-                    const isOut = pointsDisplay === 'OUT';
-                    const isNotPlayed = pointsDisplay === 'Not played';
-                    // Use purple (FLX color) for "Not played" players, red for OUT, otherwise position color
-                    const backgroundColor = isOut 
-                      ? 'rgba(220, 53, 69, 0.8)' 
-                      : isNotPlayed 
-                        ? 'rgb(235, 88, 254, 0.8)' 
-                        : getPositionColor(position);
-                    console.log('Render info', {
-                      lineupUsername: lineup.username,
-                      sleeperId: player.sleeperId,
-                      info,
-                      pointsDisplay,
-                      position,
-                      isOut,
-                      isNotPlayed
-                    });
-                    return (
-                      <div
-                        key={pIdx} 
-                        className="dfs-results-player-card"
-                        style={{ backgroundColor }}
-                      >
-                        <div className="dfs-results-player-card-left">
-                          <div className="dfs-results-player-card-name">{info?.name || 'Unknown'}</div>
-                          <div className="dfs-results-player-card-salary">${player.salary.toLocaleString()}</div>
-                        </div>
-                        <div className={`dfs-results-player-card-points ${pointsDisplay === 'OUT' ? 'out-status' : ''}`}>
-                          {pointsDisplay}
-                        </div>
-                      </div>
-                    );
-                  })();
+                // Show ghost placeholder for top 3 ranks before reveal
+                if (isGhost && rank <= 3) {
+                  return (
+                    <div key={`ghost-${lineupKey}`} className="lineup-grid ghost-grid visible">
+                      <div className="grid-header rank-header">Rank</div>
+                      <div className="grid-header manager-header">Manager</div>
+                      <div className="grid-header">QB</div>
+                      <div className="grid-header">RB</div>
+                      <div className="grid-header">RB</div>
+                      <div className="grid-header">WR</div>
+                      <div className="grid-header">WR</div>
+                      <div className="grid-header">WR</div>
+                      <div className="grid-header">TE</div>
+                      <div className="grid-header">FLEX</div>
+                      <div className="grid-header">DST</div>
+                      <div className="grid-header total-header">Total Points</div>
+
+                      <div className="grid-value rank-value ghost-rank">{rank}</div>
+                      <div className="grid-value manager-value ghost-text">???</div>
+                      {[...Array(9)].map((_, i) => (
+                        <div key={i} className="ghost-player-card"></div>
+                      ))}
+                      <div className="total-points-cell ghost-total">???</div>
+                    </div>
+                  );
+                }
+                
+                return (
+                  <div 
+                    key={lineupKey} 
+                    className={`lineup-grid ${isVisible ? 'visible' : 'hidden'}`}
+                    ref={el => {
+                      if (el) {
+                        lineupRefs.current[lineupKey] = el;
+                      } else {
+                        delete lineupRefs.current[lineupKey];
+                      }
+                    }}
+                  >
+                    <div className="grid-header rank-header">Rank</div>
+                    <div className="grid-header manager-header">Manager</div>
+                    <div className="grid-header">QB</div>
+                    <div className="grid-header">RB</div>
+                    <div className="grid-header">RB</div>
+                    <div className="grid-header">WR</div>
+                    <div className="grid-header">WR</div>
+                    <div className="grid-header">WR</div>
+                    <div className="grid-header">TE</div>
+                    <div className="grid-header">FLEX</div>
+                    <div className="grid-header">DST</div>
+                    <div className="grid-header total-header">Total Points</div>
+
+                    <div className={`grid-value rank-value rank-${rank}`}>{rank}</div>
+                    <div className="grid-value manager-value">{lineup.username}</div>
+                    
+                    {lineup.players.map((player, pIdx) => {
+                      const info = getPlayerInfo(player.sleeperId);
+                      const position = info?.position || 'FLX';
+                      return (() => {
+                        const pointsDisplay = getFantasyPointsDisplay(player.sleeperId);
+                        const isOut = pointsDisplay === 'OUT';
+                        const isNotPlayed = pointsDisplay === 'Not played';
+                        const backgroundColor = isOut 
+                          ? 'rgba(220, 53, 69, 0.8)' 
+                          : isNotPlayed 
+                            ? 'rgb(235, 88, 254, 0.8)' 
+                            : getPositionColor(position);
+                        console.log('Render info', {
+                          lineupUsername: lineup.username,
+                          sleeperId: player.sleeperId,
+                          info,
+                          pointsDisplay,
+                          position,
+                          isOut,
+                          isNotPlayed
+                        });
+                        return (
+                          <div
+                            key={pIdx} 
+                            className="dfs-results-player-card"
+                            style={{ backgroundColor }}
+                          >
+                            <div className="dfs-results-player-card-left">
+                              <div className="dfs-results-player-card-name">{info?.name || 'Unknown'}</div>
+                              <div className="dfs-results-player-card-salary">${player.salary.toLocaleString()}</div>
+                            </div>
+                            <div className={`dfs-results-player-card-points ${pointsDisplay === 'OUT' ? 'out-status' : ''}`}>
+                              {pointsDisplay}
+                            </div>
+                          </div>
+                        );
+                      })();
+                    })}
+                    <div className="total-points-cell">{calculateTotalPoints(lineup.players).toFixed(1)}</div>
+                  </div>
+                );
               })}
-              
-              <div className="total-points-cell">
-                {lineup.totalPoints.toFixed(1)}
+
+              <div className="stats-section">
+                <h3>Position Statistics</h3>
+                {Object.entries(getStatsData()).map(([position, { chosen, bestChosen, bestNotChosen }]) => (
+                  <div key={position} className="position-stats">
+                    <h4>{position}</h4>
+                    <div className="stats-table-group">
+                      <div className="stats-table">
+                        <h5>Most Chosen Players</h5>
+                        {chosen.length === 0 ? (
+                          <p className="stats-empty">No data</p>
+                        ) : (
+                          <table>
+                            <thead>
+                              <tr>
+                                <th>Player</th>
+                                <th>Count</th>
+                                <th>Avg Salary</th>
+                                <th>Avg Points</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {chosen.map((player, index) => (
+                                <tr key={index}>
+                                  <td>{player.name} ({player.team})</td>
+                                  <td>{player.count}</td>
+                                  <td>${player.count > 0 ? Math.round(player.totalSalary / player.count).toLocaleString() : 0}</td>
+                                  <td>{player.count > 0 ? (player.totalPoints / player.count).toFixed(1) : '0.0'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+
+                      <div className="stats-table">
+                        <h5>Best Chosen (Pts / $1k)</h5>
+                        {bestChosen.length === 0 ? (
+                          <p className="stats-empty">No data</p>
+                        ) : (
+                          <table>
+                            <thead>
+                              <tr>
+                                <th>Player</th>
+                                <th>Value</th>
+                                <th>Count</th>
+                                <th>Avg Points</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {bestChosen.map((player, index) => (
+                                <tr key={index}>
+                                  <td>{player.name} ({player.team})</td>
+                                  <td>{player.value.toFixed(2)}</td>
+                                  <td>{player.count}</td>
+                                  <td>{player.count > 0 ? (player.totalPoints / player.count).toFixed(1) : '0.0'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+
+                      <div className="stats-table">
+                        <h5>Best Not Chosen (Pts / $1k)</h5>
+                        {bestNotChosen.length === 0 ? (
+                          <p className="stats-empty">No data</p>
+                        ) : (
+                          <table>
+                            <thead>
+                              <tr>
+                                <th>Player</th>
+                                <th>Value</th>
+                                <th>Salary</th>
+                                <th>Points</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {bestNotChosen.map((player, index) => (
+                                <tr key={index}>
+                                  <td>{player.name} ({player.team})</td>
+                                  <td>{player.value.toFixed(2)}</td>
+                                  <td>${player.salary?.toLocaleString() ?? '-'}</td>
+                                  <td>{player.points?.toFixed(1) ?? '-'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          );
-        })}
             </>
           )}
-        </div>
-      )}
-
-      {compressedData && inputData && Object.keys(fantasyPoints).length > 0 && (
-        <div className="stats-section">
-          <h2>Position Statistics</h2>
-          <div className="stats-container">
-            <div className="stats-area">
-              <h3>Most Chosen Players</h3>
-              <div className="position-stats">
-                {Object.entries(getStatsData()).map(([position, data]) => (
-                  <div key={`chosen-${position}`} className="position-table">
-                    <h4>{position}</h4>
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Player</th>
-                          <th>Count</th>
-                          <th>Avg Salary</th>
-                          <th>Avg Points</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.chosen.map((player, idx) => (
-                          <tr key={idx}>
-                            <td>{player.name}</td>
-                            <td>{player.count}</td>
-                            <td>${player.count > 0 ? Math.round(player.totalSalary / player.count).toLocaleString() : player.totalSalary.toLocaleString()}</td>
-                            <td>{player.count > 0 ? (player.totalPoints / player.count).toFixed(1) : '-'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="stats-area">
-              <h3>Best Chosen Players FPTS / $1000 Salary</h3>
-              <div className="position-stats">
-                {Object.entries(getStatsData()).map(([position, data]) => (
-                  <div key={`bestChosen-${position}`} className="position-table">
-                    <h4>{position}</h4>
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Player</th>
-                          <th>Value Score</th>
-                          <th>Count</th>
-                          <th>Avg Salary</th>
-                          <th>Avg Points</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.bestChosen.map((player, idx) => (
-                          <tr key={idx}>
-                            <td>{player.name}</td>
-                            <td>{player.value.toFixed(2)}</td>
-                            <td>{player.count}</td>
-                            <td>${player.count > 0 ? Math.round(player.totalSalary / player.count).toLocaleString() : player.totalSalary.toLocaleString()}</td>
-                            <td>{player.count > 0 ? (player.totalPoints / player.count).toFixed(1) : '-'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="stats-area">
-              <h3>Best Missed Plays FPTS / $1000 Salary</h3>
-              <div className="position-stats">
-                {Object.entries(getStatsData()).map(([position, data]) => (
-                  <div key={`value-${position}`} className="position-table">
-                    <h4>{position}</h4>
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Player</th>
-                          <th>Value Score</th>
-                          <th>Salary</th>
-                          <th>Points</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.bestNotChosen.map((player, idx) => (
-                          <tr key={idx}>
-                            <td>{player.name}</td>
-                            <td>{player.value.toFixed(2)}</td>
-                            <td>${player.totalSalary.toLocaleString()}</td>
-                            <td>{player.totalPoints.toFixed(1)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
         </div>
       )}
     </div>
@@ -1976,4 +1977,3 @@ function DFSResults() {
 }
 
 export default DFSResults;
-
