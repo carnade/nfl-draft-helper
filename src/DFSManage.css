@@ -1,0 +1,411 @@
+.dfs-manage-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+}
+
+.dfs-manage-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #2c3e50;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.dfs-manage-loading,
+.dfs-manage-error,
+.dfs-manage-empty {
+  text-align: center;
+  padding: 40px;
+  font-size: 1.1rem;
+  color: #6c757d;
+}
+
+.dfs-manage-error {
+  color: #dc3545;
+}
+
+.dfs-manage-retry-btn {
+  display: block;
+  margin: 20px auto;
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.dfs-manage-retry-btn:hover {
+  background-color: #0056b3;
+}
+
+.dfs-manage-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.dfs-manage-entry {
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.2s ease;
+}
+
+.dfs-manage-entry:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.dfs-manage-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #e9ecef;
+  transition: background-color 0.2s ease;
+  padding: 10px;
+  margin: -10px -10px 15px -10px;
+  border-radius: 6px 6px 0 0;
+}
+
+.dfs-manage-entry-header:hover {
+  background-color: #f8f9fa;
+}
+
+.dfs-manage-entry-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+}
+
+.dfs-manage-entry-name {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0;
+}
+
+.dfs-manage-entry-summary {
+  font-size: 0.875rem;
+  color: #28a745;
+  font-weight: 500;
+}
+
+.dfs-manage-entry-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.dfs-manage-entry-date {
+  font-size: 0.875rem;
+  color: #6c757d;
+}
+
+.dfs-manage-toggle-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6c757d;
+  transition: transform 0.2s ease, color 0.2s ease;
+  border-radius: 4px;
+}
+
+.dfs-manage-toggle-btn:hover {
+  color: #495057;
+  background-color: #e9ecef;
+}
+
+.dfs-manage-toggle-btn.expanded {
+  transform: rotate(180deg);
+}
+
+.dfs-manage-entry-details {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    max-height: 1000px;
+    transform: translateY(0);
+  }
+}
+
+.dfs-manage-loading-details,
+.dfs-manage-error-details {
+  padding: 20px;
+  text-align: center;
+  color: #6c757d;
+}
+
+.dfs-manage-error-details {
+  color: #dc3545;
+}
+
+.dfs-manage-entry-details {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.dfs-manage-detail-row {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.dfs-manage-detail-label {
+  font-weight: 600;
+  color: #495057;
+  min-width: 120px;
+}
+
+.dfs-manage-detail-value {
+  color: #212529;
+}
+
+.dfs-manage-detail-section {
+  margin-top: 10px;
+}
+
+.dfs-manage-section-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 10px;
+}
+
+.dfs-manage-submissions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dfs-manage-submission {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 8px 12px;
+  transition: background-color 0.2s ease;
+}
+
+.dfs-manage-submission.submitted {
+  background: #d4edda;
+  border-color: #c3e6cb;
+}
+
+.dfs-manage-submission.not-submitted {
+  background: #fff3cd;
+  border-color: #ffeaa7;
+}
+
+.dfs-manage-submission-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+}
+
+.dfs-manage-submission-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.dfs-manage-submission-username {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 0.95rem;
+}
+
+.dfs-manage-submission-status {
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.dfs-manage-submission-status.submitted {
+  color: #155724;
+  background: #c3e6cb;
+}
+
+.dfs-manage-submission-status.not-submitted {
+  color: #856404;
+  background: #ffeaa7;
+}
+
+.dfs-manage-submission-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+  color: #6c757d;
+}
+
+.dfs-manage-submission-meta-item {
+  white-space: nowrap;
+}
+
+.dfs-manage-submission-value {
+  font-weight: 600;
+  color: #2c3e50;
+  background: rgba(255, 255, 255, 0.6);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+/* Dark mode support */
+body.dark .dfs-manage-container {
+  background: #2a2a2a;
+  color: #ecf0f1;
+}
+
+body.dark .dfs-manage-title {
+  color: #ecf0f1;
+}
+
+body.dark .dfs-manage-loading,
+body.dark .dfs-manage-error,
+body.dark .dfs-manage-empty {
+  color: #adb5bd;
+}
+
+body.dark .dfs-manage-error {
+  color: #ff6b6b;
+}
+
+body.dark .dfs-manage-retry-btn {
+  background: linear-gradient(135deg, #66b2ff 0%, #4a9eff 100%);
+}
+
+body.dark .dfs-manage-retry-btn:hover {
+  background: linear-gradient(135deg, #4a9eff 0%, #66b2ff 100%);
+}
+
+body.dark .dfs-manage-entry {
+  background: #35353b;
+  border-color: #444;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+body.dark .dfs-manage-entry:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+body.dark .dfs-manage-entry-header {
+  border-bottom-color: #444;
+}
+
+body.dark .dfs-manage-entry-header:hover {
+  background-color: #3a3a40;
+}
+
+body.dark .dfs-manage-entry-summary {
+  color: #4ade80;
+}
+
+body.dark .dfs-manage-toggle-btn {
+  color: #adb5bd;
+}
+
+body.dark .dfs-manage-toggle-btn:hover {
+  color: #ecf0f1;
+  background-color: #444;
+}
+
+body.dark .dfs-manage-entry-name {
+  color: #ecf0f1;
+}
+
+body.dark .dfs-manage-entry-date {
+  color: #adb5bd;
+}
+
+body.dark .dfs-manage-loading-details,
+body.dark .dfs-manage-error-details {
+  color: #adb5bd;
+}
+
+body.dark .dfs-manage-error-details {
+  color: #ff6b6b;
+}
+
+body.dark .dfs-manage-detail-label {
+  color: #adb5bd;
+}
+
+body.dark .dfs-manage-detail-value {
+  color: #ecf0f1;
+}
+
+body.dark .dfs-manage-section-title {
+  color: #ecf0f1;
+}
+
+body.dark .dfs-manage-submission {
+  background: #3a3a40;
+  border-color: #444;
+}
+
+body.dark .dfs-manage-submission.submitted {
+  background: #2d4a2d;
+  border-color: #3d6b3d;
+}
+
+body.dark .dfs-manage-submission.not-submitted {
+  background: #4a3d2d;
+  border-color: #6b5a3d;
+}
+
+body.dark .dfs-manage-submission-username {
+  color: #ecf0f1;
+}
+
+body.dark .dfs-manage-submission-status.submitted {
+  color: #a8e6a8;
+  background: #2d4a2d;
+}
+
+body.dark .dfs-manage-submission-status.not-submitted {
+  color: #ffd699;
+  background: #4a3d2d;
+}
+
+body.dark .dfs-manage-submission-right {
+  color: #adb5bd;
+}
+
+body.dark .dfs-manage-submission-value {
+  color: #ecf0f1;
+  background: rgba(0, 0, 0, 0.3);
+}
+

@@ -4,7 +4,7 @@ import LZString from 'lz-string';
 import './DFSResults.css';
 
 // Add a mock flag
-const mock = false; // Set to true for mock data, false for production
+const mock = true; // Set to true for mock data, false for production
 
 // Define the base URL based on the mock flag
 const BASE_URL = mock
@@ -107,6 +107,13 @@ function DFSResults() {
   const [creatingTinyUrl, setCreatingTinyUrl] = useState(false);
   const [tinyUrlError, setTinyUrlError] = useState('');
   const [tinyUrlCount, setTinyUrlCount] = useState(null);
+  const [emptyTinyUrlName, setEmptyTinyUrlName] = useState('');
+  const [emptyTinyUrlUsernames, setEmptyTinyUrlUsernames] = useState('');
+  const [emptyTinyUrlRevealDate, setEmptyTinyUrlRevealDate] = useState('');
+  const [emptyTinyUrlRevealTime, setEmptyTinyUrlRevealTime] = useState('');
+  const [emptyTinyUrl, setEmptyTinyUrl] = useState('');
+  const [creatingEmptyTinyUrl, setCreatingEmptyTinyUrl] = useState(false);
+  const [emptyTinyUrlError, setEmptyTinyUrlError] = useState('');
   const [showUpdatingIndicator, setShowUpdatingIndicator] = useState(false);
   const [lastUpdateTime, setLastUpdateTime] = useState(null);
 
@@ -458,6 +465,161 @@ function DFSResults() {
     } finally {
       setCreatingTinyUrl(false);
     }
+  };
+
+  const handleCreateEmptyTinyUrl = async () => {
+    if (!emptyTinyUrlName || emptyTinyUrlName.trim() === '') {
+      setEmptyTinyUrlError('Please enter a name');
+      return;
+    }
+
+    if (emptyTinyUrlName.length > 20) {
+      setEmptyTinyUrlError('Name must be 20 characters or less');
+      return;
+    }
+
+    if (!emptyTinyUrlUsernames || emptyTinyUrlUsernames.trim() === '') {
+      setEmptyTinyUrlError('Please enter at least one username');
+      return;
+    }
+
+    // Parse usernames from newline-separated input
+    const usernames = emptyTinyUrlUsernames
+      .split('\n')
+      .map(name => name.trim())
+      .filter(name => name.length > 0);
+
+    if (usernames.length === 0) {
+      setEmptyTinyUrlError('Please enter at least one valid username');
+      return;
+    }
+
+    // Check for duplicate usernames (case-insensitive)
+    const usernamesLower = usernames.map(name => name.toLowerCase());
+    const uniqueUsernames = new Set(usernamesLower);
+    if (usernamesLower.length !== uniqueUsernames.size) {
+      // Find the duplicate usernames
+      const duplicates = usernames.filter((name, index) => 
+        usernamesLower.indexOf(name.toLowerCase()) !== index
+      );
+      setEmptyTinyUrlError(`Duplicate usernames found: ${duplicates.join(', ')}`);
+      return;
+    }
+
+    if (!selectedWeek) {
+      setEmptyTinyUrlError('Please select a week');
+      return;
+    }
+
+    // Combine date and time into ISO 8601 format if both are provided
+    let reveal = null;
+    if (emptyTinyUrlRevealDate && emptyTinyUrlRevealTime) {
+      try {
+        // Combine date and time, then convert to ISO string
+        const dateTimeString = `${emptyTinyUrlRevealDate}T${emptyTinyUrlRevealTime}:00`;
+        const dateTime = new Date(dateTimeString);
+        if (isNaN(dateTime.getTime())) {
+          setEmptyTinyUrlError('Invalid date or time format');
+          return;
+        }
+        reveal = dateTime.toISOString();
+      } catch (error) {
+        setEmptyTinyUrlError('Invalid date or time format');
+        return;
+      }
+    } else if (emptyTinyUrlRevealDate || emptyTinyUrlRevealTime) {
+      // If only one is provided, show error
+      setEmptyTinyUrlError('Please provide both date and time, or leave both empty');
+      return;
+    }
+
+    setCreatingEmptyTinyUrl(true);
+    setEmptyTinyUrlError('');
+
+    try {
+      const requestBody = {
+        name: emptyTinyUrlName.trim(),
+        names: usernames,
+        week: selectedWeek
+      };
+
+      // Add reveal if provided
+      if (reveal) {
+        requestBody.reveal = reveal;
+      }
+
+      const response = await fetch(`${BASE_URL}/tinyurl/create/empty`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        // Generate the tinyURL
+        const baseUrl = window.location.origin + window.location.pathname;
+        const tinyUrlPath = `/tinyurl/${result.name}`;
+        const createdUrl = `${baseUrl}${tinyUrlPath}`;
+        
+        setEmptyTinyUrl(createdUrl);
+        setEmptyTinyUrlName(''); // Clear the input
+        setEmptyTinyUrlUsernames(''); // Clear the usernames
+        setEmptyTinyUrlRevealDate(''); // Clear the date
+        setEmptyTinyUrlRevealTime(''); // Clear the time
+        
+        // Refresh the count after successful creation
+        fetchTinyUrlCount();
+      } else {
+        // Handle errors
+        if (response.status === 400) {
+          setEmptyTinyUrlError(result.message || 'Invalid request. Please check your input.');
+        } else if (response.status === 500) {
+          setEmptyTinyUrlError('Server error. Please try again later.');
+        } else {
+          setEmptyTinyUrlError(result.message || 'Failed to create empty tinyURL');
+        }
+      }
+    } catch (error) {
+      console.error('Error creating empty tinyURL:', error);
+      setEmptyTinyUrlError('Network error. Please try again.');
+    } finally {
+      setCreatingEmptyTinyUrl(false);
+    }
+  };
+
+  const copyEmptyTinyUrl = () => {
+    navigator.clipboard.writeText(emptyTinyUrl).then(() => {
+      console.log('Empty TinyURL copied to clipboard!');
+    });
+  };
+
+  // Helper function to check for duplicate usernames
+  const hasDuplicateUsernames = (usernamesText) => {
+    if (!usernamesText || usernamesText.trim() === '') {
+      return false;
+    }
+    const usernames = usernamesText
+      .split('\n')
+      .map(name => name.trim())
+      .filter(name => name.length > 0);
+    const usernamesLower = usernames.map(name => name.toLowerCase());
+    const uniqueUsernames = new Set(usernamesLower);
+    return usernamesLower.length !== uniqueUsernames.size;
+  };
+
+  // Helper function to count valid usernames
+  const countUsernames = (usernamesText) => {
+    if (!usernamesText || usernamesText.trim() === '') {
+      return 0;
+    }
+    const usernames = usernamesText
+      .split('\n')
+      .map(name => name.trim())
+      .filter(name => name.length > 0);
+    return usernames.length;
   };
 
   // Load data from tinyURL if name parameter exists
@@ -854,12 +1016,12 @@ function DFSResults() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadedFromUrl, selectedWeek, compressedData]);
 
-  // Fetch tinyURL count when section is visible
+  // Fetch tinyURL count when section is visible (on first page or second page)
   useEffect(() => {
-    if (compressedData && inputData && !loadedFromUrl) {
+    if (!loadedFromUrl) {
       fetchTinyUrlCount();
     }
-  }, [compressedData, inputData, loadedFromUrl, fetchTinyUrlCount]);
+  }, [loadedFromUrl, fetchTinyUrlCount]);
 
   const parseLineups = useCallback(() => {
     try {
@@ -1674,18 +1836,6 @@ function DFSResults() {
         <div className="dfs-results-content">
           {!compressedData && (
             <>
-            <div className="input-section">
-              <label htmlFor="lineup-data">Paste Lineup Data:</label>
-              <textarea
-                id="lineup-data"
-                className="lineup-input"
-                placeholder={'Paste lineup codes here (one per line)\nExample:\ncarnade:MTE1NTktNDgwMC...\ncarnade2:MTE1NjAtNTgwMC...'}
-                value={inputData}
-                onChange={(e) => setInputData(e.target.value)}
-                rows={10}
-              />
-            </div>
-
             {currentWeek && (
               <div className="week-toggle-section">
                 <label>Select Week:</label>
@@ -1706,9 +1856,137 @@ function DFSResults() {
               </div>
             )}
 
-            <button className="proceed-button" onClick={handleProceed}>
-              Proceed
-            </button>
+            <div className="input-section">
+              <label htmlFor="lineup-data">Paste Lineup Data:</label>
+              <textarea
+                id="lineup-data"
+                className="lineup-input"
+                placeholder={'Paste lineup codes here (one per line)\nExample:\ncarnade:MTE1NTktNDgwMC...\ncarnade2:MTE1NjAtNTgwMC...'}
+                value={inputData}
+                onChange={(e) => setInputData(e.target.value)}
+                rows={7}
+              />
+              <button className="proceed-button" onClick={handleProceed} style={{ marginTop: '16px' }}>
+                Proceed
+              </button>
+            </div>
+
+            <div className="tinyurl-section">
+              <h3>
+                Create correction link with authorized usernames
+                {tinyUrlCount && (
+                  <span className="tinyurl-count">
+                    ({tinyUrlCount.count} of {tinyUrlCount.max_entries} used)
+                  </span>
+                )}
+              </h3>
+              <div className="tinyurl-input-container">
+                <input
+                  type="text"
+                  value={emptyTinyUrlName}
+                  onChange={(e) => {
+                    const value = e.target.value.slice(0, 20); // Limit to 20 characters
+                    setEmptyTinyUrlName(value);
+                    setEmptyTinyUrlError(''); // Clear error on input change
+                  }}
+                  placeholder="Enter name (max 20 chars)"
+                  className="tinyurl-input"
+                  maxLength={20}
+                  disabled={creatingEmptyTinyUrl}
+                />
+              </div>
+              <div className="tinyurl-input-container" style={{ marginTop: '12px' }}>
+                <textarea
+                  value={emptyTinyUrlUsernames}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setEmptyTinyUrlUsernames(value);
+                    // Check for duplicates in real-time
+                    if (hasDuplicateUsernames(value)) {
+                      const usernames = value
+                        .split('\n')
+                        .map(name => name.trim())
+                        .filter(name => name.length > 0);
+                      const usernamesLower = usernames.map(name => name.toLowerCase());
+                      const duplicates = usernames.filter((name, index) => 
+                        usernamesLower.indexOf(name.toLowerCase()) !== index
+                      );
+                      setEmptyTinyUrlError(`Duplicate usernames found: ${duplicates.join(', ')}`);
+                    } else {
+                      setEmptyTinyUrlError(''); // Clear error if no duplicates
+                    }
+                  }}
+                  placeholder="Enter usernames (one per line)"
+                  className="tinyurl-textarea"
+                  rows={7}
+                  disabled={creatingEmptyTinyUrl}
+                />
+              </div>
+              <div style={{ marginTop: '12px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <label style={{ fontSize: '0.9rem', color: 'inherit', whiteSpace: 'nowrap' }}>
+                  Reveal (optional):
+                </label>
+                <input
+                  type="date"
+                  value={emptyTinyUrlRevealDate}
+                  onChange={(e) => {
+                    setEmptyTinyUrlRevealDate(e.target.value);
+                    setEmptyTinyUrlError(''); // Clear error on input change
+                  }}
+                  className="tinyurl-input"
+                  style={{ flex: '1', maxWidth: '200px' }}
+                  disabled={creatingEmptyTinyUrl}
+                />
+                <input
+                  type="time"
+                  value={emptyTinyUrlRevealTime}
+                  onChange={(e) => {
+                    setEmptyTinyUrlRevealTime(e.target.value);
+                    setEmptyTinyUrlError(''); // Clear error on input change
+                  }}
+                  className="tinyurl-input"
+                  style={{ flex: '1', maxWidth: '150px' }}
+                  disabled={creatingEmptyTinyUrl}
+                />
+              </div>
+              <div className="tinyurl-input-container" style={{ marginTop: '12px', alignItems: 'center' }}>
+                <button 
+                  className="proceed-button" 
+                  onClick={handleCreateEmptyTinyUrl}
+                  disabled={creatingEmptyTinyUrl || !emptyTinyUrlName.trim() || !emptyTinyUrlUsernames.trim() || hasDuplicateUsernames(emptyTinyUrlUsernames) || !selectedWeek}
+                >
+                  {creatingEmptyTinyUrl ? 'Creating...' : 'Proceed'}
+                </button>
+                <span className="username-count-text">
+                  {countUsernames(emptyTinyUrlUsernames)} {countUsernames(emptyTinyUrlUsernames) === 1 ? 'username' : 'usernames'} added
+                </span>
+              </div>
+              {emptyTinyUrlError && (
+                <p className="tinyurl-error">{emptyTinyUrlError}</p>
+              )}
+              {emptyTinyUrl && (
+                <div className="tinyurl-result">
+                  <h4>Empty TinyURL Created:</h4>
+                  <div className="link-container">
+                    <input 
+                      type="text" 
+                      value={emptyTinyUrl} 
+                      readOnly 
+                      className="link-input"
+                    />
+                    <button className="copy-link-btn" onClick={copyEmptyTinyUrl} title="Copy tinyURL">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                      </svg>
+                    </button>
+                  </div>
+                  <p className="link-info" style={{ marginTop: '8px', fontSize: '12px', color: '#666' }}>
+                    Share this link with authorized usernames. They can add their correction data later.
+                  </p>
+                </div>
+              )}
+            </div>
           </>
         )}
 
