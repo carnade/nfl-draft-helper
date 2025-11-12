@@ -286,32 +286,38 @@ function DFSResults() {
           }
         });
 
-        // Fetch additional DST matchup data if needed
-        if (dstSleeperIds.size > 0) {
-          try {
-            const dstMatchupsData = await fetch(`https://api.sleeper.app/v1/league/${DST_SLEEPER_LEAGUE_ID}/matchups/${selectedWeek}`).then(res => res.json());
-            if (Array.isArray(dstMatchupsData)) {
-              dstMatchupsData.forEach(matchup => {
-                if (!matchup.players_points) return;
-                Object.entries(matchup.players_points).forEach(([sleeperId, points]) => {
-                  if (dstSleeperIds.has(String(sleeperId))) {
-                    const sid = String(sleeperId);
-                    const existing = fantasyData[sid] || { sleeper_id: sid };
-                    existing.fantasy_points = points ?? 0;
-                    fantasyData[sid] = existing;
-                    console.log('DST points merged (handleProceed):', {
+        // Always fetch DST matchup data to get ALL DST points (needed for "Best Not Chosen" stats)
+        // Merge ALL non-numeric keys (DST team abbreviations) from the DST league
+        try {
+          const dstMatchupsData = await fetch(`https://api.sleeper.app/v1/league/${DST_SLEEPER_LEAGUE_ID}/matchups/${selectedWeek}`).then(res => res.json());
+          if (Array.isArray(dstMatchupsData)) {
+            dstMatchupsData.forEach(matchup => {
+              if (!matchup.players_points) return;
+              Object.entries(matchup.players_points).forEach(([sleeperId, points]) => {
+                const sid = String(sleeperId);
+                // Merge ALL non-numeric keys (DST team abbreviations like "CHI", "LAC", etc.)
+                // Also merge numeric IDs that are in our dstSleeperIds set (for DSTs in lineups)
+                if (!/^\d+$/.test(sid) || dstSleeperIds.has(sid)) {
+                  const existing = fantasyData[sid] || { sleeper_id: sid };
+                  existing.fantasy_points = points ?? 0;
+                  fantasyData[sid] = existing;
+                  if (dstSleeperIds.has(sid)) {
+                    console.log('DST points merged (handleProceed - in lineup):', {
                       sleeperId: sid,
                       points,
-                      matchupId: matchup.matchup_id,
-                      mergedEntry: existing
+                      matchupId: matchup.matchup_id
                     });
                   }
-                });
+                }
               });
-            }
-          } catch (error) {
-            console.error('Error fetching DST matchup data:', error);
+            });
+            console.log('DST points merged (handleProceed - all DSTs):', {
+              totalDstPoints: Object.keys(fantasyData).filter(k => !/^\d+$/.test(k)).length,
+              dstSleeperIdsInLineups: Array.from(dstSleeperIds)
+            });
           }
+        } catch (error) {
+          console.error('Error fetching DST matchup data:', error);
         }
 
         // Use Sleeper points directly - names, positions, teams come from dfsSalaryData
@@ -767,41 +773,45 @@ function DFSResults() {
           }
           
           // Use Sleeper points directly - names, positions, teams come from dfsSalaryData
-          // Determine DST players present in the lineups
+          // Determine DST players present in the lineups (for reference)
           const dstSleeperIds = new Set();
-          Array.from(allSleeperIds).forEach(sleeperId => {
+          Array.from(allSleeperIds).forEach(rawSleeperId => {
+            const sleeperId = String(rawSleeperId);
             const dfsPlayerKey = `${sleeperId}_W${selectedWeek}`;
             const dfsPlayer = salaryData[dfsPlayerKey];
-            if (dfsPlayer?.position === 'DST') {
-              dstSleeperIds.add(String(sleeperId));
+            const salaryPosition = dfsPlayer?.position || dfsPlayer?.fantasy_positions?.[0];
+            const lineupIndicatesDefense = isDefenseSleeperId(sleeperId);
+            const isDefense = lineupIndicatesDefense || isDefensePosition(salaryPosition);
+            if (isDefense) {
+              dstSleeperIds.add(sleeperId);
             }
           });
 
-          // Fetch additional DST matchup data if needed
-          if (dstSleeperIds.size > 0) {
-            try {
-              const dstMatchupsData = await fetch(`https://api.sleeper.app/v1/league/${DST_SLEEPER_LEAGUE_ID}/matchups/${selectedWeek}`).then(res => res.json());
-              if (Array.isArray(dstMatchupsData)) {
-                dstMatchupsData.forEach(matchup => {
-                  if (!matchup.players_points) return;
-                  Object.entries(matchup.players_points).forEach(([sleeperId, points]) => {
-                  if (dstSleeperIds.has(String(sleeperId))) {
-                    const sid = String(sleeperId);
+          // Always fetch DST matchup data to get ALL DST points (needed for "Best Not Chosen" stats)
+          // Merge ALL non-numeric keys (DST team abbreviations) from the DST league
+          try {
+            const dstMatchupsData = await fetch(`https://api.sleeper.app/v1/league/${DST_SLEEPER_LEAGUE_ID}/matchups/${selectedWeek}`).then(res => res.json());
+            if (Array.isArray(dstMatchupsData)) {
+              dstMatchupsData.forEach(matchup => {
+                if (!matchup.players_points) return;
+                Object.entries(matchup.players_points).forEach(([sleeperId, points]) => {
+                  const sid = String(sleeperId);
+                  // Merge ALL non-numeric keys (DST team abbreviations like "CHI", "LAC", etc.)
+                  // Also merge numeric IDs that are in our dstSleeperIds set (for DSTs in lineups)
+                  if (!/^\d+$/.test(sid) || dstSleeperIds.has(sid)) {
                     const existing = fantasyData[sid] || { sleeper_id: sid };
                     existing.fantasy_points = points ?? 0;
                     fantasyData[sid] = existing;
-                    console.log('DST points merged (handleProceed):', {
-                      sleeperId: sid,
-                      points,
-                      matchupId: matchup.matchup_id
-                    });
                   }
-                  });
                 });
-              }
-            } catch (error) {
-              console.error('Error fetching DST matchup data (URL load):', error);
+              });
+              console.log('DST points merged (URL load - all DSTs):', {
+                totalDstPoints: Object.keys(fantasyData).filter(k => !/^\d+$/.test(k)).length,
+                dstSleeperIdsInLineups: Array.from(dstSleeperIds)
+              });
             }
+          } catch (error) {
+            console.error('Error fetching DST matchup data (URL load):', error);
           }
 
           const mergedFantasyData = { ...fantasyData };
@@ -1368,119 +1378,170 @@ function DFSResults() {
       }
     });
     
-    // Then, calculate value scores for players NOT chosen in lineups
+    // Calculate value scores for players NOT chosen in lineups
+    // Start with all players from dfsSalaryData (source of truth for DFS pool)
     const chosenSleeperIds = new Set();
     lineups.forEach(lineup => {
       lineup.players.forEach(player => {
-        chosenSleeperIds.add(player.sleeperId);
+        // Store as string to handle both numeric and string IDs (like DST "TB")
+        chosenSleeperIds.add(String(player.sleeperId));
       });
     });
     
-    // Handle both cases: fantasyPoints keyed by sleeper_id OR objects with sleeper_id field
-    Object.entries(fantasyPoints).forEach(([key, playerInfo]) => {
-      // Determine sleeper_id - could be the key or a field in the object
-      const sleeperId = playerInfo.sleeper_id || playerInfo.id || key;
+    // Iterate through all players in DFS salary data
+    Object.entries(dfsSalaryData).forEach(([dfsKey, dfsPlayer]) => {
+      // Extract sleeper_id from the salary data entry
+      // The key might be like "6813_W10", "6813_w10", "LAC_W10", or "LAC_w10"
+      // Split on '_' and take the first part as the base ID
+      const keyParts = dfsKey.split('_');
+      const keyBase = keyParts[0]; // Extract base ID: "6813" or "LAC"
       
-      const position = playerInfo.position;
-      if (!bestNotChosenStats[position]) return;
+      // Get sleeper_id from the player data or fall back to keyBase
+      // dfsPlayer.sleeper_id should contain the actual ID (like "LAC" for DST)
+      const sleeperId = String(dfsPlayer.sleeper_id || dfsPlayer.id || keyBase);
+      let position = dfsPlayer.position;
       
-      // Only include players NOT in lineups
-      if (chosenSleeperIds.has(sleeperId)) {
+      // Normalize defense positions to "DST" for consistency
+      if (position && isDefensePosition(position)) {
+        position = 'DST';
+      }
+      
+      // Skip if position is not in our stats categories
+      if (!position || !bestNotChosenStats[position]) return;
+      
+      // Skip if player was chosen in any lineup
+      // Check multiple formats to handle different ID representations (handles case-insensitive matching)
+      const sleeperIdUpper = sleeperId.toUpperCase();
+      const keyBaseUpper = keyBase.toUpperCase();
+      const dfsKeyUpper = dfsKey.toUpperCase();
+      
+      // Check if this player was chosen - try all possible ID formats (case-insensitive)
+      const isChosen = Array.from(chosenSleeperIds).some(chosenId => {
+        const chosenUpper = String(chosenId).toUpperCase();
+        return (
+          sleeperIdUpper === chosenUpper ||
+          keyBaseUpper === chosenUpper ||
+          dfsKeyUpper === chosenUpper ||
+          dfsKeyUpper.startsWith(chosenUpper + '_') ||
+          (dfsPlayer.sleeper_id && String(dfsPlayer.sleeper_id).toUpperCase() === chosenUpper) ||
+          (dfsPlayer.id && String(dfsPlayer.id).toUpperCase() === chosenUpper)
+        );
+      });
+      
+      if (isChosen) {
         return;
+      }
+      
+      // Get fantasy points for this player
+      // Try multiple key formats to find fantasy points (handles both numeric and string IDs, DST teams, etc.)
+      // For DST, fantasy points are typically keyed by team abbreviation (like "LAC")
+      let fantasyInfo = null;
+      
+      // Debug logging for DST players (non-numeric IDs)
+      const isDstPlayer = !/^\d+$/.test(keyBase);
+      if (isDstPlayer && position === 'DST') {
+        console.log('DST Player Check - Best Not Chosen:', {
+          dfsKey,
+          keyBase,
+          sleeperId,
+          position,
+          name: dfsPlayer.name,
+          team: dfsPlayer.team,
+          salary: dfsPlayer.salary,
+          dfsPlayer_sleeper_id: dfsPlayer.sleeper_id,
+          dfsPlayer_id: dfsPlayer.id,
+          keyBaseUpper,
+          sleeperIdUpper
+        });
+      }
+      
+      // Try exact matches first (case-sensitive)
+      const exactMatchKeys = [sleeperId, dfsKey, keyBase];
+      if (dfsPlayer.sleeper_id) exactMatchKeys.push(String(dfsPlayer.sleeper_id));
+      if (dfsPlayer.id) exactMatchKeys.push(String(dfsPlayer.id));
+      
+      for (const key of exactMatchKeys) {
+        if (fantasyPoints[key]) {
+          fantasyInfo = fantasyPoints[key];
+          if (isDstPlayer && position === 'DST') {
+            console.log('DST Player - Found via exact match:', { key, fantasyInfo });
+          }
+          break;
+        }
+      }
+      
+      // If not found, try case-insensitive lookup for string IDs (like DST team abbreviations)
+      if (!fantasyInfo && isDstPlayer) {
+        // Non-numeric ID (like DST "LAC"), try case-insensitive match
+        const fantasyPointsKeys = Object.keys(fantasyPoints);
+        const matchingKey = fantasyPointsKeys.find(key => 
+          String(key).toUpperCase() === keyBaseUpper || 
+          String(key).toUpperCase() === sleeperIdUpper
+        );
+        
+        if (matchingKey) {
+          fantasyInfo = fantasyPoints[matchingKey];
+          if (position === 'DST') {
+            console.log('DST Player - Found via case-insensitive match:', { 
+              matchingKey, 
+              fantasyInfo,
+              searchedFor: [keyBaseUpper, sleeperIdUpper]
+            });
+          }
+        } else if (position === 'DST') {
+          // Debug: show sample of available fantasyPoints keys (non-numeric ones)
+          const nonNumericKeys = fantasyPointsKeys.filter(k => !/^\d+$/.test(k));
+          console.log('DST Player - No match found. Available non-numeric keys in fantasyPoints:', {
+            searchedKeys: exactMatchKeys,
+            searchedUpper: [keyBaseUpper, sleeperIdUpper],
+            sampleNonNumericKeys: nonNumericKeys.slice(0, 20), // First 20 non-numeric keys
+            totalNonNumericKeys: nonNumericKeys.length,
+            totalFantasyPointsKeys: fantasyPointsKeys.length
+          });
+        }
+      }
+      
+      // Try numeric conversion for numeric IDs
+      if (!fantasyInfo && /^\d+$/.test(sleeperId)) {
+        fantasyInfo = fantasyPoints[Number(sleeperId)] || fantasyPoints[Number(keyBase)];
+      }
+      
+      const points = fantasyInfo?.fantasy_points ?? 
+                     (typeof fantasyInfo === 'number' ? fantasyInfo : 0);
+      
+      if (isDstPlayer && position === 'DST') {
+        console.log('DST Player - Final result:', {
+          name: dfsPlayer.name,
+          team: dfsPlayer.team,
+          points,
+          hasFantasyInfo: !!fantasyInfo,
+          fantasyInfoType: typeof fantasyInfo,
+          willBeIncluded: points > 0
+        });
       }
       
       // Skip players without fantasy points or with 0 points
-      if (!playerInfo.fantasy_points || playerInfo.fantasy_points === 0) {
+      if (!points || points === 0) {
         return;
       }
-      const playerKey = `${playerInfo.name} (${playerInfo.team})`;
       
-      // Find salary from DFS salary data
-      // Try the standard key format first
-      const dfsPlayerKey = `${sleeperId}_W${selectedWeek}`;
-      let salary = dfsSalaryData[dfsPlayerKey]?.salary;
-      
-      // Also try with sleeperId as number if it's a string, or vice versa
-      if (!salary) {
-        const altKey = typeof sleeperId === 'string' 
-          ? `${parseInt(sleeperId)}_W${selectedWeek}`
-          : `${String(sleeperId)}_W${selectedWeek}`;
-        salary = dfsSalaryData[altKey]?.salary;
+      // Calculate value: fantasy points per $1000 of salary
+      const salary = dfsPlayer.salary;
+      if (!salary || salary === 0) {
+        return; // Can't calculate value without salary
       }
       
-      // Try looking up by sleeper_id directly (without week suffix) - maybe keys are just sleeper_ids
-      if (!salary) {
-        salary = dfsSalaryData[sleeperId]?.salary;
-      }
+      const value = points / (salary / 1000);
+      const playerKey = `${dfsPlayer.name} (${dfsPlayer.team})`;
       
-      // Try with sleeperId as number
-      if (!salary) {
-        const sleeperIdNum = typeof sleeperId === 'string' ? parseInt(sleeperId) : sleeperId;
-        salary = dfsSalaryData[sleeperIdNum]?.salary;
-      }
-      
-      // If not found with key, search through all DFS salary data by sleeper_id
-      if (!salary) {
-        // Convert sleeperId to string and number for comparison
-        const sleeperIdStr = String(sleeperId);
-        const sleeperIdNum = typeof sleeperId === 'string' ? parseInt(sleeperId, 10) : Number(sleeperId);
-        const sleeperIdNumValid = !isNaN(sleeperIdNum) ? sleeperIdNum : null;
-        
-        const dfsPlayer = Object.values(dfsSalaryData).find(
-          p => {
-            // Try multiple field name variations and type conversions
-            const pSleeperId = p.sleeper_id;
-            const pId = p.id;
-            
-            // Direct matches
-            if (pSleeperId === sleeperId || pId === sleeperId) return true;
-            if (pSleeperId === sleeperIdNumValid || pId === sleeperIdNumValid) return true;
-            
-            // String comparisons
-            if (pSleeperId != null && String(pSleeperId) === sleeperIdStr) return true;
-            if (pId != null && String(pId) === sleeperIdStr) return true;
-            
-            // Number comparisons
-            if (pSleeperId != null && !isNaN(Number(pSleeperId)) && Number(pSleeperId) === sleeperIdNumValid) return true;
-            if (pId != null && !isNaN(Number(pId)) && Number(pId) === sleeperIdNumValid) return true;
-            
-            return false;
-          }
-        );
-        salary = dfsPlayer?.salary;
-      }
-      
-      // Include player if we have salary, or if we don't have DFS data but player has points
-      // If no salary, we can't calculate value, but we'll still show them
-      if (salary) {
-        const value = playerInfo.fantasy_points / (salary / 1000);
-        
-        if (!bestNotChosenStats[position][playerKey]) {
-          bestNotChosenStats[position][playerKey] = {
-            name: playerInfo.name,
-            team: playerInfo.team,
-            value: 0,
-            count: 0, // Not chosen
-            totalSalary: salary,
-            totalPoints: playerInfo.fantasy_points
-          };
-        }
-        
-        bestNotChosenStats[position][playerKey].value = value;
-      } else {
-        // Player has points but no salary found - still include them with 0 value
-        // This can happen if player wasn't in DFS pool but still played
-        if (!bestNotChosenStats[position][playerKey]) {
-          bestNotChosenStats[position][playerKey] = {
-            name: playerInfo.name,
-            team: playerInfo.team,
-            value: 0,
-            count: 0,
-            totalSalary: 0,
-            totalPoints: playerInfo.fantasy_points
-          };
-        }
-      }
+      bestNotChosenStats[position][playerKey] = {
+        name: dfsPlayer.name,
+        team: dfsPlayer.team,
+        value: value,
+        count: 0, // Not chosen
+        salary: salary,
+        points: points
+      };
     });
 
     // Sort and get top 5 for each position
@@ -1534,27 +1595,29 @@ function DFSResults() {
         const lineups = parseLineups();
         const dstSleeperIds = buildDstSleeperIdSet(lineups);
 
-        if (dstSleeperIds.size > 0) {
-          try {
-            const dstMatchupsData = await fetch(`https://api.sleeper.app/v1/league/${DST_SLEEPER_LEAGUE_ID}/matchups/${selectedWeek}`).then(res => res.json());
-            if (Array.isArray(dstMatchupsData)) {
-              dstMatchupsData.forEach(matchup => {
-                if (!matchup.players_points) return;
-                Object.entries(matchup.players_points).forEach(([sleeperId, points]) => {
-                  if (dstSleeperIds.has(String(sleeperId))) {
-                    sleeperPoints[sleeperId] = points ?? 0;
-                    console.log('DST points merged (liveUpdate):', {
-                      sleeperId: String(sleeperId),
-                      points,
-                      matchupId: matchup.matchup_id
-                    });
-                  }
-                });
+        // Always fetch DST matchup data to update ALL DST points (needed for "Best Not Chosen" stats)
+        // Merge ALL non-numeric keys (DST team abbreviations) from the DST league
+        try {
+          const dstMatchupsData = await fetch(`https://api.sleeper.app/v1/league/${DST_SLEEPER_LEAGUE_ID}/matchups/${selectedWeek}`).then(res => res.json());
+          if (Array.isArray(dstMatchupsData)) {
+            dstMatchupsData.forEach(matchup => {
+              if (!matchup.players_points) return;
+              Object.entries(matchup.players_points).forEach(([sleeperId, points]) => {
+                const sid = String(sleeperId);
+                // Merge ALL non-numeric keys (DST team abbreviations like "CHI", "LAC", etc.)
+                // Also merge numeric IDs that are in our dstSleeperIds set (for DSTs in lineups)
+                if (!/^\d+$/.test(sid) || dstSleeperIds.has(sid)) {
+                  sleeperPoints[sid] = points ?? 0;
+                }
               });
-            }
-          } catch (error) {
-            console.error('Error refreshing DST Sleeper points:', error);
+            });
+            console.log('DST points merged (liveUpdate - all DSTs):', {
+              totalDstPoints: Object.keys(sleeperPoints).filter(k => !/^\d+$/.test(k)).length,
+              dstSleeperIdsInLineups: Array.from(dstSleeperIds)
+            });
           }
+        } catch (error) {
+          console.error('Error refreshing DST Sleeper points:', error);
         }
 
         setFantasyPoints(prevFantasyPoints => {
