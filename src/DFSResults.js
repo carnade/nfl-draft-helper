@@ -187,11 +187,28 @@ function DFSResults() {
       
       // Decode each lineup code and extract the raw data
       const decodedLineups = lines.map(line => {
-        const [username, encoded] = line.split(':');
+        const colonIndex = line.indexOf(':');
+        let username, encoded;
+        
+        if (colonIndex === -1) {
+          // No colon - treat entire line as username with no data
+          username = line.trim();
+          encoded = '';
+        } else {
+          // Has colon - split at first colon
+          username = line.substring(0, colonIndex).trim();
+          encoded = line.substring(colonIndex + 1).trim();
+        }
+        
+        // If no encoded data, skip this lineup (don't include in combined string)
+        if (!encoded || encoded.length === 0) {
+          return null;
+        }
+        
         // Decode the base64 to get the raw player data
         const decoded = atob(encoded);
         return `${username}:${decoded}`;
-      });
+      }).filter(lineup => lineup !== null); // Remove null entries (lines without data)
       
       // Join all decoded lineups
       const combined = decodedLineups.join('|');
@@ -468,16 +485,13 @@ function DFSResults() {
       return;
     }
 
-    // Get the hash data from the current URL or construct it from compressedData
-    let hashData = window.location.hash.substring(1);
-    
-    // If no hash in URL, construct it from compressedData and selectedWeek
-    if (!hashData && compressedData && selectedWeek) {
-      hashData = `${selectedWeek}|${compressedData}`;
+    if (!selectedWeek) {
+      setTinyUrlError('Please select a week');
+      return;
     }
-    
-    if (!hashData) {
-      setTinyUrlError('No data available to create tinyURL');
+
+    if (!inputData || inputData.trim() === '') {
+      setTinyUrlError('Please paste lineup data first');
       return;
     }
 
@@ -485,15 +499,80 @@ function DFSResults() {
     setTinyUrlError('');
 
     try {
+      // Parse input data to extract usernames and their lineup codes
+      const lines = inputData.trim().split('\n').filter(line => line.trim());
+      const entries = [];
+      const usernames = [];
+
+      for (const line of lines) {
+        const colonIndex = line.indexOf(':');
+        let username, encoded;
+        
+        if (colonIndex === -1) {
+          // No colon - treat entire line as username with no data
+          username = line.trim();
+          encoded = '';
+        } else {
+          // Has colon - split at first colon
+          username = line.substring(0, colonIndex).trim();
+          encoded = line.substring(colonIndex + 1).trim();
+        }
+        
+        if (!username) continue; // Skip empty usernames
+        
+        usernames.push(username);
+        
+        if (encoded && encoded.length > 0) {
+          // User has lineup data - compress it
+          try {
+            // Decode base64 to get the raw player data
+            const decoded = atob(encoded);
+            
+            // Compress using LZString (same as handleProceed does)
+            const compressed = LZString.compressToEncodedURIComponent(decoded);
+            
+            // Format as week|compressedData
+            const hashData = `${selectedWeek}|${compressed}`;
+            
+            entries.push({
+              name: username,
+              data: hashData
+            });
+          } catch (error) {
+            console.error(`Error processing lineup for ${username}:`, error);
+            // If decoding fails, treat as empty
+            entries.push({
+              name: username,
+              data: null
+            });
+          }
+        } else {
+          // User has no lineup data - include them with null data
+          entries.push({
+            name: username,
+            data: null
+          });
+        }
+      }
+
+      if (entries.length === 0) {
+        setTinyUrlError('No valid entries found');
+        setCreatingTinyUrl(false);
+        return;
+      }
+
+      const requestBody = {
+        name: tinyUrlName.trim(),
+        entries: entries,
+        week: selectedWeek
+      };
+
       const response = await fetch(`${BASE_URL}/tinyurl/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          name: tinyUrlName.trim(),
-          data: hashData
-        })
+        body: JSON.stringify(requestBody)
       });
 
       const result = await response.json();
@@ -682,6 +761,36 @@ function DFSResults() {
     return usernames.length;
   };
 
+  // Helper function to get upcoming Sunday at 19:00
+  const getUpcomingSunday = () => {
+    const now = new Date();
+    const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const daysUntilSunday = currentDay === 0 ? 7 : (7 - currentDay); // If today is Sunday, get next Sunday
+    const upcomingSunday = new Date(now);
+    upcomingSunday.setDate(now.getDate() + daysUntilSunday);
+    upcomingSunday.setHours(19, 0, 0, 0);
+    
+    // Format date as YYYY-MM-DD
+    const year = upcomingSunday.getFullYear();
+    const month = String(upcomingSunday.getMonth() + 1).padStart(2, '0');
+    const day = String(upcomingSunday.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    
+    // Format time as HH:MM
+    const timeStr = '19:00';
+    
+    return { date: dateStr, time: timeStr };
+  };
+
+  // Set default reveal time to upcoming Sunday at 19:00
+  useEffect(() => {
+    if (!emptyTinyUrlRevealDate && !emptyTinyUrlRevealTime) {
+      const { date, time } = getUpcomingSunday();
+      setEmptyTinyUrlRevealDate(date);
+      setEmptyTinyUrlRevealTime(time);
+    }
+  }, []); // Only run once on mount
+
   // Check for admin query parameter
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -703,95 +812,106 @@ function DFSResults() {
           
           if (response.ok) {
             const result = await response.json();
-            const hashData = result.data;
             
             // Store reveal time if present
             if (result.reveal) {
               setRevealTime(new Date(result.reveal));
             }
             
-            // Fetch submission status from details endpoint
-            try {
-              const detailsResponse = await fetch(`${BASE_URL}/tinyurl/${tinyUrlNameParam}/details`);
-              if (detailsResponse.ok) {
-                const details = await detailsResponse.json();
-                if (details.allowed_names) {
-                  setAllowedNames(details.allowed_names);
+            // Get allowed_names and user_submissions from the response
+            const allowedNames = result.allowed_names || [];
+            const userSubmissions = result.user_submissions || {};
+            
+            // Set allowed names
+            if (allowedNames.length > 0) {
+              setAllowedNames(allowedNames);
+            }
+            
+            // Build submission status map
+            const statusMap = {};
+            allowedNames.forEach(username => {
+              // Check if user has a submission (case-insensitive)
+              const submissionKey = Object.keys(userSubmissions).find(
+                key => key.toLowerCase() === username.toLowerCase()
+              );
+              statusMap[username] = submissionKey ? true : false;
+            });
+            setSubmissionStatus(statusMap);
+            
+            // Process each user's submission data
+            const formattedLineups = [];
+            const decompressedLineups = [];
+            
+            allowedNames.forEach(username => {
+              // Find the submission for this user (case-insensitive)
+              const submissionKey = Object.keys(userSubmissions).find(
+                key => key.toLowerCase() === username.toLowerCase()
+              );
+              
+              if (submissionKey && userSubmissions[submissionKey] && userSubmissions[submissionKey].data) {
+                const submission = userSubmissions[submissionKey];
+                const compressedData = submission.data; // Format: "week|compressedData"
+                
+                // Parse the compressed data
+                const [weekStr, compressed] = compressedData.split('|');
+                const urlWeek = parseInt(weekStr);
+                
+                // Set the week from first submission (or use result.week if available)
+                if (urlWeek && !isNaN(urlWeek) && !weekSetFromUrl) {
+                  setSelectedWeek(urlWeek);
+                  weekSetFromUrl = true;
+                } else if (result.week && !weekSetFromUrl) {
+                  setSelectedWeek(result.week);
+                  weekSetFromUrl = true;
                 }
-                if (details.submissions) {
-                  const statusMap = {};
-                  Object.keys(details.submissions).forEach(username => {
-                    statusMap[username] = details.submissions[username].has_submitted || false;
-                  });
-                  // Also add allowed_names that don't have submissions yet
-                  if (details.allowed_names) {
-                    details.allowed_names.forEach(username => {
-                      if (!(username in statusMap)) {
-                        statusMap[username] = false;
-                      }
-                    });
+                
+                // Decompress the data
+                let decompressed = LZString.decompressFromEncodedURIComponent(compressed);
+                
+                if (!decompressed) {
+                  decompressed = LZString.decompressFromBase64(compressed);
+                }
+                
+                if (!decompressed) {
+                  decompressed = LZString.decompressFromUTF16(compressed);
+                }
+                
+                if (decompressed) {
+                  // The decompressed data should be in format "username:decodedData"
+                  const colonIndex = decompressed.indexOf(':');
+                  if (colonIndex !== -1) {
+                    const rawData = decompressed.substring(colonIndex + 1);
+                    const encoded = btoa(rawData);
+                    formattedLineups.push(`${username}:${encoded}`);
+                    decompressedLineups.push(decompressed);
+                  } else {
+                    // If no colon, the entire decompressed string is the data
+                    const encoded = btoa(decompressed);
+                    formattedLineups.push(`${username}:${encoded}`);
+                    decompressedLineups.push(`${username}:${decompressed}`);
                   }
-                  setSubmissionStatus(statusMap);
                 }
+              } else {
+                // User has no submission data
+                formattedLineups.push(`${username}:`);
               }
-            } catch (error) {
-              console.error('Error fetching submission status:', error);
-            }
+            });
             
-            // Process the hash data similar to hash URL loading
-            let hash = hashData;
-            
-            // Decode if needed
-            try {
-              hash = decodeURIComponent(hash);
-            } catch (e) {
-              // Hash wasn't encoded, use as-is
-            }
-            
-            // Split week and compressed data
-            const [weekStr, compressedData] = hash.split('|');
-            const urlWeek = parseInt(weekStr);
-            
-            // Set the week from URL
-            if (urlWeek && !isNaN(urlWeek)) {
-              setSelectedWeek(urlWeek);
-              weekSetFromUrl = true;
-            }
-            
-            // Decompress the data
-            let decompressed = LZString.decompressFromEncodedURIComponent(compressedData);
-            
-            if (!decompressed) {
-              decompressed = LZString.decompressFromBase64(compressedData);
-            }
-            
-            if (!decompressed) {
-              decompressed = LZString.decompressFromUTF16(compressedData);
-            }
-            
-            if (decompressed) {
-              // Split back into individual lineups
-              const lineups = decompressed.split('|');
-              
-              // Re-encode each lineup to base64 format for inputData
-              const formattedLineups = lineups.map(lineup => {
-                const [username, rawData] = lineup.split(':');
-                const encoded = btoa(rawData);
-                return `${username}:${encoded}`;
-              });
-              
+            if (formattedLineups.length > 0) {
               setInputData(formattedLineups.join('\n'));
               setLoadedFromUrl(true);
               
-              // Auto-process the data
-              const combined = decompressed;
-              const compressed = LZString.compressToEncodedURIComponent(combined);
-              setCompressedData(compressed);
+              // Auto-process the data - combine all decompressed lineups
+              if (decompressedLineups.length > 0) {
+                const combined = decompressedLineups.join('|');
+                const compressed = LZString.compressToEncodedURIComponent(combined);
+                setCompressedData(compressed);
+              }
               
               setShareableUrl('');
             } else {
-              console.error('Failed to decompress data from tinyURL');
-              setInputData('ERROR: Failed to load data from tinyURL. The data may be corrupted.');
+              console.error('No valid submissions found in tinyURL');
+              setInputData('ERROR: No valid data found in tinyURL.');
             }
           } else if (response.status === 404) {
             setInputData(`ERROR: TinyURL "${tinyUrlNameParam}" not found.`);
@@ -1142,7 +1262,25 @@ function DFSResults() {
       const lines = inputData.trim().split('\n').filter(line => line.trim());
       
       return lines.map(line => {
-        const [username, encoded] = line.split(':');
+        const colonIndex = line.indexOf(':');
+        let username, encoded;
+        
+        if (colonIndex === -1) {
+          // No colon - treat entire line as username with no data
+          username = line.trim();
+          encoded = '';
+        } else {
+          // Has colon - split at first colon
+          username = line.substring(0, colonIndex).trim();
+          encoded = line.substring(colonIndex + 1).trim();
+        }
+        
+        // If no encoded data, return empty lineup
+        if (!encoded || encoded.length === 0) {
+          return { username, players: [] };
+        }
+        
+        // Decode and parse the lineup data
         const decoded = atob(encoded);
         const playerPairs = decoded.split(',');
         
@@ -2130,6 +2268,19 @@ function DFSResults() {
                   style={{ flex: '1', maxWidth: '150px' }}
                   disabled={creatingEmptyTinyUrl}
                 />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmptyTinyUrlRevealDate('');
+                    setEmptyTinyUrlRevealTime('');
+                    setEmptyTinyUrlError('');
+                  }}
+                  className="clear-reveal-btn"
+                  disabled={creatingEmptyTinyUrl}
+                  title="Clear reveal date and time"
+                >
+                  Clear
+                </button>
               </div>
               <div className="tinyurl-input-container" style={{ marginTop: '12px', alignItems: 'center' }}>
                 <button 
@@ -2365,7 +2516,7 @@ function DFSResults() {
                             const position = info?.position || 'FLX';
                             
                             if (showPlaceholder) {
-                              // Show placeholder data
+                              // Show placeholder data with grey background
                               return (
                                 <div
                                   key={pIdx} 
@@ -2435,12 +2586,26 @@ function DFSResults() {
                         </>
                       );
                     })()}
-                    <div className="total-points-cell">
+                    <div 
+                      className="total-points-cell"
+                      style={
+                        shouldShowPlaceholder() && !isAdmin
+                          ? {
+                              backgroundColor: submissionStatus[lineup.username]
+                                ? 'rgba(40, 167, 69, 0.8)' // Green for submitted
+                                : 'rgba(220, 53, 69, 0.8)', // Red for not submitted
+                              color: 'rgba(255, 255, 255, 0.95)',
+                              textAlign: 'center',
+                              fontWeight: '600'
+                            }
+                          : {}
+                      }
+                    >
                       {shouldShowPlaceholder() && !isAdmin ? (
                         submissionStatus[lineup.username] ? (
-                          <span style={{ color: '#28a745', fontWeight: '600' }}>Submitted</span>
+                          'Submitted'
                         ) : (
-                          <span style={{ color: '#dc3545', fontWeight: '600' }}>Not submitted</span>
+                          'Not submitted'
                         )
                       ) : (
                         calculateTotalPoints(lineup.players).toFixed(1)

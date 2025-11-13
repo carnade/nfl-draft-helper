@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import LZString from 'lz-string';
 import './DFSManage.css';
 
 // Add a mock flag
@@ -104,7 +105,14 @@ function DFSManage() {
     if (!dateString) return 'N/A';
     try {
       const date = new Date(dateString);
-      return date.toLocaleString();
+      return date.toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
     } catch (error) {
       return dateString;
     }
@@ -119,11 +127,86 @@ function DFSManage() {
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
+        hour12: false
       });
       return `${weekday} ${dateTime}`;
     } catch (error) {
       return dateString;
+    }
+  };
+
+  const copyLeagueData = async (entryName, details) => {
+    try {
+      if (!details || !details.allowed_names || details.allowed_names.length === 0) {
+        alert('No users found in this league');
+        return;
+      }
+
+      // Fetch the full data for this entry (contains user_submissions)
+      const response = await fetch(`${BASE_URL}/tinyurl/${entryName}/data`);
+      if (!response.ok) {
+        alert('Failed to fetch league data');
+        return;
+      }
+
+      const data = await response.json();
+      const userSubmissions = data.user_submissions || {};
+      const allowedNames = data.allowed_names || details.allowed_names || [];
+
+      // Process each user's submission data
+      const userDataMap = new Map();
+      
+      Object.values(userSubmissions).forEach(submission => {
+        if (submission && submission.data) {
+          try {
+            const username = submission.username;
+            const compressedData = submission.data; // Format: "week|compressedData"
+            
+            // Parse the compressed data
+            const [week, compressed] = compressedData.split('|');
+            
+            // Decompress using LZString
+            const decompressed = LZString.decompressFromEncodedURIComponent(compressed);
+            
+            if (decompressed) {
+              // The decompressed data should be in format "username:decodedData"
+              // Extract just the decoded data part
+              const colonIndex = decompressed.indexOf(':');
+              if (colonIndex !== -1) {
+                const decodedData = decompressed.substring(colonIndex + 1);
+                // Encode back to base64
+                const encodedData = btoa(decodedData);
+                userDataMap.set(username.toLowerCase(), encodedData);
+              } else {
+                // If no colon, the entire decompressed string is the data
+                const encodedData = btoa(decompressed);
+                userDataMap.set(username.toLowerCase(), encodedData);
+              }
+            }
+          } catch (error) {
+            console.error(`Error processing data for ${submission.username}:`, error);
+            // Continue with other users even if one fails
+          }
+        }
+      });
+
+      // Build the output: iterate through allowed_names in order
+      const lines = allowedNames.map(username => {
+        // Try both original case and lowercase for matching
+        const encodedData = userDataMap.get(username.toLowerCase()) || userDataMap.get(username);
+        if (encodedData) {
+          return `${username}:${encodedData}`;
+        } else {
+          return `${username}:`;
+        }
+      });
+
+      navigator.clipboard.writeText(lines.join('\n'));
+      alert('League data copied to clipboard!');
+    } catch (error) {
+      console.error('Error copying league data:', error);
+      alert('Failed to copy league data');
     }
   };
 
@@ -177,25 +260,50 @@ function DFSManage() {
                     <span className="dfs-manage-entry-date">
                       Created: {formatDate(entry.created_at)}
                     </span>
-                    <button 
-                      className={`dfs-manage-toggle-btn ${isExpanded ? 'expanded' : ''}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleEntry(entry.name);
-                      }}
-                      aria-label={isExpanded ? 'Collapse' : 'Expand'}
-                    >
-                      <svg 
-                        width="16" 
-                        height="16" 
-                        viewBox="0 0 16 16" 
-                        fill="none" 
-                        stroke="currentColor" 
-                        strokeWidth="2"
+                    <div className="dfs-manage-entry-buttons">
+                      {details && (
+                        <button 
+                          className="dfs-manage-copy-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copyLeagueData(entry.name, details);
+                          }}
+                          aria-label="Copy league data"
+                          title="Copy league data to clipboard"
+                        >
+                          <svg 
+                            width="16" 
+                            height="16" 
+                            viewBox="0 0 24 24" 
+                            fill="none" 
+                            stroke="currentColor" 
+                            strokeWidth="2"
+                          >
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                          </svg>
+                        </button>
+                      )}
+                      <button 
+                        className={`dfs-manage-toggle-btn ${isExpanded ? 'expanded' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleEntry(entry.name);
+                        }}
+                        aria-label={isExpanded ? 'Collapse' : 'Expand'}
                       >
-                        <path d="M4 6 L8 10 L12 6" />
-                      </svg>
-                    </button>
+                        <svg 
+                          width="16" 
+                          height="16" 
+                          viewBox="0 0 16 16" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          strokeWidth="2"
+                        >
+                          <path d="M4 6 L8 10 L12 6" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 </div>
 

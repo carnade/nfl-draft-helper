@@ -41,6 +41,36 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2025-11-13",
+      title: "DFS League Management & Results Improvements",
+      items: [
+        {
+          text: "DFS Results Page:",
+          subitems: [
+            "Added 'Your Leagues' section at the top showing all leagues you're a member of with quick navigation links",
+            "Fixed results display to show all user submissions from leagues, not just one entry",
+            "Added submission status indicator in Total Points column (green for Submitted, red for Not submitted) when reveal time hasn't passed",
+          ]
+        },
+        {
+          text: "DFS Lineup Submission:",
+          subitems: [
+            "Added ability to submit your DFS lineup to leagues you're a member of directly from the lineup modal",
+            "View available leagues with submission status (green for new submission, yellow for overwrite existing)",
+            "Confirmation modal when overwriting existing lineup data",
+            "Load previously submitted lineups from your leagues in the 'Load Lineup' modal",
+          ]
+        },
+        {
+          text: "TinyURL Creation:",
+          subitems: [
+            "Support for creating leagues with mix of users who have submitted and users who haven't",
+            "Default reveal time set to upcoming Sunday at 19:00 with clear button to remove",
+          ]
+        }
+      ],
+    },
+    {
       date: "2025-11-06",
       title: "DFS Day Filter",
       items: [

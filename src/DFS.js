@@ -338,7 +338,7 @@ function DFS({ userName }) {
         const entriesWithDetails = await Promise.all(
           entryNames.map(async (entryName) => {
             try {
-              const detailResponse = await fetch(`${BASE_URL}/tinyurl/name/${entryName}`);
+              const detailResponse = await fetch(`${BASE_URL}/tinyurl/${entryName}/${username}/check`);
               if (detailResponse.ok) {
                 const detailData = await detailResponse.json();
                 return {
