@@ -164,7 +164,7 @@ function DFSManage() {
             const compressedData = submission.data; // Format: "week|compressedData"
             
             // Parse the compressed data
-            const [week, compressed] = compressedData.split('|');
+            const [, compressed] = compressedData.split('|');
             
             // Decompress using LZString
             const decompressed = LZString.decompressFromEncodedURIComponent(compressed);

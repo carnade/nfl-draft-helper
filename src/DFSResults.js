@@ -789,7 +789,7 @@ function DFSResults() {
       setEmptyTinyUrlRevealDate(date);
       setEmptyTinyUrlRevealTime(time);
     }
-  }, []); // Only run once on mount
+  }, [emptyTinyUrlRevealDate, emptyTinyUrlRevealTime]); // Set defaults only when both are empty
 
   // Check for admin query parameter
   useEffect(() => {
