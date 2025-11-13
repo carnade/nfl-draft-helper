@@ -52,6 +52,8 @@ function DFS({ userName }) {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [entryToOverwrite, setEntryToOverwrite] = useState(null);
   const [submittedEntries, setSubmittedEntries] = useState(new Set());
+  const [loadableLineups, setLoadableLineups] = useState([]);
+  const [loadingLoadableLineups, setLoadingLoadableLineups] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -374,6 +376,104 @@ function DFS({ userName }) {
     }
   }, []);
 
+  const fetchLoadableLineups = useCallback(async (username) => {
+    if (!username || username.trim() === '' || username === 'Anonymous') {
+      setLoadableLineups([]);
+      return;
+    }
+
+    setLoadingLoadableLineups(true);
+    try {
+      // Fetch available entries
+      const availableResponse = await fetch(`${BASE_URL}/tinyurl/${username}/available`);
+      if (!availableResponse.ok) {
+        setLoadableLineups([]);
+        return;
+      }
+
+      const availableData = await availableResponse.json();
+      const entryNames = Array.isArray(availableData.entries) 
+        ? availableData.entries.map(entry => typeof entry === 'string' ? entry : entry.name || entry)
+        : [];
+
+      // For each entry, check if user has submitted and fetch their lineup
+      const lineupPromises = entryNames.map(async (entryName) => {
+        try {
+          // Check details to see if user has submitted
+          const detailsResponse = await fetch(`${BASE_URL}/tinyurl/${entryName}/details`);
+          if (!detailsResponse.ok) return null;
+
+          const details = await detailsResponse.json();
+          const userSubmission = details.submissions?.[username];
+          
+          if (!userSubmission?.has_submitted) {
+            return null; // User hasn't submitted to this entry
+          }
+
+          // Fetch the data
+          const dataResponse = await fetch(`${BASE_URL}/tinyurl/${entryName}/data`);
+          if (!dataResponse.ok) return null;
+
+          const dataResult = await dataResponse.json();
+          const hashData = dataResult.data;
+
+          // Parse the data to extract user's lineup
+          try {
+            const [weekStr, compressedData] = hashData.split('|');
+            const week = parseInt(weekStr);
+
+            // Decompress
+            let decompressed = LZString.decompressFromEncodedURIComponent(compressedData);
+            if (!decompressed) {
+              decompressed = LZString.decompressFromBase64(compressedData);
+            }
+            if (!decompressed) {
+              decompressed = LZString.decompressFromUTF16(compressedData);
+            }
+
+            if (decompressed) {
+              // Split into individual lineups
+              const lineups = decompressed.split('|');
+              // Find the user's lineup
+              const userLineup = lineups.find(lineup => {
+                const [lineupUsername] = lineup.split(':');
+                return lineupUsername === username;
+              });
+
+              if (userLineup) {
+                const [lineupUsername, rawData] = userLineup.split(':');
+                const encoded = btoa(rawData);
+                const lineupCode = `${lineupUsername}:${encoded}`;
+
+                return {
+                  entryName,
+                  week,
+                  lineupCode,
+                  updatedAt: userSubmission.updated_at || userSubmission.created_at
+                };
+              }
+            }
+          } catch (error) {
+            console.error(`Error parsing data for ${entryName}:`, error);
+            return null;
+          }
+        } catch (error) {
+          console.error(`Error fetching lineup from ${entryName}:`, error);
+          return null;
+        }
+        return null;
+      });
+
+      const lineups = (await Promise.all(lineupPromises)).filter(Boolean);
+      setLoadableLineups(lineups);
+    } catch (error) {
+      console.error('Error fetching loadable lineups:', error);
+      setLoadableLineups([]);
+    } finally {
+      setLoadingLoadableLineups(false);
+    }
+  }, []);
+
   // Fetch available tinyURLs when modal opens
   useEffect(() => {
     if (showModal) {
@@ -386,6 +486,19 @@ function DFS({ userName }) {
       setAvailableTinyUrls([]);
     }
   }, [showModal, userName, fetchAvailableTinyUrls]);
+
+  // Fetch loadable lineups when load modal opens
+  useEffect(() => {
+    if (showLoadModal) {
+      const settings = JSON.parse(localStorage.getItem('FantasyHelperSettings') || '{}');
+      const currentUsername = userName || settings.userName;
+      if (currentUsername && currentUsername !== 'Anonymous') {
+        fetchLoadableLineups(currentUsername);
+      }
+    } else {
+      setLoadableLineups([]);
+    }
+  }, [showLoadModal, userName, fetchLoadableLineups]);
 
   const handleAddToLeague = (entry) => {
     // If entry has data, show confirmation modal
@@ -472,7 +585,7 @@ function DFS({ userName }) {
     setEntryToOverwrite(null);
   };
 
-  const handleLoadLineup = () => {
+  const loadLineupFromCode = (lineupCode) => {
     try {
       // Clear current roster
       setRoster({
@@ -489,13 +602,13 @@ function DFS({ userName }) {
 
       // Parse the lineup code - handle both formats
       let encoded;
-      if (loadLineupCode.includes(':')) {
+      if (lineupCode.includes(':')) {
         // Format: username:encodedData
-        const [, encodedData] = loadLineupCode.split(':');
+        const [, encodedData] = lineupCode.split(':');
         encoded = encodedData;
       } else {
         // Format: just encodedData (no username)
-        encoded = loadLineupCode;
+        encoded = lineupCode;
       }
 
       if (!encoded) {
@@ -532,6 +645,14 @@ function DFS({ userName }) {
     } catch (error) {
       alert('Error loading lineup: ' + error.message);
     }
+  };
+
+  const handleLoadLineup = () => {
+    loadLineupFromCode(loadLineupCode);
+  };
+
+  const handleLoadLineupFromList = (lineup) => {
+    loadLineupFromCode(lineup.lineupCode);
   };
 
   const getSortIcon = (key) => {
@@ -1119,21 +1240,42 @@ function DFS({ userName }) {
             </button>
             <h2>Load Lineup</h2>
             <div className="load-lineup-container">
-              <p>Enter your lineup code to load players:</p>
-              <textarea
-                className="lineup-code-input"
-                value={loadLineupCode}
-                onChange={(e) => setLoadLineupCode(e.target.value)}
-                placeholder="Paste your lineup code here (e.g., Username:MTktNTQwMCw4MTM2LTY0MDAs...)"
-                rows={3}
-              />
-              <div className="load-lineup-buttons">
-                <button className="load-btn" onClick={handleLoadLineup}>
-                  Load Lineup
-                </button>
-                <button className="cancel-btn" onClick={() => setShowLoadModal(false)}>
-                  Cancel
-                </button>
+              {loadableLineups.length > 0 && (
+                <div className="load-lineup-list-section">
+                  <h3 className="add-to-league-title">Load from your leagues</h3>
+                  <div className="add-to-league-buttons">
+                    {loadableLineups.map((lineup) => (
+                      <button
+                        key={lineup.entryName}
+                        onClick={() => handleLoadLineupFromList(lineup)}
+                        className="add-to-league-btn no-data"
+                      >
+                        {lineup.entryName} {lineup.week && `(Week ${lineup.week})`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {loadingLoadableLineups && (
+                <p className="add-to-league-message">Loading your lineups...</p>
+              )}
+              <div style={{ marginTop: loadableLineups.length > 0 ? '20px' : '0' }}>
+                <p>Or enter your lineup code to load players:</p>
+                <textarea
+                  className="lineup-code-input"
+                  value={loadLineupCode}
+                  onChange={(e) => setLoadLineupCode(e.target.value)}
+                  placeholder="Paste your lineup code here (e.g., Username:MTktNTQwMCw4MTM2LTY0MDAs...)"
+                  rows={3}
+                />
+                <div className="load-lineup-buttons">
+                  <button className="load-btn" onClick={handleLoadLineup} disabled={!loadLineupCode.trim()}>
+                    Load Lineup
+                  </button>
+                  <button className="cancel-btn" onClick={() => setShowLoadModal(false)}>
+                    Cancel
+                  </button>
+                </div>
               </div>
             </div>
           </div>

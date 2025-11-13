@@ -116,6 +116,12 @@ function DFSResults() {
   const [emptyTinyUrlError, setEmptyTinyUrlError] = useState('');
   const [showUpdatingIndicator, setShowUpdatingIndicator] = useState(false);
   const [lastUpdateTime, setLastUpdateTime] = useState(null);
+  const [revealTime, setRevealTime] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [submissionStatus, setSubmissionStatus] = useState({});
+  const [allowedNames, setAllowedNames] = useState([]);
+  const [userLeagues, setUserLeagues] = useState([]);
+  const [loadingUserLeagues, setLoadingUserLeagues] = useState(false);
 
   const lineupRefs = useRef({});
   const previousPositionsRef = useRef({});
@@ -397,6 +403,60 @@ function DFSResults() {
     }
   }, []);
 
+  const fetchUserLeagues = useCallback(async () => {
+    const settings = JSON.parse(localStorage.getItem('FantasyHelperSettings') || '{}');
+    // Check both username (from Settings) and userName (from DFS)
+    const username = settings.username || settings.userName;
+    
+    console.log('fetchUserLeagues called, username:', username, 'settings:', settings);
+    
+    if (!username || username.trim() === '' || username === 'Anonymous') {
+      console.log('fetchUserLeagues: No valid username, skipping fetch');
+      setUserLeagues([]);
+      return;
+    }
+
+    console.log('fetchUserLeagues: Fetching leagues for username:', username);
+    setLoadingUserLeagues(true);
+    try {
+      const response = await fetch(`${BASE_URL}/tinyurl/${username}/available`);
+      if (response.ok) {
+        const data = await response.json();
+        const entryNames = Array.isArray(data.entries) 
+          ? data.entries.map(entry => typeof entry === 'string' ? entry : entry.name || entry)
+          : [];
+        
+        // Fetch details for each entry to get week information
+        const leaguePromises = entryNames.map(async (entryName) => {
+          try {
+            const detailResponse = await fetch(`${BASE_URL}/tinyurl/${entryName}/details`);
+            if (detailResponse.ok) {
+              const detailData = await detailResponse.json();
+              return {
+                name: entryName,
+                week: detailData.week || null
+              };
+            }
+            return { name: entryName, week: null };
+          } catch (error) {
+            console.error(`Error fetching details for ${entryName}:`, error);
+            return { name: entryName, week: null };
+          }
+        });
+        
+        const leagues = (await Promise.all(leaguePromises)).filter(Boolean);
+        setUserLeagues(leagues);
+      } else {
+        setUserLeagues([]);
+      }
+    } catch (error) {
+      console.error('Error fetching user leagues:', error);
+      setUserLeagues([]);
+    } finally {
+      setLoadingUserLeagues(false);
+    }
+  }, []);
+
   const handleCreateTinyUrl = async () => {
     if (!tinyUrlName || tinyUrlName.trim() === '') {
       setTinyUrlError('Please enter a name');
@@ -622,6 +682,14 @@ function DFSResults() {
     return usernames.length;
   };
 
+  // Check for admin query parameter
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const adminMode = urlParams.has('admin');
+    setIsAdmin(adminMode);
+    console.log('Admin mode:', adminMode, 'URL:', window.location.href);
+  }, []);
+
   // Load data from tinyURL if name parameter exists
   useEffect(() => {
     let weekSetFromUrl = false; // Track if week was set from URL/tinyURL
@@ -630,11 +698,45 @@ function DFSResults() {
       const fetchTinyUrlData = async () => {
         setLoadingTinyUrl(true);
         try {
-          const response = await fetch(`${BASE_URL}/tinyurl/${tinyUrlNameParam}`);
+          // Use /data endpoint to get full entry data including reveal time
+          const response = await fetch(`${BASE_URL}/tinyurl/${tinyUrlNameParam}/data`);
           
           if (response.ok) {
             const result = await response.json();
             const hashData = result.data;
+            
+            // Store reveal time if present
+            if (result.reveal) {
+              setRevealTime(new Date(result.reveal));
+            }
+            
+            // Fetch submission status from details endpoint
+            try {
+              const detailsResponse = await fetch(`${BASE_URL}/tinyurl/${tinyUrlNameParam}/details`);
+              if (detailsResponse.ok) {
+                const details = await detailsResponse.json();
+                if (details.allowed_names) {
+                  setAllowedNames(details.allowed_names);
+                }
+                if (details.submissions) {
+                  const statusMap = {};
+                  Object.keys(details.submissions).forEach(username => {
+                    statusMap[username] = details.submissions[username].has_submitted || false;
+                  });
+                  // Also add allowed_names that don't have submissions yet
+                  if (details.allowed_names) {
+                    details.allowed_names.forEach(username => {
+                      if (!(username in statusMap)) {
+                        statusMap[username] = false;
+                      }
+                    });
+                  }
+                  setSubmissionStatus(statusMap);
+                }
+              }
+            } catch (error) {
+              console.error('Error fetching submission status:', error);
+            }
             
             // Process the hash data similar to hash URL loading
             let hash = hashData;
@@ -878,6 +980,18 @@ function DFSResults() {
     }
   }, [tinyUrlNameParam]);
 
+  // Fetch user leagues on component mount
+  useEffect(() => {
+    console.log('useEffect for fetchUserLeagues: tinyUrlNameParam =', tinyUrlNameParam);
+    // Only fetch if we're not loading from a tinyURL
+    if (!tinyUrlNameParam) {
+      console.log('useEffect: Calling fetchUserLeagues');
+      fetchUserLeagues();
+    } else {
+      console.log('useEffect: Skipping fetchUserLeagues because tinyUrlNameParam exists');
+    }
+  }, [tinyUrlNameParam, fetchUserLeagues]);
+
   // Auto-fetch data when loaded from URL and selectedWeek is available
   useEffect(() => {
     if (loadedFromUrl && selectedWeek && compressedData) {
@@ -1067,6 +1181,14 @@ function DFSResults() {
     });
     return dstIds;
   }, [dfsSalaryData, playerMetadata, selectedWeek]);
+
+  // Check if we should show placeholder data (before reveal time and not admin)
+  const shouldShowPlaceholder = useCallback(() => {
+    if (!revealTime) return false; // No reveal time set, show real data
+    if (isAdmin) return false; // Admin override, show real data
+    const now = new Date();
+    return now < revealTime; // Before reveal time, show placeholder
+  }, [revealTime, isAdmin]);
 
   const getFantasyPointsDisplay = useCallback((sleeperId) => {
     const playerInfo = fantasyPoints[sleeperId];
@@ -1343,6 +1465,46 @@ function DFSResults() {
       }))
       .sort((a, b) => b.totalPoints - a.totalPoints);
   }, [parseLineups, calculateTotalPoints, generateLineupKey]);
+
+  // Merge allowed_names with existing lineups to show all managers
+  const displayLineups = useMemo(() => {
+    // If we have allowed_names, always merge them with existing lineups
+    if (allowedNames.length === 0) {
+      return sortedLineups;
+    }
+
+    // Create a map of existing lineups by username
+    const lineupMap = new Map();
+    sortedLineups.forEach(lineup => {
+      lineupMap.set(lineup.username, lineup);
+    });
+
+    // Create entries for all allowed_names
+    const allLineups = allowedNames.map(username => {
+      if (lineupMap.has(username)) {
+        return lineupMap.get(username);
+      } else {
+        // Create empty lineup for managers who haven't submitted
+        return {
+          username,
+          players: [],
+          key: `placeholder-${username}`,
+          totalPoints: 0,
+          originalIndex: -1
+        };
+      }
+    });
+
+    // Sort by total points (empty lineups will be at the bottom)
+    const sorted = allLineups.sort((a, b) => b.totalPoints - a.totalPoints);
+    console.log('Display lineups:', {
+      allowedNamesCount: allowedNames.length,
+      sortedLineupsCount: sortedLineups.length,
+      displayLineupsCount: sorted.length,
+      emptyLineups: sorted.filter(l => l.players.length === 0).map(l => l.username)
+    });
+    return sorted;
+  }, [sortedLineups, allowedNames]);
 
   useLayoutEffect(() => {
     if (loadingPoints || sortedLineups.length === 0) {
@@ -1836,6 +1998,26 @@ function DFSResults() {
         <div className="dfs-results-content">
           {!compressedData && (
             <>
+            {userLeagues.length > 0 && (
+              <div className="user-leagues-section">
+                <h3 className="user-leagues-title">Your Leagues</h3>
+                {loadingUserLeagues ? (
+                  <p className="user-leagues-message">Loading leagues...</p>
+                ) : (
+                  <div className="user-leagues-buttons">
+                    {userLeagues.map((league) => (
+                      <button
+                        key={league.name}
+                        onClick={() => navigate(`/dfs/results/tinyurl/${league.name}`)}
+                        className="user-league-btn"
+                      >
+                        {league.name} {league.week && `(Week ${league.week})`}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             {currentWeek && (
               <div className="week-toggle-section">
                 <label>Select Week:</label>
@@ -2108,9 +2290,11 @@ function DFSResults() {
                 </div>
               </div>
           
-              {sortedLineups.map((lineup, idx) => {
+              {displayLineups.map((lineup, idx) => {
                 const rank = idx + 1;
-                const isVisible = loadedFromUrl ? visibleRanks.has(rank) : true;
+                const isEmpty = lineup.players.length === 0;
+                // Empty lineups should always be visible
+                const isVisible = isEmpty ? true : (loadedFromUrl ? visibleRanks.has(rank) : true);
                 const isGhost = loadedFromUrl && visibleRanks.has(-rank);
                 const lineupKey = lineup.key;
                 
@@ -2169,52 +2353,107 @@ function DFSResults() {
                     <div className={`grid-value rank-value rank-${rank}`}>{rank}</div>
                     <div className="grid-value manager-value">{lineup.username}</div>
                     
-                    {lineup.players.map((player, pIdx) => {
-                      const info = getPlayerInfo(player.sleeperId);
-                      const position = info?.position || 'FLX';
-                      return (() => {
-                        const pointsDisplay = getFantasyPointsDisplay(player.sleeperId);
-                        const isOut = pointsDisplay === 'OUT';
-                        const isNotPlayed = pointsDisplay === 'Not played';
-                        const backgroundColor = isOut 
-                          ? 'rgba(220, 53, 69, 0.8)' 
-                          : isNotPlayed 
-                            ? 'rgb(235, 88, 254, 0.8)' 
-                            : getPositionColor(position);
-                        console.log('Render info', {
-                          lineupUsername: lineup.username,
-                          sleeperId: player.sleeperId,
-                          info,
-                          pointsDisplay,
-                          position,
-                          isOut,
-                          isNotPlayed
-                        });
-                        return (
-                          <div
-                            key={pIdx} 
-                            className="dfs-results-player-card"
-                            style={{ backgroundColor }}
-                          >
-                            <div className="dfs-results-player-card-left">
-                              <div className="dfs-results-player-card-name">{info?.name || 'Unknown'}</div>
-                              <div className="dfs-results-player-card-salary">${player.salary.toLocaleString()}</div>
+                    {(() => {
+                      const showPlaceholder = shouldShowPlaceholder() && !isAdmin; // Explicitly check isAdmin
+                      const playersToShow = lineup.players.length > 0 ? lineup.players : [];
+                      const emptySlots = 9 - playersToShow.length;
+                      
+                      return (
+                        <>
+                          {playersToShow.map((player, pIdx) => {
+                            const info = getPlayerInfo(player.sleeperId);
+                            const position = info?.position || 'FLX';
+                            
+                            if (showPlaceholder) {
+                              // Show placeholder data
+                              return (
+                                <div
+                                  key={pIdx} 
+                                  className="dfs-results-player-card"
+                                  style={{ backgroundColor: 'rgba(128, 128, 128, 0.3)' }}
+                                >
+                                  <div className="dfs-results-player-card-left">
+                                    <div className="dfs-results-player-card-name">TBD</div>
+                                    <div className="dfs-results-player-card-salary">${player.salary.toLocaleString()}</div>
+                                  </div>
+                                  <div className="dfs-results-player-card-points">
+                                    TBD
+                                  </div>
+                                </div>
+                              );
+                            }
+                            
+                            const pointsDisplay = getFantasyPointsDisplay(player.sleeperId);
+                            const isOut = pointsDisplay === 'OUT';
+                            const isNotPlayed = pointsDisplay === 'Not played';
+                            const backgroundColor = isOut 
+                              ? 'rgba(220, 53, 69, 0.8)' 
+                              : isNotPlayed 
+                                ? 'rgb(235, 88, 254, 0.8)' 
+                                : getPositionColor(position);
+                            console.log('Render info', {
+                              lineupUsername: lineup.username,
+                              sleeperId: player.sleeperId,
+                              info,
+                              pointsDisplay,
+                              position,
+                              isOut,
+                              isNotPlayed
+                            });
+                            return (
+                              <div
+                                key={pIdx} 
+                                className="dfs-results-player-card"
+                                style={{ backgroundColor }}
+                              >
+                                <div className="dfs-results-player-card-left">
+                                  <div className="dfs-results-player-card-name">{info?.name || 'Unknown'}</div>
+                                  <div className="dfs-results-player-card-salary">${player.salary.toLocaleString()}</div>
+                                </div>
+                                <div className={`dfs-results-player-card-points ${pointsDisplay === 'OUT' ? 'out-status' : ''}`}>
+                                  {pointsDisplay}
+                                </div>
+                              </div>
+                            );
+                          })}
+                          {/* Fill empty slots with placeholder cards if needed */}
+                          {emptySlots > 0 && [...Array(emptySlots)].map((_, i) => (
+                            <div
+                              key={`empty-${i}`}
+                              className="dfs-results-player-card"
+                              style={{ backgroundColor: showPlaceholder ? 'rgba(128, 128, 128, 0.3)' : 'rgba(200, 200, 200, 0.2)' }}
+                            >
+                              <div className="dfs-results-player-card-left">
+                                <div className="dfs-results-player-card-name">{showPlaceholder ? 'TBD' : '-'}</div>
+                                <div className="dfs-results-player-card-salary">-</div>
+                              </div>
+                              <div className="dfs-results-player-card-points">
+                                {showPlaceholder ? 'TBD' : '-'}
+                              </div>
                             </div>
-                            <div className={`dfs-results-player-card-points ${pointsDisplay === 'OUT' ? 'out-status' : ''}`}>
-                              {pointsDisplay}
-                            </div>
-                          </div>
-                        );
-                      })();
-                    })}
-                    <div className="total-points-cell">{calculateTotalPoints(lineup.players).toFixed(1)}</div>
+                          ))}
+                        </>
+                      );
+                    })()}
+                    <div className="total-points-cell">
+                      {shouldShowPlaceholder() && !isAdmin ? (
+                        submissionStatus[lineup.username] ? (
+                          <span style={{ color: '#28a745', fontWeight: '600' }}>Submitted</span>
+                        ) : (
+                          <span style={{ color: '#dc3545', fontWeight: '600' }}>Not submitted</span>
+                        )
+                      ) : (
+                        calculateTotalPoints(lineup.players).toFixed(1)
+                      )}
+                    </div>
                   </div>
                 );
               })}
 
-              <div className="stats-section">
-                <h3>Position Statistics</h3>
-                {Object.entries(getStatsData()).map(([position, { chosen, bestChosen, bestNotChosen }]) => (
+              {(!shouldShowPlaceholder() || isAdmin) && (
+                <div className="stats-section">
+                  <h3>Position Statistics</h3>
+                  {Object.entries(getStatsData()).map(([position, { chosen, bestChosen, bestNotChosen }]) => (
                   <div key={position} className="position-stats">
                     <h4>{position}</h4>
                     <div className="stats-table-group">
@@ -2304,7 +2543,8 @@ function DFSResults() {
                     </div>
                   </div>
                 ))}
-              </div>
+                </div>
+              )}
             </>
           )}
         </div>

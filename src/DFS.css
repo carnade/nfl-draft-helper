@@ -663,6 +663,12 @@ body.dark .salary-limit {
   margin: 0;
 }
 
+.load-lineup-list-section {
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #dee2e6;
+}
+
 .add-to-league-buttons {
   display: flex;
   flex-wrap: wrap;

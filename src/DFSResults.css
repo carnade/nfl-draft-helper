@@ -385,6 +385,52 @@
   font-style: italic;
 }
 
+.user-leagues-section {
+  margin-bottom: 25px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.user-leagues-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 12px;
+}
+
+.user-leagues-message {
+  color: #6c757d;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.user-leagues-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.user-league-btn {
+  padding: 8px 16px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  width: fit-content;
+  min-width: fit-content;
+}
+
+.user-league-btn:hover {
+  background: #0056b3;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+}
+
 .results-header-section {
   margin-bottom: 20px;
   display: flex;
@@ -824,6 +870,27 @@ body.dark .shareable-link-section {
 
 body.dark .shareable-link-section h3 {
   color: #ecf0f1;
+}
+
+body.dark .user-leagues-section {
+  border-bottom-color: #444;
+}
+
+body.dark .user-leagues-title {
+  color: #ecf0f1;
+}
+
+body.dark .user-leagues-message {
+  color: #adb5bd;
+}
+
+body.dark .user-league-btn {
+  background: linear-gradient(135deg, #66b2ff 0%, #4a9eff 100%);
+}
+
+body.dark .user-league-btn:hover {
+  background: linear-gradient(135deg, #4a9eff 0%, #66b2ff 100%);
+  box-shadow: 0 2px 4px rgba(102, 178, 255, 0.3);
 }
 
 body.dark .link-input {
