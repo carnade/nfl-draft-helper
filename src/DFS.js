@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSort, faSortUp, faSortDown } from '@fortawesome/free-solid-svg-icons';
+import LZString from 'lz-string';
 import './DFS.css';
 
 // Add a mock flag
-const mock = false; // Set to true for mock data, false for production
+const mock = true; // Set to true for mock data, false for production
 
 // Define the base URL based on the mock flag
 const BASE_URL = mock
@@ -46,6 +47,13 @@ function DFS({ userName }) {
   const [loadLineupCode, setLoadLineupCode] = useState('');
   const [showUsernameModal, setShowUsernameModal] = useState(false);
   const [tempUsername, setTempUsername] = useState('');
+  const [availableTinyUrls, setAvailableTinyUrls] = useState([]);
+  const [loadingTinyUrls, setLoadingTinyUrls] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [entryToOverwrite, setEntryToOverwrite] = useState(null);
+  const [submittedEntries, setSubmittedEntries] = useState(new Set());
+  const [loadableLineups, setLoadableLineups] = useState([]);
+  const [loadingLoadableLineups, setLoadingLoadableLineups] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -310,7 +318,274 @@ function DFS({ userName }) {
     });
   };
 
-  const handleLoadLineup = () => {
+  const fetchAvailableTinyUrls = useCallback(async (username) => {
+    if (!username || username.trim() === '' || username === 'Anonymous') {
+      setAvailableTinyUrls([]);
+      return;
+    }
+
+    setLoadingTinyUrls(true);
+    try {
+      const response = await fetch(`${BASE_URL}/tinyurl/${username}/available`);
+      if (response.ok) {
+        const data = await response.json();
+        // Handle both cases: entries as strings or as objects
+        const entryNames = Array.isArray(data.entries) 
+          ? data.entries.map(entry => typeof entry === 'string' ? entry : entry.name || entry)
+          : [];
+        
+        // Fetch full details for each entry to get has_data and week
+        const entriesWithDetails = await Promise.all(
+          entryNames.map(async (entryName) => {
+            try {
+              const detailResponse = await fetch(`${BASE_URL}/tinyurl/${entryName}/${username}/check`);
+              if (detailResponse.ok) {
+                const detailData = await detailResponse.json();
+                return {
+                  name: entryName,
+                  has_data: detailData.has_data || false,
+                  week: detailData.week || null
+                };
+              }
+              // If detail fetch fails, return basic entry
+              return {
+                name: entryName,
+                has_data: false,
+                week: null
+              };
+            } catch (error) {
+              console.error(`Error fetching details for ${entryName}:`, error);
+              return {
+                name: entryName,
+                has_data: false,
+                week: null
+              };
+            }
+          })
+        );
+        
+        setAvailableTinyUrls(entriesWithDetails);
+      } else {
+        setAvailableTinyUrls([]);
+      }
+    } catch (error) {
+      console.error('Error fetching available tinyURLs:', error);
+      setAvailableTinyUrls([]);
+    } finally {
+      setLoadingTinyUrls(false);
+    }
+  }, []);
+
+  const fetchLoadableLineups = useCallback(async (username) => {
+    if (!username || username.trim() === '' || username === 'Anonymous') {
+      setLoadableLineups([]);
+      return;
+    }
+
+    setLoadingLoadableLineups(true);
+    try {
+      // Fetch available entries
+      const availableResponse = await fetch(`${BASE_URL}/tinyurl/${username}/available`);
+      if (!availableResponse.ok) {
+        setLoadableLineups([]);
+        return;
+      }
+
+      const availableData = await availableResponse.json();
+      const entryNames = Array.isArray(availableData.entries) 
+        ? availableData.entries.map(entry => typeof entry === 'string' ? entry : entry.name || entry)
+        : [];
+
+      // For each entry, check if user has submitted and fetch their lineup
+      const lineupPromises = entryNames.map(async (entryName) => {
+        try {
+          // Check details to see if user has submitted
+          const detailsResponse = await fetch(`${BASE_URL}/tinyurl/${entryName}/details`);
+          if (!detailsResponse.ok) return null;
+
+          const details = await detailsResponse.json();
+          const userSubmission = details.submissions?.[username];
+          
+          if (!userSubmission?.has_submitted) {
+            return null; // User hasn't submitted to this entry
+          }
+
+          // Fetch the data
+          const dataResponse = await fetch(`${BASE_URL}/tinyurl/${entryName}/data`);
+          if (!dataResponse.ok) return null;
+
+          const dataResult = await dataResponse.json();
+          const hashData = dataResult.data;
+
+          // Parse the data to extract user's lineup
+          try {
+            const [weekStr, compressedData] = hashData.split('|');
+            const week = parseInt(weekStr);
+
+            // Decompress
+            let decompressed = LZString.decompressFromEncodedURIComponent(compressedData);
+            if (!decompressed) {
+              decompressed = LZString.decompressFromBase64(compressedData);
+            }
+            if (!decompressed) {
+              decompressed = LZString.decompressFromUTF16(compressedData);
+            }
+
+            if (decompressed) {
+              // Split into individual lineups
+              const lineups = decompressed.split('|');
+              // Find the user's lineup
+              const userLineup = lineups.find(lineup => {
+                const [lineupUsername] = lineup.split(':');
+                return lineupUsername === username;
+              });
+
+              if (userLineup) {
+                const [lineupUsername, rawData] = userLineup.split(':');
+                const encoded = btoa(rawData);
+                const lineupCode = `${lineupUsername}:${encoded}`;
+
+                return {
+                  entryName,
+                  week,
+                  lineupCode,
+                  updatedAt: userSubmission.updated_at || userSubmission.created_at
+                };
+              }
+            }
+          } catch (error) {
+            console.error(`Error parsing data for ${entryName}:`, error);
+            return null;
+          }
+        } catch (error) {
+          console.error(`Error fetching lineup from ${entryName}:`, error);
+          return null;
+        }
+        return null;
+      });
+
+      const lineups = (await Promise.all(lineupPromises)).filter(Boolean);
+      setLoadableLineups(lineups);
+    } catch (error) {
+      console.error('Error fetching loadable lineups:', error);
+      setLoadableLineups([]);
+    } finally {
+      setLoadingLoadableLineups(false);
+    }
+  }, []);
+
+  // Fetch available tinyURLs when modal opens
+  useEffect(() => {
+    if (showModal) {
+      const settings = JSON.parse(localStorage.getItem('FantasyHelperSettings') || '{}');
+      const currentUsername = userName || settings.userName;
+      if (currentUsername && currentUsername !== 'Anonymous') {
+        fetchAvailableTinyUrls(currentUsername);
+      }
+    } else {
+      setAvailableTinyUrls([]);
+    }
+  }, [showModal, userName, fetchAvailableTinyUrls]);
+
+  // Fetch loadable lineups when load modal opens
+  useEffect(() => {
+    if (showLoadModal) {
+      const settings = JSON.parse(localStorage.getItem('FantasyHelperSettings') || '{}');
+      const currentUsername = userName || settings.userName;
+      if (currentUsername && currentUsername !== 'Anonymous') {
+        fetchLoadableLineups(currentUsername);
+      }
+    } else {
+      setLoadableLineups([]);
+    }
+  }, [showLoadModal, userName, fetchLoadableLineups]);
+
+  const handleAddToLeague = (entry) => {
+    // If entry has data, show confirmation modal
+    if (entry.has_data) {
+      setEntryToOverwrite(entry);
+      setShowConfirmModal(true);
+    } else {
+      // No data, proceed directly
+      proceedWithAddToLeague(entry);
+    }
+  };
+
+  const proceedWithAddToLeague = async (entry) => {
+    try {
+      // Get username from props or settings
+      const settings = JSON.parse(localStorage.getItem('FantasyHelperSettings') || '{}');
+      const username = userName || settings.userName || 'Anonymous';
+      
+      if (!username || username === 'Anonymous') {
+        alert('Please set a username in settings before adding to league.');
+        return;
+      }
+      
+      // Get current week from sessionStorage
+      const currentWeek = sessionStorage.getItem('nfl_current_week');
+      if (!currentWeek) {
+        alert('Unable to determine current week. Please refresh the page.');
+        return;
+      }
+      
+      // Generate lineup code (format: username:encodedLineup)
+      const lineupCode = generateLineupCode();
+      
+      // Decode the base64 to get the raw player data
+      const [codeUsername, encoded] = lineupCode.split(':');
+      const decoded = atob(encoded);
+      
+      // Format as username:decodedData (same format as DFSResults expects)
+      const formattedData = `${codeUsername}:${decoded}`;
+      
+      // Compress the data using LZ-String
+      const compressed = LZString.compressToEncodedURIComponent(formattedData);
+      
+      // Format as week|compressedData (same format as DFSResults hash)
+      const data = `${currentWeek}|${compressed}`;
+      
+      // Make POST request to add endpoint
+      const response = await fetch(`${BASE_URL}/tinyurl/${entry.name}/add`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: username,
+          data: data
+        })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Successfully added to league:', result);
+        // Mark entry as submitted
+        setSubmittedEntries(prev => new Set(prev).add(entry.name));
+        // Close confirmation modal if it was open
+        setShowConfirmModal(false);
+        setEntryToOverwrite(null);
+        // Optionally refresh the available tinyURLs list
+        if (userName || settings.userName) {
+          fetchAvailableTinyUrls(userName || settings.userName);
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Error adding to league:', errorData);
+        alert(`Failed to add lineup: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error adding to league:', error);
+      alert(`Error adding lineup: ${error.message}`);
+    }
+  };
+
+  const handleConfirmCancel = () => {
+    setShowConfirmModal(false);
+    setEntryToOverwrite(null);
+  };
+
+  const loadLineupFromCode = (lineupCode) => {
     try {
       // Clear current roster
       setRoster({
@@ -327,13 +602,13 @@ function DFS({ userName }) {
 
       // Parse the lineup code - handle both formats
       let encoded;
-      if (loadLineupCode.includes(':')) {
+      if (lineupCode.includes(':')) {
         // Format: username:encodedData
-        const [, encodedData] = loadLineupCode.split(':');
+        const [, encodedData] = lineupCode.split(':');
         encoded = encodedData;
       } else {
         // Format: just encodedData (no username)
-        encoded = loadLineupCode;
+        encoded = lineupCode;
       }
 
       if (!encoded) {
@@ -370,6 +645,14 @@ function DFS({ userName }) {
     } catch (error) {
       alert('Error loading lineup: ' + error.message);
     }
+  };
+
+  const handleLoadLineup = () => {
+    loadLineupFromCode(loadLineupCode);
+  };
+
+  const handleLoadLineupFromList = (lineup) => {
+    loadLineupFromCode(lineup.lineupCode);
   };
 
   const getSortIcon = (key) => {
@@ -919,6 +1202,32 @@ function DFS({ userName }) {
                 </svg>
               </button>
             </div>
+            
+            <div className="add-to-league-section">
+              <h3 className="add-to-league-title">Add team to league</h3>
+              {loadingTinyUrls ? (
+                <p className="add-to-league-message">Loading available leagues...</p>
+              ) : availableTinyUrls.length === 0 ? (
+                <p className="add-to-league-message">No available leagues</p>
+              ) : (
+                <div className="add-to-league-buttons">
+                  {availableTinyUrls.map((entry) => {
+                    const isSubmitted = submittedEntries.has(entry.name);
+                    
+                    return (
+                      <button
+                        key={entry.name}
+                        onClick={() => !isSubmitted && handleAddToLeague(entry)}
+                        disabled={isSubmitted}
+                        className={`add-to-league-btn ${entry.has_data ? 'has-data' : 'no-data'} ${isSubmitted ? 'submitted' : ''}`}
+                      >
+                        {isSubmitted ? 'Lineup submitted' : `${entry.name} ${entry.week ? `(Week ${entry.week})` : ''}`}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -931,21 +1240,42 @@ function DFS({ userName }) {
             </button>
             <h2>Load Lineup</h2>
             <div className="load-lineup-container">
-              <p>Enter your lineup code to load players:</p>
-              <textarea
-                className="lineup-code-input"
-                value={loadLineupCode}
-                onChange={(e) => setLoadLineupCode(e.target.value)}
-                placeholder="Paste your lineup code here (e.g., Username:MTktNTQwMCw4MTM2LTY0MDAs...)"
-                rows={3}
-              />
-              <div className="load-lineup-buttons">
-                <button className="load-btn" onClick={handleLoadLineup}>
-                  Load Lineup
-                </button>
-                <button className="cancel-btn" onClick={() => setShowLoadModal(false)}>
-                  Cancel
-                </button>
+              {loadableLineups.length > 0 && (
+                <div className="load-lineup-list-section">
+                  <h3 className="add-to-league-title">Load from your leagues</h3>
+                  <div className="add-to-league-buttons">
+                    {loadableLineups.map((lineup) => (
+                      <button
+                        key={lineup.entryName}
+                        onClick={() => handleLoadLineupFromList(lineup)}
+                        className="add-to-league-btn no-data"
+                      >
+                        {lineup.entryName} {lineup.week && `(Week ${lineup.week})`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {loadingLoadableLineups && (
+                <p className="add-to-league-message">Loading your lineups...</p>
+              )}
+              <div style={{ marginTop: loadableLineups.length > 0 ? '20px' : '0' }}>
+                <p>Or enter your lineup code to load players:</p>
+                <textarea
+                  className="lineup-code-input"
+                  value={loadLineupCode}
+                  onChange={(e) => setLoadLineupCode(e.target.value)}
+                  placeholder="Paste your lineup code here (e.g., Username:MTktNTQwMCw4MTM2LTY0MDAs...)"
+                  rows={3}
+                />
+                <div className="load-lineup-buttons">
+                  <button className="load-btn" onClick={handleLoadLineup} disabled={!loadLineupCode.trim()}>
+                    Load Lineup
+                  </button>
+                  <button className="cancel-btn" onClick={() => setShowLoadModal(false)}>
+                    Cancel
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -979,6 +1309,37 @@ function DFS({ userName }) {
                   Continue
                 </button>
                 <button className="cancel-btn" onClick={() => setShowUsernameModal(false)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showConfirmModal && entryToOverwrite && (
+        <div className="modal-overlay" onClick={handleConfirmCancel}>
+          <div className="lineup-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close-btn" onClick={handleConfirmCancel}>
+              ×
+            </button>
+            <h2>Confirm Overwrite</h2>
+            <div className="load-lineup-container">
+              <p>Are you sure you want to overwrite the existing data for "{entryToOverwrite.name}"?</p>
+              {entryToOverwrite.week && (
+                <p style={{ color: '#6c757d', fontSize: '14px', marginTop: '8px' }}>
+                  Week {entryToOverwrite.week}
+                </p>
+              )}
+              <div className="load-lineup-buttons">
+                <button 
+                  className="load-btn" 
+                  onClick={() => proceedWithAddToLeague(entryToOverwrite)}
+                  style={{ backgroundColor: '#dc3545' }}
+                >
+                  Proceed
+                </button>
+                <button className="cancel-btn" onClick={handleConfirmCancel}>
                   Cancel
                 </button>
               </div>

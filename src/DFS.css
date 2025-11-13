@@ -643,6 +643,86 @@ body.dark .salary-limit {
   transform: scale(0.95);
 }
 
+.add-to-league-section {
+  margin-top: 24px;
+  border-top: 1px solid #dee2e6;
+  padding-top: 24px;
+}
+
+.add-to-league-title {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #2c3e50;
+  font-family: inherit;
+}
+
+.add-to-league-message {
+  color: #6c757d;
+  font-size: 14px;
+  margin: 0;
+}
+
+.load-lineup-list-section {
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.add-to-league-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.add-to-league-btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #fff;
+  text-align: center;
+  font-family: inherit;
+  white-space: nowrap;
+  width: fit-content;
+  min-width: fit-content;
+}
+
+.add-to-league-btn.has-data {
+  background-color: #ffc107;
+}
+
+.add-to-league-btn.has-data:hover {
+  background-color: #e0a800;
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.add-to-league-btn.no-data {
+  background-color: #28a745;
+}
+
+.add-to-league-btn.no-data:hover {
+  background-color: #218838;
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.add-to-league-btn.submitted {
+  background-color: #6c757d !important;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.add-to-league-btn.submitted:hover {
+  background-color: #6c757d !important;
+  opacity: 0.7;
+  transform: none;
+}
+
 .dfs-content {
   background: #fff;
   border-radius: 12px;
@@ -1027,6 +1107,18 @@ body.dark .copy-btn {
 
 body.dark .copy-btn:hover {
   background: #4a9eff;
+}
+
+body.dark .add-to-league-section {
+  border-top-color: #4a5568;
+}
+
+body.dark .add-to-league-title {
+  color: #ecf0f1;
+}
+
+body.dark .add-to-league-message {
+  color: #adb5bd;
 }
 
 body.dark .dfs-content {

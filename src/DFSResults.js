@@ -4,7 +4,7 @@ import LZString from 'lz-string';
 import './DFSResults.css';
 
 // Add a mock flag
-const mock = false; // Set to true for mock data, false for production
+const mock = true; // Set to true for mock data, false for production
 
 // Define the base URL based on the mock flag
 const BASE_URL = mock
@@ -107,8 +107,21 @@ function DFSResults() {
   const [creatingTinyUrl, setCreatingTinyUrl] = useState(false);
   const [tinyUrlError, setTinyUrlError] = useState('');
   const [tinyUrlCount, setTinyUrlCount] = useState(null);
+  const [emptyTinyUrlName, setEmptyTinyUrlName] = useState('');
+  const [emptyTinyUrlUsernames, setEmptyTinyUrlUsernames] = useState('');
+  const [emptyTinyUrlRevealDate, setEmptyTinyUrlRevealDate] = useState('');
+  const [emptyTinyUrlRevealTime, setEmptyTinyUrlRevealTime] = useState('');
+  const [emptyTinyUrl, setEmptyTinyUrl] = useState('');
+  const [creatingEmptyTinyUrl, setCreatingEmptyTinyUrl] = useState(false);
+  const [emptyTinyUrlError, setEmptyTinyUrlError] = useState('');
   const [showUpdatingIndicator, setShowUpdatingIndicator] = useState(false);
   const [lastUpdateTime, setLastUpdateTime] = useState(null);
+  const [revealTime, setRevealTime] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [submissionStatus, setSubmissionStatus] = useState({});
+  const [allowedNames, setAllowedNames] = useState([]);
+  const [userLeagues, setUserLeagues] = useState([]);
+  const [loadingUserLeagues, setLoadingUserLeagues] = useState(false);
 
   const lineupRefs = useRef({});
   const previousPositionsRef = useRef({});
@@ -174,11 +187,28 @@ function DFSResults() {
       
       // Decode each lineup code and extract the raw data
       const decodedLineups = lines.map(line => {
-        const [username, encoded] = line.split(':');
+        const colonIndex = line.indexOf(':');
+        let username, encoded;
+        
+        if (colonIndex === -1) {
+          // No colon - treat entire line as username with no data
+          username = line.trim();
+          encoded = '';
+        } else {
+          // Has colon - split at first colon
+          username = line.substring(0, colonIndex).trim();
+          encoded = line.substring(colonIndex + 1).trim();
+        }
+        
+        // If no encoded data, skip this lineup (don't include in combined string)
+        if (!encoded || encoded.length === 0) {
+          return null;
+        }
+        
         // Decode the base64 to get the raw player data
         const decoded = atob(encoded);
         return `${username}:${decoded}`;
-      });
+      }).filter(lineup => lineup !== null); // Remove null entries (lines without data)
       
       // Join all decoded lineups
       const combined = decodedLineups.join('|');
@@ -390,6 +420,60 @@ function DFSResults() {
     }
   }, []);
 
+  const fetchUserLeagues = useCallback(async () => {
+    const settings = JSON.parse(localStorage.getItem('FantasyHelperSettings') || '{}');
+    // Check both username (from Settings) and userName (from DFS)
+    const username = settings.username || settings.userName;
+    
+    console.log('fetchUserLeagues called, username:', username, 'settings:', settings);
+    
+    if (!username || username.trim() === '' || username === 'Anonymous') {
+      console.log('fetchUserLeagues: No valid username, skipping fetch');
+      setUserLeagues([]);
+      return;
+    }
+
+    console.log('fetchUserLeagues: Fetching leagues for username:', username);
+    setLoadingUserLeagues(true);
+    try {
+      const response = await fetch(`${BASE_URL}/tinyurl/${username}/available`);
+      if (response.ok) {
+        const data = await response.json();
+        const entryNames = Array.isArray(data.entries) 
+          ? data.entries.map(entry => typeof entry === 'string' ? entry : entry.name || entry)
+          : [];
+        
+        // Fetch details for each entry to get week information
+        const leaguePromises = entryNames.map(async (entryName) => {
+          try {
+            const detailResponse = await fetch(`${BASE_URL}/tinyurl/${entryName}/details`);
+            if (detailResponse.ok) {
+              const detailData = await detailResponse.json();
+              return {
+                name: entryName,
+                week: detailData.week || null
+              };
+            }
+            return { name: entryName, week: null };
+          } catch (error) {
+            console.error(`Error fetching details for ${entryName}:`, error);
+            return { name: entryName, week: null };
+          }
+        });
+        
+        const leagues = (await Promise.all(leaguePromises)).filter(Boolean);
+        setUserLeagues(leagues);
+      } else {
+        setUserLeagues([]);
+      }
+    } catch (error) {
+      console.error('Error fetching user leagues:', error);
+      setUserLeagues([]);
+    } finally {
+      setLoadingUserLeagues(false);
+    }
+  }, []);
+
   const handleCreateTinyUrl = async () => {
     if (!tinyUrlName || tinyUrlName.trim() === '') {
       setTinyUrlError('Please enter a name');
@@ -401,16 +485,13 @@ function DFSResults() {
       return;
     }
 
-    // Get the hash data from the current URL or construct it from compressedData
-    let hashData = window.location.hash.substring(1);
-    
-    // If no hash in URL, construct it from compressedData and selectedWeek
-    if (!hashData && compressedData && selectedWeek) {
-      hashData = `${selectedWeek}|${compressedData}`;
+    if (!selectedWeek) {
+      setTinyUrlError('Please select a week');
+      return;
     }
-    
-    if (!hashData) {
-      setTinyUrlError('No data available to create tinyURL');
+
+    if (!inputData || inputData.trim() === '') {
+      setTinyUrlError('Please paste lineup data first');
       return;
     }
 
@@ -418,15 +499,80 @@ function DFSResults() {
     setTinyUrlError('');
 
     try {
+      // Parse input data to extract usernames and their lineup codes
+      const lines = inputData.trim().split('\n').filter(line => line.trim());
+      const entries = [];
+      const usernames = [];
+
+      for (const line of lines) {
+        const colonIndex = line.indexOf(':');
+        let username, encoded;
+        
+        if (colonIndex === -1) {
+          // No colon - treat entire line as username with no data
+          username = line.trim();
+          encoded = '';
+        } else {
+          // Has colon - split at first colon
+          username = line.substring(0, colonIndex).trim();
+          encoded = line.substring(colonIndex + 1).trim();
+        }
+        
+        if (!username) continue; // Skip empty usernames
+        
+        usernames.push(username);
+        
+        if (encoded && encoded.length > 0) {
+          // User has lineup data - compress it
+          try {
+            // Decode base64 to get the raw player data
+            const decoded = atob(encoded);
+            
+            // Compress using LZString (same as handleProceed does)
+            const compressed = LZString.compressToEncodedURIComponent(decoded);
+            
+            // Format as week|compressedData
+            const hashData = `${selectedWeek}|${compressed}`;
+            
+            entries.push({
+              name: username,
+              data: hashData
+            });
+          } catch (error) {
+            console.error(`Error processing lineup for ${username}:`, error);
+            // If decoding fails, treat as empty
+            entries.push({
+              name: username,
+              data: null
+            });
+          }
+        } else {
+          // User has no lineup data - include them with null data
+          entries.push({
+            name: username,
+            data: null
+          });
+        }
+      }
+
+      if (entries.length === 0) {
+        setTinyUrlError('No valid entries found');
+        setCreatingTinyUrl(false);
+        return;
+      }
+
+      const requestBody = {
+        name: tinyUrlName.trim(),
+        entries: entries,
+        week: selectedWeek
+      };
+
       const response = await fetch(`${BASE_URL}/tinyurl/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          name: tinyUrlName.trim(),
-          data: hashData
-        })
+        body: JSON.stringify(requestBody)
       });
 
       const result = await response.json();
@@ -460,6 +606,199 @@ function DFSResults() {
     }
   };
 
+  const handleCreateEmptyTinyUrl = async () => {
+    if (!emptyTinyUrlName || emptyTinyUrlName.trim() === '') {
+      setEmptyTinyUrlError('Please enter a name');
+      return;
+    }
+
+    if (emptyTinyUrlName.length > 20) {
+      setEmptyTinyUrlError('Name must be 20 characters or less');
+      return;
+    }
+
+    if (!emptyTinyUrlUsernames || emptyTinyUrlUsernames.trim() === '') {
+      setEmptyTinyUrlError('Please enter at least one username');
+      return;
+    }
+
+    // Parse usernames from newline-separated input
+    const usernames = emptyTinyUrlUsernames
+      .split('\n')
+      .map(name => name.trim())
+      .filter(name => name.length > 0);
+
+    if (usernames.length === 0) {
+      setEmptyTinyUrlError('Please enter at least one valid username');
+      return;
+    }
+
+    // Check for duplicate usernames (case-insensitive)
+    const usernamesLower = usernames.map(name => name.toLowerCase());
+    const uniqueUsernames = new Set(usernamesLower);
+    if (usernamesLower.length !== uniqueUsernames.size) {
+      // Find the duplicate usernames
+      const duplicates = usernames.filter((name, index) => 
+        usernamesLower.indexOf(name.toLowerCase()) !== index
+      );
+      setEmptyTinyUrlError(`Duplicate usernames found: ${duplicates.join(', ')}`);
+      return;
+    }
+
+    if (!selectedWeek) {
+      setEmptyTinyUrlError('Please select a week');
+      return;
+    }
+
+    // Combine date and time into ISO 8601 format if both are provided
+    let reveal = null;
+    if (emptyTinyUrlRevealDate && emptyTinyUrlRevealTime) {
+      try {
+        // Combine date and time, then convert to ISO string
+        const dateTimeString = `${emptyTinyUrlRevealDate}T${emptyTinyUrlRevealTime}:00`;
+        const dateTime = new Date(dateTimeString);
+        if (isNaN(dateTime.getTime())) {
+          setEmptyTinyUrlError('Invalid date or time format');
+          return;
+        }
+        reveal = dateTime.toISOString();
+      } catch (error) {
+        setEmptyTinyUrlError('Invalid date or time format');
+        return;
+      }
+    } else if (emptyTinyUrlRevealDate || emptyTinyUrlRevealTime) {
+      // If only one is provided, show error
+      setEmptyTinyUrlError('Please provide both date and time, or leave both empty');
+      return;
+    }
+
+    setCreatingEmptyTinyUrl(true);
+    setEmptyTinyUrlError('');
+
+    try {
+      const requestBody = {
+        name: emptyTinyUrlName.trim(),
+        names: usernames,
+        week: selectedWeek
+      };
+
+      // Add reveal if provided
+      if (reveal) {
+        requestBody.reveal = reveal;
+      }
+
+      const response = await fetch(`${BASE_URL}/tinyurl/create/empty`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        // Generate the tinyURL
+        const baseUrl = window.location.origin + window.location.pathname;
+        const tinyUrlPath = `/tinyurl/${result.name}`;
+        const createdUrl = `${baseUrl}${tinyUrlPath}`;
+        
+        setEmptyTinyUrl(createdUrl);
+        setEmptyTinyUrlName(''); // Clear the input
+        setEmptyTinyUrlUsernames(''); // Clear the usernames
+        setEmptyTinyUrlRevealDate(''); // Clear the date
+        setEmptyTinyUrlRevealTime(''); // Clear the time
+        
+        // Refresh the count after successful creation
+        fetchTinyUrlCount();
+      } else {
+        // Handle errors
+        if (response.status === 400) {
+          setEmptyTinyUrlError(result.message || 'Invalid request. Please check your input.');
+        } else if (response.status === 500) {
+          setEmptyTinyUrlError('Server error. Please try again later.');
+        } else {
+          setEmptyTinyUrlError(result.message || 'Failed to create empty tinyURL');
+        }
+      }
+    } catch (error) {
+      console.error('Error creating empty tinyURL:', error);
+      setEmptyTinyUrlError('Network error. Please try again.');
+    } finally {
+      setCreatingEmptyTinyUrl(false);
+    }
+  };
+
+  const copyEmptyTinyUrl = () => {
+    navigator.clipboard.writeText(emptyTinyUrl).then(() => {
+      console.log('Empty TinyURL copied to clipboard!');
+    });
+  };
+
+  // Helper function to check for duplicate usernames
+  const hasDuplicateUsernames = (usernamesText) => {
+    if (!usernamesText || usernamesText.trim() === '') {
+      return false;
+    }
+    const usernames = usernamesText
+      .split('\n')
+      .map(name => name.trim())
+      .filter(name => name.length > 0);
+    const usernamesLower = usernames.map(name => name.toLowerCase());
+    const uniqueUsernames = new Set(usernamesLower);
+    return usernamesLower.length !== uniqueUsernames.size;
+  };
+
+  // Helper function to count valid usernames
+  const countUsernames = (usernamesText) => {
+    if (!usernamesText || usernamesText.trim() === '') {
+      return 0;
+    }
+    const usernames = usernamesText
+      .split('\n')
+      .map(name => name.trim())
+      .filter(name => name.length > 0);
+    return usernames.length;
+  };
+
+  // Helper function to get upcoming Sunday at 19:00
+  const getUpcomingSunday = () => {
+    const now = new Date();
+    const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const daysUntilSunday = currentDay === 0 ? 7 : (7 - currentDay); // If today is Sunday, get next Sunday
+    const upcomingSunday = new Date(now);
+    upcomingSunday.setDate(now.getDate() + daysUntilSunday);
+    upcomingSunday.setHours(19, 0, 0, 0);
+    
+    // Format date as YYYY-MM-DD
+    const year = upcomingSunday.getFullYear();
+    const month = String(upcomingSunday.getMonth() + 1).padStart(2, '0');
+    const day = String(upcomingSunday.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    
+    // Format time as HH:MM
+    const timeStr = '19:00';
+    
+    return { date: dateStr, time: timeStr };
+  };
+
+  // Set default reveal time to upcoming Sunday at 19:00
+  useEffect(() => {
+    if (!emptyTinyUrlRevealDate && !emptyTinyUrlRevealTime) {
+      const { date, time } = getUpcomingSunday();
+      setEmptyTinyUrlRevealDate(date);
+      setEmptyTinyUrlRevealTime(time);
+    }
+  }, [emptyTinyUrlRevealDate, emptyTinyUrlRevealTime]); // Set defaults only when both are empty
+
+  // Check for admin query parameter
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const adminMode = urlParams.has('admin');
+    setIsAdmin(adminMode);
+    console.log('Admin mode:', adminMode, 'URL:', window.location.href);
+  }, []);
+
   // Load data from tinyURL if name parameter exists
   useEffect(() => {
     let weekSetFromUrl = false; // Track if week was set from URL/tinyURL
@@ -468,66 +807,111 @@ function DFSResults() {
       const fetchTinyUrlData = async () => {
         setLoadingTinyUrl(true);
         try {
-          const response = await fetch(`${BASE_URL}/tinyurl/${tinyUrlNameParam}`);
+          // Use /data endpoint to get full entry data including reveal time
+          const response = await fetch(`${BASE_URL}/tinyurl/${tinyUrlNameParam}/data`);
           
           if (response.ok) {
             const result = await response.json();
-            const hashData = result.data;
             
-            // Process the hash data similar to hash URL loading
-            let hash = hashData;
-            
-            // Decode if needed
-            try {
-              hash = decodeURIComponent(hash);
-            } catch (e) {
-              // Hash wasn't encoded, use as-is
+            // Store reveal time if present
+            if (result.reveal) {
+              setRevealTime(new Date(result.reveal));
             }
             
-            // Split week and compressed data
-            const [weekStr, compressedData] = hash.split('|');
-            const urlWeek = parseInt(weekStr);
+            // Get allowed_names and user_submissions from the response
+            const allowedNames = result.allowed_names || [];
+            const userSubmissions = result.user_submissions || {};
             
-            // Set the week from URL
-            if (urlWeek && !isNaN(urlWeek)) {
-              setSelectedWeek(urlWeek);
-              weekSetFromUrl = true;
+            // Set allowed names
+            if (allowedNames.length > 0) {
+              setAllowedNames(allowedNames);
             }
             
-            // Decompress the data
-            let decompressed = LZString.decompressFromEncodedURIComponent(compressedData);
+            // Build submission status map
+            const statusMap = {};
+            allowedNames.forEach(username => {
+              // Check if user has a submission (case-insensitive)
+              const submissionKey = Object.keys(userSubmissions).find(
+                key => key.toLowerCase() === username.toLowerCase()
+              );
+              statusMap[username] = submissionKey ? true : false;
+            });
+            setSubmissionStatus(statusMap);
             
-            if (!decompressed) {
-              decompressed = LZString.decompressFromBase64(compressedData);
-            }
+            // Process each user's submission data
+            const formattedLineups = [];
+            const decompressedLineups = [];
             
-            if (!decompressed) {
-              decompressed = LZString.decompressFromUTF16(compressedData);
-            }
-            
-            if (decompressed) {
-              // Split back into individual lineups
-              const lineups = decompressed.split('|');
+            allowedNames.forEach(username => {
+              // Find the submission for this user (case-insensitive)
+              const submissionKey = Object.keys(userSubmissions).find(
+                key => key.toLowerCase() === username.toLowerCase()
+              );
               
-              // Re-encode each lineup to base64 format for inputData
-              const formattedLineups = lineups.map(lineup => {
-                const [username, rawData] = lineup.split(':');
-                const encoded = btoa(rawData);
-                return `${username}:${encoded}`;
-              });
-              
+              if (submissionKey && userSubmissions[submissionKey] && userSubmissions[submissionKey].data) {
+                const submission = userSubmissions[submissionKey];
+                const compressedData = submission.data; // Format: "week|compressedData"
+                
+                // Parse the compressed data
+                const [weekStr, compressed] = compressedData.split('|');
+                const urlWeek = parseInt(weekStr);
+                
+                // Set the week from first submission (or use result.week if available)
+                if (urlWeek && !isNaN(urlWeek) && !weekSetFromUrl) {
+                  setSelectedWeek(urlWeek);
+                  weekSetFromUrl = true;
+                } else if (result.week && !weekSetFromUrl) {
+                  setSelectedWeek(result.week);
+                  weekSetFromUrl = true;
+                }
+                
+                // Decompress the data
+                let decompressed = LZString.decompressFromEncodedURIComponent(compressed);
+                
+                if (!decompressed) {
+                  decompressed = LZString.decompressFromBase64(compressed);
+                }
+                
+                if (!decompressed) {
+                  decompressed = LZString.decompressFromUTF16(compressed);
+                }
+                
+                if (decompressed) {
+                  // The decompressed data should be in format "username:decodedData"
+                  const colonIndex = decompressed.indexOf(':');
+                  if (colonIndex !== -1) {
+                    const rawData = decompressed.substring(colonIndex + 1);
+                    const encoded = btoa(rawData);
+                    formattedLineups.push(`${username}:${encoded}`);
+                    decompressedLineups.push(decompressed);
+                  } else {
+                    // If no colon, the entire decompressed string is the data
+                    const encoded = btoa(decompressed);
+                    formattedLineups.push(`${username}:${encoded}`);
+                    decompressedLineups.push(`${username}:${decompressed}`);
+                  }
+                }
+              } else {
+                // User has no submission data
+                formattedLineups.push(`${username}:`);
+              }
+            });
+            
+            if (formattedLineups.length > 0) {
               setInputData(formattedLineups.join('\n'));
               setLoadedFromUrl(true);
               
-              // Auto-process the data
-              const combined = decompressed;
-              const compressed = LZString.compressToEncodedURIComponent(combined);
-              setCompressedData(compressed);
+              // Auto-process the data - combine all decompressed lineups
+              if (decompressedLineups.length > 0) {
+                const combined = decompressedLineups.join('|');
+                const compressed = LZString.compressToEncodedURIComponent(combined);
+                setCompressedData(compressed);
+              }
               
               setShareableUrl('');
             } else {
-              console.error('Failed to decompress data from tinyURL');
-              setInputData('ERROR: Failed to load data from tinyURL. The data may be corrupted.');
+              console.error('No valid submissions found in tinyURL');
+              setInputData('ERROR: No valid data found in tinyURL.');
             }
           } else if (response.status === 404) {
             setInputData(`ERROR: TinyURL "${tinyUrlNameParam}" not found.`);
@@ -716,6 +1100,18 @@ function DFSResults() {
     }
   }, [tinyUrlNameParam]);
 
+  // Fetch user leagues on component mount
+  useEffect(() => {
+    console.log('useEffect for fetchUserLeagues: tinyUrlNameParam =', tinyUrlNameParam);
+    // Only fetch if we're not loading from a tinyURL
+    if (!tinyUrlNameParam) {
+      console.log('useEffect: Calling fetchUserLeagues');
+      fetchUserLeagues();
+    } else {
+      console.log('useEffect: Skipping fetchUserLeagues because tinyUrlNameParam exists');
+    }
+  }, [tinyUrlNameParam, fetchUserLeagues]);
+
   // Auto-fetch data when loaded from URL and selectedWeek is available
   useEffect(() => {
     if (loadedFromUrl && selectedWeek && compressedData) {
@@ -854,19 +1250,37 @@ function DFSResults() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadedFromUrl, selectedWeek, compressedData]);
 
-  // Fetch tinyURL count when section is visible
+  // Fetch tinyURL count when section is visible (on first page or second page)
   useEffect(() => {
-    if (compressedData && inputData && !loadedFromUrl) {
+    if (!loadedFromUrl) {
       fetchTinyUrlCount();
     }
-  }, [compressedData, inputData, loadedFromUrl, fetchTinyUrlCount]);
+  }, [loadedFromUrl, fetchTinyUrlCount]);
 
   const parseLineups = useCallback(() => {
     try {
       const lines = inputData.trim().split('\n').filter(line => line.trim());
       
       return lines.map(line => {
-        const [username, encoded] = line.split(':');
+        const colonIndex = line.indexOf(':');
+        let username, encoded;
+        
+        if (colonIndex === -1) {
+          // No colon - treat entire line as username with no data
+          username = line.trim();
+          encoded = '';
+        } else {
+          // Has colon - split at first colon
+          username = line.substring(0, colonIndex).trim();
+          encoded = line.substring(colonIndex + 1).trim();
+        }
+        
+        // If no encoded data, return empty lineup
+        if (!encoded || encoded.length === 0) {
+          return { username, players: [] };
+        }
+        
+        // Decode and parse the lineup data
         const decoded = atob(encoded);
         const playerPairs = decoded.split(',');
         
@@ -905,6 +1319,14 @@ function DFSResults() {
     });
     return dstIds;
   }, [dfsSalaryData, playerMetadata, selectedWeek]);
+
+  // Check if we should show placeholder data (before reveal time and not admin)
+  const shouldShowPlaceholder = useCallback(() => {
+    if (!revealTime) return false; // No reveal time set, show real data
+    if (isAdmin) return false; // Admin override, show real data
+    const now = new Date();
+    return now < revealTime; // Before reveal time, show placeholder
+  }, [revealTime, isAdmin]);
 
   const getFantasyPointsDisplay = useCallback((sleeperId) => {
     const playerInfo = fantasyPoints[sleeperId];
@@ -1181,6 +1603,46 @@ function DFSResults() {
       }))
       .sort((a, b) => b.totalPoints - a.totalPoints);
   }, [parseLineups, calculateTotalPoints, generateLineupKey]);
+
+  // Merge allowed_names with existing lineups to show all managers
+  const displayLineups = useMemo(() => {
+    // If we have allowed_names, always merge them with existing lineups
+    if (allowedNames.length === 0) {
+      return sortedLineups;
+    }
+
+    // Create a map of existing lineups by username
+    const lineupMap = new Map();
+    sortedLineups.forEach(lineup => {
+      lineupMap.set(lineup.username, lineup);
+    });
+
+    // Create entries for all allowed_names
+    const allLineups = allowedNames.map(username => {
+      if (lineupMap.has(username)) {
+        return lineupMap.get(username);
+      } else {
+        // Create empty lineup for managers who haven't submitted
+        return {
+          username,
+          players: [],
+          key: `placeholder-${username}`,
+          totalPoints: 0,
+          originalIndex: -1
+        };
+      }
+    });
+
+    // Sort by total points (empty lineups will be at the bottom)
+    const sorted = allLineups.sort((a, b) => b.totalPoints - a.totalPoints);
+    console.log('Display lineups:', {
+      allowedNamesCount: allowedNames.length,
+      sortedLineupsCount: sortedLineups.length,
+      displayLineupsCount: sorted.length,
+      emptyLineups: sorted.filter(l => l.players.length === 0).map(l => l.username)
+    });
+    return sorted;
+  }, [sortedLineups, allowedNames]);
 
   useLayoutEffect(() => {
     if (loadingPoints || sortedLineups.length === 0) {
@@ -1674,18 +2136,26 @@ function DFSResults() {
         <div className="dfs-results-content">
           {!compressedData && (
             <>
-            <div className="input-section">
-              <label htmlFor="lineup-data">Paste Lineup Data:</label>
-              <textarea
-                id="lineup-data"
-                className="lineup-input"
-                placeholder={'Paste lineup codes here (one per line)\nExample:\ncarnade:MTE1NTktNDgwMC...\ncarnade2:MTE1NjAtNTgwMC...'}
-                value={inputData}
-                onChange={(e) => setInputData(e.target.value)}
-                rows={10}
-              />
-            </div>
-
+            {userLeagues.length > 0 && (
+              <div className="user-leagues-section">
+                <h3 className="user-leagues-title">Your Leagues</h3>
+                {loadingUserLeagues ? (
+                  <p className="user-leagues-message">Loading leagues...</p>
+                ) : (
+                  <div className="user-leagues-buttons">
+                    {userLeagues.map((league) => (
+                      <button
+                        key={league.name}
+                        onClick={() => navigate(`/dfs/results/tinyurl/${league.name}`)}
+                        className="user-league-btn"
+                      >
+                        {league.name} {league.week && `(Week ${league.week})`}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             {currentWeek && (
               <div className="week-toggle-section">
                 <label>Select Week:</label>
@@ -1706,9 +2176,150 @@ function DFSResults() {
               </div>
             )}
 
-            <button className="proceed-button" onClick={handleProceed}>
-              Proceed
-            </button>
+            <div className="input-section">
+              <label htmlFor="lineup-data">Paste Lineup Data:</label>
+              <textarea
+                id="lineup-data"
+                className="lineup-input"
+                placeholder={'Paste lineup codes here (one per line)\nExample:\ncarnade:MTE1NTktNDgwMC...\ncarnade2:MTE1NjAtNTgwMC...'}
+                value={inputData}
+                onChange={(e) => setInputData(e.target.value)}
+                rows={7}
+              />
+              <button className="proceed-button" onClick={handleProceed} style={{ marginTop: '16px' }}>
+                Proceed
+              </button>
+            </div>
+
+            <div className="tinyurl-section">
+              <h3>
+                Create correction link with authorized usernames
+                {tinyUrlCount && (
+                  <span className="tinyurl-count">
+                    ({tinyUrlCount.count} of {tinyUrlCount.max_entries} used)
+                  </span>
+                )}
+              </h3>
+              <div className="tinyurl-input-container">
+                <input
+                  type="text"
+                  value={emptyTinyUrlName}
+                  onChange={(e) => {
+                    const value = e.target.value.slice(0, 20); // Limit to 20 characters
+                    setEmptyTinyUrlName(value);
+                    setEmptyTinyUrlError(''); // Clear error on input change
+                  }}
+                  placeholder="Enter name (max 20 chars)"
+                  className="tinyurl-input"
+                  maxLength={20}
+                  disabled={creatingEmptyTinyUrl}
+                />
+              </div>
+              <div className="tinyurl-input-container" style={{ marginTop: '12px' }}>
+                <textarea
+                  value={emptyTinyUrlUsernames}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setEmptyTinyUrlUsernames(value);
+                    // Check for duplicates in real-time
+                    if (hasDuplicateUsernames(value)) {
+                      const usernames = value
+                        .split('\n')
+                        .map(name => name.trim())
+                        .filter(name => name.length > 0);
+                      const usernamesLower = usernames.map(name => name.toLowerCase());
+                      const duplicates = usernames.filter((name, index) => 
+                        usernamesLower.indexOf(name.toLowerCase()) !== index
+                      );
+                      setEmptyTinyUrlError(`Duplicate usernames found: ${duplicates.join(', ')}`);
+                    } else {
+                      setEmptyTinyUrlError(''); // Clear error if no duplicates
+                    }
+                  }}
+                  placeholder="Enter usernames (one per line)"
+                  className="tinyurl-textarea"
+                  rows={7}
+                  disabled={creatingEmptyTinyUrl}
+                />
+              </div>
+              <div style={{ marginTop: '12px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <label style={{ fontSize: '0.9rem', color: 'inherit', whiteSpace: 'nowrap' }}>
+                  Reveal (optional):
+                </label>
+                <input
+                  type="date"
+                  value={emptyTinyUrlRevealDate}
+                  onChange={(e) => {
+                    setEmptyTinyUrlRevealDate(e.target.value);
+                    setEmptyTinyUrlError(''); // Clear error on input change
+                  }}
+                  className="tinyurl-input"
+                  style={{ flex: '1', maxWidth: '200px' }}
+                  disabled={creatingEmptyTinyUrl}
+                />
+                <input
+                  type="time"
+                  value={emptyTinyUrlRevealTime}
+                  onChange={(e) => {
+                    setEmptyTinyUrlRevealTime(e.target.value);
+                    setEmptyTinyUrlError(''); // Clear error on input change
+                  }}
+                  className="tinyurl-input"
+                  style={{ flex: '1', maxWidth: '150px' }}
+                  disabled={creatingEmptyTinyUrl}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmptyTinyUrlRevealDate('');
+                    setEmptyTinyUrlRevealTime('');
+                    setEmptyTinyUrlError('');
+                  }}
+                  className="clear-reveal-btn"
+                  disabled={creatingEmptyTinyUrl}
+                  title="Clear reveal date and time"
+                >
+                  Clear
+                </button>
+              </div>
+              <div className="tinyurl-input-container" style={{ marginTop: '12px', alignItems: 'center' }}>
+                <button 
+                  className="proceed-button" 
+                  onClick={handleCreateEmptyTinyUrl}
+                  disabled={creatingEmptyTinyUrl || !emptyTinyUrlName.trim() || !emptyTinyUrlUsernames.trim() || hasDuplicateUsernames(emptyTinyUrlUsernames) || !selectedWeek}
+                >
+                  {creatingEmptyTinyUrl ? 'Creating...' : 'Proceed'}
+                </button>
+                <span className="username-count-text">
+                  {countUsernames(emptyTinyUrlUsernames)} {countUsernames(emptyTinyUrlUsernames) === 1 ? 'username' : 'usernames'} added
+                </span>
+              </div>
+              {emptyTinyUrlError && (
+                <p className="tinyurl-error">{emptyTinyUrlError}</p>
+              )}
+              {emptyTinyUrl && (
+                <div className="tinyurl-result">
+                  <h4>Empty TinyURL Created:</h4>
+                  <div className="link-container">
+                    <input 
+                      type="text" 
+                      value={emptyTinyUrl} 
+                      readOnly 
+                      className="link-input"
+                    />
+                    <button className="copy-link-btn" onClick={copyEmptyTinyUrl} title="Copy tinyURL">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                      </svg>
+                    </button>
+                  </div>
+                  <p className="link-info" style={{ marginTop: '8px', fontSize: '12px', color: '#666' }}>
+                    Share this link with authorized usernames. They can add their correction data later.
+                  </p>
+                </div>
+              )}
+            </div>
           </>
         )}
 
@@ -1830,9 +2441,11 @@ function DFSResults() {
                 </div>
               </div>
           
-              {sortedLineups.map((lineup, idx) => {
+              {displayLineups.map((lineup, idx) => {
                 const rank = idx + 1;
-                const isVisible = loadedFromUrl ? visibleRanks.has(rank) : true;
+                const isEmpty = lineup.players.length === 0;
+                // Empty lineups should always be visible
+                const isVisible = isEmpty ? true : (loadedFromUrl ? visibleRanks.has(rank) : true);
                 const isGhost = loadedFromUrl && visibleRanks.has(-rank);
                 const lineupKey = lineup.key;
                 
@@ -1891,52 +2504,121 @@ function DFSResults() {
                     <div className={`grid-value rank-value rank-${rank}`}>{rank}</div>
                     <div className="grid-value manager-value">{lineup.username}</div>
                     
-                    {lineup.players.map((player, pIdx) => {
-                      const info = getPlayerInfo(player.sleeperId);
-                      const position = info?.position || 'FLX';
-                      return (() => {
-                        const pointsDisplay = getFantasyPointsDisplay(player.sleeperId);
-                        const isOut = pointsDisplay === 'OUT';
-                        const isNotPlayed = pointsDisplay === 'Not played';
-                        const backgroundColor = isOut 
-                          ? 'rgba(220, 53, 69, 0.8)' 
-                          : isNotPlayed 
-                            ? 'rgb(235, 88, 254, 0.8)' 
-                            : getPositionColor(position);
-                        console.log('Render info', {
-                          lineupUsername: lineup.username,
-                          sleeperId: player.sleeperId,
-                          info,
-                          pointsDisplay,
-                          position,
-                          isOut,
-                          isNotPlayed
-                        });
-                        return (
-                          <div
-                            key={pIdx} 
-                            className="dfs-results-player-card"
-                            style={{ backgroundColor }}
-                          >
-                            <div className="dfs-results-player-card-left">
-                              <div className="dfs-results-player-card-name">{info?.name || 'Unknown'}</div>
-                              <div className="dfs-results-player-card-salary">${player.salary.toLocaleString()}</div>
+                    {(() => {
+                      const showPlaceholder = shouldShowPlaceholder() && !isAdmin; // Explicitly check isAdmin
+                      const playersToShow = lineup.players.length > 0 ? lineup.players : [];
+                      const emptySlots = 9 - playersToShow.length;
+                      
+                      return (
+                        <>
+                          {playersToShow.map((player, pIdx) => {
+                            const info = getPlayerInfo(player.sleeperId);
+                            const position = info?.position || 'FLX';
+                            
+                            if (showPlaceholder) {
+                              // Show placeholder data with grey background
+                              return (
+                                <div
+                                  key={pIdx} 
+                                  className="dfs-results-player-card"
+                                  style={{ backgroundColor: 'rgba(128, 128, 128, 0.3)' }}
+                                >
+                                  <div className="dfs-results-player-card-left">
+                                    <div className="dfs-results-player-card-name">TBD</div>
+                                    <div className="dfs-results-player-card-salary">${player.salary.toLocaleString()}</div>
+                                  </div>
+                                  <div className="dfs-results-player-card-points">
+                                    TBD
+                                  </div>
+                                </div>
+                              );
+                            }
+                            
+                            const pointsDisplay = getFantasyPointsDisplay(player.sleeperId);
+                            const isOut = pointsDisplay === 'OUT';
+                            const isNotPlayed = pointsDisplay === 'Not played';
+                            const backgroundColor = isOut 
+                              ? 'rgba(220, 53, 69, 0.8)' 
+                              : isNotPlayed 
+                                ? 'rgb(235, 88, 254, 0.8)' 
+                                : getPositionColor(position);
+                            console.log('Render info', {
+                              lineupUsername: lineup.username,
+                              sleeperId: player.sleeperId,
+                              info,
+                              pointsDisplay,
+                              position,
+                              isOut,
+                              isNotPlayed
+                            });
+                            return (
+                              <div
+                                key={pIdx} 
+                                className="dfs-results-player-card"
+                                style={{ backgroundColor }}
+                              >
+                                <div className="dfs-results-player-card-left">
+                                  <div className="dfs-results-player-card-name">{info?.name || 'Unknown'}</div>
+                                  <div className="dfs-results-player-card-salary">${player.salary.toLocaleString()}</div>
+                                </div>
+                                <div className={`dfs-results-player-card-points ${pointsDisplay === 'OUT' ? 'out-status' : ''}`}>
+                                  {pointsDisplay}
+                                </div>
+                              </div>
+                            );
+                          })}
+                          {/* Fill empty slots with placeholder cards if needed */}
+                          {emptySlots > 0 && [...Array(emptySlots)].map((_, i) => (
+                            <div
+                              key={`empty-${i}`}
+                              className="dfs-results-player-card"
+                              style={{ backgroundColor: showPlaceholder ? 'rgba(128, 128, 128, 0.3)' : 'rgba(200, 200, 200, 0.2)' }}
+                            >
+                              <div className="dfs-results-player-card-left">
+                                <div className="dfs-results-player-card-name">{showPlaceholder ? 'TBD' : '-'}</div>
+                                <div className="dfs-results-player-card-salary">-</div>
+                              </div>
+                              <div className="dfs-results-player-card-points">
+                                {showPlaceholder ? 'TBD' : '-'}
+                              </div>
                             </div>
-                            <div className={`dfs-results-player-card-points ${pointsDisplay === 'OUT' ? 'out-status' : ''}`}>
-                              {pointsDisplay}
-                            </div>
-                          </div>
-                        );
-                      })();
-                    })}
-                    <div className="total-points-cell">{calculateTotalPoints(lineup.players).toFixed(1)}</div>
+                          ))}
+                        </>
+                      );
+                    })()}
+                    <div 
+                      className="total-points-cell"
+                      style={
+                        shouldShowPlaceholder() && !isAdmin
+                          ? {
+                              backgroundColor: submissionStatus[lineup.username]
+                                ? 'rgba(40, 167, 69, 0.8)' // Green for submitted
+                                : 'rgba(220, 53, 69, 0.8)', // Red for not submitted
+                              color: 'rgba(255, 255, 255, 0.95)',
+                              textAlign: 'center',
+                              fontWeight: '600'
+                            }
+                          : {}
+                      }
+                    >
+                      {shouldShowPlaceholder() && !isAdmin ? (
+                        submissionStatus[lineup.username] ? (
+                          'Submitted'
+                        ) : (
+                          'Not submitted'
+                        )
+                      ) : (
+                        calculateTotalPoints(lineup.players).toFixed(1)
+                      )}
+                    </div>
                   </div>
                 );
               })}
 
-              <div className="stats-section">
-                <h3>Position Statistics</h3>
-                {Object.entries(getStatsData()).map(([position, { chosen, bestChosen, bestNotChosen }]) => (
+              {(!shouldShowPlaceholder() || isAdmin) && (
+                <div className="stats-section">
+                  <h3>Position Statistics</h3>
+                  {Object.entries(getStatsData()).map(([position, { chosen, bestChosen, bestNotChosen }]) => (
                   <div key={position} className="position-stats">
                     <h4>{position}</h4>
                     <div className="stats-table-group">
@@ -2026,7 +2708,8 @@ function DFSResults() {
                     </div>
                   </div>
                 ))}
-              </div>
+                </div>
+              )}
             </>
           )}
         </div>
