@@ -723,6 +723,18 @@ body.dark .salary-limit {
   transform: none;
 }
 
+.add-to-league-btn.disabled {
+  background-color: #6c757d !important;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.add-to-league-btn.disabled:hover {
+  background-color: #6c757d !important;
+  opacity: 0.6;
+  transform: none;
+}
+
 .dfs-content {
   background: #fff;
   border-radius: 12px;
@@ -1119,6 +1131,16 @@ body.dark .add-to-league-title {
 
 body.dark .add-to-league-message {
   color: #adb5bd;
+}
+
+body.dark .add-to-league-btn.disabled {
+  background-color: #4a5568 !important;
+  opacity: 0.5;
+}
+
+body.dark .add-to-league-btn.disabled:hover {
+  background-color: #4a5568 !important;
+  opacity: 0.5;
 }
 
 body.dark .dfs-content {

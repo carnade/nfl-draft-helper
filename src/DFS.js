@@ -401,70 +401,168 @@ function DFS({ userName }) {
         try {
           // Check details to see if user has submitted
           const detailsResponse = await fetch(`${BASE_URL}/tinyurl/${entryName}/details`);
-          if (!detailsResponse.ok) return null;
+          if (!detailsResponse.ok) {
+            // Entry exists but no details - show as unavailable
+            return {
+              entryName,
+              week: null,
+              lineupCode: null,
+              hasData: false,
+              hasSubmitted: false
+            };
+          }
 
           const details = await detailsResponse.json();
           const userSubmission = details.submissions?.[username];
+          const week = details.week || null;
+          const hasSubmitted = userSubmission?.has_submitted || false;
           
-          if (!userSubmission?.has_submitted) {
-            return null; // User hasn't submitted to this entry
+          if (!hasSubmitted) {
+            // User hasn't submitted to this entry - show but greyed out
+            return {
+              entryName,
+              week,
+              lineupCode: null,
+              hasData: false,
+              hasSubmitted: false
+            };
           }
 
           // Fetch the data
           const dataResponse = await fetch(`${BASE_URL}/tinyurl/${entryName}/data`);
-          if (!dataResponse.ok) return null;
+          if (!dataResponse.ok) {
+            return {
+              entryName,
+              week,
+              lineupCode: null,
+              hasData: false,
+              hasSubmitted: hasSubmitted
+            };
+          }
 
           const dataResult = await dataResponse.json();
-          const hashData = dataResult.data;
+          
+          // Check user_submissions for the user's data
+          const userSubmissions = dataResult.user_submissions || {};
+          const submissionKey = Object.keys(userSubmissions).find(
+            key => key.toLowerCase() === username.toLowerCase()
+          );
+          
+          if (submissionKey && userSubmissions[submissionKey]?.data) {
+            // User has data in user_submissions
+            const submission = userSubmissions[submissionKey];
+            const hashData = submission.data;
 
-          // Parse the data to extract user's lineup
-          try {
-            const [weekStr, compressedData] = hashData.split('|');
-            const week = parseInt(weekStr);
+            // Parse the data to extract user's lineup
+            try {
+              const [weekStr, compressedData] = hashData.split('|');
+              const submissionWeek = parseInt(weekStr);
 
-            // Decompress
-            let decompressed = LZString.decompressFromEncodedURIComponent(compressedData);
-            if (!decompressed) {
-              decompressed = LZString.decompressFromBase64(compressedData);
-            }
-            if (!decompressed) {
-              decompressed = LZString.decompressFromUTF16(compressedData);
-            }
-
-            if (decompressed) {
-              // Split into individual lineups
-              const lineups = decompressed.split('|');
-              // Find the user's lineup
-              const userLineup = lineups.find(lineup => {
-                const [lineupUsername] = lineup.split(':');
-                return lineupUsername === username;
-              });
-
-              if (userLineup) {
-                const [lineupUsername, rawData] = userLineup.split(':');
-                const encoded = btoa(rawData);
-                const lineupCode = `${lineupUsername}:${encoded}`;
-
-                return {
-                  entryName,
-                  week,
-                  lineupCode,
-                  updatedAt: userSubmission.updated_at || userSubmission.created_at
-                };
+              // Decompress
+              let decompressed = LZString.decompressFromEncodedURIComponent(compressedData);
+              if (!decompressed) {
+                decompressed = LZString.decompressFromBase64(compressedData);
               }
+              if (!decompressed) {
+                decompressed = LZString.decompressFromUTF16(compressedData);
+              }
+
+              if (decompressed) {
+                // The decompressed data should be in format "username:decodedData"
+                const colonIndex = decompressed.indexOf(':');
+                if (colonIndex !== -1) {
+                  const rawData = decompressed.substring(colonIndex + 1);
+                  const encoded = btoa(rawData);
+                  const lineupCode = `${username}:${encoded}`;
+
+                  return {
+                    entryName,
+                    week: submissionWeek || week,
+                    lineupCode,
+                    updatedAt: submission.updated_at || submission.created_at,
+                    hasData: true,
+                    hasSubmitted: true
+                  };
+                }
+              }
+            } catch (error) {
+              console.error(`Error parsing data for ${entryName}:`, error);
+              return {
+                entryName,
+                week,
+                lineupCode: null,
+                hasData: false,
+                hasSubmitted: hasSubmitted
+              };
             }
-          } catch (error) {
-            console.error(`Error parsing data for ${entryName}:`, error);
-            return null;
           }
+          
+          // Fallback: try old format with main data field
+          const hashData = dataResult.data;
+          if (hashData) {
+            try {
+              const [weekStr, compressedData] = hashData.split('|');
+              const submissionWeek = parseInt(weekStr);
+
+              // Decompress
+              let decompressed = LZString.decompressFromEncodedURIComponent(compressedData);
+              if (!decompressed) {
+                decompressed = LZString.decompressFromBase64(compressedData);
+              }
+              if (!decompressed) {
+                decompressed = LZString.decompressFromUTF16(compressedData);
+              }
+
+              if (decompressed) {
+                // Split into individual lineups
+                const lineups = decompressed.split('|');
+                // Find the user's lineup
+                const userLineup = lineups.find(lineup => {
+                  const [lineupUsername] = lineup.split(':');
+                  return lineupUsername.toLowerCase() === username.toLowerCase();
+                });
+
+                if (userLineup) {
+                  const [lineupUsername, rawData] = userLineup.split(':');
+                  const encoded = btoa(rawData);
+                  const lineupCode = `${lineupUsername}:${encoded}`;
+
+                  return {
+                    entryName,
+                    week: submissionWeek || week,
+                    lineupCode,
+                    updatedAt: userSubmission.updated_at || userSubmission.created_at,
+                    hasData: true,
+                    hasSubmitted: true
+                  };
+                }
+              }
+            } catch (error) {
+              console.error(`Error parsing data for ${entryName}:`, error);
+            }
+          }
+          
+          // No data found
+          return {
+            entryName,
+            week,
+            lineupCode: null,
+            hasData: false,
+            hasSubmitted: hasSubmitted
+          };
         } catch (error) {
           console.error(`Error fetching lineup from ${entryName}:`, error);
-          return null;
+          return {
+            entryName,
+            week: null,
+            lineupCode: null,
+            hasData: false,
+            hasSubmitted: false
+          };
         }
-        return null;
       });
 
-      const lineups = (await Promise.all(lineupPromises)).filter(Boolean);
+      const lineups = (await Promise.all(lineupPromises)).filter(entry => entry !== null);
       setLoadableLineups(lineups);
     } catch (error) {
       console.error('Error fetching loadable lineups:', error);
@@ -652,6 +750,9 @@ function DFS({ userName }) {
   };
 
   const handleLoadLineupFromList = (lineup) => {
+    if (!lineup.hasData || !lineup.lineupCode) {
+      return; // Don't load if there's no data
+    }
     loadLineupFromCode(lineup.lineupCode);
   };
 
@@ -1247,10 +1348,11 @@ function DFS({ userName }) {
                     {loadableLineups.map((lineup) => (
                       <button
                         key={lineup.entryName}
-                        onClick={() => handleLoadLineupFromList(lineup)}
-                        className="add-to-league-btn no-data"
+                        onClick={() => lineup.hasData && handleLoadLineupFromList(lineup)}
+                        disabled={!lineup.hasData}
+                        className={`add-to-league-btn ${lineup.hasData ? 'no-data' : 'disabled'}`}
                       >
-                        {lineup.entryName} {lineup.week && `(Week ${lineup.week})`}
+                        {lineup.entryName} {lineup.week && `(Week ${lineup.week})`} {!lineup.hasData && '(No data)'}
                       </button>
                     ))}
                   </div>
