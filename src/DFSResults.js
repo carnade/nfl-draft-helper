@@ -2525,7 +2525,7 @@ function DFSResults() {
                                 >
                                   <div className="dfs-results-player-card-left">
                                     <div className="dfs-results-player-card-name">TBD</div>
-                                    <div className="dfs-results-player-card-salary">${player.salary.toLocaleString()}</div>
+                                    <div className="dfs-results-player-card-salary">TBD</div>
                                   </div>
                                   <div className="dfs-results-player-card-points">
                                     TBD
@@ -2576,7 +2576,7 @@ function DFSResults() {
                             >
                               <div className="dfs-results-player-card-left">
                                 <div className="dfs-results-player-card-name">{showPlaceholder ? 'TBD' : '-'}</div>
-                                <div className="dfs-results-player-card-salary">-</div>
+                                <div className="dfs-results-player-card-salary">{showPlaceholder ? 'TBD' : '-'}</div>
                               </div>
                               <div className="dfs-results-player-card-points">
                                 {showPlaceholder ? 'TBD' : '-'}
