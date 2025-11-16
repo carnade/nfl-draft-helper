@@ -6,7 +6,7 @@ import LZString from 'lz-string';
 import './DFS.css';
 
 // Add a mock flag
-const mock = true; // Set to true for mock data, false for production
+const mock = false; // Set to true for mock data, false for production
 
 // Define the base URL based on the mock flag
 const BASE_URL = mock
@@ -54,6 +54,8 @@ function DFS({ userName }) {
   const [submittedEntries, setSubmittedEntries] = useState(new Set());
   const [loadableLineups, setLoadableLineups] = useState([]);
   const [loadingLoadableLineups, setLoadingLoadableLineups] = useState(false);
+  const [myLineups, setMyLineups] = useState([]);
+  const [loadingMyLineups, setLoadingMyLineups] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -587,6 +589,74 @@ function DFS({ userName }) {
     }
   }, []);
 
+  const fetchMyLineups = useCallback(async (username) => {
+    if (!username || username.trim() === '' || username === 'Anonymous') {
+      setMyLineups([]);
+      return;
+    }
+
+    setLoadingMyLineups(true);
+    try {
+      // Fetch available entries
+      const availableResponse = await fetch(`${BASE_URL}/tinyurl/${username}/available`);
+      if (!availableResponse.ok) {
+        setMyLineups([]);
+        return;
+      }
+
+      const availableData = await availableResponse.json();
+      const entryNames = Array.isArray(availableData.entries) 
+        ? availableData.entries.map(entry => typeof entry === 'string' ? entry : entry.name || entry)
+        : [];
+
+      // For each entry, fetch details to get submission status
+      const lineupPromises = entryNames.map(async (entryName) => {
+        try {
+          const detailsResponse = await fetch(`${BASE_URL}/tinyurl/${entryName}/details`);
+          if (!detailsResponse.ok) {
+            return {
+              entryName,
+              hasSubmitted: false,
+              updateCount: 0,
+              lastSubmitted: null
+            };
+          }
+
+          const details = await detailsResponse.json();
+          // Case-insensitive lookup for submissions
+          const submissions = details.submissions || {};
+          const submissionKey = Object.keys(submissions).find(
+            key => key.toLowerCase() === username.toLowerCase()
+          );
+          const userSubmission = submissionKey ? submissions[submissionKey] : null;
+          
+          return {
+            entryName,
+            hasSubmitted: userSubmission?.has_submitted || false,
+            updateCount: userSubmission?.update_count || 0,
+            lastSubmitted: userSubmission?.updated_at || userSubmission?.created_at || null
+          };
+        } catch (error) {
+          console.error(`Error fetching details for ${entryName}:`, error);
+          return {
+            entryName,
+            hasSubmitted: false,
+            updateCount: 0,
+            lastSubmitted: null
+          };
+        }
+      });
+
+      const lineups = (await Promise.all(lineupPromises)).filter(entry => entry !== null);
+      setMyLineups(lineups);
+    } catch (error) {
+      console.error('Error fetching my lineups:', error);
+      setMyLineups([]);
+    } finally {
+      setLoadingMyLineups(false);
+    }
+  }, []);
+
   // Fetch available tinyURLs when modal opens
   useEffect(() => {
     if (showModal) {
@@ -612,6 +682,17 @@ function DFS({ userName }) {
       setLoadableLineups([]);
     }
   }, [showLoadModal, userName, fetchLoadableLineups]);
+
+  // Fetch my lineups on component mount
+  useEffect(() => {
+    const settings = JSON.parse(localStorage.getItem('FantasyHelperSettings') || '{}');
+    const currentUsername = userName || settings.userName;
+    if (currentUsername && currentUsername !== 'Anonymous') {
+      fetchMyLineups(currentUsername);
+    } else {
+      setMyLineups([]);
+    }
+  }, [userName, fetchMyLineups]);
 
   const handleAddToLeague = (entry) => {
     // If entry has data, show confirmation modal
@@ -678,9 +759,10 @@ function DFS({ userName }) {
         // Close confirmation modal if it was open
         setShowConfirmModal(false);
         setEntryToOverwrite(null);
-        // Optionally refresh the available tinyURLs list
+        // Optionally refresh the available tinyURLs list and my lineups
         if (userName || settings.userName) {
           fetchAvailableTinyUrls(userName || settings.userName);
+          fetchMyLineups(userName || settings.userName);
         }
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
@@ -1295,6 +1377,58 @@ function DFS({ userName }) {
           </div>
         </div>
         </div>
+
+        {myLineups.length > 0 && (
+          <div className="my-lineups-section">
+            <h2>My Lineups</h2>
+            {loadingMyLineups ? (
+              <div className="dfs-loading">Loading lineups...</div>
+            ) : (
+              <div className="my-lineups-container">
+                <table className="my-lineups-table">
+                  <thead>
+                    <tr>
+                      <th>League Name</th>
+                      <th>Updated</th>
+                      <th>Last Submitted</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {myLineups.map((lineup) => (
+                      <tr key={lineup.entryName}>
+                        <td>
+                          <button
+                            className={`my-lineup-btn ${lineup.hasSubmitted ? 'submitted' : 'not-submitted'}`}
+                            disabled={!lineup.hasSubmitted}
+                            onClick={() => {
+                              if (lineup.hasSubmitted) {
+                                navigate(`/dfs/results/tinyurl/${lineup.entryName}`);
+                              }
+                            }}
+                          >
+                            {lineup.entryName}
+                          </button>
+                        </td>
+                        <td>{lineup.updateCount}</td>
+                        <td>
+                          {lineup.lastSubmitted
+                            ? new Date(lineup.lastSubmitted).toLocaleString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: false
+                              })
+                            : 'Not submitted'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
 
         <button className="finish-button" onClick={handleFinish}>
           <span className="finish-icon">✓</span>
