@@ -6,7 +6,7 @@ import LZString from 'lz-string';
 import './DFS.css';
 
 // Add a mock flag
-const mock = false; // Set to true for mock data, false for production
+const mock = true; // Set to true for mock data, false for production
 
 // Define the base URL based on the mock flag
 const BASE_URL = mock
@@ -413,7 +413,12 @@ function DFS({ userName }) {
           }
 
           const details = await detailsResponse.json();
-          const userSubmission = details.submissions?.[username];
+          // Case-insensitive lookup for submissions (same as user_submissions)
+          const submissions = details.submissions || {};
+          const detailsSubmissionKey = Object.keys(submissions).find(
+            key => key.toLowerCase() === username.toLowerCase()
+          );
+          const userSubmission = detailsSubmissionKey ? submissions[detailsSubmissionKey] : null;
           const week = details.week || null;
           const hasSubmitted = userSubmission?.has_submitted || false;
           
@@ -468,22 +473,32 @@ function DFS({ userName }) {
               }
 
               if (decompressed) {
-                // The decompressed data should be in format "username:decodedData"
+                // Check if decompressed data has username prefix (format "username:decodedData")
+                // Data created via /add endpoint may have this format
                 const colonIndex = decompressed.indexOf(':');
+                let rawData;
+                
                 if (colonIndex !== -1) {
-                  const rawData = decompressed.substring(colonIndex + 1);
-                  const encoded = btoa(rawData);
-                  const lineupCode = `${username}:${encoded}`;
-
-                  return {
-                    entryName,
-                    week: submissionWeek || week,
-                    lineupCode,
-                    updatedAt: submission.updated_at || submission.created_at,
-                    hasData: true,
-                    hasSubmitted: true
-                  };
+                  // Has username prefix - extract the data part
+                  rawData = decompressed.substring(colonIndex + 1);
+                } else {
+                  // No username prefix - entire decompressed data is the raw data
+                  // This happens when data is created via /create endpoint
+                  rawData = decompressed;
                 }
+                
+                // Encode the raw data to base64
+                const encoded = btoa(rawData);
+                const lineupCode = `${username}:${encoded}`;
+
+                return {
+                  entryName,
+                  week: submissionWeek || week,
+                  lineupCode,
+                  updatedAt: submission.updated_at || submission.created_at,
+                  hasData: true,
+                  hasSubmitted: true
+                };
               }
             } catch (error) {
               console.error(`Error parsing data for ${entryName}:`, error);
