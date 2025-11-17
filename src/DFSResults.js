@@ -122,6 +122,8 @@ function DFSResults() {
   const [allowedNames, setAllowedNames] = useState([]);
   const [userLeagues, setUserLeagues] = useState([]);
   const [loadingUserLeagues, setLoadingUserLeagues] = useState(false);
+  const [fallbackFantasyPoints, setFallbackFantasyPoints] = useState({});
+  const [fetchingFallbackPoints, setFetchingFallbackPoints] = useState(new Set());
 
   const lineupRefs = useRef({});
   const previousPositionsRef = useRef({});
@@ -1328,8 +1330,80 @@ function DFSResults() {
     return now < revealTime; // Before reveal time, show placeholder
   }, [revealTime, isAdmin]);
 
+  // Fetch fallback fantasy points for a missing player
+  const fetchFallbackFantasyPoints = useCallback(async (sleeperId) => {
+    if (!selectedWeek || !sleeperId) return;
+    
+    // Don't fetch if already fetching or already have data
+    if (fetchingFallbackPoints.has(sleeperId) || fallbackFantasyPoints[sleeperId]) {
+      return;
+    }
+
+    setFetchingFallbackPoints(prev => new Set(prev).add(sleeperId));
+
+    try {
+      const response = await fetch(`${BASE_URL}/fantasy-points/week/${selectedWeek}`);
+      if (response.ok) {
+        const data = await response.json();
+        // Look for the player in the response
+        // The response structure may vary, so we'll check common patterns
+        const sleeperIdStr = String(sleeperId);
+        let foundPoints = null;
+
+        // Check if response is an object with sleeper_id keys (direct mapping)
+        if (data[sleeperIdStr] !== undefined) {
+          // Could be a number (points) or an object with fantasy_points
+          const value = data[sleeperIdStr];
+          foundPoints = typeof value === 'number' ? value : (value?.fantasy_points ?? value?.points ?? null);
+        } else if (Array.isArray(data)) {
+          // If it's an array, find the player
+          const player = data.find(p => 
+            String(p.sleeper_id) === sleeperIdStr || 
+            String(p.id) === sleeperIdStr ||
+            String(p.player_id) === sleeperIdStr
+          );
+          if (player) {
+            foundPoints = player.fantasy_points ?? player.points ?? player.fpts ?? 0;
+          }
+        } else if (typeof data === 'object' && data !== null) {
+          // Try to find by iterating through values
+          for (const key in data) {
+            const player = data[key];
+            if (player && typeof player === 'object') {
+              if (String(player.sleeper_id) === sleeperIdStr || 
+                  String(player.id) === sleeperIdStr ||
+                  String(player.player_id) === sleeperIdStr) {
+                foundPoints = player.fantasy_points ?? player.points ?? player.fpts ?? 0;
+                break;
+              }
+            }
+          }
+        }
+
+        if (foundPoints !== null && foundPoints !== undefined) {
+          setFallbackFantasyPoints(prev => ({
+            ...prev,
+            [sleeperIdStr]: {
+              fantasy_points: foundPoints,
+              sleeper_id: sleeperIdStr
+            }
+          }));
+        }
+      }
+    } catch (error) {
+      console.error(`Error fetching fallback fantasy points for ${sleeperId}:`, error);
+    } finally {
+      setFetchingFallbackPoints(prev => {
+        const next = new Set(prev);
+        next.delete(sleeperId);
+        return next;
+      });
+    }
+  }, [selectedWeek, fallbackFantasyPoints, fetchingFallbackPoints]);
+
   const getFantasyPointsDisplay = useCallback((sleeperId) => {
     const playerInfo = fantasyPoints[sleeperId];
+    const fallbackInfo = fallbackFantasyPoints[sleeperId];
 
     // Check if player is OUT (from DFS salary data)
     const dfsPlayerKey = `${sleeperId}_W${selectedWeek}`;
@@ -1340,47 +1414,62 @@ function DFSResults() {
       return 'OUT';
     }
 
-    // Get fantasy points (0 if no playerInfo, otherwise the actual points)
-    const points = playerInfo?.fantasy_points ?? 0;
+    // Check if game has started
+    const gameDate = dfsPlayer?.game_date;
+    const gameStartTime = dfsPlayer?.game_start_time;
+    let gameHasStarted = false;
 
-    // If points is 0.0, check if game has started
-    if (points === 0) {
-      const gameDate = dfsPlayer?.game_date;
-      const gameStartTime = dfsPlayer?.game_start_time;
-
-      if (gameDate) {
-        try {
-          const kickoffUtc = parseGameStartToUtc(gameDate, gameStartTime);
-          if (kickoffUtc) {
-            const now = new Date();
-            if (now < kickoffUtc) {
-              return 'Not played';
-            }
+    if (gameDate) {
+      try {
+        const kickoffUtc = parseGameStartToUtc(gameDate, gameStartTime);
+        if (kickoffUtc) {
+          const now = new Date();
+          gameHasStarted = now >= kickoffUtc;
+          if (!gameHasStarted) {
+            // Game hasn't started yet
+            return 'Not played';
           }
-        } catch (error) {
-          console.error('Error parsing game start time:', {
-            sleeperId,
-            gameDate,
-            gameStartTime,
-            error
-          });
         }
-      }
-
-      // If we have player metadata indicating they haven't played, show Not played
-      if (!playerInfo) {
-        return 'Not played';
+      } catch (error) {
+        console.error('Error parsing game start time:', {
+          sleeperId,
+          gameDate,
+          gameStartTime,
+          error
+        });
       }
     }
 
-    // If no player info and no special conditions, show Not played
-    if (!playerInfo) {
+    // If we have player info from Sleeper matchup, use it
+    if (playerInfo) {
+      return (playerInfo.fantasy_points ?? 0).toFixed(1);
+    }
+
+    // If we have fallback info, use it
+    if (fallbackInfo) {
+      return (fallbackInfo.fantasy_points ?? 0).toFixed(1);
+    }
+
+    // If game has started but no player info, try to fetch from fallback endpoint
+    if (gameHasStarted && !playerInfo && !fallbackInfo && !fetchingFallbackPoints.has(sleeperId)) {
+      // Trigger async fetch (won't block render)
+      fetchFallbackFantasyPoints(sleeperId);
+      return 'Awaiting Pts';
+    }
+
+    // If we're currently fetching, show awaiting
+    if (fetchingFallbackPoints.has(sleeperId)) {
+      return 'Awaiting Pts';
+    }
+
+    // If game hasn't started (and we didn't return above), show Not played
+    if (!gameHasStarted) {
       return 'Not played';
     }
 
-    // Otherwise return the fantasy points formatted to 1 decimal place
-    return (playerInfo.fantasy_points ?? 0).toFixed(1);
-  }, [dfsSalaryData, fantasyPoints, selectedWeek]);
+    // Default: show awaiting if game has started
+    return 'Awaiting Pts';
+  }, [dfsSalaryData, fantasyPoints, selectedWeek, fallbackFantasyPoints, fetchingFallbackPoints, fetchFallbackFantasyPoints]);
 
   const startRevealAnimation = useCallback(() => {
     const lineupData = parseLineups();
@@ -1412,16 +1501,23 @@ function DFSResults() {
         }
 
         const playerInfo = fantasyPoints[player.sleeperId];
+        const fallbackInfo = fallbackFantasyPoints[player.sleeperId];
         const dfsPlayerKey = `${player.sleeperId}_W${selectedWeek}`;
         const dfsPlayer = dfsSalaryData[dfsPlayerKey];
         const isOut = dfsPlayer?.injury_status === 'O';
 
-        if (!playerInfo && !isOut) {
+        // If we have no player info and no fallback info, and not OUT, check if game has started
+        if (!playerInfo && !fallbackInfo && !isOut) {
+          // If display status is "Awaiting Pts", game has started so don't block animation
+          if (displayStatus === 'Awaiting Pts') {
+            return false; // Don't block animation, game has started
+          }
           missingPlayers.push({
             sleeperId: player.sleeperId,
             reason: 'no_fantasy_entry',
             dfsPlayerKey,
-            dfsPlayer
+            dfsPlayer,
+            displayStatus
           });
           return true;
         }
@@ -1541,7 +1637,7 @@ function DFSResults() {
         });
       }, 4000);
     }
-  }, [fantasyPoints, dfsSalaryData, selectedWeek, parseLineups, getFantasyPointsDisplay]);
+  }, [fantasyPoints, fallbackFantasyPoints, dfsSalaryData, selectedWeek, parseLineups, getFantasyPointsDisplay]);
 
   // Trigger animation when data is loaded from URL
   useEffect(() => {
@@ -1566,16 +1662,20 @@ function DFSResults() {
 
   const getPlayerInfo = useCallback((sleeperId) => {
     const fantasyInfo = fantasyPoints[sleeperId];
+    const fallbackInfo = fallbackFantasyPoints[sleeperId];
     const dfsPlayerKey = `${sleeperId}_W${selectedWeek}`;
     const dfsPlayer = dfsSalaryData[dfsPlayerKey];
     
+    // Use fallback info if primary info is not available
+    const pointsInfo = fantasyInfo || fallbackInfo;
+    
     return {
-      ...fantasyInfo,
-      name: dfsPlayer?.name || playerMetadata[sleeperId]?.name || fantasyInfo?.name || 'Unknown',
-      position: dfsPlayer?.position || playerMetadata[sleeperId]?.position || fantasyInfo?.position,
-      team: dfsPlayer?.team || playerMetadata[sleeperId]?.team || fantasyInfo?.team
+      ...pointsInfo,
+      name: dfsPlayer?.name || playerMetadata[sleeperId]?.name || pointsInfo?.name || 'Unknown',
+      position: dfsPlayer?.position || playerMetadata[sleeperId]?.position || pointsInfo?.position,
+      team: dfsPlayer?.team || playerMetadata[sleeperId]?.team || pointsInfo?.team
     };
-  }, [dfsSalaryData, fantasyPoints, playerMetadata, selectedWeek]);
+  }, [dfsSalaryData, fantasyPoints, fallbackFantasyPoints, playerMetadata, selectedWeek]);
 
   const calculateTotalPoints = useCallback((players) => {
     return players.reduce((sum, player) => {
