@@ -1330,76 +1330,146 @@ function DFSResults() {
     return now < revealTime; // Before reveal time, show placeholder
   }, [revealTime, isAdmin]);
 
-  // Fetch fallback fantasy points for a missing player
-  const fetchFallbackFantasyPoints = useCallback(async (sleeperId) => {
-    if (!selectedWeek || !sleeperId) return;
+  // Track players we've attempted to fetch to avoid duplicate requests
+  const attemptedFallbackFetchRef = useRef(new Set());
+  // Track if we've already run the check for fallback data (prevent re-running)
+  const fallbackCheckRunRef = useRef(false);
+  const lastFallbackCheckKeyRef = useRef('');
+  // Store current state values in refs to avoid dependency issues
+  const fantasyPointsRef = useRef({});
+  const fallbackFantasyPointsRef = useRef({});
+  const fetchingFallbackPointsRef = useRef(new Set());
+  // Track if a fetch is in progress for the current week
+  const fetchInProgressRef = useRef(false);
+  
+  // Keep refs in sync with state
+  useEffect(() => {
+    fantasyPointsRef.current = fantasyPoints;
+  }, [fantasyPoints]);
+  
+  useEffect(() => {
+    fallbackFantasyPointsRef.current = fallbackFantasyPoints;
+  }, [fallbackFantasyPoints]);
+  
+  useEffect(() => {
+    fetchingFallbackPointsRef.current = fetchingFallbackPoints;
+  }, [fetchingFallbackPoints]);
+  
+  // Reset fetch in progress when week changes
+  useEffect(() => {
+    fetchInProgressRef.current = false;
+  }, [selectedWeek]);
+  
+  // Fetch fallback fantasy points for all missing players at once
+  const fetchFallbackFantasyPoints = useCallback(async (sleeperIds) => {
+    if (!selectedWeek || !sleeperIds || sleeperIds.length === 0) return;
     
-    // Don't fetch if already fetching or already have data
-    if (fetchingFallbackPoints.has(sleeperId) || fallbackFantasyPoints[sleeperId]) {
+    // Prevent multiple concurrent fetches for the same week
+    if (fetchInProgressRef.current) {
+      console.log('Fetch already in progress, skipping duplicate request');
       return;
     }
+    
+    // Filter using ref - this prevents duplicate API calls
+    // The ref tracks all players we've attempted to fetch
+    const idsToFetch = sleeperIds.filter(id => {
+      const sleeperIdStr = String(id);
+      // Only fetch if we haven't attempted this player yet
+      return !attemptedFallbackFetchRef.current.has(sleeperIdStr);
+    });
+    
+    if (idsToFetch.length === 0) return;
+    
+    // Mark all as attempting to fetch immediately (prevents duplicate calls)
+    idsToFetch.forEach(id => {
+      attemptedFallbackFetchRef.current.add(String(id));
+    });
+    
+    // Mark all as fetching
+    setFetchingFallbackPoints(prev => {
+      const next = new Set(prev);
+      idsToFetch.forEach(id => {
+        next.add(String(id));
+      });
+      return next;
+    });
 
-    setFetchingFallbackPoints(prev => new Set(prev).add(sleeperId));
+    // Mark fetch as in progress
+    fetchInProgressRef.current = true;
 
     try {
       const response = await fetch(`${BASE_URL}/fantasy-points/week/${selectedWeek}`);
       if (response.ok) {
         const data = await response.json();
-        // Look for the player in the response
-        // The response structure may vary, so we'll check common patterns
-        const sleeperIdStr = String(sleeperId);
-        let foundPoints = null;
+        
+        // Process all players at once
+        const updates = {};
+        idsToFetch.forEach(sleeperId => {
+          const sleeperIdStr = String(sleeperId);
+          let foundPoints = null;
 
-        // Check if response is an object with sleeper_id keys (direct mapping)
-        if (data[sleeperIdStr] !== undefined) {
-          // Could be a number (points) or an object with fantasy_points
-          const value = data[sleeperIdStr];
-          foundPoints = typeof value === 'number' ? value : (value?.fantasy_points ?? value?.points ?? null);
-        } else if (Array.isArray(data)) {
-          // If it's an array, find the player
-          const player = data.find(p => 
-            String(p.sleeper_id) === sleeperIdStr || 
-            String(p.id) === sleeperIdStr ||
-            String(p.player_id) === sleeperIdStr
-          );
-          if (player) {
-            foundPoints = player.fantasy_points ?? player.points ?? player.fpts ?? 0;
-          }
-        } else if (typeof data === 'object' && data !== null) {
-          // Try to find by iterating through values
-          for (const key in data) {
-            const player = data[key];
-            if (player && typeof player === 'object') {
-              if (String(player.sleeper_id) === sleeperIdStr || 
-                  String(player.id) === sleeperIdStr ||
-                  String(player.player_id) === sleeperIdStr) {
-                foundPoints = player.fantasy_points ?? player.points ?? player.fpts ?? 0;
-                break;
+          // Check if response is an object with sleeper_id keys (direct mapping)
+          if (data[sleeperIdStr] !== undefined) {
+            // Could be a number (points) or an object with fantasy_points
+            const value = data[sleeperIdStr];
+            foundPoints = typeof value === 'number' ? value : (value?.fantasy_points ?? value?.points ?? null);
+          } else if (Array.isArray(data)) {
+            // If it's an array, find the player
+            const player = data.find(p => 
+              String(p.sleeper_id) === sleeperIdStr || 
+              String(p.id) === sleeperIdStr ||
+              String(p.player_id) === sleeperIdStr
+            );
+            if (player) {
+              foundPoints = player.fantasy_points ?? player.points ?? player.fpts ?? 0;
+            }
+          } else if (typeof data === 'object' && data !== null) {
+            // Try to find by iterating through values
+            for (const key in data) {
+              const player = data[key];
+              if (player && typeof player === 'object') {
+                if (String(player.sleeper_id) === sleeperIdStr || 
+                    String(player.id) === sleeperIdStr ||
+                    String(player.player_id) === sleeperIdStr) {
+                  foundPoints = player.fantasy_points ?? player.points ?? player.fpts ?? 0;
+                  break;
+                }
               }
             }
           }
-        }
 
-        if (foundPoints !== null && foundPoints !== undefined) {
-          setFallbackFantasyPoints(prev => ({
-            ...prev,
-            [sleeperIdStr]: {
+          if (foundPoints !== null && foundPoints !== undefined) {
+            updates[sleeperIdStr] = {
               fantasy_points: foundPoints,
               sleeper_id: sleeperIdStr
-            }
+            };
+          }
+        });
+        
+        // Update state once with all updates
+        if (Object.keys(updates).length > 0) {
+          setFallbackFantasyPoints(prev => ({
+            ...prev,
+            ...updates
           }));
         }
       }
     } catch (error) {
-      console.error(`Error fetching fallback fantasy points for ${sleeperId}:`, error);
+      console.error(`Error fetching fallback fantasy points:`, error);
     } finally {
+      // Mark fetch as complete
+      fetchInProgressRef.current = false;
+      
+      // Remove from fetching set
       setFetchingFallbackPoints(prev => {
         const next = new Set(prev);
-        next.delete(sleeperId);
+        idsToFetch.forEach(id => {
+          next.delete(String(id));
+        });
         return next;
       });
     }
-  }, [selectedWeek, fallbackFantasyPoints, fetchingFallbackPoints]);
+  }, [selectedWeek]);
 
   const getFantasyPointsDisplay = useCallback((sleeperId) => {
     const playerInfo = fantasyPoints[sleeperId];
@@ -1450,15 +1520,13 @@ function DFSResults() {
       return (fallbackInfo.fantasy_points ?? 0).toFixed(1);
     }
 
-    // If game has started but no player info, try to fetch from fallback endpoint
-    if (gameHasStarted && !playerInfo && !fallbackInfo && !fetchingFallbackPoints.has(sleeperId)) {
-      // Trigger async fetch (won't block render)
-      fetchFallbackFantasyPoints(sleeperId);
+    // If we're currently fetching, show awaiting
+    if (fetchingFallbackPoints.has(sleeperId)) {
       return 'Awaiting Pts';
     }
 
-    // If we're currently fetching, show awaiting
-    if (fetchingFallbackPoints.has(sleeperId)) {
+    // If game has started but no player info, mark as awaiting (fetch will be triggered by useEffect)
+    if (gameHasStarted && !playerInfo && !fallbackInfo) {
       return 'Awaiting Pts';
     }
 
@@ -1469,7 +1537,118 @@ function DFSResults() {
 
     // Default: show awaiting if game has started
     return 'Awaiting Pts';
-  }, [dfsSalaryData, fantasyPoints, selectedWeek, fallbackFantasyPoints, fetchingFallbackPoints, fetchFallbackFantasyPoints]);
+  }, [dfsSalaryData, fantasyPoints, selectedWeek, fallbackFantasyPoints, fetchingFallbackPoints]);
+
+  // Reset check tracking when key inputs change
+  useEffect(() => {
+    fallbackCheckRunRef.current = false;
+    lastFallbackCheckKeyRef.current = '';
+    // Clear attempted fetches when week changes (but keep them during live updates)
+    attemptedFallbackFetchRef.current.clear();
+  }, [selectedWeek, inputData]);
+
+  // Allow re-checking when fantasyPoints changes (from live updates)
+  // This ensures we can fetch fallback data for players that still don't have data after live updates
+  useEffect(() => {
+    // Clear attempted fetches for players that now have data (from live updates)
+    // This allows them to be recognized as having data and prevents re-fetching
+    const playersWithData = new Set(Object.keys(fantasyPoints));
+    attemptedFallbackFetchRef.current.forEach(playerId => {
+      if (playersWithData.has(playerId)) {
+        attemptedFallbackFetchRef.current.delete(playerId);
+      }
+    });
+    
+    // Reset check tracking so we can re-check for missing players after live updates
+    // Only reset if we've already run a check (to avoid initial trigger)
+    if (fallbackCheckRunRef.current) {
+      fallbackCheckRunRef.current = false;
+      // Keep the last check key so we don't immediately re-run, but allow next check cycle
+    }
+  }, [fantasyPoints]);
+
+  // Effect to batch-fetch fallback fantasy points for players that need them
+  useEffect(() => {
+    if (!selectedWeek || !inputData || Object.keys(dfsSalaryData).length === 0) {
+      return;
+    }
+
+    // Create a unique key that includes fantasyPoints count so we re-check after live updates
+    // This allows re-checking when live updates add new data, but prevents infinite loops
+    const fantasyPointsCount = Object.keys(fantasyPointsRef.current).length;
+    const checkKey = `${selectedWeek}_${inputData.length}_${Object.keys(dfsSalaryData).length}_${fantasyPointsCount}`;
+    
+    // If we've already run this exact check, skip it (prevents infinite loops)
+    // But we'll re-check when fantasyPointsCount changes (from live updates)
+    if (lastFallbackCheckKeyRef.current === checkKey && fallbackCheckRunRef.current) {
+      return;
+    }
+
+    // Use a debounce to avoid running too frequently
+    const timeoutId = setTimeout(() => {
+      const lineupData = parseLineups();
+      const playersNeedingFallback = [];
+
+      lineupData.forEach(lineup => {
+        lineup.players.forEach(player => {
+          const sleeperId = String(player.sleeperId);
+          const sleeperIdNum = player.sleeperId;
+          
+          // Check if we already have data or are already fetching (using refs for current values)
+          if (fantasyPointsRef.current[sleeperId] || 
+              fallbackFantasyPointsRef.current[sleeperId] || 
+              fetchingFallbackPointsRef.current.has(sleeperId) ||
+              attemptedFallbackFetchRef.current.has(sleeperId)) {
+            return;
+          }
+
+          // Check if game has started
+          const dfsPlayerKey = `${sleeperIdNum}_W${selectedWeek}`;
+          const dfsPlayer = dfsSalaryData[dfsPlayerKey];
+          
+          // Skip if player is OUT
+          if (dfsPlayer?.injury_status === 'O') {
+            return;
+          }
+
+          const gameDate = dfsPlayer?.game_date;
+          const gameStartTime = dfsPlayer?.game_start_time;
+          
+          if (gameDate) {
+            try {
+              const kickoffUtc = parseGameStartToUtc(gameDate, gameStartTime);
+              if (kickoffUtc) {
+                const now = new Date();
+                const gameHasStarted = now >= kickoffUtc;
+                
+                // Only add if game has started and we don't have data
+                if (gameHasStarted) {
+                  playersNeedingFallback.push(sleeperIdNum);
+                }
+              }
+            } catch (error) {
+              // Skip if we can't parse the game time
+            }
+          }
+        });
+      });
+
+      // Fetch all missing players at once if we have any
+      if (playersNeedingFallback.length > 0) {
+        fetchFallbackFantasyPoints(playersNeedingFallback);
+        lastFallbackCheckKeyRef.current = checkKey;
+        fallbackCheckRunRef.current = true;
+      } else {
+        // Even if no players need fetching, mark this check as done
+        lastFallbackCheckKeyRef.current = checkKey;
+        fallbackCheckRunRef.current = true;
+      }
+    }, 500); // Debounce by 500ms
+
+    return () => clearTimeout(timeoutId);
+    // Include fantasyPoints so we re-check after live updates, but debounce and check key prevent loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedWeek, inputData, dfsSalaryData, fantasyPoints, parseLineups, fetchFallbackFantasyPoints]);
 
   const startRevealAnimation = useCallback(() => {
     const lineupData = parseLineups();
