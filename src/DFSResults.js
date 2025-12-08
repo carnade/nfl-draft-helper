@@ -4,7 +4,7 @@ import LZString from 'lz-string';
 import './DFSResults.css';
 
 // Add a mock flag
-const mock = false; // Set to true for mock data, false for production
+const mock = true; // Set to true for mock data, false for production
 
 // Define the base URL based on the mock flag
 const BASE_URL = mock
@@ -130,6 +130,7 @@ function DFSResults() {
   const hasMeasuredRef = useRef(false);
   const animationTimeoutsRef = useRef({});
   const lastSortedKeysRef = useRef([]);
+  const hasSetDefaultRevealTimeRef = useRef(false);
 
   // Fetch player names from bestball endpoint for players not in salary data
   const fetchPlayerMetadata = useCallback(async (sleeperIds) => {
@@ -784,14 +785,16 @@ function DFSResults() {
     return { date: dateStr, time: timeStr };
   };
 
-  // Set default reveal time to upcoming Sunday at 19:00
+  // Set default reveal time to upcoming Sunday at 19:00 (only on initial mount)
   useEffect(() => {
-    if (!emptyTinyUrlRevealDate && !emptyTinyUrlRevealTime) {
+    // Only set defaults once on initial mount, not when user clears them
+    if (!hasSetDefaultRevealTimeRef.current && !emptyTinyUrlRevealDate && !emptyTinyUrlRevealTime) {
       const { date, time } = getUpcomingSunday();
       setEmptyTinyUrlRevealDate(date);
       setEmptyTinyUrlRevealTime(time);
+      hasSetDefaultRevealTimeRef.current = true;
     }
-  }, [emptyTinyUrlRevealDate, emptyTinyUrlRevealTime]); // Set defaults only when both are empty
+  }, [emptyTinyUrlRevealDate, emptyTinyUrlRevealTime]); // Set defaults only on initial mount
 
   // Check for admin query parameter
   useEffect(() => {

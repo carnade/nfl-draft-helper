@@ -6,12 +6,93 @@ import LZString from 'lz-string';
 import './DFS.css';
 
 // Add a mock flag
-const mock = false; // Set to true for mock data, false for production
+const mock = true; // Set to true for mock data, false for production
 
 // Define the base URL based on the mock flag
 const BASE_URL = mock
   ? "http://localhost:5000"
   : "https://shaggy-latashia-carnade-2ea2054a.koyeb.app";
+
+// Helper functions for parsing game start times
+const getUsdDstBoundsUtc = (year) => {
+  const march1Utc = Date.UTC(year, 2, 1);
+  const march1Day = new Date(march1Utc).getUTCDay();
+  const firstSundayMarch = march1Day === 0 ? 1 : 8 - march1Day;
+  const secondSundayMarch = firstSundayMarch + 7;
+  const dstStartUtc = Date.UTC(year, 2, secondSundayMarch, 7, 0); // 2 AM local -> 7 AM UTC
+
+  const nov1Utc = Date.UTC(year, 10, 1);
+  const nov1Day = new Date(nov1Utc).getUTCDay();
+  const firstSundayNovember = nov1Day === 0 ? 1 : 8 - nov1Day;
+  const dstEndUtc = Date.UTC(year, 10, firstSundayNovember, 6, 0); // 2 AM local -> 6 AM UTC
+
+  return { dstStartUtc, dstEndUtc };
+};
+
+const convertEasternLocalToUtc = (year, monthIndex, day, hour24, minute) => {
+  const { dstStartUtc, dstEndUtc } = getUsdDstBoundsUtc(year);
+  const dstCandidateUtc = Date.UTC(year, monthIndex, day, hour24 + 4, minute);
+  const stdCandidateUtc = Date.UTC(year, monthIndex, day, hour24 + 5, minute);
+  const isDst = dstCandidateUtc >= dstStartUtc && dstCandidateUtc < dstEndUtc;
+  return new Date(isDst ? dstCandidateUtc : stdCandidateUtc);
+};
+
+const parseGameStartToUtc = (gameDate, gameStartTime) => {
+  if (!gameDate) return null;
+
+  let timeStr = typeof gameStartTime === 'string' && gameStartTime.trim().length > 0
+    ? gameStartTime.trim()
+    : '6:00PM';
+
+  const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!timeMatch) {
+    // Unexpected format—fallback to default 6:00PM Eastern
+    timeStr = '6:00PM';
+  }
+
+  const parsedMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!parsedMatch) return null;
+
+  let [ , hourStr, minuteStr, ampm ] = parsedMatch;
+  let hours = parseInt(hourStr, 10);
+  const minutes = parseInt(minuteStr, 10);
+  const meridiem = ampm.toUpperCase();
+
+  if (meridiem === 'PM' && hours !== 12) {
+    hours += 12;
+  } else if (meridiem === 'AM' && hours === 12) {
+    hours = 0;
+  }
+
+  const year = parseInt(gameDate.slice(0, 4), 10);
+  const monthIndex = parseInt(gameDate.slice(5, 7), 10) - 1;
+  const day = parseInt(gameDate.slice(8, 10), 10);
+
+  if (Number.isNaN(year) || Number.isNaN(monthIndex) || Number.isNaN(day) || Number.isNaN(hours) || Number.isNaN(minutes)) {
+    return null;
+  }
+
+  return convertEasternLocalToUtc(year, monthIndex, day, hours, minutes);
+};
+
+// Get 03:00 CET on the day after game date (CET is UTC+1, so 03:00 CET = 02:00 UTC)
+// During daylight saving (CEST is UTC+2), 03:00 CEST = 01:00 UTC
+// For simplicity, using 02:00 UTC as approximation (safe for winter time)
+const getDayAfterGameAt3AmCET = (gameDate) => {
+  if (!gameDate) return null;
+  
+  const year = parseInt(gameDate.slice(0, 4), 10);
+  const monthIndex = parseInt(gameDate.slice(5, 7), 10) - 1;
+  const day = parseInt(gameDate.slice(8, 10), 10);
+  
+  if (Number.isNaN(year) || Number.isNaN(monthIndex) || Number.isNaN(day)) {
+    return null;
+  }
+  
+  // Day after game date at 03:00 CET = 02:00 UTC (approximation, works for winter time)
+  // Using 02:00 UTC which is close enough (03:00 CET in winter, 04:00 CEST in summer)
+  return new Date(Date.UTC(year, monthIndex, day + 1, 2, 0));
+};
 
 function DFS({ userName }) {
   const navigate = useNavigate();
@@ -56,6 +137,11 @@ function DFS({ userName }) {
   const [loadingLoadableLineups, setLoadingLoadableLineups] = useState(false);
   const [myLineups, setMyLineups] = useState([]);
   const [loadingMyLineups, setLoadingMyLineups] = useState(false);
+  const [lineupPin, setLineupPin] = useState('');
+  const [lineupPinError, setLineupPinError] = useState('');
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [selectedLineupForPin, setSelectedLineupForPin] = useState(null);
+  const [pinInput, setPinInput] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -116,6 +202,7 @@ function DFS({ userName }) {
           value_projection: player.value_proj,
           sleeper_id: player.sleeper_id,
           game_date: player.game_date,
+          game_start_time: player.game_start_time || '',
           slate_day: player.slate_day || '',
           game_day: player.game_day || player.slate_day || ''
         }));
@@ -394,192 +481,27 @@ function DFS({ userName }) {
       }
 
       const availableData = await availableResponse.json();
-      const entryNames = Array.isArray(availableData.entries) 
-        ? availableData.entries.map(entry => typeof entry === 'string' ? entry : entry.name || entry)
-        : [];
-
-      // For each entry, check if user has submitted and fetch their lineup
-      const lineupPromises = entryNames.map(async (entryName) => {
-        try {
-          // Check details to see if user has submitted
-          const detailsResponse = await fetch(`${BASE_URL}/tinyurl/${entryName}/details`);
-          if (!detailsResponse.ok) {
-            // Entry exists but no details - show as unavailable
-            return {
-              entryName,
-              week: null,
-              lineupCode: null,
-              hasData: false,
-              hasSubmitted: false
-            };
-          }
-
-          const details = await detailsResponse.json();
-          // Case-insensitive lookup for submissions (same as user_submissions)
-          const submissions = details.submissions || {};
-          const detailsSubmissionKey = Object.keys(submissions).find(
-            key => key.toLowerCase() === username.toLowerCase()
-          );
-          const userSubmission = detailsSubmissionKey ? submissions[detailsSubmissionKey] : null;
-          const week = details.week || null;
-          const hasSubmitted = userSubmission?.has_submitted || false;
-          
-          if (!hasSubmitted) {
-            // User hasn't submitted to this entry - show but greyed out
-            return {
-              entryName,
-              week,
-              lineupCode: null,
-              hasData: false,
-              hasSubmitted: false
-            };
-          }
-
-          // Fetch the data
-          const dataResponse = await fetch(`${BASE_URL}/tinyurl/${entryName}/data`);
-          if (!dataResponse.ok) {
-            return {
-              entryName,
-              week,
-              lineupCode: null,
-              hasData: false,
-              hasSubmitted: hasSubmitted
-            };
-          }
-
-          const dataResult = await dataResponse.json();
-          
-          // Check user_submissions for the user's data
-          const userSubmissions = dataResult.user_submissions || {};
-          const submissionKey = Object.keys(userSubmissions).find(
-            key => key.toLowerCase() === username.toLowerCase()
-          );
-          
-          if (submissionKey && userSubmissions[submissionKey]?.data) {
-            // User has data in user_submissions
-            const submission = userSubmissions[submissionKey];
-            const hashData = submission.data;
-
-            // Parse the data to extract user's lineup
-            try {
-              const [weekStr, compressedData] = hashData.split('|');
-              const submissionWeek = parseInt(weekStr);
-
-              // Decompress
-              let decompressed = LZString.decompressFromEncodedURIComponent(compressedData);
-              if (!decompressed) {
-                decompressed = LZString.decompressFromBase64(compressedData);
-              }
-              if (!decompressed) {
-                decompressed = LZString.decompressFromUTF16(compressedData);
-              }
-
-              if (decompressed) {
-                // Check if decompressed data has username prefix (format "username:decodedData")
-                // Data created via /add endpoint may have this format
-                const colonIndex = decompressed.indexOf(':');
-                let rawData;
-                
-                if (colonIndex !== -1) {
-                  // Has username prefix - extract the data part
-                  rawData = decompressed.substring(colonIndex + 1);
-                } else {
-                  // No username prefix - entire decompressed data is the raw data
-                  // This happens when data is created via /create endpoint
-                  rawData = decompressed;
-                }
-                
-                // Encode the raw data to base64
-                const encoded = btoa(rawData);
-                const lineupCode = `${username}:${encoded}`;
-
-                return {
-                  entryName,
-                  week: submissionWeek || week,
-                  lineupCode,
-                  updatedAt: submission.updated_at || submission.created_at,
-                  hasData: true,
-                  hasSubmitted: true
-                };
-              }
-            } catch (error) {
-              console.error(`Error parsing data for ${entryName}:`, error);
-              return {
-                entryName,
-                week,
-                lineupCode: null,
-                hasData: false,
-                hasSubmitted: hasSubmitted
-              };
-            }
-          }
-          
-          // Fallback: try old format with main data field
-          const hashData = dataResult.data;
-          if (hashData) {
-            try {
-              const [weekStr, compressedData] = hashData.split('|');
-              const submissionWeek = parseInt(weekStr);
-
-              // Decompress
-              let decompressed = LZString.decompressFromEncodedURIComponent(compressedData);
-              if (!decompressed) {
-                decompressed = LZString.decompressFromBase64(compressedData);
-              }
-              if (!decompressed) {
-                decompressed = LZString.decompressFromUTF16(compressedData);
-              }
-
-              if (decompressed) {
-                // Split into individual lineups
-                const lineups = decompressed.split('|');
-                // Find the user's lineup
-                const userLineup = lineups.find(lineup => {
-                  const [lineupUsername] = lineup.split(':');
-                  return lineupUsername.toLowerCase() === username.toLowerCase();
-                });
-
-                if (userLineup) {
-                  const [lineupUsername, rawData] = userLineup.split(':');
-                  const encoded = btoa(rawData);
-                  const lineupCode = `${lineupUsername}:${encoded}`;
-
-                  return {
-                    entryName,
-                    week: submissionWeek || week,
-                    lineupCode,
-                    updatedAt: userSubmission.updated_at || userSubmission.created_at,
-                    hasData: true,
-                    hasSubmitted: true
-                  };
-                }
-              }
-            } catch (error) {
-              console.error(`Error parsing data for ${entryName}:`, error);
-            }
-          }
-          
-          // No data found
+      
+      // Map entries from the available endpoint response (now includes has_pin and has_data)
+      const lineups = (availableData.entries || []).map(entry => {
+        // Handle both string and object formats
+        if (typeof entry === 'string') {
           return {
-            entryName,
-            week,
-            lineupCode: null,
-            hasData: false,
-            hasSubmitted: hasSubmitted
-          };
-        } catch (error) {
-          console.error(`Error fetching lineup from ${entryName}:`, error);
-          return {
-            entryName,
+            entryName: entry,
             week: null,
-            lineupCode: null,
             hasData: false,
-            hasSubmitted: false
+            hasPin: false
           };
         }
+        
+        return {
+          entryName: entry.name || entry,
+          week: entry.week || null,
+          hasData: entry.has_data || false,
+          hasPin: entry.has_pin || false
+        };
       });
-
-      const lineups = (await Promise.all(lineupPromises)).filter(entry => entry !== null);
+      
       setLoadableLineups(lineups);
     } catch (error) {
       console.error('Error fetching loadable lineups:', error);
@@ -739,16 +661,45 @@ function DFS({ userName }) {
       // Format as week|compressedData (same format as DFSResults hash)
       const data = `${currentWeek}|${compressed}`;
       
+      // Validate PIN: must be empty (0 digits) or 2-8 digits
+      if (lineupPin && lineupPin.trim() !== '') {
+        const pinLength = lineupPin.trim().length;
+        if (pinLength === 1) {
+          setLineupPinError('PIN must be empty or 2-8 digits');
+          return; // Don't submit if PIN is invalid
+        }
+        if (pinLength < 2 || pinLength > 8) {
+          setLineupPinError('PIN must be empty or 2-8 digits');
+          return; // Don't submit if PIN is invalid
+        }
+        // Check if PIN contains only digits
+        if (!/^[0-9]+$/.test(lineupPin.trim())) {
+          setLineupPinError('PIN must contain only numbers');
+          return; // Don't submit if PIN contains non-digits
+        }
+      }
+      
+      // Clear any previous error
+      setLineupPinError('');
+      
+      // Prepare request body with optional PIN
+      const requestBody = {
+        name: username,
+        data: data
+      };
+      
+      // Add PIN if provided and valid (2-8 digits)
+      if (lineupPin && lineupPin.trim() !== '' && /^[0-9]{2,8}$/.test(lineupPin.trim())) {
+        requestBody.pin = lineupPin.trim();
+      }
+      
       // Make POST request to add endpoint
       const response = await fetch(`${BASE_URL}/tinyurl/${entry.name}/add`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          name: username,
-          data: data
-        })
+        body: JSON.stringify(requestBody)
       });
       
       if (response.ok) {
@@ -759,6 +710,8 @@ function DFS({ userName }) {
         // Close confirmation modal if it was open
         setShowConfirmModal(false);
         setEntryToOverwrite(null);
+        // Reset PIN input after successful submission
+        setLineupPin('');
         // Optionally refresh the available tinyURLs list and my lineups
         if (userName || settings.userName) {
           fetchAvailableTinyUrls(userName || settings.userName);
@@ -851,6 +804,120 @@ function DFS({ userName }) {
       return; // Don't load if there's no data
     }
     loadLineupFromCode(lineup.lineupCode);
+  };
+
+  const handleLoadLineupWithPin = async () => {
+    if (!selectedLineupForPin || !pinInput.trim()) {
+      alert('Please enter a PIN code');
+      return;
+    }
+
+    // Validate PIN: must be 2-8 digits
+    if (!/^[0-9]{2,8}$/.test(pinInput.trim())) {
+      alert('PIN must be 2-8 digits');
+      return;
+    }
+
+    try {
+      const settings = JSON.parse(localStorage.getItem('FantasyHelperSettings') || '{}');
+      const username = userName || settings.userName || 'Anonymous';
+      
+      if (!username || username === 'Anonymous') {
+        alert('Please set a username in settings');
+        return;
+      }
+
+      // Fetch data using data endpoint with username and pin query params
+      const response = await fetch(`${BASE_URL}/tinyurl/${selectedLineupForPin.entryName}/data?username=${encodeURIComponent(username)}&pin=${encodeURIComponent(pinInput.trim())}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to load lineup' }));
+        alert(`Error loading lineup: ${errorData.message || 'Invalid PIN or lineup not found'}`);
+        return;
+      }
+
+      const dataResult = await response.json();
+      
+      // Check if PIN was required but incorrect
+      if (dataResult.pin_required || (!dataResult.data && !dataResult.user_submissions)) {
+        alert('Invalid PIN code or lineup not found');
+        return;
+      }
+
+      // When username query param is used, data is at top level
+      // When username is not used, data is in user_submissions
+      let hashData = null;
+      
+      if (dataResult.data && dataResult.username) {
+        // Single user response (username query param was used)
+        hashData = dataResult.data;
+      } else if (dataResult.user_submissions) {
+        // Full entry response - find user's data in user_submissions
+        const userSubmissions = dataResult.user_submissions;
+        const submissionKey = Object.keys(userSubmissions).find(
+          key => key.toLowerCase() === username.toLowerCase()
+        );
+        
+        if (!submissionKey || !userSubmissions[submissionKey]?.data) {
+          alert('No lineup data found for your username');
+          return;
+        }
+
+        const submission = userSubmissions[submissionKey];
+        hashData = submission.data;
+      } else {
+        alert('No lineup data found in response');
+        return;
+      }
+
+      // Parse the data to extract user's lineup
+      try {
+        const [weekStr, compressedData] = hashData.split('|');
+
+        // Decompress
+        let decompressed = LZString.decompressFromEncodedURIComponent(compressedData);
+        if (!decompressed) {
+          decompressed = LZString.decompressFromBase64(compressedData);
+        }
+        if (!decompressed) {
+          decompressed = LZString.decompressFromUTF16(compressedData);
+        }
+
+        if (!decompressed) {
+          throw new Error('Failed to decompress lineup data');
+        }
+
+        // Check if decompressed data has username prefix (format "username:decodedData")
+        const colonIndex = decompressed.indexOf(':');
+        let rawData;
+        
+        if (colonIndex !== -1) {
+          // Has username prefix - extract the data part
+          rawData = decompressed.substring(colonIndex + 1);
+        } else {
+          // No username prefix - entire decompressed data is the raw data
+          rawData = decompressed;
+        }
+        
+        // Encode the raw data to base64
+        const encoded = btoa(rawData);
+        const lineupCode = `${username}:${encoded}`;
+
+        // Load the lineup
+        loadLineupFromCode(lineupCode);
+        
+        // Close PIN modal and reset state
+        setShowPinModal(false);
+        setSelectedLineupForPin(null);
+        setPinInput('');
+      } catch (error) {
+        console.error('Error parsing lineup data:', error);
+        alert('Error loading lineup: ' + error.message);
+      }
+    } catch (error) {
+      console.error('Error loading lineup with PIN:', error);
+      alert('Error loading lineup: ' + error.message);
+    }
   };
 
   const getSortIcon = (key) => {
@@ -993,15 +1060,25 @@ function DFS({ userName }) {
     
     // Check if player has already played their game
     if (player.game_date) {
-      const gameDate = new Date(player.game_date);
       const now = new Date();
+      let gameCutoffTime = null;
       
-      // Get the day after the game date (games are typically over by the next day)
-      const dayAfterGame = new Date(gameDate);
-      dayAfterGame.setDate(dayAfterGame.getDate() + 1);
+      // Try to use game start time if available
+      if (player.game_start_time) {
+        try {
+          gameCutoffTime = parseGameStartToUtc(player.game_date, player.game_start_time);
+        } catch (error) {
+          console.error('Error parsing game start time:', error);
+        }
+      }
       
-      // Only disable if it's the day after the game or later
-      if (now >= dayAfterGame) {
+      // If game start time not available or parsing failed, use 03:00 CET on day after game
+      if (!gameCutoffTime) {
+        gameCutoffTime = getDayAfterGameAt3AmCET(player.game_date);
+      }
+      
+      // Disable if current time is past the cutoff time
+      if (gameCutoffTime && now >= gameCutoffTime) {
         return false;
       }
     }
@@ -1437,9 +1514,15 @@ function DFS({ userName }) {
       </div>
 
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+        <div className="modal-overlay" onClick={() => {
+          setShowModal(false);
+          setLineupPinError('');
+        }}>
           <div className="lineup-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close-btn" onClick={() => setShowModal(false)}>
+            <button className="modal-close-btn" onClick={() => {
+              setShowModal(false);
+              setLineupPinError('');
+            }}>
               ×
             </button>
             <h2>Your Lineup Code</h2>
@@ -1451,6 +1534,51 @@ function DFS({ userName }) {
                   <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                 </svg>
               </button>
+            </div>
+            
+            <div className="add-to-league-section" style={{ marginTop: '20px' }}>
+              <p style={{ marginBottom: '8px', fontSize: '14px', color: '#666' }}>Add pin code to be able to load lineup later</p>
+              <input
+                type="text"
+                className="lineup-code-input"
+                value={lineupPin}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Only allow numbers and limit to 8 characters
+                  if (value === '' || /^[0-9]{0,8}$/.test(value)) {
+                    setLineupPin(value);
+                    // Validate: must be empty (0 digits) or 2-8 digits
+                    if (value === '' || value.length === 0) {
+                      setLineupPinError('');
+                    } else if (value.length === 1) {
+                      setLineupPinError('PIN must be empty or 2-8 digits');
+                    } else if (value.length >= 2 && value.length <= 8) {
+                      setLineupPinError('');
+                    } else {
+                      setLineupPinError('PIN must be empty or 2-8 digits');
+                    }
+                  }
+                }}
+                onBlur={() => {
+                  // Validate on blur as well
+                  if (lineupPin.length === 1) {
+                    setLineupPinError('PIN must be empty or 2-8 digits');
+                  } else {
+                    setLineupPinError('');
+                  }
+                }}
+                placeholder="0 or 2-8 numbers only"
+                maxLength={8}
+                style={{ 
+                  marginBottom: lineupPinError ? '4px' : '20px',
+                  borderColor: lineupPinError ? '#dc3545' : undefined
+                }}
+              />
+              {lineupPinError && (
+                <p style={{ color: '#dc3545', fontSize: '12px', marginTop: '0', marginBottom: '20px' }}>
+                  {lineupPinError}
+                </p>
+              )}
             </div>
             
             <div className="add-to-league-section">
@@ -1494,16 +1622,40 @@ function DFS({ userName }) {
                 <div className="load-lineup-list-section">
                   <h3 className="add-to-league-title">Load from your leagues</h3>
                   <div className="add-to-league-buttons">
-                    {loadableLineups.map((lineup) => (
-                      <button
-                        key={lineup.entryName}
-                        onClick={() => lineup.hasData && handleLoadLineupFromList(lineup)}
-                        disabled={!lineup.hasData}
-                        className={`add-to-league-btn ${lineup.hasData ? 'no-data' : 'disabled'}`}
-                      >
-                        {lineup.entryName} {lineup.week && `(Week ${lineup.week})`} {!lineup.hasData && '(No data)'}
-                      </button>
-                    ))}
+                    {loadableLineups.map((lineup) => {
+                      // Determine button style: Green (has_data && has_pin), Red (has_data && !has_pin), Grey (!has_data)
+                      const isGreen = lineup.hasData && lineup.hasPin;
+                      const isRed = lineup.hasData && !lineup.hasPin;
+                      const isGrey = !lineup.hasData;
+                      
+                      return (
+                        <button
+                          key={lineup.entryName}
+                          onClick={() => {
+                            if (isGreen) {
+                              setSelectedLineupForPin(lineup);
+                              setShowPinModal(true);
+                            }
+                            // Red and grey buttons are not clickable (disabled)
+                          }}
+                          disabled={isRed || isGrey}
+                          className={`add-to-league-btn ${
+                            isGreen ? 'has-data' : 
+                            isRed ? 'no-data' : 
+                            'disabled'
+                          }`}
+                          style={{
+                            backgroundColor: isGreen ? '#28a745' : 
+                                          isRed ? '#dc3545' : 
+                                          '#6c757d',
+                            cursor: (isRed || isGrey) ? 'not-allowed' : 'pointer',
+                            opacity: (isRed || isGrey) ? 0.6 : 1
+                          }}
+                        >
+                          {lineup.entryName} {lineup.week && `(Week ${lineup.week})`} {!lineup.hasData && '(No data)'}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -1591,6 +1743,65 @@ function DFS({ userName }) {
                   Proceed
                 </button>
                 <button className="cancel-btn" onClick={handleConfirmCancel}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPinModal && selectedLineupForPin && (
+        <div className="modal-overlay" onClick={() => {
+          setShowPinModal(false);
+          setSelectedLineupForPin(null);
+          setPinInput('');
+        }}>
+          <div className="lineup-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close-btn" onClick={() => {
+              setShowPinModal(false);
+              setSelectedLineupForPin(null);
+              setPinInput('');
+            }}>
+              ×
+            </button>
+            <h2>Enter PIN</h2>
+            <div className="load-lineup-container">
+              <p>Enter PIN to load lineup from "{selectedLineupForPin.entryName}"</p>
+              {selectedLineupForPin.week && (
+                <p style={{ color: '#6c757d', fontSize: '14px', marginTop: '8px', marginBottom: '16px' }}>
+                  Week {selectedLineupForPin.week}
+                </p>
+              )}
+              <input
+                type="text"
+                className="lineup-code-input"
+                value={pinInput}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Only allow numbers and limit to 8 characters
+                  if (value === '' || /^[0-9]{0,8}$/.test(value)) {
+                    setPinInput(value);
+                  }
+                }}
+                placeholder="Enter PIN (2-8 digits)"
+                maxLength={8}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleLoadLineupWithPin();
+                  }
+                }}
+                autoFocus
+              />
+              <div className="load-lineup-buttons" style={{ marginTop: '16px' }}>
+                <button className="load-btn" onClick={handleLoadLineupWithPin} disabled={!pinInput.trim() || !/^[0-9]{2,8}$/.test(pinInput.trim())}>
+                  Send
+                </button>
+                <button className="cancel-btn" onClick={() => {
+                  setShowPinModal(false);
+                  setSelectedLineupForPin(null);
+                  setPinInput('');
+                }}>
                   Cancel
                 </button>
               </div>
