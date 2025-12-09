@@ -120,6 +120,30 @@
   color: #6c757d;
 }
 
+.dfs-manage-results-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: #6c757d;
+  transition: color 0.2s ease, background-color 0.2s ease;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.dfs-manage-results-btn:hover {
+  color: #007bff;
+  background-color: #e9ecef;
+}
+
+.dfs-manage-results-btn-text {
+  font-weight: 500;
+}
+
 .dfs-manage-copy-btn {
   background: none;
   border: none;
@@ -355,6 +379,15 @@ body.dark .dfs-manage-entry-header:hover {
 
 body.dark .dfs-manage-entry-summary {
   color: #4ade80;
+}
+
+body.dark .dfs-manage-results-btn {
+  color: #adb5bd;
+}
+
+body.dark .dfs-manage-results-btn:hover {
+  color: #66b2ff;
+  background-color: #444;
 }
 
 body.dark .dfs-manage-copy-btn {

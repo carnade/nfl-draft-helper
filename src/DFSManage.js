@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import LZString from 'lz-string';
 import './DFSManage.css';
 
 // Add a mock flag
-const mock = false; // Set to true for mock data, false for production
+const mock = true; // Set to true for mock data, false for production
 
 // Define the base URL based on the mock flag
 const BASE_URL = mock
@@ -11,6 +12,7 @@ const BASE_URL = mock
   : "https://shaggy-latashia-carnade-2ea2054a.koyeb.app";
 
 function DFSManage() {
+  const navigate = useNavigate();
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -261,6 +263,29 @@ function DFSManage() {
                       Created: {formatDate(entry.created_at)}
                     </span>
                     <div className="dfs-manage-entry-buttons">
+                      <button 
+                        className="dfs-manage-results-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/dfs/results/tinyurl/${entry.name}`);
+                        }}
+                        aria-label="View results"
+                        title="View results page"
+                      >
+                        <svg 
+                          width="16" 
+                          height="16" 
+                          viewBox="0 0 24 24" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          strokeWidth="2"
+                        >
+                          <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                          <polyline points="10 17 15 12 10 7"></polyline>
+                          <line x1="15" y1="12" x2="3" y2="12"></line>
+                        </svg>
+                        <span className="dfs-manage-results-btn-text">Results</span>
+                      </button>
                       {details && (
                         <button 
                           className="dfs-manage-copy-btn"

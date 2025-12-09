@@ -4,7 +4,7 @@ import LZString from 'lz-string';
 import './DFSResults.css';
 
 // Add a mock flag
-const mock = false; // Set to true for mock data, false for production
+const mock = true; // Set to true for mock data, false for production
 
 // Define the base URL based on the mock flag
 const BASE_URL = mock
@@ -130,6 +130,7 @@ function DFSResults() {
   const hasMeasuredRef = useRef(false);
   const animationTimeoutsRef = useRef({});
   const lastSortedKeysRef = useRef([]);
+  const hasSetDefaultRevealTimeRef = useRef(false);
 
   // Fetch player names from bestball endpoint for players not in salary data
   const fetchPlayerMetadata = useCallback(async (sleeperIds) => {
@@ -784,14 +785,16 @@ function DFSResults() {
     return { date: dateStr, time: timeStr };
   };
 
-  // Set default reveal time to upcoming Sunday at 19:00
+  // Set default reveal time to upcoming Sunday at 19:00 (only on initial mount)
   useEffect(() => {
-    if (!emptyTinyUrlRevealDate && !emptyTinyUrlRevealTime) {
+    // Only set defaults once on initial mount, not when user clears them
+    if (!hasSetDefaultRevealTimeRef.current && !emptyTinyUrlRevealDate && !emptyTinyUrlRevealTime) {
       const { date, time } = getUpcomingSunday();
       setEmptyTinyUrlRevealDate(date);
       setEmptyTinyUrlRevealTime(time);
+      hasSetDefaultRevealTimeRef.current = true;
     }
-  }, [emptyTinyUrlRevealDate, emptyTinyUrlRevealTime]); // Set defaults only when both are empty
+  }, [emptyTinyUrlRevealDate, emptyTinyUrlRevealTime]); // Set defaults only on initial mount
 
   // Check for admin query parameter
   useEffect(() => {
@@ -1497,7 +1500,7 @@ function DFSResults() {
           gameHasStarted = now >= kickoffUtc;
           if (!gameHasStarted) {
             // Game hasn't started yet
-            return 'Not played';
+            return 'TBD';
           }
         }
       } catch (error) {
@@ -1530,9 +1533,9 @@ function DFSResults() {
       return 'Awaiting Pts';
     }
 
-    // If game hasn't started (and we didn't return above), show Not played
+    // If game hasn't started (and we didn't return above), show TBD
     if (!gameHasStarted) {
-      return 'Not played';
+      return 'TBD';
     }
 
     // Default: show awaiting if game has started
@@ -1666,7 +1669,7 @@ function DFSResults() {
     const hasNotPlayedPlayers = lineupData.some(lineup => 
       lineup.players.some(player => {
         const displayStatus = getFantasyPointsDisplay(player.sleeperId);
-        if (displayStatus === 'Not played') {
+        if (displayStatus === 'TBD') {
           const dfsPlayerKey = `${player.sleeperId}_W${selectedWeek}`;
           const dfsPlayer = dfsSalaryData[dfsPlayerKey];
           missingPlayers.push({
@@ -1720,7 +1723,7 @@ function DFSResults() {
     
     console.log('hasNotPlayedPlayers:', hasNotPlayedPlayers);
     
-    // If there are "Not played" players, show all results immediately
+    // If there are "TBD" players, show all results immediately
     if (hasNotPlayedPlayers) {
       console.log('Not all players have played yet, showing all results immediately');
       const allVisible = new Set();
@@ -2791,8 +2794,40 @@ function DFSResults() {
                       return (
                         <>
                           {playersToShow.map((player, pIdx) => {
-                            const info = getPlayerInfo(player.sleeperId);
-                            const position = info?.position || 'FLX';
+                            // Check if game has started FIRST, before getting player info
+                            // This ensures we catch TBD cases early
+                            const dfsPlayerKey = `${player.sleeperId}_W${selectedWeek}`;
+                            const dfsPlayer = dfsSalaryData[dfsPlayerKey];
+                            const gameDate = dfsPlayer?.game_date;
+                            const gameStartTime = dfsPlayer?.game_start_time;
+                            let gameHasStarted = null; // null means we can't determine (no game date)
+                            
+                            if (gameDate) {
+                              try {
+                                const kickoffUtc = parseGameStartToUtc(gameDate, gameStartTime);
+                                if (kickoffUtc) {
+                                  const now = new Date();
+                                  gameHasStarted = now >= kickoffUtc;
+                                } else {
+                                  // If parsing failed but we have game date, assume game hasn't started yet
+                                  // (safer to hide than show)
+                                  console.warn('Could not parse game start time, assuming game not started:', {
+                                    sleeperId: player.sleeperId,
+                                    gameDate,
+                                    gameStartTime
+                                  });
+                                  gameHasStarted = false;
+                                }
+                              } catch (error) {
+                                console.error('Error parsing game start time in render:', error);
+                                // On error, assume game hasn't started (safer to hide than show)
+                                gameHasStarted = false;
+                              }
+                            }
+                            
+                            // Check pointsDisplay early as well
+                            const pointsDisplay = getFantasyPointsDisplay(player.sleeperId);
+                            const isTBD = pointsDisplay === 'TBD';
                             
                             if (showPlaceholder) {
                               // Show placeholder data with grey background
@@ -2813,14 +2848,63 @@ function DFSResults() {
                               );
                             }
                             
-                            const pointsDisplay = getFantasyPointsDisplay(player.sleeperId);
+                            // If game hasn't started (and we have a game date to check), show placeholder style (same as reveal)
+                            // Only show TBD if we can determine the game hasn't started (gameHasStarted === false)
+                            if (gameHasStarted === false && !isAdmin) {
+                              return (
+                                <div
+                                  key={pIdx} 
+                                  className="dfs-results-player-card"
+                                  style={{ backgroundColor: 'rgba(128, 128, 128, 0.3)' }}
+                                >
+                                  <div className="dfs-results-player-card-left">
+                                    <div className="dfs-results-player-card-name">TBD</div>
+                                    <div className="dfs-results-player-card-salary">TBD</div>
+                                  </div>
+                                  <div className="dfs-results-player-card-points">
+                                    TBD
+                                  </div>
+                                </div>
+                              );
+                            }
+                            
+                            // Double-check: if pointsDisplay is TBD, show placeholder (fallback in case game date check missed it)
+                            if (isTBD && !isAdmin) {
+                              return (
+                                <div
+                                  key={pIdx} 
+                                  className="dfs-results-player-card"
+                                  style={{ backgroundColor: 'rgba(128, 128, 128, 0.3)' }}
+                                >
+                                  <div className="dfs-results-player-card-left">
+                                    <div className="dfs-results-player-card-name">TBD</div>
+                                    <div className="dfs-results-player-card-salary">TBD</div>
+                                  </div>
+                                  <div className="dfs-results-player-card-points">
+                                    TBD
+                                  </div>
+                                </div>
+                              );
+                            }
+                            
+                            // Only get player info and normalize position if we're actually showing the player
+                            const info = getPlayerInfo(player.sleeperId);
+                            // Normalize position - handle variations like 'D/ST', 'D_ST', etc.
+                            let position = info?.position || 'FLX';
+                            if (position && typeof position === 'string') {
+                              const upperPos = position.toUpperCase();
+                              if (upperPos === 'D/ST' || upperPos === 'D_ST' || upperPos === 'DST' || upperPos === 'DEF') {
+                                position = 'DST';
+                              } else {
+                                position = upperPos;
+                              }
+                            }
+                            
                             const isOut = pointsDisplay === 'OUT';
-                            const isNotPlayed = pointsDisplay === 'Not played';
+                            
                             const backgroundColor = isOut 
                               ? 'rgba(220, 53, 69, 0.8)' 
-                              : isNotPlayed 
-                                ? 'rgb(235, 88, 254, 0.8)' 
-                                : getPositionColor(position);
+                              : getPositionColor(position);
                             console.log('Render info', {
                               lineupUsername: lineup.username,
                               sleeperId: player.sleeperId,
@@ -2828,7 +2912,8 @@ function DFSResults() {
                               pointsDisplay,
                               position,
                               isOut,
-                              isNotPlayed
+                              gameHasStarted,
+                              isTBD
                             });
                             return (
                               <div
