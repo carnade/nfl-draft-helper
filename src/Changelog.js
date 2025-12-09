@@ -41,6 +41,28 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2025-12-09",
+      title: "DFS PIN Codes & Reveal Updates",
+      items: [
+        {
+          text: "PIN-protected lineups",
+          subitems: [
+            "Optional PIN (2-8 digits) when saving a lineup to tinyurl; validation enforces digits-only and minimum length when loading",
+            "Load flow shows PIN-gated lineups in green; prompts for PIN and calls the data endpoint with username + pin",
+            "Finish-lineup modal PIN input allows empty or 2-8 digits; load PIN modal requires 2+ digits"
+          ]
+        },
+        {
+          text: "Reveal & pre-game masking",
+          subitems: [
+            "Players whose games have not started are masked as TBD (name/salary/points hidden) with the same styling as pre-reveal",
+            "Fallback TBD guard ensures players stay hidden until kickoff even if partial data arrives",
+            "DST position is normalized so masking works while keeping the brown DST color"
+          ]
+        }
+      ],
+    },
+    {
       date: "2025-11-13",
       title: "DFS League Management & Results Improvements",
       items: [
