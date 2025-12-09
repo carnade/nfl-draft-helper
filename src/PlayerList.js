@@ -11,6 +11,8 @@ function PlayerList({
   setRemovedPlayers,
   keepEmptyTiers,
   scoringType,
+  showPtsMode,
+  showPortfolio,
 }) {
   // Determine the maximum tier number by checking the players
   const maxTier = players.reduce((max, player) => {
@@ -56,6 +58,8 @@ function PlayerList({
                     setPlayers={setPlayers}
                     setRemovedPlayers={setRemovedPlayers}
                     scoringType={scoringType} // Pass scoringType here
+                    showPtsMode={showPtsMode} // Pass showPtsMode toggle
+                    showPortfolio={showPortfolio} // Pass showPortfolio toggle
                   />
                 ) : null;
               })}

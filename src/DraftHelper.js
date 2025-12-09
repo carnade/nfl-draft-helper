@@ -33,6 +33,8 @@ function DraftHelper({ csvData, csvFileName }) {
   const [autoReload, setAutoReload] = useState(false);
   const [reloadInterval, setReloadInterval] = useState(30);
   const [isFlashing, setIsFlashing] = useState(false);
+  const [showPtsMode, setShowPtsMode] = useState(false); // Toggle between pts/g and dynasty rankings
+  const [showPortfolio, setShowPortfolio] = useState(true); // Toggle to show/hide portfolio count
 
   // The final "draftId" we use (either from route or user input)
   const [draftId, setDraftId] = useState("");
@@ -305,7 +307,7 @@ function DraftHelper({ csvData, csvFileName }) {
         finalPlayers = await removePickedPlayers(routeDraftId, finalPlayers);
       }
 
-      // Step D) Add BestBallTotal field to each player
+      // Step D) Add BestBallTotal, pts_ppr, and pts_half_ppr fields to each player
       const savedPortfolioData = JSON.parse(
         localStorage.getItem("FantasyHelperBestballPortfolio")
       );
@@ -313,29 +315,60 @@ function DraftHelper({ csvData, csvFileName }) {
       if (savedPortfolioData) {
         console.log("Loaded bestball portfolio data:", savedPortfolioData);
 
-        // Create a mapping of player names to their counts from the portfolio data
-        const portfolioCounts = savedPortfolioData.reduce((acc, player) => {
-          acc[player.name] = player.count;
+        // Create a mapping of player names to their portfolio data
+        const portfolioMap = savedPortfolioData.reduce((acc, player) => {
+          acc[player.name] = {
+            count: player.totalCount || 0,
+            pts_ppr: player.pts_ppr || null,
+            pts_half_ppr: player.pts_half_ppr || null,
+          };
           return acc;
         }, {});
 
-        // Add BestBallTotal to each player in finalPlayers
+        // Add BestBallTotal, pts_ppr, and pts_half_ppr to each player in finalPlayers
         finalPlayers = finalPlayers.map((player) => ({
           ...player,
-          BestBallTotal: portfolioCounts[player.Name] || 0, // Default to 0 if no match
+          BestBallTotal: portfolioMap[player.Name]?.count || 0, // Default to 0 if no match
+          pts_ppr: portfolioMap[player.Name]?.pts_ppr || null,
+          pts_half_ppr: portfolioMap[player.Name]?.pts_half_ppr || null,
         }));
       } else {
         console.log("No bestball portfolio data found in localStorage.");
-        // Add BestBallTotal as 0 for all players if no portfolio data is found
+        // Add BestBallTotal as 0 and pts fields as null for all players if no portfolio data is found
         finalPlayers = finalPlayers.map((player) => ({
           ...player,
           BestBallTotal: 0,
+          pts_ppr: null,
+          pts_half_ppr: null,
         }));
       }
       console.log("scoringType:", scoringType);
-      if (!["2qb", "ppr", "half_ppr"].includes(scoringType)) {
-        try {
-          const playerIds = finalPlayers.map((player) => player.SleeperId); // Collect SleeperIds
+      // Always fetch KTC/FC values so they're available when user toggles display mode
+      try {
+        const playerIds = finalPlayers.map((player) => player.SleeperId).filter(Boolean); // Collect SleeperIds, filter out falsy values
+        
+        // Create cache key from sorted playerIds
+        const cacheKey = `playerData_${playerIds.sort().join(',')}`;
+        const cacheTimestampKey = `${cacheKey}_timestamp`;
+        const cacheExpiry = 60 * 60 * 1000; // 1 hour in milliseconds
+        
+        // Check cache first
+        let externalPlayers = null;
+        const cachedData = sessionStorage.getItem(cacheKey);
+        const cachedTimestamp = sessionStorage.getItem(cacheTimestampKey);
+        const now = Date.now();
+        
+        if (cachedData && cachedTimestamp && (now - parseInt(cachedTimestamp)) < cacheExpiry) {
+          try {
+            externalPlayers = JSON.parse(cachedData);
+            console.log("Using cached player data");
+          } catch (e) {
+            console.warn("Failed to parse cached player data", e);
+          }
+        }
+        
+        // Fetch if not cached or cache expired
+        if (!externalPlayers) {
           const response = await fetch(`${BASE_URL}/getplayers/data`, {
             method: "POST",
             headers: {
@@ -344,23 +377,39 @@ function DraftHelper({ csvData, csvFileName }) {
             body: JSON.stringify({ playerlist: playerIds }), // Send playerIds in the body
           });
 
-          const externalPlayers = await response.json();
+          externalPlayers = await response.json();
           console.log("API Response:", externalPlayers); // Log the response
-
-          // Map externalPlayers data to finalPlayers based on SleeperId
-          finalPlayers = finalPlayers.map((player) => {
-            const externalPlayer = externalPlayers[player.SleeperId]; // Access by SleeperId
-            return externalPlayer
-              ? {
-                  ...player,
-                  "FC Value": externalPlayer["FC Value"] || "N/A",
-                  "KTC Value": externalPlayer["KTC Value"] || "N/A",
-                } // Merge external data with existing player
-              : player; // Keep the original player if no match is found
-          });
-        } catch (error) {
-          console.error("Error fetching external players:", error);
+          
+          // Cache the response
+          try {
+            sessionStorage.setItem(cacheKey, JSON.stringify(externalPlayers));
+            sessionStorage.setItem(cacheTimestampKey, now.toString());
+          } catch (e) {
+            console.warn("Failed to cache player data", e);
+          }
         }
+
+        // Map externalPlayers data to finalPlayers based on SleeperId
+        finalPlayers = finalPlayers.map((player) => {
+          const externalPlayer = externalPlayers[player.SleeperId]; // Access by SleeperId
+          return externalPlayer
+            ? {
+                ...player,
+                "FC Value": externalPlayer["FC Value"] || "N/A",
+                "KTC Value": externalPlayer["KTC Value"] || "N/A",
+                gp: externalPlayer.gp || null, // Extract games played for pts/g calculation
+                // Use API data for pts_ppr/pts_half_ppr as it's more reliable (overrides portfolio if present)
+                pts_ppr: externalPlayer.pts_ppr !== undefined && externalPlayer.pts_ppr !== null 
+                  ? externalPlayer.pts_ppr 
+                  : player.pts_ppr, // Fallback to portfolio data if API doesn't have it
+                pts_half_ppr: externalPlayer.pts_half_ppr !== undefined && externalPlayer.pts_half_ppr !== null
+                  ? externalPlayer.pts_half_ppr
+                  : player.pts_half_ppr, // Fallback to portfolio data if API doesn't have it
+              } // Merge external data with existing player
+            : player; // Keep the original player if no match is found
+        });
+      } catch (error) {
+        console.error("Error fetching external players:", error);
       }
 
       console.log("Final players with BestBallTotal:", finalPlayers);
@@ -452,6 +501,26 @@ function DraftHelper({ csvData, csvFileName }) {
           />
           <span>Keep empty tiers</span>
         </label>
+
+        <label className="modern-checkbox">
+          <input
+            type="checkbox"
+            checked={showPtsMode}
+            onChange={() => setShowPtsMode(!showPtsMode)}
+          />
+          <span>Show Pts/g (Redraft)</span>
+        </label>
+
+        {showPtsMode && (
+          <label className="modern-checkbox">
+            <input
+              type="checkbox"
+              checked={showPortfolio}
+              onChange={() => setShowPortfolio(!showPortfolio)}
+            />
+            <span>Show Portfolio</span>
+          </label>
+        )}
       </div>
 
       <div className="lists-container">
@@ -464,6 +533,8 @@ function DraftHelper({ csvData, csvFileName }) {
           setRemovedPlayers={setRemovedPlayers}
           keepEmptyTiers={keepEmptyTiers}
           scoringType={scoringType} // Pass scoringType here
+          showPtsMode={showPtsMode} // Pass showPtsMode toggle
+          showPortfolio={showPortfolio} // Pass showPortfolio toggle
         />
         <PlayerList
           title="QB"
@@ -474,6 +545,8 @@ function DraftHelper({ csvData, csvFileName }) {
           setRemovedPlayers={setRemovedPlayers}
           keepEmptyTiers={keepEmptyTiers}
           scoringType={scoringType} // Pass scoringType here
+          showPtsMode={showPtsMode} // Pass showPtsMode toggle
+          showPortfolio={showPortfolio} // Pass showPortfolio toggle
         />
         <PlayerList
           title="RB"
@@ -484,6 +557,8 @@ function DraftHelper({ csvData, csvFileName }) {
           setRemovedPlayers={setRemovedPlayers}
           keepEmptyTiers={keepEmptyTiers}
           scoringType={scoringType} // Pass scoringType here
+          showPtsMode={showPtsMode} // Pass showPtsMode toggle
+          showPortfolio={showPortfolio} // Pass showPortfolio toggle
         />
         <PlayerList
           title="WR"
@@ -494,6 +569,8 @@ function DraftHelper({ csvData, csvFileName }) {
           setRemovedPlayers={setRemovedPlayers}
           keepEmptyTiers={keepEmptyTiers}
           scoringType={scoringType} // Pass scoringType here
+          showPtsMode={showPtsMode} // Pass showPtsMode toggle
+          showPortfolio={showPortfolio} // Pass showPortfolio toggle
         />
         <PlayerList
           title="TE"
@@ -504,6 +581,8 @@ function DraftHelper({ csvData, csvFileName }) {
           setRemovedPlayers={setRemovedPlayers}
           keepEmptyTiers={keepEmptyTiers}
           scoringType={scoringType} // Pass scoringType here
+          showPtsMode={showPtsMode} // Pass showPtsMode toggle
+          showPortfolio={showPortfolio} // Pass showPortfolio toggle
         />
       </div>
     </div>
