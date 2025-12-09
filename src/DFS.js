@@ -799,13 +799,6 @@ function DFS({ userName }) {
     loadLineupFromCode(loadLineupCode);
   };
 
-  const handleLoadLineupFromList = (lineup) => {
-    if (!lineup.hasData || !lineup.lineupCode) {
-      return; // Don't load if there's no data
-    }
-    loadLineupFromCode(lineup.lineupCode);
-  };
-
   const handleLoadLineupWithPin = async () => {
     if (!selectedLineupForPin || !pinInput.trim()) {
       alert('Please enter a PIN code');
@@ -872,7 +865,7 @@ function DFS({ userName }) {
 
       // Parse the data to extract user's lineup
       try {
-        const [weekStr, compressedData] = hashData.split('|');
+        const [, compressedData] = hashData.split('|');
 
         // Decompress
         let decompressed = LZString.decompressFromEncodedURIComponent(compressedData);
