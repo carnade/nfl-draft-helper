@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import PropTypes from "prop-types";
 import "./PlayerButton.css";
 
-function PlayerButton({ player, setPlayers, setRemovedPlayers, scoringType }) {
+function PlayerButton({ player, setPlayers, setRemovedPlayers, scoringType, showPtsMode = false, showPortfolio = true }) {
   const [isDisabled] = useState(false);
 
   const handleClick = () => {
@@ -48,10 +48,25 @@ function PlayerButton({ player, setPlayers, setRemovedPlayers, scoringType }) {
   };
 
   const renderPortfolioOrDynastyRankings = () => {
-    if (["2qb", "ppr", "half_ppr"].includes(scoringType)) {
-      return `Portfolio: ${player.BestBallTotal || 0}`; // Default to 0 if BestBallTotal is undefined
+    if (showPtsMode) {
+      // Show pts/g mode (redraft)
+      const pts = scoringType && scoringType.toLowerCase().includes("half_ppr")
+        ? player.pts_half_ppr
+        : player.pts_ppr;
+      // Calculate pts/g = total points / games played
+      const ptsPerGame = (pts !== null && pts !== undefined && player.gp && player.gp > 0)
+        ? (pts / player.gp).toFixed(1)
+        : "N/A";
+      
+      // Build the display string with conditional portfolio part
+      const parts = [];
+      if (showPortfolio) {
+        parts.push(`Portfolio: ${player.BestBallTotal || 0}`);
+      }
+      parts.push(`Pts/g: ${ptsPerGame}`);
+      return parts.join(" | ");
     }
-    // Render KTC and FC values if scoringType is not one of the specified types
+    // Show dynasty rankings (KTC/FC) when toggle is off
     return `KTC: ${player["KTC Value"] || "N/A"} | FC: ${
       player["FC Value"] || "N/A"
     }`;
@@ -90,12 +105,16 @@ PlayerButton.propTypes = {
     Team: PropTypes.string.isRequired,
     Bye: PropTypes.number,
     BestBallTotal: PropTypes.number,
+    pts_ppr: PropTypes.number,
+    pts_half_ppr: PropTypes.number,
+    gp: PropTypes.number,
     "KTC Value": PropTypes.number,
     "FC Value": PropTypes.number,
   }).isRequired,
   setPlayers: PropTypes.func.isRequired,
   setRemovedPlayers: PropTypes.func.isRequired,
-  scoringType: PropTypes.string.isRequired,
+  scoringType: PropTypes.string,
+  showPtsMode: PropTypes.bool,
 };
 
 export default PlayerButton;
