@@ -994,7 +994,17 @@ function DFS({ userName }) {
   };
 
   const addPlayerToRoster = (player) => {
-    const position = player.position;
+    // Normalize position - handle variations like 'D/ST', 'D_ST', etc.
+    let position = player.position;
+    if (position && typeof position === 'string') {
+      // Normalize DST variations
+      if (position.toUpperCase() === 'D/ST' || position.toUpperCase() === 'D_ST' || position.toUpperCase() === 'DST' || position.toUpperCase() === 'DEF') {
+        position = 'DST';
+      } else {
+        // Normalize other positions to uppercase for consistency
+        position = position.toUpperCase();
+      }
+    }
     
     // Use functional update to ensure we work with the latest state
     setRoster(prev => {
@@ -1054,7 +1064,17 @@ function DFS({ userName }) {
   };
 
   const canAddPlayer = (player) => {
-    const position = player.position;
+    // Normalize position - handle variations like 'D/ST', 'D_ST', etc.
+    let position = player.position;
+    if (position && typeof position === 'string') {
+      // Normalize DST variations
+      if (position.toUpperCase() === 'D/ST' || position.toUpperCase() === 'D_ST' || position.toUpperCase() === 'DST' || position.toUpperCase() === 'DEF') {
+        position = 'DST';
+      } else {
+        // Normalize other positions to uppercase for consistency
+        position = position.toUpperCase();
+      }
+    }
     const currentSalary = getTotalSalary();
     const SALARY_CAP = 50000;
     
