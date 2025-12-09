@@ -57,7 +57,6 @@ export default function Changelog() {
           subitems: [
             "Players whose games have not started are masked as TBD (name/salary/points hidden) with the same styling as pre-reveal",
             "Fallback TBD guard ensures players stay hidden until kickoff even if partial data arrives",
-            "DST position is normalized so masking works while keeping the brown DST color"
           ]
         }
       ],
