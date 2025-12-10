@@ -91,7 +91,10 @@ function DraftHelper({ csvData, csvFileName }) {
     console.log("removePickedPlayers for draftId=", draftIdParam);
     try {
       const picksResp = await fetch(
-        `https://api.sleeper.app/v1/draft/${draftIdParam}/picks`
+        `https://api.sleeper.app/v1/draft/${draftIdParam}/picks`,
+        {
+          cache: 'no-store' // Prevent browser caching
+        }
       );
       const picksData = await picksResp.json();
 
@@ -133,7 +136,10 @@ function DraftHelper({ csvData, csvFileName }) {
 
       // Also fetch league data for the draftName
       const leagueResp = await fetch(
-        `https://api.sleeper.app/v1/draft/${draftIdParam}`
+        `https://api.sleeper.app/v1/draft/${draftIdParam}`,
+        {
+          cache: 'no-store' // Prevent browser caching
+        }
       );
       const leagueData = await leagueResp.json();
       if (leagueData && leagueData.metadata) {
