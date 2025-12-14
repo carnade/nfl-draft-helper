@@ -813,7 +813,7 @@ function DFSResults() {
         setLoadingTinyUrl(true);
         try {
           // Use /data endpoint to get full entry data including reveal time
-          const response = await fetch(`${BASE_URL}/tinyurl/${tinyUrlNameParam}/data`);
+          const response = await fetch(`${BASE_URL}/tinyurl/${tinyUrlNameParam}/data?action=results`);
           
           if (response.ok) {
             const result = await response.json();

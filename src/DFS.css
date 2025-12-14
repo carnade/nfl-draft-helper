@@ -1022,6 +1022,16 @@ body.dark .my-lineups-table td {
   background-color: #6c757d;
 }
 
+.player-toggle-btn.game-started {
+  background-color: #fff59d;
+  color: #333;
+}
+
+.player-toggle-btn.game-started:hover {
+  background-color: #fff176;
+  color: #333;
+}
+
 .dfs-table td.injury {
   color: #dc3545;
   font-weight: 600;
@@ -1334,6 +1344,16 @@ body.dark .player-toggle-btn.disabled:hover {
   transform: none;
   box-shadow: none;
   background-color: #495057;
+}
+
+body.dark .player-toggle-btn.game-started {
+  background-color: #fff59d;
+  color: #333;
+}
+
+body.dark .player-toggle-btn.game-started:hover {
+  background-color: #fff176;
+  color: #333;
 }
 
 /* Header Buttons */

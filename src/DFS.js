@@ -142,6 +142,9 @@ function DFS({ userName }) {
   const [showPinModal, setShowPinModal] = useState(false);
   const [selectedLineupForPin, setSelectedLineupForPin] = useState(null);
   const [pinInput, setPinInput] = useState('');
+  const [showGameStartedModal, setShowGameStartedModal] = useState(false);
+  const [playerToAddAfterConfirm, setPlayerToAddAfterConfirm] = useState(null);
+  const [playerIndexToAdd, setPlayerIndexToAdd] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -1056,7 +1059,31 @@ function DFS({ userName }) {
     return Object.values(roster).some(p => p && p.name === player.name);
   };
 
-  const canAddPlayer = (player) => {
+  const hasGameStarted = (player) => {
+    if (!player.game_date) return false;
+    
+    const now = new Date();
+    let gameCutoffTime = null;
+    
+    // Try to use game start time if available
+    if (player.game_start_time) {
+      try {
+        gameCutoffTime = parseGameStartToUtc(player.game_date, player.game_start_time);
+      } catch (error) {
+        console.error('Error parsing game start time:', error);
+      }
+    }
+    
+    // If game start time not available or parsing failed, use 03:00 CET on day after game
+    if (!gameCutoffTime) {
+      gameCutoffTime = getDayAfterGameAt3AmCET(player.game_date);
+    }
+    
+    // Return true if current time is past the cutoff time
+    return gameCutoffTime && now >= gameCutoffTime;
+  };
+
+  const canAddPlayer = (player, ignoreGameStart = false) => {
     // Normalize position - handle variations like 'D/ST', 'D_ST', etc.
     let position = player.position;
     if (position && typeof position === 'string') {
@@ -1071,8 +1098,8 @@ function DFS({ userName }) {
     const currentSalary = getTotalSalary();
     const SALARY_CAP = 50000;
     
-    // Check if player has already played their game
-    if (player.game_date) {
+    // Check if player has already played their game (unless ignoring it)
+    if (!ignoreGameStart && player.game_date) {
       const now = new Date();
       let gameCutoffTime = null;
       
@@ -1127,9 +1154,31 @@ function DFS({ userName }) {
         removePlayerFromRoster(slotKey);
       }
     } else {
-      // Add to roster
-      addPlayerToRoster(player);
+      // Check if game has started - if so, show confirmation modal
+      if (hasGameStarted(player)) {
+        setPlayerToAddAfterConfirm(player);
+        setPlayerIndexToAdd(index);
+        setShowGameStartedModal(true);
+      } else {
+        // Add to roster normally
+        addPlayerToRoster(player);
+      }
     }
+  };
+
+  const handleConfirmAddAfterGameStart = () => {
+    if (playerToAddAfterConfirm) {
+      addPlayerToRoster(playerToAddAfterConfirm);
+      setShowGameStartedModal(false);
+      setPlayerToAddAfterConfirm(null);
+      setPlayerIndexToAdd(null);
+    }
+  };
+
+  const handleCancelAddAfterGameStart = () => {
+    setShowGameStartedModal(false);
+    setPlayerToAddAfterConfirm(null);
+    setPlayerIndexToAdd(null);
   };
 
   const getTotalFpts = () => {
@@ -1823,6 +1872,28 @@ function DFS({ userName }) {
         </div>
       )}
 
+      {showGameStartedModal && playerToAddAfterConfirm && (
+        <div className="modal-overlay" onClick={handleCancelAddAfterGameStart}>
+          <div className="lineup-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close-btn" onClick={handleCancelAddAfterGameStart}>
+              ×
+            </button>
+            <h2>Player's Game Has Started</h2>
+            <div className="load-lineup-container">
+              <p>Player's game has started, add anyway?</p>
+              <div className="load-lineup-buttons" style={{ marginTop: '16px' }}>
+                <button className="load-btn" onClick={handleConfirmAddAfterGameStart}>
+                  Yes
+                </button>
+                <button className="cancel-btn" onClick={handleCancelAddAfterGameStart}>
+                  No
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="dfs-content">
         <div className="dfs-table-wrapper">
           <table className="dfs-table">
@@ -1844,14 +1915,18 @@ function DFS({ userName }) {
             <tbody>
               {sortedPlayers.map((player, index) => {
                 const inRoster = isPlayerInRoster(player);
-                const canAdd = canAddPlayer(player);
-                const isDisabled = !inRoster && !canAdd;
+                const gameStarted = hasGameStarted(player);
+                // Check if can add, ignoring game start status (we handle that separately)
+                const canAddIgnoringGameStart = canAddPlayer(player, true);
+                // Only disable if can't add for other reasons (salary, position slots)
+                const isDisabled = !inRoster && !canAddIgnoringGameStart;
+                const isGameStarted = !inRoster && gameStarted && canAddIgnoringGameStart;
                 
                 return (
                   <tr key={index}>
                     <td className="action-column">
                       <button
-                        className={`player-toggle-btn ${inRoster ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`}
+                        className={`player-toggle-btn ${inRoster ? 'selected' : ''} ${isDisabled ? 'disabled' : ''} ${isGameStarted ? 'game-started' : ''}`}
                         onClick={() => !isDisabled && togglePlayerSelection(index, player)}
                         disabled={isDisabled}
                       >
