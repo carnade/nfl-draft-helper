@@ -146,7 +146,8 @@ function DFSManage() {
       }
 
       // Fetch the full data for this entry (contains user_submissions)
-      const response = await fetch(`${BASE_URL}/tinyurl/${entryName}/data`);
+      // Use action=results to bypass PIN requirement when copying
+      const response = await fetch(`${BASE_URL}/tinyurl/${entryName}/data?action=results`);
       if (!response.ok) {
         alert('Failed to fetch league data');
         return;
@@ -267,7 +268,7 @@ function DFSManage() {
                         className="dfs-manage-results-btn"
                         onClick={(e) => {
                           e.stopPropagation();
-                          navigate(`/dfs/results/tinyurl/${entry.name}`);
+                          navigate(`/dfs/results/tinyurl/${entry.name}?admin=true`);
                         }}
                         aria-label="View results"
                         title="View results page"

@@ -41,6 +41,31 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2025-12-15",
+      title: "Tournament Feature",
+      items: [
+        {
+          text: "Tournament Management:",
+          subitems: [
+            "View list of all tournaments with name, week, and participant count",
+            "Create new tournaments with custom matchups between players from different Sleeper leagues",
+            "Two-step creation process: first paste league IDs to load league data, then select matchups",
+            "Select tournament week (current or next week)",
+            "Choose number of participants in powers of 2 (2, 4, 8, 16, 32, or 64)",
+            "Players sorted by total points with rankings (1#, 2#, etc.) in dropdown selections"
+          ]
+        },
+        {
+          text: "Tournament Results:",
+          subitems: [
+            "View tournament results with matchup-by-matchup point comparisons",
+            "See league names, player rankings, usernames, and points for each matchup",
+            "Results calculated using optimal lineup based on league roster settings and Sleeper matchup data"
+          ]
+        }
+      ],
+    },
+    {
       date: "2025-12-09",
       title: "DFS PIN Codes & Reveal Updates",
       items: [

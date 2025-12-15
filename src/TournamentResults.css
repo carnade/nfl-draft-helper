@@ -1,0 +1,244 @@
+.tournament-results-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+}
+
+.tournament-results-header {
+  margin-bottom: 30px;
+  text-align: center;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tournament-results-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #2c3e50;
+  margin: 0;
+}
+
+.tournament-results-loading,
+.tournament-results-error {
+  text-align: center;
+  padding: 40px;
+  font-size: 1.1rem;
+  color: #6c757d;
+}
+
+.tournament-results-error {
+  color: #dc3545;
+}
+
+.tournament-results-content {
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 30px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.tournament-matchups {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.tournament-matchup-row {
+  padding: 15px;
+  border-bottom: 1px solid #e9ecef;
+  transition: background-color 0.2s ease;
+}
+
+.tournament-matchup-row:hover {
+  background-color: #f8f9fa;
+}
+
+.tournament-matchup-row:last-child {
+  border-bottom: none;
+}
+
+.tournament-matchup-grid {
+  display: grid;
+  grid-template-columns: 4fr 1fr 5fr 2fr 1fr 2fr 5fr 1fr 4fr;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.1rem;
+  width: 100%;
+}
+
+/* Player 1 columns: league, position, username, points */
+.tournament-matchup-grid > :nth-child(1) {
+  /* league1 - left aligned */
+  font-weight: 500;
+  color: #6c757d;
+  font-size: 0.95rem;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tournament-matchup-grid > :nth-child(2) {
+  /* position1 - right aligned */
+  font-weight: 600;
+  color: #495057;
+  font-size: 0.9rem;
+  text-align: right;
+}
+
+.tournament-matchup-grid > :nth-child(3) {
+  /* username1 - right aligned */
+  font-weight: 600;
+  color: #2c3e50;
+  text-align: right;
+  padding: 0 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: capitalize;
+}
+
+.tournament-matchup-grid > :nth-child(4) {
+  /* points1 - right aligned */
+  font-weight: 700;
+  color: #007bff;
+  font-size: 1.2rem;
+  text-align: right;
+}
+
+/* vs separator */
+.tournament-matchup-grid > :nth-child(5) {
+  font-weight: 600;
+  color: #6c757d;
+  font-size: 1.1rem;
+  text-align: center;
+}
+
+/* Player 2 columns: points, username, position, league */
+.tournament-matchup-grid > :nth-child(6) {
+  /* points2 - left aligned */
+  font-weight: 700;
+  color: #007bff;
+  font-size: 1.2rem;
+  text-align: left;
+}
+
+.tournament-matchup-grid > :nth-child(7) {
+  /* username2 - left aligned */
+  font-weight: 600;
+  color: #2c3e50;
+  text-align: left;
+  padding: 0 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: capitalize;
+}
+
+.tournament-matchup-grid > :nth-child(8) {
+  /* position2 - left aligned */
+  font-weight: 600;
+  color: #495057;
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.tournament-matchup-grid > :nth-child(9) {
+  /* league2 - right aligned */
+  font-weight: 500;
+  color: #6c757d;
+  font-size: 0.95rem;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Dark mode styles */
+body.dark .tournament-results-container {
+  color: #e0e0e0;
+}
+
+body.dark .tournament-results-title {
+  color: #e0e0e0;
+}
+
+body.dark .tournament-results-content {
+  background: #2a2a2a;
+  border-color: #404040;
+}
+
+body.dark .tournament-matchup-row {
+  border-bottom-color: #404040;
+}
+
+body.dark .tournament-matchup-row:hover {
+  background-color: #333;
+}
+
+body.dark .tournament-matchup-grid > :nth-child(1),
+body.dark .tournament-matchup-grid > :nth-child(9) {
+  /* league names */
+  color: #999;
+}
+
+body.dark .tournament-matchup-grid > :nth-child(2),
+body.dark .tournament-matchup-grid > :nth-child(8) {
+  /* positions */
+  color: #bbb;
+}
+
+body.dark .tournament-matchup-grid > :nth-child(3),
+body.dark .tournament-matchup-grid > :nth-child(7) {
+  /* usernames */
+  color: #e0e0e0;
+}
+
+body.dark .tournament-matchup-grid > :nth-child(4),
+body.dark .tournament-matchup-grid > :nth-child(6) {
+  /* points */
+  color: #66b3ff;
+}
+
+body.dark .tournament-matchup-separator {
+  color: #999;
+}
+
+.tournament-back-btn {
+  position: absolute;
+  left: 0;
+  padding: 8px 16px;
+  font-size: 1rem;
+  font-weight: 500;
+  border: 2px solid #dee2e6;
+  border-radius: 6px;
+  background-color: #fff;
+  color: #2c3e50;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tournament-back-btn:hover {
+  background-color: #f8f9fa;
+  border-color: #007bff;
+  color: #007bff;
+}
+
+body.dark .tournament-back-btn {
+  background-color: #2a2a2a;
+  border-color: #404040;
+  color: #e0e0e0;
+}
+
+body.dark .tournament-back-btn:hover {
+  background-color: #333;
+  border-color: #0056b3;
+  color: #66b3ff;
+}
+

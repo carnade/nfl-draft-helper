@@ -13,6 +13,9 @@ import TradeAnalyzer from "./TradeAnalyzer";
 import DFS from "./DFS";
 import DFSResults from "./DFSResults";
 import DFSManage from "./DFSManage";
+import Tournaments from "./Tournaments";
+import TournamentCreate from "./TournamentCreate";
+import TournamentResults from "./TournamentResults";
 import Settings from "./Settings";
 import { ChangelogWithReadMark } from "./Changelog";
 import "./Layout.css";
@@ -95,6 +98,9 @@ function App() {
               <Route path="/dfs/manage" element={<DFSManage />} />
               <Route path="/dfs/results/tinyurl/:name" element={<DFSResults />} />
               <Route path="/dfs/results" element={<DFSResults />} />
+              <Route path="/tournaments/create" element={<TournamentCreate />} />
+              <Route path="/tournaments/:tournamentId/results" element={<TournamentResults />} />
+              <Route path="/tournaments" element={<Tournaments />} />
               <Route
                 path="/rankingssetup"
                 element={
