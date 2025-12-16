@@ -10,7 +10,7 @@ import "./BestballList.css";
 import DraftModal from "./DraftModal";
 
 // Add a mock flag
-const mocke = false; // Set to true for mock data, false for production
+const mock = false; // Set to true for mock data, false for production
 
 // Define the base URL based on the mock flag
 const BASE_URL = mock

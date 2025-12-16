@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import './TournamentResults.css';
 
 // Add a mock flag
-const mocke = false; // Set to true for localhost, false for production
+const mock = false; // Set to true for localhost, false for production
 
 // Define the base URL based on the mock flag
 const BASE_URL = mock
@@ -22,6 +22,8 @@ function TournamentResults() {
   const [playerToRosterMap, setPlayerToRosterMap] = useState({}); // league_id -> { player_id -> roster_id }
   const [matchupData, setMatchupData] = useState({}); // league_id -> matchup data
   const [playerPositions, setPlayerPositions] = useState({}); // player_id -> position
+  const [playerMetadata, setPlayerMetadata] = useState({}); // player_id -> { name, position }
+  const [expandedRows, setExpandedRows] = useState(new Set()); // Track expanded rows
 
   // Get week from query param or tournament data
   const getEffectiveWeek = useCallback((tournamentWeek) => {
@@ -221,6 +223,7 @@ function TournamentResults() {
         // Fetch player positions from bestball endpoint only for players on tournament teams
         const playerIdsArray = Array.from(allPlayerIds);
         let positionMap = {}; // Initialize outside so it's available after the if block
+        let metadataMap = {}; // Store player metadata (name, position)
         if (playerIdsArray.length > 0) {
           try {
             console.log('Fetching player positions for', playerIdsArray.length, 'players:', playerIdsArray.slice(0, 5), '...');
@@ -265,16 +268,18 @@ function TournamentResults() {
               
               console.log('Processed playersToProcess (first 3):', playersToProcess.slice(0, 3));
               
-              // Map player_id -> position
+              // Map player_id -> position and metadata
               playersToProcess.forEach(player => {
                 const playerId = player.id || player.sleeper_id || player.player_id;
                 const position = player.position || player.pos || 
                                (Array.isArray(player.fantasy_positions) ? player.fantasy_positions[0] : undefined);
+                const name = player.name || [player.first_name, player.last_name].filter(Boolean).join(' ').trim() || `Player ${playerId}`;
                 
-                if (playerId && position) {
+                if (playerId) {
                   positionMap[playerId] = position;
+                  metadataMap[playerId] = { name, position };
                 } else {
-                  console.log('Missing position/id for player:', player);
+                  console.log('Missing id for player:', player);
                 }
               });
               
@@ -295,6 +300,7 @@ function TournamentResults() {
         setPlayerToRosterMap(playerRosterMap);
         setMatchupData(matchupDataMap);
         setPlayerPositions(positionMap);
+        setPlayerMetadata(metadataMap);
         
         console.log('All data loaded:', {
           leagueInfo: leagueInfoMap,
@@ -526,6 +532,320 @@ function TournamentResults() {
     return Math.round(rosterMatchup.points * 100) / 100; // Round to 2 decimal places
   };
 
+  // Get optimal lineup and bench players for display
+  const getOptimalLineup = (player) => {
+    const leagueId = String(player.league);
+    const ownerId = String(player.playerid);
+    
+    // Get roster_id for this owner
+    const leagueRosterMap = playerToRosterMap[leagueId];
+    if (!leagueRosterMap || !leagueRosterMap.rosterToOwner) {
+      return { lineup: [], bench: [], totalPoints: 0 };
+    }
+    
+    // Find roster_id by matching owner_id
+    const rosterId = Object.keys(leagueRosterMap.rosterToOwner).find(
+      rid => String(leagueRosterMap.rosterToOwner[rid]) === ownerId
+    );
+    
+    if (!rosterId) {
+      return { lineup: [], bench: [], totalPoints: 0 };
+    }
+    
+    // Get league info (roster positions)
+    const leagueData = leagueInfo[leagueId];
+    if (!leagueData || !leagueData.rosterPositions) {
+      return { lineup: [], bench: [], totalPoints: 0 };
+    }
+    
+    // Get matchup data for this league
+    const matchups = matchupData[leagueId];
+    if (!matchups || !Array.isArray(matchups)) {
+      return { lineup: [], bench: [], totalPoints: 0 };
+    }
+    
+    // Find the matchup for this roster
+    const rosterMatchup = matchups.find(m => String(m.roster_id) === String(rosterId));
+    
+    if (!rosterMatchup || !rosterMatchup.players_points) {
+      return { lineup: [], bench: [], totalPoints: 0 };
+    }
+    
+    // Get all player points for this roster
+    const allPlayerPointsMap = rosterMatchup.players_points;
+    const starters = rosterMatchup.starters || [];
+    const startersSet = new Set(starters.map(id => String(id)));
+    
+    // Get roster positions
+    const rosterPositions = leagueData.rosterPositions;
+    const startingPositions = rosterPositions.filter(pos => pos !== 'BN');
+    
+    // Get all players for this roster with their points and positions (starters only for optimal lineup)
+    const starterPlayers = Object.entries(allPlayerPointsMap)
+      .filter(([pid]) => startersSet.has(String(pid))) // Only include starters
+      .map(([pid, points]) => {
+        const position = playerPositions[pid] || 'UNKNOWN';
+        return {
+          playerId: pid,
+          points: points || 0,
+          position: position
+        };
+      });
+    
+    // Get bench players (players NOT in starters array)
+    const benchPlayersList = Object.entries(allPlayerPointsMap)
+      .filter(([pid]) => !startersSet.has(String(pid))) // Only include non-starters
+      .map(([pid, points]) => {
+        const position = playerPositions[pid] || 'UNKNOWN';
+        return {
+          playerId: pid,
+          points: points || 0,
+          position: position
+        };
+      });
+    
+    // Group starter players by position for optimal lineup calculation
+    const playersByPosition = {
+      QB: [],
+      RB: [],
+      WR: [],
+      TE: [],
+      DST: [],
+      K: []
+    };
+    
+    starterPlayers.forEach(player => {
+      const pos = player.position;
+      if (playersByPosition[pos]) {
+        playersByPosition[pos].push(player);
+      }
+    });
+    
+    // Sort each position by points (descending)
+    Object.keys(playersByPosition).forEach(pos => {
+      playersByPosition[pos].sort((a, b) => b.points - a.points);
+    });
+    
+    // Build optimal lineup
+    const lineupPlayers = [];
+    const usedPlayers = new Set();
+    
+    // Track position requirements
+    const positionCounts = {};
+    startingPositions.forEach(pos => {
+      if (pos !== 'BN') {
+        positionCounts[pos] = (positionCounts[pos] || 0) + 1;
+      }
+    });
+    
+    // Fill required positions first
+    Object.entries(positionCounts).forEach(([pos, count]) => {
+      if (pos === 'FLEX' || pos === 'SUPER_FLEX') {
+        return; // Handle flex positions separately
+      }
+      
+      const availablePlayers = playersByPosition[pos] || [];
+      for (let i = 0; i < count && i < availablePlayers.length; i++) {
+        const player = availablePlayers[i];
+        if (!usedPlayers.has(player.playerId)) {
+          lineupPlayers.push({ ...player, slot: pos });
+          usedPlayers.add(player.playerId);
+        }
+      }
+    });
+    
+    // Fill FLEX positions (RB, WR, or TE)
+    const flexCount = positionCounts['FLEX'] || 0;
+    const flexEligible = [
+      ...playersByPosition.RB,
+      ...playersByPosition.WR,
+      ...playersByPosition.TE
+    ]
+      .filter(p => !usedPlayers.has(p.playerId))
+      .sort((a, b) => b.points - a.points);
+    
+    for (let i = 0; i < flexCount && i < flexEligible.length; i++) {
+      lineupPlayers.push({ ...flexEligible[i], slot: 'FLEX' });
+      usedPlayers.add(flexEligible[i].playerId);
+    }
+    
+    // Fill SUPER_FLEX positions (QB, RB, WR, or TE)
+    const superFlexCount = positionCounts['SUPER_FLEX'] || 0;
+    const superFlexEligible = [
+      ...playersByPosition.QB,
+      ...playersByPosition.RB,
+      ...playersByPosition.WR,
+      ...playersByPosition.TE
+    ]
+      .filter(p => !usedPlayers.has(p.playerId))
+      .sort((a, b) => b.points - a.points);
+    
+    for (let i = 0; i < superFlexCount && i < superFlexEligible.length; i++) {
+      lineupPlayers.push({ ...superFlexEligible[i], slot: 'SUPER_FLEX' });
+      usedPlayers.add(superFlexEligible[i].playerId);
+    }
+    
+    // Bench players are all players NOT in starters array, sorted by points
+    const benchPlayers = benchPlayersList.sort((a, b) => b.points - a.points);
+    
+    const totalPoints = lineupPlayers.reduce((sum, p) => sum + p.points, 0);
+    
+    return { 
+      lineup: lineupPlayers, 
+      bench: benchPlayers, 
+      totalPoints: Math.round(totalPoints * 100) / 100 
+    };
+  };
+
+  // Position color helper (same as DFS)
+  const getPositionColor = (position) => {
+    const colors = {
+      QB: 'rgba(239, 116, 161, 0.8)',
+      RB: 'rgba(143, 242, 202, 0.8)',
+      WR: 'rgba(86, 201, 248, 0.8)',
+      TE: 'rgba(254, 174, 88, 0.8)',
+      FLX: 'rgb(235, 88, 254, 0.8)',
+      FLEX: 'rgb(235, 88, 254, 0.8)',
+      SUPER_FLEX: 'rgb(235, 88, 254, 0.8)',
+      DST: 'rgb(239, 91, 47, 0.8)',
+      K: 'rgba(143, 242, 202, 0.8)'
+    };
+    return colors[position] || '#ccc';
+  };
+
+  // Position label helper
+  const getPositionLabel = (slot) => {
+    if (slot === 'RB1' || slot === 'RB2') return 'RB';
+    if (slot === 'WR1' || slot === 'WR2' || slot === 'WR3') return 'WR';
+    return slot;
+  };
+
+  // Get player name from player ID
+  const getPlayerName = (playerId) => {
+    return playerMetadata[playerId]?.name || `Player ${playerId}`;
+  };
+
+  const toggleRowExpansion = (rowId) => {
+    setExpandedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(rowId)) {
+        newSet.delete(rowId);
+      } else {
+        newSet.add(rowId);
+      }
+      return newSet;
+    });
+  };
+
+  // Render position badge with split color for special positions
+  const renderPositionBadge = (slot, actualPosition) => {
+    const label = slot === 'BN' ? 'BN' : getPositionLabel(slot);
+    
+    // FLEX and SUPER_FLEX: half pink (FLX color), half actual position color
+    if ((slot === 'FLEX' || slot === 'SUPER_FLEX') && actualPosition && actualPosition !== 'UNKNOWN') {
+      const flexColor = 'rgb(235, 88, 254, 0.8)'; // Pink FLX color
+      const positionColor = getPositionColor(actualPosition);
+      return (
+        <div 
+          className="position-badge position-badge-split"
+          style={{ 
+            background: `linear-gradient(to right, ${flexColor} 50%, ${positionColor} 50%)`
+          }}
+        >
+          {label}
+        </div>
+      );
+    }
+    
+    // BN: half grey, half actual position color
+    if (slot === 'BN' && actualPosition && actualPosition !== 'UNKNOWN') {
+      const positionColor = getPositionColor(actualPosition);
+      return (
+        <div 
+          className="position-badge position-badge-split"
+          style={{ 
+            background: `linear-gradient(to right, #6c757d 50%, ${positionColor} 50%)`
+          }}
+        >
+          {label}
+        </div>
+      );
+    }
+    
+    // Regular badge for non-special positions
+    const color = slot === 'BN' ? '#6c757d' : getPositionColor(slot || actualPosition);
+    return (
+      <div 
+        className="position-badge"
+        style={{ backgroundColor: color }}
+      >
+        {label}
+      </div>
+    );
+  };
+
+  // Render team view (lineup + bench) similar to DFS team table
+  const renderTeamView = (lineupData) => {
+    const { lineup, bench, totalPoints } = lineupData;
+    
+    return (
+      <div className="tournament-team-table-wrapper">
+        <div className="tournament-team-section">
+          <table className="tournament-team-table">
+            <thead>
+              <tr>
+                <th>Position</th>
+                <th>Player</th>
+                <th>Points</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lineup.map((player, idx) => (
+                <tr key={idx}>
+                  <td>
+                    {renderPositionBadge(player.slot, player.position)}
+                  </td>
+                  <td className="player-name-cell">
+                    {getPlayerName(player.playerId)}
+                  </td>
+                  <td className="fpts-cell">
+                    {player.points.toFixed(1)}
+                  </td>
+                </tr>
+              ))}
+              <tr className="total-row">
+                <td colSpan="2"><strong>Total</strong></td>
+                <td className="fpts-cell">
+                  <strong>{totalPoints.toFixed(1)}</strong>
+                </td>
+              </tr>
+              {bench.length > 0 && (
+                <>
+                  <tr className="bench-separator">
+                    <td colSpan="3"></td>
+                  </tr>
+                  {bench.map((player, idx) => (
+                    <tr key={`bench-${idx}`}>
+                      <td>
+                        {renderPositionBadge('BN', player.position)}
+                      </td>
+                      <td className="player-name-cell">
+                        {getPlayerName(player.playerId)}
+                      </td>
+                      <td className="fpts-cell">
+                        {player.points.toFixed(1)}
+                      </td>
+                    </tr>
+                  ))}
+                </>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="tournament-results-container">
@@ -641,9 +961,21 @@ function TournamentResults() {
                          'playerPositions count:', Object.keys(playerPositions).length,
                          'player1Points:', player1Points, 'player2Points:', player2Points);
 
+              const rowId = `h2h-${index}`;
+              const isExpanded = expandedRows.has(rowId);
+              const player1Lineup = hasEssentialData ? getOptimalLineup(game.player1) : { lineup: [], bench: [], totalPoints: 0 };
+              const player2Lineup = hasEssentialData ? getOptimalLineup(game.player2) : { lineup: [], bench: [], totalPoints: 0 };
+
               return (
                 <div key={index} className="tournament-matchup-row">
-                  <div className="tournament-matchup-grid">
+                  <div 
+                    className="tournament-matchup-grid tournament-matchup-clickable"
+                    onClick={() => toggleRowExpansion(rowId)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <span className="tournament-expand-icon">
+                      {isExpanded ? '▼' : '▶'}
+                    </span>
                     {/* Player 1: League_name #position username points */}
                     <span className="tournament-league-name">{game.player1.league_name}</span>
                     <span className="tournament-position">#{game.player1.leagie_position}</span>
@@ -658,6 +990,18 @@ function TournamentResults() {
                     <span className="tournament-position">#{game.player2.leagie_position}</span>
                     <span className="tournament-league-name">{game.player2.league_name}</span>
                   </div>
+                  {isExpanded && (
+                    <div className="tournament-team-views-h2h">
+                      <div className="tournament-team-view">
+                        <h3>{game.player1.playername}</h3>
+                        {renderTeamView(player1Lineup)}
+                      </div>
+                      <div className="tournament-team-view">
+                        <h3>{game.player2.playername}</h3>
+                        {renderTeamView(player2Lineup)}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -675,17 +1019,35 @@ function TournamentResults() {
                 points: hasEssentialData ? getPlayerPoints(player) : 0
               })).sort((a, b) => b.points - a.points);
               
-              return playersWithPoints.map((player, index) => (
-                <div key={index} className="tournament-player-row">
-                  <div className="tournament-player-grid">
-                    <span className="tournament-league-name">{player.league_name}</span>
-                    <span className="tournament-position">#{player.leagie_position}</span>
-                    <span className="tournament-player-name">{player.playername}</span>
-                    <span className="tournament-colon">:</span>
-                    <span className="tournament-player-points">{player.points}</span>
+              return playersWithPoints.map((player, index) => {
+                const rowId = `pts-${index}`;
+                const isExpanded = expandedRows.has(rowId);
+                const playerLineup = hasEssentialData ? getOptimalLineup(player) : { lineup: [], bench: [], totalPoints: 0 };
+
+                return (
+                  <div key={index} className="tournament-player-row">
+                    <div 
+                      className="tournament-player-grid tournament-player-clickable"
+                      onClick={() => toggleRowExpansion(rowId)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <span className="tournament-expand-icon">
+                        {isExpanded ? '▼' : '▶'}
+                      </span>
+                      <span className="tournament-league-name">{player.league_name}</span>
+                      <span className="tournament-position">#{player.leagie_position}</span>
+                      <span className="tournament-player-name">{player.playername}</span>
+                      <span className="tournament-colon">:</span>
+                      <span className="tournament-player-points">{player.points}</span>
+                    </div>
+                    {isExpanded && (
+                      <div className="tournament-team-view-pts">
+                        {renderTeamView(playerLineup)}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ));
+                );
+              });
             })()}
           </div>
         )}
