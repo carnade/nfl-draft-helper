@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import LZString from 'lz-string';
 import './DFSResults.css';
 
@@ -88,7 +88,12 @@ const parseGameStartToUtc = (gameDate, gameStartTime) => {
 
 function DFSResults() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { name: tinyUrlNameParam } = useParams();
+  
+  // Check for admin query parameter to bypass PIN
+  const searchParams = new URLSearchParams(location.search);
+  const isAdminMode = searchParams.get('admin') === 'true';
   const [inputData, setInputData] = useState('');
   const [compressedData, setCompressedData] = useState('');
   const [shareableUrl, setShareableUrl] = useState('');
@@ -798,11 +803,9 @@ function DFSResults() {
 
   // Check for admin query parameter
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const adminMode = urlParams.has('admin');
-    setIsAdmin(adminMode);
-    console.log('Admin mode:', adminMode, 'URL:', window.location.href);
-  }, []);
+    setIsAdmin(isAdminMode);
+    console.log('Admin mode:', isAdminMode, 'URL:', window.location.href);
+  }, [isAdminMode]);
 
   // Load data from tinyURL if name parameter exists
   useEffect(() => {
@@ -813,7 +816,11 @@ function DFSResults() {
         setLoadingTinyUrl(true);
         try {
           // Use /data endpoint to get full entry data including reveal time
-          const response = await fetch(`${BASE_URL}/tinyurl/${tinyUrlNameParam}/data`);
+          // Add admin=true query param if in admin mode to bypass PIN requirement
+          const url = isAdminMode 
+            ? `${BASE_URL}/tinyurl/${tinyUrlNameParam}/data?action=results&admin=true`
+            : `${BASE_URL}/tinyurl/${tinyUrlNameParam}/data?action=results`;
+          const response = await fetch(url);
           
           if (response.ok) {
             const result = await response.json();
@@ -1103,7 +1110,7 @@ function DFSResults() {
           .catch(err => console.error('Error fetching week:', err));
       }
     }
-  }, [tinyUrlNameParam]);
+  }, [tinyUrlNameParam, isAdminMode]);
 
   // Fetch user leagues on component mount
   useEffect(() => {
