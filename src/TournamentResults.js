@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import './TournamentResults.css';
 
 // Add a mock flag
-const mock = false; // Set to true for localhost, false for production
+const mocke = false; // Set to true for localhost, false for production
 
 // Define the base URL based on the mock flag
 const BASE_URL = mock
@@ -13,13 +13,44 @@ const BASE_URL = mock
 function TournamentResults() {
   const { tournamentId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [tournamentData, setTournamentData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
   const [leagueInfo, setLeagueInfo] = useState({}); // league_id -> { startingPositions, rosters }
   const [playerToRosterMap, setPlayerToRosterMap] = useState({}); // league_id -> { player_id -> roster_id }
   const [matchupData, setMatchupData] = useState({}); // league_id -> matchup data
   const [playerPositions, setPlayerPositions] = useState({}); // player_id -> position
+
+  // Get week from query param or tournament data
+  const getEffectiveWeek = useCallback((tournamentWeek) => {
+    const weekParam = searchParams.get('week');
+    return weekParam ? parseInt(weekParam, 10) : tournamentWeek;
+  }, [searchParams]);
+
+  // Fetch matchup data for all leagues
+  const fetchMatchupData = useCallback(async (uniqueLeagues, effectiveWeek, playerRosterMap, leagueInfoMap) => {
+    const matchupDataMap = {};
+    
+    for (const leagueId of uniqueLeagues) {
+      try {
+        // Step 3: Fetch matchups using effective week
+        const matchupsResponse = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/matchups/${effectiveWeek}`);
+        if (!matchupsResponse.ok) {
+          throw new Error(`Failed to fetch matchups for league ${leagueId} week ${effectiveWeek}`);
+        }
+        const matchupsData = await matchupsResponse.json();
+        
+        // Store matchup data in local map (will set state once after loop)
+        matchupDataMap[leagueId] = matchupsData;
+      } catch (error) {
+        console.error(`Error fetching matchups for league ${leagueId}:`, error);
+      }
+    }
+    
+    return matchupDataMap;
+  }, []);
 
   // Fetch tournament data and process league information
   useEffect(() => {
@@ -38,21 +69,30 @@ function TournamentResults() {
         
         // API response: { id, week, name, games: [...], created_at }
         const tournamentWeek = apiTournamentData.week;
-        const games = apiTournamentData.games;
+        const effectiveWeek = getEffectiveWeek(tournamentWeek);
+        const tournamentType = apiTournamentData.type || 'h2h';
+        const games = apiTournamentData.games || [];
+        const players = apiTournamentData.players || [];
 
         // Get unique league IDs (ensure they're strings to avoid precision loss)
         const uniqueLeagues = new Set();
-        games.forEach(game => {
-          const league1 = String(game.player1.league);
-          const league2 = String(game.player2.league);
-          uniqueLeagues.add(league1);
-          uniqueLeagues.add(league2);
-        });
+        if (tournamentType === 'h2h') {
+          games.forEach(game => {
+            const league1 = String(game.player1.league);
+            const league2 = String(game.player2.league);
+            uniqueLeagues.add(league1);
+            uniqueLeagues.add(league2);
+          });
+        } else {
+          // PTS mode: collect leagues from players array
+          players.forEach(player => {
+            uniqueLeagues.add(String(player.league));
+          });
+        }
 
         // Fetch league info and rosters for each unique league first
         const leagueInfoMap = {};
         const playerRosterMap = {};
-        const matchupDataMap = {}; // Build locally first, then set state once
 
         for (const leagueId of uniqueLeagues) {
           try {
@@ -97,16 +137,6 @@ function TournamentResults() {
               rosterToOwner: rosterOwnerMap
             };
 
-            // Step 3: Fetch matchups using week from tournament data
-            const matchupsResponse = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/matchups/${tournamentWeek}`);
-            if (!matchupsResponse.ok) {
-              throw new Error(`Failed to fetch matchups for league ${leagueId} week ${tournamentWeek}`);
-            }
-            const matchupsData = await matchupsResponse.json();
-            
-            // Store matchup data in local map (will set state once after loop)
-            matchupDataMap[leagueId] = matchupsData;
-
           } catch (leagueError) {
             console.error(`Error processing league ${leagueId}:`, leagueError);
           }
@@ -116,8 +146,9 @@ function TournamentResults() {
         // We need to find the rosters for each tournament participant and collect their players
         const allPlayerIds = new Set();
         
-        // For each game, find the roster for each player and collect their player IDs
-        games.forEach(game => {
+        if (tournamentType === 'h2h') {
+          // For each game, find the roster for each player and collect their player IDs
+          games.forEach(game => {
           // Player 1
           const league1Id = String(game.player1.league);
           const owner1Id = String(game.player1.playerid);
@@ -156,6 +187,36 @@ function TournamentResults() {
             }
           }
         });
+        } else {
+          // PTS mode: collect player IDs from players array
+          players.forEach(player => {
+            const leagueId = String(player.league);
+            const ownerId = String(player.playerid);
+            const rosterMap = playerRosterMap[leagueId];
+            if (rosterMap && rosterMap.rosterToOwner) {
+              // Find roster_id that matches this owner_id
+              const rosterId = Object.keys(rosterMap.rosterToOwner).find(
+                rosterId => String(rosterMap.rosterToOwner[rosterId]) === ownerId
+              );
+              if (rosterId && rosterMap.playerToRoster) {
+                // Get all players from this roster
+                Object.entries(rosterMap.playerToRoster).forEach(([playerId, mappedRosterId]) => {
+                  if (String(mappedRosterId) === rosterId) {
+                    allPlayerIds.add(playerId);
+                  }
+                });
+              }
+            }
+          });
+        }
+
+        // Fetch matchup data using the helper function
+        const matchupDataMap = await fetchMatchupData(
+          uniqueLeagues,
+          effectiveWeek,
+          playerRosterMap,
+          leagueInfoMap
+        );
 
         // Fetch player positions from bestball endpoint only for players on tournament teams
         const playerIdsArray = Array.from(allPlayerIds);
@@ -247,7 +308,10 @@ function TournamentResults() {
           id: apiTournamentData.id,
           name: apiTournamentData.name || 'Tournament',
           week: tournamentWeek,
-          games: games
+          effectiveWeek: effectiveWeek,
+          type: apiTournamentData.type || 'h2h',
+          games: apiTournamentData.games || [],
+          players: apiTournamentData.players || []
         });
       } catch (error) {
         console.error('Error loading tournament data:', error);
@@ -258,10 +322,11 @@ function TournamentResults() {
     };
 
     loadTournamentData();
-  }, [tournamentId]);
+  }, [tournamentId, getEffectiveWeek, fetchMatchupData]);
 
   // Calculate optimal lineup points for a player based on their roster
-  const getPlayerPoints = (player) => {
+  // NOTE: This function is kept for potential future use, but currently we use getPlayerPointsSimple
+  const getPlayerPointsOld = (player) => {
     const leagueId = String(player.league);
     const ownerId = String(player.playerid); // This is the owner_id, not a player_id
     
@@ -309,14 +374,24 @@ function TournamentResults() {
       return 0;
     }
     
-    // Get all player points for this roster
-    const playerPointsMap = rosterMatchup.players_points; // player_id -> points
+    // Get all player points for this roster, but only include starters (exclude reserve and taxi)
+    const allPlayerPointsMap = rosterMatchup.players_points; // player_id -> points
+    const starters = rosterMatchup.starters || [];
+    const startersSet = new Set(starters.map(id => String(id)));
+    
+    // Filter to only include players that are in starters array
+    const playerPointsMap = {};
+    Object.entries(allPlayerPointsMap).forEach(([pid, points]) => {
+      if (startersSet.has(String(pid))) {
+        playerPointsMap[pid] = points;
+      }
+    });
     
     // Get roster positions (e.g., ["QB", "RB", "RB", "WR", "WR", "WR", "TE", "FLEX", "FLEX", "FLEX", "SUPER_FLEX", "BN", ...])
     const rosterPositions = leagueData.rosterPositions;
     const startingPositions = rosterPositions.filter(pos => pos !== 'BN');
     
-    // Get all players for this roster with their points and positions
+    // Get all players for this roster with their points and positions (only starters)
     const rosterPlayers = Object.entries(playerPointsMap)
       .map(([pid, points]) => {
         const position = playerPositions[pid];
@@ -413,6 +488,44 @@ function TournamentResults() {
     return Math.round(totalPoints * 100) / 100; // Round to 2 decimal places
   };
 
+  // Simplified version: just use the points field from matchup data directly
+  // This is the active function that replaces the complex optimal lineup calculation
+  const getPlayerPoints = (player) => {
+    const leagueId = String(player.league);
+    const ownerId = String(player.playerid); // This is the owner_id, not a player_id
+    
+    // Get roster_id for this owner
+    const leagueRosterMap = playerToRosterMap[leagueId];
+    if (!leagueRosterMap || !leagueRosterMap.rosterToOwner) {
+      return 0;
+    }
+    
+    // Find roster_id by matching owner_id
+    const rosterId = Object.keys(leagueRosterMap.rosterToOwner).find(
+      rid => String(leagueRosterMap.rosterToOwner[rid]) === ownerId
+    );
+    
+    if (!rosterId) {
+      return 0;
+    }
+    
+    // Get matchup data for this league
+    const matchups = matchupData[leagueId];
+    if (!matchups || !Array.isArray(matchups)) {
+      return 0;
+    }
+    
+    // Find the matchup for this roster
+    const rosterMatchup = matchups.find(m => String(m.roster_id) === String(rosterId));
+    
+    if (!rosterMatchup || rosterMatchup.points === undefined) {
+      return 0;
+    }
+    
+    // Use the points field directly from matchup data
+    return Math.round(rosterMatchup.points * 100) / 100; // Round to 2 decimal places
+  };
+
   if (loading) {
     return (
       <div className="tournament-results-container">
@@ -437,6 +550,51 @@ function TournamentResults() {
     );
   }
 
+  const handleRefresh = async () => {
+    if (!tournamentData) return;
+    
+    setRefreshing(true);
+    setError('');
+    
+    try {
+      const effectiveWeek = getEffectiveWeek(tournamentData.week);
+      
+      // Get unique league IDs
+      const uniqueLeagues = new Set();
+      if (tournamentData.type === 'h2h') {
+        tournamentData.games.forEach(game => {
+          uniqueLeagues.add(String(game.player1.league));
+          uniqueLeagues.add(String(game.player2.league));
+        });
+      } else {
+        tournamentData.players.forEach(player => {
+          uniqueLeagues.add(String(player.league));
+        });
+      }
+      
+      // Re-fetch matchup data only
+      const matchupDataMap = await fetchMatchupData(
+        uniqueLeagues,
+        effectiveWeek,
+        playerToRosterMap,
+        leagueInfo
+      );
+      
+      setMatchupData(matchupDataMap);
+      
+      // Update effective week in tournament data
+      setTournamentData(prev => ({
+        ...prev,
+        effectiveWeek: effectiveWeek
+      }));
+    } catch (error) {
+      console.error('Error refreshing matchup data:', error);
+      setError('Failed to refresh matchup data');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return (
     <div className="tournament-results-container">
       <div className="tournament-results-header">
@@ -446,46 +604,91 @@ function TournamentResults() {
         >
           ← Back
         </button>
-        <h1 className="tournament-results-title">{tournamentData.name}</h1>
+        <div className="tournament-results-title-wrapper">
+          <h1 className="tournament-results-title">{tournamentData.name}</h1>
+          <div className="tournament-results-week">
+            Week {tournamentData.week}
+            {tournamentData.effectiveWeek !== tournamentData.week && (
+              <span className="tournament-results-week-override">
+                {' '}(Showing Week {tournamentData.effectiveWeek})
+              </span>
+            )}
+          </div>
+        </div>
+        <button
+          className="tournament-refresh-btn"
+          onClick={handleRefresh}
+          disabled={refreshing}
+        >
+          {refreshing ? 'Refreshing...' : 'Refresh'}
+        </button>
       </div>
 
       <div className="tournament-results-content">
-        <div className="tournament-matchups">
-          {tournamentData.games.map((game, index) => {
-            // Only calculate points if we have the essential data loaded
-            // Note: playerPositions might be empty, but we can still calculate (will use 'UNKNOWN' as fallback)
-            const hasEssentialData = Object.keys(leagueInfo).length > 0 && 
-                                     Object.keys(playerToRosterMap).length > 0 && 
-                                     Object.keys(matchupData).length > 0;
-            
-            const player1Points = hasEssentialData ? getPlayerPoints(game.player1) : 0;
-            const player2Points = hasEssentialData ? getPlayerPoints(game.player2) : 0;
-            
-            console.log('Rendering game:', index, 'hasEssentialData:', hasEssentialData, 
-                       'playerPositions count:', Object.keys(playerPositions).length,
-                       'player1Points:', player1Points, 'player2Points:', player2Points);
+        {tournamentData.type === 'h2h' ? (
+          <div className="tournament-matchups">
+            {tournamentData.games.map((game, index) => {
+              // Only calculate points if we have the essential data loaded
+              // Note: playerPositions might be empty, but we can still calculate (will use 'UNKNOWN' as fallback)
+              const hasEssentialData = Object.keys(leagueInfo).length > 0 && 
+                                       Object.keys(playerToRosterMap).length > 0 && 
+                                       Object.keys(matchupData).length > 0;
+              
+              const player1Points = hasEssentialData ? getPlayerPoints(game.player1) : 0;
+              const player2Points = hasEssentialData ? getPlayerPoints(game.player2) : 0;
+              
+              console.log('Rendering game:', index, 'hasEssentialData:', hasEssentialData, 
+                         'playerPositions count:', Object.keys(playerPositions).length,
+                         'player1Points:', player1Points, 'player2Points:', player2Points);
 
-            return (
-              <div key={index} className="tournament-matchup-row">
-                <div className="tournament-matchup-grid">
-                  {/* Player 1: League_name #position username points */}
-                  <span className="tournament-league-name">{game.player1.league_name}</span>
-                  <span className="tournament-position">#{game.player1.leagie_position}</span>
-                  <span className="tournament-player-name">{game.player1.playername}</span>
-                  <span className="tournament-player-points">{player1Points}</span>
-                  
-                  <span className="tournament-matchup-separator">vs</span>
-                  
-                  {/* Player 2: points username #position leaguename */}
-                  <span className="tournament-player-points">{player2Points}</span>
-                  <span className="tournament-player-name">{game.player2.playername}</span>
-                  <span className="tournament-position">#{game.player2.leagie_position}</span>
-                  <span className="tournament-league-name">{game.player2.league_name}</span>
+              return (
+                <div key={index} className="tournament-matchup-row">
+                  <div className="tournament-matchup-grid">
+                    {/* Player 1: League_name #position username points */}
+                    <span className="tournament-league-name">{game.player1.league_name}</span>
+                    <span className="tournament-position">#{game.player1.leagie_position}</span>
+                    <span className="tournament-player-name">{game.player1.playername}</span>
+                    <span className="tournament-player-points">{player1Points}</span>
+                    
+                    <span className="tournament-matchup-separator">vs</span>
+                    
+                    {/* Player 2: points username #position leaguename */}
+                    <span className="tournament-player-points">{player2Points}</span>
+                    <span className="tournament-player-name">{game.player2.playername}</span>
+                    <span className="tournament-position">#{game.player2.leagie_position}</span>
+                    <span className="tournament-league-name">{game.player2.league_name}</span>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="tournament-players-list">
+            {(() => {
+              // Calculate points for all players and sort by points (highest first)
+              const hasEssentialData = Object.keys(leagueInfo).length > 0 && 
+                                       Object.keys(playerToRosterMap).length > 0 && 
+                                       Object.keys(matchupData).length > 0;
+              
+              const playersWithPoints = tournamentData.players.map(player => ({
+                ...player,
+                points: hasEssentialData ? getPlayerPoints(player) : 0
+              })).sort((a, b) => b.points - a.points);
+              
+              return playersWithPoints.map((player, index) => (
+                <div key={index} className="tournament-player-row">
+                  <div className="tournament-player-grid">
+                    <span className="tournament-league-name">{player.league_name}</span>
+                    <span className="tournament-position">#{player.leagie_position}</span>
+                    <span className="tournament-player-name">{player.playername}</span>
+                    <span className="tournament-colon">:</span>
+                    <span className="tournament-player-points">{player.points}</span>
+                  </div>
+                </div>
+              ));
+            })()}
+          </div>
+        )}
       </div>
     </div>
   );

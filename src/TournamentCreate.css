@@ -120,6 +120,56 @@
   color: #007bff;
 }
 
+.tournament-participant-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 30px;
+}
+
+.tournament-participant-count-wrapper {
+  flex: 0 0 auto;
+}
+
+.tournament-mode-toggle-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex: 0 0 auto;
+}
+
+.tournament-mode-toggle {
+  display: flex;
+  gap: 0;
+  border: 2px solid #dee2e6;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.tournament-mode-btn {
+  padding: 10px 24px;
+  background: #fff;
+  color: #2c3e50;
+  border: none;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-right: 1px solid #dee2e6;
+}
+
+.tournament-mode-btn:last-child {
+  border-right: none;
+}
+
+.tournament-mode-btn:hover {
+  background: #f8f9fa;
+}
+
+.tournament-mode-btn.active {
+  background: #007bff;
+  color: white;
+}
+
 .tournament-participants-container {
   display: flex;
   flex-direction: column;
@@ -141,11 +191,19 @@
   padding: 0 5px;
 }
 
+.tournament-pts-header {
+  grid-template-columns: 1fr 1fr;
+}
+
 .tournament-participant-row {
   display: grid;
   grid-template-columns: 1fr 1fr auto 1fr 1fr;
   align-items: center;
   gap: 10px;
+}
+
+.tournament-pts-row {
+  grid-template-columns: 1fr 1fr;
 }
 
 .tournament-participant-select {
@@ -332,6 +390,25 @@ body.dark .tournament-submit-btn {
 
 body.dark .tournament-submit-btn:hover {
   background-color: #004085;
+}
+
+body.dark .tournament-mode-toggle {
+  border-color: #404040;
+}
+
+body.dark .tournament-mode-btn {
+  background-color: #2a2a2a;
+  border-right-color: #404040;
+  color: #e0e0e0;
+}
+
+body.dark .tournament-mode-btn:hover {
+  background-color: #333;
+}
+
+body.dark .tournament-mode-btn.active {
+  background-color: #0056b3;
+  color: white;
 }
 
 .tournament-back-btn {

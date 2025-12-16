@@ -6,7 +6,7 @@ import LZString from 'lz-string';
 import './DFS.css';
 
 // Add a mock flag
-const mock = false; // Set to true for mock data, false for production
+const mocke = false; // Set to true for mock data, false for production
 
 // Define the base URL based on the mock flag
 const BASE_URL = mock
