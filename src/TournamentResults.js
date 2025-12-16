@@ -332,6 +332,7 @@ function TournamentResults() {
 
   // Calculate optimal lineup points for a player based on their roster
   // NOTE: This function is kept for potential future use, but currently we use getPlayerPointsSimple
+  // eslint-disable-next-line no-unused-vars
   const getPlayerPointsOld = (player) => {
     const leagueId = String(player.league);
     const ownerId = String(player.playerid); // This is the owner_id, not a player_id

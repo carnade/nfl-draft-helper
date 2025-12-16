@@ -144,7 +144,6 @@ function DFS({ userName }) {
   const [pinInput, setPinInput] = useState('');
   const [showGameStartedModal, setShowGameStartedModal] = useState(false);
   const [playerToAddAfterConfirm, setPlayerToAddAfterConfirm] = useState(null);
-  const [playerIndexToAdd, setPlayerIndexToAdd] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -1157,7 +1156,6 @@ function DFS({ userName }) {
       // Check if game has started - if so, show confirmation modal
       if (hasGameStarted(player)) {
         setPlayerToAddAfterConfirm(player);
-        setPlayerIndexToAdd(index);
         setShowGameStartedModal(true);
       } else {
         // Add to roster normally
@@ -1171,14 +1169,12 @@ function DFS({ userName }) {
       addPlayerToRoster(playerToAddAfterConfirm);
       setShowGameStartedModal(false);
       setPlayerToAddAfterConfirm(null);
-      setPlayerIndexToAdd(null);
     }
   };
 
   const handleCancelAddAfterGameStart = () => {
     setShowGameStartedModal(false);
     setPlayerToAddAfterConfirm(null);
-    setPlayerIndexToAdd(null);
   };
 
   const getTotalFpts = () => {

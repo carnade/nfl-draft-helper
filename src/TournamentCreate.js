@@ -58,14 +58,19 @@ function TournamentCreate() {
   // Generate participant structures when participantCount or mode changes (only in step 2)
   useEffect(() => {
     if (step === 2) {
-      const newParticipants = Array(participantCount).fill(null).map((_, index) => ({
-        id: index,
-        league1: participants[index]?.league1 || '',
-        username1: participants[index]?.username1 || '',
-        league2: participants[index]?.league2 || '',
-        username2: participants[index]?.username2 || ''
-      }));
-      setParticipants(newParticipants);
+      setParticipants(prevParticipants => {
+        // Only regenerate if count changed
+        if (prevParticipants.length !== participantCount) {
+          return Array(participantCount).fill(null).map((_, index) => ({
+            id: index,
+            league1: prevParticipants[index]?.league1 || '',
+            username1: prevParticipants[index]?.username1 || '',
+            league2: prevParticipants[index]?.league2 || '',
+            username2: prevParticipants[index]?.username2 || ''
+          }));
+        }
+        return prevParticipants;
+      });
     }
   }, [participantCount, step, tournamentMode]);
 
@@ -324,7 +329,7 @@ function TournamentCreate() {
       }
       
       // Build payload for PTS mode
-      var payload = {
+      payload = {
         week: selectedWeek,
         name: tournamentName,
         id: tournamentId,
