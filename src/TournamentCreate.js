@@ -65,10 +65,13 @@ function TournamentCreate({ userName: propUserName }) {
   useEffect(() => {
     if (tournamentMode === 'h2h' && typeof participantCount === 'number' && participantCount > 0 && participantCount % 2 !== 0) {
       // Decrease by 1 to make it even (minimum 2)
+      // Safe from infinite loops: once even, the condition fails and setParticipantCount won't be called
       const newCount = Math.max(2, participantCount - 1);
-      setParticipantCount(newCount);
+      if (newCount !== participantCount) {
+        setParticipantCount(newCount);
+      }
     }
-  }, [tournamentMode]);
+  }, [tournamentMode, participantCount]);
 
   // Generate participant structures when participantCount or mode changes (only in step 2)
   useEffect(() => {
