@@ -39,7 +39,7 @@
 .bestball-grid {
   width: 90%;
   display: grid;
-  grid-template-columns: 6fr 1fr 2fr 2fr 2fr; /* Adjusted to include draft position as the second column */
+  grid-template-columns: 6fr 1fr 1fr 1fr 1fr 2fr; /* Draft Position, Position, Behind 1st, Record all same size */
   gap: 10px;
   margin-left: auto;
   margin-right: auto;
@@ -51,10 +51,26 @@
   text-align: left;
 }
 
-/* Style for the draft position column */
-.bestball-grid-item:nth-child(2) {
-  text-align: center; /* Example alignment for the draft position column */
+/* Style for the draft position column (2nd column) */
+.bestball-grid-item:nth-child(6n+2) {
+  text-align: center; /* Draft position column */
   font-weight: bold; /* Make the draft position stand out */
+}
+
+/* Style for the Position column (3rd column) */
+.bestball-grid-item:nth-child(6n+3) {
+  text-align: center; /* Position column */
+}
+
+/* Style for the Behind 1st column (4th column) */
+.bestball-grid-item:nth-child(6n+4) {
+  text-align: center; /* Behind 1st column */
+  font-size: 0.9rem;
+}
+
+/* Style for the Record column (5th column) */
+.bestball-grid-item:nth-child(6n+5) {
+  text-align: center; /* Record column */
 }
 
 /* Style for links in the bestball grid */

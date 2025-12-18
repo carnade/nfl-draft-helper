@@ -98,7 +98,7 @@ function App() {
               <Route path="/dfs/manage" element={<DFSManage />} />
               <Route path="/dfs/results/tinyurl/:name" element={<DFSResults />} />
               <Route path="/dfs/results" element={<DFSResults />} />
-              <Route path="/tournaments/create" element={<TournamentCreate />} />
+              <Route path="/tournaments/create" element={<TournamentCreate userName={userName} />} />
               <Route path="/tournaments/:tournamentId/results" element={<TournamentResults />} />
               <Route path="/tournaments" element={<Tournaments />} />
               <Route

@@ -10,23 +10,29 @@ const BASE_URL = mock
   ? "http://localhost:5000"
   : "https://shaggy-latashia-carnade-2ea2054a.koyeb.app";
 
-function TournamentCreate() {
+function TournamentCreate({ userName: propUserName }) {
   const navigate = useNavigate();
   const [tournamentName, setTournamentName] = useState('');
   const [selectedWeek, setSelectedWeek] = useState(null);
   const [currentWeek, setCurrentWeek] = useState(null);
   const [nextWeek, setNextWeek] = useState(null);
+  const [leagueSource, setLeagueSource] = useState('sleeperId'); // 'sleeperId' or 'myOwnLeagues'
   const [leagueIds, setLeagueIds] = useState('');
   const [step, setStep] = useState(1); // 1 = enter league IDs, 2 = select participants
   const [participantCount, setParticipantCount] = useState(2);
   const [participants, setParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingLeagueData, setLoadingLeagueData] = useState(false);
+  const [loadingMyLeagues, setLoadingMyLeagues] = useState(false);
   const [tournamentMode, setTournamentMode] = useState('h2h'); // 'h2h' or 'pts'
   
   // Store league data: { leagueId: { name, users: [{ owner_id, username, points, rank }] } }
   const [leagueData, setLeagueData] = useState({});
   const [cachedUsers, setCachedUsers] = useState({}); // Cache user_id -> { username, display_name }
+  
+  // My own leagues
+  const [myLeagues, setMyLeagues] = useState([]); // All available leagues
+  const [selectedMyLeagues, setSelectedMyLeagues] = useState([]); // Selected league IDs
   
   // Power of 2 options up to 64
   const participantOptions = [2, 4, 8, 16, 32, 64];
@@ -55,9 +61,18 @@ function TournamentCreate() {
     fetchCurrentWeek();
   }, []);
 
+  // When switching to H2H mode, ensure participant count is even
+  useEffect(() => {
+    if (tournamentMode === 'h2h' && typeof participantCount === 'number' && participantCount > 0 && participantCount % 2 !== 0) {
+      // Decrease by 1 to make it even (minimum 2)
+      const newCount = Math.max(2, participantCount - 1);
+      setParticipantCount(newCount);
+    }
+  }, [tournamentMode]);
+
   // Generate participant structures when participantCount or mode changes (only in step 2)
   useEffect(() => {
-    if (step === 2) {
+    if (step === 2 && typeof participantCount === 'number' && participantCount > 0) {
       setParticipants(prevParticipants => {
         // Only regenerate if count changed
         if (prevParticipants.length !== participantCount) {
@@ -105,15 +120,109 @@ function TournamentCreate() {
     }
   };
 
+  // Fetch user's own leagues from Sleeper
+  const fetchMyLeagues = async () => {
+    // First try to use userName from props (left menu), then fallback to settings
+    const settings = JSON.parse(localStorage.getItem('FantasyHelperSettings') || '{}');
+    const userName = propUserName || settings.userName || settings.username;
+    
+    if (!userName || userName.trim() === '' || userName === 'Anonymous') {
+      alert('Please set a username in the left menu or settings to use "My Own Leagues"');
+      return;
+    }
+    
+    setLoadingMyLeagues(true);
+    try {
+      // First, get user ID from username
+      const userResponse = await fetch(`https://api.sleeper.app/v1/user/${userName}`);
+      if (!userResponse.ok) {
+        throw new Error('Failed to fetch user');
+      }
+      const userData = await userResponse.json();
+      const userId = userData.user_id;
+      
+      // Get current year for leagues
+      const stateResponse = await fetch('https://api.sleeper.app/v1/state/nfl');
+      const stateData = await stateResponse.json();
+      const year = stateData.season || new Date().getFullYear();
+      
+      // Fetch user's leagues
+      const leaguesResponse = await fetch(`https://api.sleeper.app/v1/user/${userId}/leagues/nfl/${year}`);
+      if (!leaguesResponse.ok) {
+        throw new Error('Failed to fetch leagues');
+      }
+      const leaguesData = await leaguesResponse.json();
+      
+      // Filter for best ball leagues (same as BestballList)
+      const filteredLeagues = leaguesData.filter(
+        (league) => league.settings.best_ball === 1 && league.status === "in_season"
+      );
+      
+      setMyLeagues(filteredLeagues.map(league => ({
+        id: league.league_id,
+        name: league.name,
+        season: league.season
+      })));
+    } catch (error) {
+      console.error('Error fetching my leagues:', error);
+      alert(`Error fetching leagues: ${error.message}`);
+    } finally {
+      setLoadingMyLeagues(false);
+    }
+  };
+
+  // Effect to fetch my leagues when leagueSource changes to 'myOwnLeagues' or userName changes
+  useEffect(() => {
+    if (leagueSource === 'myOwnLeagues' && myLeagues.length === 0 && !loadingMyLeagues) {
+      fetchMyLeagues();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leagueSource, propUserName]);
+
+  // Move league from available to selected
+  const handleSelectLeague = (leagueId) => {
+    if (!selectedMyLeagues.includes(leagueId)) {
+      setSelectedMyLeagues([...selectedMyLeagues, leagueId]);
+    }
+  };
+
+  // Remove league from selected
+  const handleDeselectLeague = (leagueId) => {
+    setSelectedMyLeagues(selectedMyLeagues.filter(id => id !== leagueId));
+  };
+
+  // Move all available to selected
+  const handleSelectAll = () => {
+    const allIds = myLeagues.map(l => l.id);
+    setSelectedMyLeagues(allIds);
+  };
+
+  // Remove all from selected
+  const handleDeselectAll = () => {
+    setSelectedMyLeagues([]);
+  };
+
   // Fetch league data
   const handleGetLeagueData = async () => {
-    const leagueIdList = leagueIds.split('\n')
-      .map(id => id.trim())
-      .filter(id => id.length > 0);
+    let leagueIdList = [];
     
-    if (leagueIdList.length === 0) {
-      alert('Please enter at least one league ID');
-      return;
+    if (leagueSource === 'sleeperId') {
+      leagueIdList = leagueIds.split('\n')
+        .map(id => id.trim())
+        .filter(id => id.length > 0);
+      
+      if (leagueIdList.length === 0) {
+        alert('Please enter at least one league ID');
+        return;
+      }
+    } else {
+      // Use selected my leagues
+      leagueIdList = selectedMyLeagues;
+      
+      if (leagueIdList.length === 0) {
+        alert('Please select at least one league');
+        return;
+      }
     }
 
     setLoadingLeagueData(true);
@@ -552,19 +661,132 @@ function TournamentCreate() {
         {step === 1 ? (
           <>
             <div className="tournament-form-section">
-              <label htmlFor="league-ids" className="tournament-form-label">
-                Sleeper League IDs (one per line)
-              </label>
-              <textarea
-                id="league-ids"
-                className="tournament-form-textarea"
-                value={leagueIds}
-                onChange={(e) => setLeagueIds(e.target.value)}
-                placeholder="Enter league IDs, one per line"
-                rows={5}
-                required
-              />
+              <label className="tournament-form-label">League Source</label>
+              <div className="tournament-league-source-options">
+                <label className="tournament-league-source-option">
+                  <input
+                    type="radio"
+                    name="league-source"
+                    value="sleeperId"
+                    checked={leagueSource === 'sleeperId'}
+                    onChange={(e) => setLeagueSource(e.target.value)}
+                  />
+                  <span>Sleeper ID</span>
+                </label>
+                <label className="tournament-league-source-option">
+                  <input
+                    type="radio"
+                    name="league-source"
+                    value="myOwnLeagues"
+                    checked={leagueSource === 'myOwnLeagues'}
+                    onChange={(e) => setLeagueSource(e.target.value)}
+                  />
+                  <span>My Own Leagues</span>
+                </label>
+              </div>
             </div>
+
+            {leagueSource === 'sleeperId' ? (
+              <div className="tournament-form-section">
+                <label htmlFor="league-ids" className="tournament-form-label">
+                  Sleeper League IDs (one per line)
+                </label>
+                <textarea
+                  id="league-ids"
+                  className="tournament-form-textarea"
+                  value={leagueIds}
+                  onChange={(e) => setLeagueIds(e.target.value)}
+                  placeholder="Enter league IDs, one per line"
+                  rows={5}
+                  required
+                />
+              </div>
+            ) : (
+              <div className="tournament-form-section">
+                <label className="tournament-form-label">Select Leagues</label>
+                {loadingMyLeagues ? (
+                  <div className="tournament-league-selector-loading">Loading your leagues...</div>
+                ) : (
+                  <div className="tournament-league-selector">
+                    <div className="tournament-league-selector-box">
+                      <div className="tournament-league-selector-header">
+                        <span>Available Leagues ({myLeagues.filter(l => !selectedMyLeagues.includes(l.id)).length})</span>
+                        <button
+                          type="button"
+                          className="tournament-league-selector-btn-small"
+                          onClick={handleSelectAll}
+                          disabled={myLeagues.filter(l => !selectedMyLeagues.includes(l.id)).length === 0}
+                        >
+                          Select All
+                        </button>
+                      </div>
+                      <div className="tournament-league-selector-list">
+                        {myLeagues
+                          .filter(league => !selectedMyLeagues.includes(league.id))
+                          .map(league => (
+                            <div
+                              key={league.id}
+                              className="tournament-league-selector-item"
+                              onClick={() => handleSelectLeague(league.id)}
+                            >
+                              {league.name}
+                              <button
+                                type="button"
+                                className="tournament-league-selector-arrow"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSelectLeague(league.id);
+                                }}
+                              >
+                                →
+                              </button>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                    
+                    <div className="tournament-league-selector-box">
+                      <div className="tournament-league-selector-header">
+                        <span>Selected Leagues ({selectedMyLeagues.length})</span>
+                        <button
+                          type="button"
+                          className="tournament-league-selector-btn-small"
+                          onClick={handleDeselectAll}
+                          disabled={selectedMyLeagues.length === 0}
+                        >
+                          Clear All
+                        </button>
+                      </div>
+                      <div className="tournament-league-selector-list">
+                        {selectedMyLeagues.map(leagueId => {
+                          const league = myLeagues.find(l => l.id === leagueId);
+                          if (!league) return null;
+                          return (
+                            <div
+                              key={leagueId}
+                              className="tournament-league-selector-item tournament-league-selector-item-selected"
+                              onClick={() => handleDeselectLeague(leagueId)}
+                            >
+                              <button
+                                type="button"
+                                className="tournament-league-selector-arrow"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeselectLeague(leagueId);
+                                }}
+                              >
+                                ←
+                              </button>
+                              {league.name}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="tournament-form-actions">
               <button
@@ -578,7 +800,7 @@ function TournamentCreate() {
                 type="button"
                 className="tournament-submit-btn"
                 onClick={handleGetLeagueData}
-                disabled={loadingLeagueData}
+                disabled={loadingLeagueData || (leagueSource === 'myOwnLeagues' && selectedMyLeagues.length === 0)}
               >
                 {loadingLeagueData ? 'Loading...' : 'Get League Data'}
               </button>
@@ -592,19 +814,55 @@ function TournamentCreate() {
                   <label htmlFor="participant-count" className="tournament-form-label">
                     Number of Participants
                   </label>
-                  <select
-                    id="participant-count"
-                    className="tournament-form-select"
-                    value={participantCount}
-                    onChange={(e) => setParticipantCount(parseInt(e.target.value, 10))}
-                    required
-                  >
-                    {participantOptions.map(option => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="tournament-participant-input-group">
+                    <input
+                      type="number"
+                      id="participant-count"
+                      className="tournament-form-input tournament-participant-input"
+                      value={participantCount}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === '') {
+                          setParticipantCount('');
+                        } else {
+                          const num = parseInt(value, 10);
+                          if (!isNaN(num) && num > 0) {
+                            if (tournamentMode === 'h2h') {
+                              // In H2H mode, round to nearest even number
+                              const rounded = num % 2 === 0 ? num : Math.max(2, num - 1);
+                              setParticipantCount(rounded);
+                            } else {
+                              // PTS mode accepts any number
+                              setParticipantCount(num);
+                            }
+                          }
+                        }
+                      }}
+                      min={tournamentMode === 'h2h' ? "2" : "1"}
+                      step={tournamentMode === 'h2h' ? "2" : "1"}
+                      placeholder={tournamentMode === 'h2h' ? "Enter even number" : "Enter number"}
+                      required
+                    />
+                    <select
+                      className="tournament-form-select tournament-participant-quick-select"
+                      value=""
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          setParticipantCount(parseInt(e.target.value, 10));
+                        }
+                      }}
+                      title="Quick select"
+                    >
+                      <option value="">Quick select</option>
+                      {participantOptions
+                        .filter(option => tournamentMode === 'pts' || option % 2 === 0)
+                        .map(option => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
                 </div>
                 <div className="tournament-mode-toggle-wrapper">
                   <label className="tournament-form-label">Tournament Type:</label>
