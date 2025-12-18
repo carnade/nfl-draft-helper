@@ -180,3 +180,42 @@ body.dark .tournaments-results-btn:hover {
   background-color: #1e7e34;
 }
 
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+  /* Drop margin-left on mobile when left menu is collapsed */
+  .left-menu.collapsed + .content {
+    margin-left: 0 !important;
+  }
+
+  .tournaments-container {
+    padding: 5px;
+    max-width: 100%;
+  }
+
+  .tournaments-header {
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .tournaments-title {
+    font-size: 1.5rem;
+  }
+
+  .tournaments-create-btn {
+    padding: 8px 15px;
+    font-size: 13px;
+  }
+
+  .tournaments-table th,
+  .tournaments-table td {
+    padding: 8px 10px;
+    font-size: 0.85rem;
+  }
+
+  .tournaments-results-btn {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+}
+

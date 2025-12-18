@@ -99,7 +99,7 @@ function Tournaments() {
               <tr>
                 <th>Name</th>
                 <th>Week</th>
-                <th>Participants</th>
+                <th>Entries</th>
                 <th>Actions</th>
               </tr>
             </thead>
