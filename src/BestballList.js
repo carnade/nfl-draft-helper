@@ -606,9 +606,41 @@ function BestballList() {
 
       const leaguesWithTeams = await Promise.all(standingsPromises);
 
-      const sortedLeagues = leaguesWithTeams.sort(
-        (a, b) => a.userPosition - b.userPosition
-      );
+      // Calculate "behind 1st" value for sorting
+      const calculateBehindFirst = (league) => {
+        if (!league.teams || league.teams.length === 0 || !league.userRosterSettings?.fpts) {
+          return 0;
+        }
+        const userFpts = league.userRosterSettings.fpts;
+        const firstPlaceFpts = league.teams[0]?.settings?.fpts || 0;
+        
+        if (league.userPosition === 1) {
+          // User is in first place, calculate ahead of 2nd place
+          const secondPlaceFpts = league.teams[1]?.settings?.fpts || firstPlaceFpts;
+          return userFpts - secondPlaceFpts;
+        } else {
+          // User is not in first, calculate behind 1st place
+          return firstPlaceFpts - userFpts;
+        }
+      };
+
+      const sortedLeagues = leaguesWithTeams.sort((a, b) => {
+        // First sort by position
+        if (a.userPosition !== b.userPosition) {
+          return a.userPosition - b.userPosition;
+        }
+        // Within the same position, sort by "behind 1st" value
+        const aBehind = calculateBehindFirst(a);
+        const bBehind = calculateBehindFirst(b);
+        
+        if (a.userPosition === 1) {
+          // For position 1, sort descending (highest +value first)
+          return bBehind - aBehind;
+        } else {
+          // For other positions, sort ascending (lowest value, closest to 1st, first)
+          return aBehind - bBehind;
+        }
+      });
 
       // Add draft position to the sorted league data
       const leaguesWithDraftPositions = await Promise.all(
@@ -886,6 +918,7 @@ function BestballList() {
             <div className="bestball-grid-header">League Name</div>
             <div className="bestball-grid-header">Draft Position</div>
             <div className="bestball-grid-header">Position</div>
+            <div className="bestball-grid-header">Behind 1st</div>
             <div className="bestball-grid-header">Record</div>
             <div className="bestball-grid-header">Links</div>
 
@@ -936,6 +969,26 @@ function BestballList() {
                         style={{ color: "#cd7f32", marginRight: "5px" }}
                       />
                     )}
+                  </div>
+                  <div className="bestball-grid-item">
+                    {(() => {
+                      if (!league.teams || league.teams.length === 0 || !league.userRosterSettings?.fpts) {
+                        return "-";
+                      }
+                      const userFpts = league.userRosterSettings.fpts;
+                      const firstPlaceFpts = league.teams[0]?.settings?.fpts || 0;
+                      
+                      if (league.userPosition === 1) {
+                        // User is in first place, calculate ahead of 2nd place
+                        const secondPlaceFpts = league.teams[1]?.settings?.fpts || firstPlaceFpts;
+                        const ahead = userFpts - secondPlaceFpts;
+                        return ahead !== 0 ? `+${Math.round(ahead)}` : "0";
+                      } else {
+                        // User is not in first, calculate behind 1st place (no minus sign)
+                        const behind = firstPlaceFpts - userFpts;
+                        return behind !== 0 ? `${Math.round(behind)}` : "0";
+                      }
+                    })()}
                   </div>
                   <div className="bestball-grid-item">
                     {league.userRosterSettings?.wins || 0}-

@@ -41,6 +41,29 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2025-12-18",
+      title: "Bestball & Tournament Enhancements",
+      items: [
+        {
+          text: "Bestball Overview:",
+          subitems: [
+            "Added 'Behind 1st' column showing points difference from first place",
+            "Shows positive value (+X) when in first place (points ahead of 2nd), negative value (X) when not in first (points behind 1st)",
+            "Leagues sorted within each position by 'Behind 1st' value (closest to 1st first, except position 1 sorted by furthest ahead first)"
+          ]
+        },
+        {
+          text: "Tournament Creation:",
+          subitems: [
+            "Added league source selection: choose between manually entering Sleeper League IDs or selecting from 'My Own Leagues'",
+            "'My Own Leagues' option fetches and displays your bestball leagues from Sleeper with a two-box selector interface",
+            "Participant count now uses an input field allowing any number, with a quick-select dropdown for common values (2, 4, 8, 16, 32, 64)",
+            "H2H mode automatically enforces even numbers only and adjusts participant count when switching from PTS mode"
+          ]
+        }
+      ],
+    },
+    {
       date: "2025-12-15",
       title: "Tournament Feature",
       items: [
