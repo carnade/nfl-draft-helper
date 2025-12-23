@@ -1482,12 +1482,18 @@ function DFSResults() {
   }, [selectedWeek]);
 
   const getFantasyPointsDisplay = useCallback((sleeperId) => {
-    const playerInfo = fantasyPoints[sleeperId];
-    const fallbackInfo = fallbackFantasyPoints[sleeperId];
-
-    // Check if player is OUT (from DFS salary data)
+    // Check if sleeperId is a name (not numeric) - indicates manual entry
+    const isNameNotId = sleeperId && typeof sleeperId === 'string' && !/^\d+$/.test(sleeperId);
     const dfsPlayerKey = `${sleeperId}_W${selectedWeek}`;
     const dfsPlayer = dfsSalaryData[dfsPlayerKey];
+    
+    // If it's a name (not numeric ID) and we don't have DFS salary data, it's a manual entry
+    if (isNameNotId && !dfsPlayer) {
+      return 'Manual pts';
+    }
+
+    const playerInfo = fantasyPoints[sleeperId];
+    const fallbackInfo = fallbackFantasyPoints[sleeperId];
 
     // If player is marked as OUT in injury status, show "OUT"
     if (dfsPlayer?.injury_status === 'O') {
