@@ -13,6 +13,13 @@ const BASE_URL = mock
   ? "http://localhost:5000"
   : "https://shaggy-latashia-carnade-2ea2054a.koyeb.app";
 
+// Name translation table for manual entries (nicknames/common names -> official names)
+// Update this table as needed to map common names to official player names
+const NAME_TRANSLATIONS = {
+  'Hollywood Brown': 'Marquise Brown',
+  // Add more translations here as needed
+};
+
 // Helper functions for parsing game start times
 const getUsdDstBoundsUtc = (year) => {
   const march1Utc = Date.UTC(year, 2, 1);
@@ -339,10 +346,35 @@ function DFS({ userName }) {
     const settings = JSON.parse(localStorage.getItem('FantasyHelperSettings') || '{}');
     const username = userName || settings.userName || 'Anonymous';
     
-    // Build lineup string from roster
+    // Build lineup string from roster, translating names to sleeper IDs when possible
     const lineupParts = Object.values(roster)
       .filter(player => player !== null)
-      .map(player => `${player.sleeper_id}-${player.salary}`)
+      .map(player => {
+        let sleeperId = player.sleeper_id;
+        
+        // Check if sleeper_id is a name (not numeric) - indicates manual entry
+        const isNameNotId = sleeperId && typeof sleeperId === 'string' && !/^\d+$/.test(sleeperId);
+        
+        if (isNameNotId) {
+          // First try to find player by name in the players array
+          let foundPlayer = players.find(p => p.name === sleeperId);
+          
+          // If not found, try translation
+          if (!foundPlayer) {
+            const translatedName = NAME_TRANSLATIONS[sleeperId];
+            if (translatedName) {
+              foundPlayer = players.find(p => p.name === translatedName);
+              if (foundPlayer) {
+                sleeperId = foundPlayer.sleeper_id;
+              }
+            }
+          } else {
+            sleeperId = foundPlayer.sleeper_id;
+          }
+        }
+        
+        return `${sleeperId}-${player.salary}`;
+      })
       .join(',');
     
     // Base64 encode the lineup
@@ -387,10 +419,35 @@ function DFS({ userName }) {
     setTempUsername(''); // Clear temp username
     
     // Generate lineup code with the new username
-    // Build lineup string from roster
+    // Build lineup string from roster, translating names to sleeper IDs when possible
     const lineupParts = Object.values(roster)
       .filter(player => player !== null)
-      .map(player => `${player.sleeper_id}-${player.salary}`)
+      .map(player => {
+        let sleeperId = player.sleeper_id;
+        
+        // Check if sleeper_id is a name (not numeric) - indicates manual entry
+        const isNameNotId = sleeperId && typeof sleeperId === 'string' && !/^\d+$/.test(sleeperId);
+        
+        if (isNameNotId) {
+          // First try to find player by name in the players array
+          let foundPlayer = players.find(p => p.name === sleeperId);
+          
+          // If not found, try translation
+          if (!foundPlayer) {
+            const translatedName = NAME_TRANSLATIONS[sleeperId];
+            if (translatedName) {
+              foundPlayer = players.find(p => p.name === translatedName);
+              if (foundPlayer) {
+                sleeperId = foundPlayer.sleeper_id;
+              }
+            }
+          } else {
+            sleeperId = foundPlayer.sleeper_id;
+          }
+        }
+        
+        return `${sleeperId}-${player.salary}`;
+      })
       .join(',');
     
     // Base64 encode the lineup
