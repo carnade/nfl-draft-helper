@@ -1487,13 +1487,20 @@ function DFSResults() {
     const dfsPlayerKey = `${sleeperId}_W${selectedWeek}`;
     const dfsPlayer = dfsSalaryData[dfsPlayerKey];
     
-    // If it's a name (not numeric ID) and we don't have DFS salary data, it's a manual entry
-    if (isNameNotId && !dfsPlayer) {
-      return 'Manual pts';
-    }
-
     const playerInfo = fantasyPoints[sleeperId];
     const fallbackInfo = fallbackFantasyPoints[sleeperId];
+    
+    // Check if this is a DST (DSTs have non-numeric IDs like "LAC", "TB", etc.)
+    // DSTs can be identified by: non-numeric ID pattern, position in DFS data, or having fantasy points
+    const isDst = isDefenseSleeperId(sleeperId) || 
+                   isDefensePosition(dfsPlayer?.position) ||
+                   isDefensePosition(dfsPlayer?.fantasy_positions?.[0]) ||
+                   (isNameNotId && (playerInfo || fallbackInfo)); // If non-numeric and has points, likely DST
+    
+    // If it's a name (not numeric ID) and we don't have DFS salary data, and it's NOT a DST, it's a manual entry
+    if (isNameNotId && !dfsPlayer && !isDst) {
+      return 'Manual pts';
+    }
 
     // If player is marked as OUT in injury status, show "OUT"
     if (dfsPlayer?.injury_status === 'O') {
