@@ -1507,19 +1507,22 @@ function DFSResults() {
       return 'OUT';
     }
 
-    // Check if game has started
+    // Check if game has started FIRST (before returning points)
+    // This ensures we show TBD for games that haven't started, even if we have 0 points
     const gameDate = dfsPlayer?.game_date;
     const gameStartTime = dfsPlayer?.game_start_time;
     let gameHasStarted = false;
+    let canDetermineGameStart = false;
 
     if (gameDate) {
+      canDetermineGameStart = true;
       try {
         const kickoffUtc = parseGameStartToUtc(gameDate, gameStartTime);
         if (kickoffUtc) {
           const now = new Date();
           gameHasStarted = now >= kickoffUtc;
           if (!gameHasStarted) {
-            // Game hasn't started yet
+            // Game hasn't started yet - show TBD regardless of whether we have points
             return 'TBD';
           }
         }
@@ -1533,14 +1536,44 @@ function DFSResults() {
       }
     }
 
-    // If we have player info from Sleeper matchup, use it
+    // Only return points if game has started (or if we can't determine game start status)
+    // If we can determine game start and it hasn't started, we already returned TBD above
+    // If we have player info from Sleeper matchup, use it (only if game started or unknown)
     if (playerInfo) {
-      return (playerInfo.fantasy_points ?? 0).toFixed(1);
+      const points = playerInfo.fantasy_points ?? 0;
+      // If game has started, show points
+      if (gameHasStarted) {
+        return points.toFixed(1);
+      }
+      // If we can't determine game start:
+      // - If points are non-zero, assume game has started and show points
+      // - If points are zero, show TBD (safer to assume game hasn't started)
+      if (!canDetermineGameStart) {
+        if (points > 0) {
+          return points.toFixed(1);
+        } else {
+          return 'TBD';
+        }
+      }
     }
 
-    // If we have fallback info, use it
+    // If we have fallback info, use it (only if game started or unknown)
     if (fallbackInfo) {
-      return (fallbackInfo.fantasy_points ?? 0).toFixed(1);
+      const points = fallbackInfo.fantasy_points ?? 0;
+      // If game has started, show points
+      if (gameHasStarted) {
+        return points.toFixed(1);
+      }
+      // If we can't determine game start:
+      // - If points are non-zero, assume game has started and show points
+      // - If points are zero, show TBD (safer to assume game hasn't started)
+      if (!canDetermineGameStart) {
+        if (points > 0) {
+          return points.toFixed(1);
+        } else {
+          return 'TBD';
+        }
+      }
     }
 
     // If we're currently fetching, show awaiting
@@ -1548,14 +1581,25 @@ function DFSResults() {
       return 'Awaiting Pts';
     }
 
+    // If we can determine game start and it hasn't started, show TBD
+    if (canDetermineGameStart && !gameHasStarted) {
+      return 'TBD';
+    }
+
     // If game has started but no player info, mark as awaiting (fetch will be triggered by useEffect)
     if (gameHasStarted && !playerInfo && !fallbackInfo) {
       return 'Awaiting Pts';
     }
 
-    // If game hasn't started (and we didn't return above), show TBD
-    if (!gameHasStarted) {
+    // If we can't determine game start status and have no points, show TBD (safer to hide than show 0)
+    if (!canDetermineGameStart && !playerInfo && !fallbackInfo) {
       return 'TBD';
+    }
+
+    // If we can't determine game start but have points, show them (game might have started)
+    // This handles cases where DSTs have points but no game_date in DFS salary data
+    if (!canDetermineGameStart && (playerInfo || fallbackInfo)) {
+      return (playerInfo?.fantasy_points ?? fallbackInfo?.fantasy_points ?? 0).toFixed(1);
     }
 
     // Default: show awaiting if game has started
