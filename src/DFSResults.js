@@ -1487,15 +1487,20 @@ function DFSResults() {
     const dfsPlayerKey = `${sleeperId}_W${selectedWeek}`;
     const dfsPlayer = dfsSalaryData[dfsPlayerKey];
     
-    const playerInfo = fantasyPoints[sleeperId];
-    const fallbackInfo = fallbackFantasyPoints[sleeperId];
+    // Get player metadata to check position (this is available even before game starts)
+    const metadata = playerMetadata[sleeperId];
     
-    // Check if this is a DST (DSTs have non-numeric IDs like "LAC", "TB", etc.)
-    // DSTs can be identified by: non-numeric ID pattern, position in DFS data, or having fantasy points
+    // Check if this is a DST FIRST (before checking playerInfo/fallbackInfo)
+    // DSTs have non-numeric IDs like "LAC", "TB", etc.
+    // DST IDs are typically 2-3 uppercase letters (team abbreviations)
     const isDst = isDefenseSleeperId(sleeperId) || 
                    isDefensePosition(dfsPlayer?.position) ||
                    isDefensePosition(dfsPlayer?.fantasy_positions?.[0]) ||
-                   (isNameNotId && (playerInfo || fallbackInfo)); // If non-numeric and has points, likely DST
+                   isDefensePosition(metadata?.position) ||
+                   (isNameNotId && /^[A-Z]{2,3}$/.test(sleeperId)); // If non-numeric and matches team abbreviation pattern, it's a DST
+    
+    const playerInfo = fantasyPoints[sleeperId];
+    const fallbackInfo = fallbackFantasyPoints[sleeperId];
     
     // If it's a name (not numeric ID) and we don't have DFS salary data, and it's NOT a DST, it's a manual entry
     if (isNameNotId && !dfsPlayer && !isDst) {
@@ -1604,7 +1609,7 @@ function DFSResults() {
 
     // Default: show awaiting if game has started
     return 'Awaiting Pts';
-  }, [dfsSalaryData, fantasyPoints, selectedWeek, fallbackFantasyPoints, fetchingFallbackPoints]);
+  }, [dfsSalaryData, fantasyPoints, selectedWeek, fallbackFantasyPoints, fetchingFallbackPoints, playerMetadata]);
 
   // Reset check tracking when key inputs change
   useEffect(() => {
