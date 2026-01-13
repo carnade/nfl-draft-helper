@@ -6,7 +6,7 @@ import LZString from 'lz-string';
 import './DFS.css';
 
 // Add a mock flag
-const mock = false; // Set to true for mock data, false for production
+const mock = true; // Set to true for mock data, false for production
 
 // Define the base URL based on the mock flag
 const BASE_URL = mock
@@ -545,15 +545,15 @@ function DFS({ userName }) {
       const lineups = (availableData.entries || []).map(entry => {
         // Handle both string and object formats
         if (typeof entry === 'string') {
-          return {
+            return {
             entryName: entry,
-            week: null,
-            hasData: false,
+              week: null,
+              hasData: false,
             hasPin: false
           };
         }
         
-        return {
+            return {
           entryName: entry.name || entry,
           week: entry.week || null,
           hasData: entry.has_data || false,
@@ -704,6 +704,19 @@ function DFS({ userName }) {
         return;
       }
       
+      // Fetch entry details to check if it's multiweek_dfs
+      let entryType = 'single';
+      try {
+        const detailsResponse = await fetch(`${BASE_URL}/tinyurl/${entry.name}/details`);
+        if (detailsResponse.ok) {
+          const detailsData = await detailsResponse.json();
+          entryType = detailsData.type || 'single';
+        }
+      } catch (error) {
+        console.error('Error fetching entry details:', error);
+        // Default to 'single' if fetch fails
+      }
+      
       // Generate lineup code (format: username:encodedLineup)
       const lineupCode = generateLineupCode();
       
@@ -717,6 +730,7 @@ function DFS({ userName }) {
       // Compress the data using LZ-String
       const compressed = LZString.compressToEncodedURIComponent(formattedData);
       
+      // For multiweek_dfs, ALWAYS use current week. For single, use current week as well.
       // Format as week|compressedData (same format as DFSResults hash)
       const data = `${currentWeek}|${compressed}`;
       
@@ -1216,7 +1230,7 @@ function DFS({ userName }) {
         setShowGameStartedModal(true);
       } else {
         // Add to roster normally
-        addPlayerToRoster(player);
+      addPlayerToRoster(player);
       }
     }
   };
@@ -1319,7 +1333,7 @@ function DFS({ userName }) {
               Load Lineup
             </button>
             <button className="check-results-button" onClick={() => navigate('/dfs/results')}>
-              Check Results!
+              Setup week
             </button>
           </div>
         </div>
@@ -1744,8 +1758,8 @@ function DFS({ userName }) {
                       const isGrey = !lineup.hasData;
                       
                       return (
-                        <button
-                          key={lineup.entryName}
+                      <button
+                        key={lineup.entryName}
                           onClick={() => {
                             if (isGreen) {
                               setSelectedLineupForPin(lineup);
@@ -1766,9 +1780,9 @@ function DFS({ userName }) {
                             cursor: (isRed || isGrey) ? 'not-allowed' : 'pointer',
                             opacity: (isRed || isGrey) ? 0.6 : 1
                           }}
-                        >
-                          {lineup.entryName} {lineup.week && `(Week ${lineup.week})`} {!lineup.hasData && '(No data)'}
-                        </button>
+                      >
+                        {lineup.entryName} {lineup.week && `(Week ${lineup.week})`} {!lineup.hasData && '(No data)'}
+                      </button>
                       );
                     })}
                   </div>

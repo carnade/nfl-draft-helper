@@ -4,7 +4,7 @@ import LZString from 'lz-string';
 import './DFSResults.css';
 
 // Add a mock flag
-const mock = false; // Set to true for mock data, false for production
+const mock = true; // Set to true for mock data, false for production
 
 // Define the base URL based on the mock flag
 const BASE_URL = mock
@@ -119,6 +119,8 @@ function DFSResults() {
   const [emptyTinyUrl, setEmptyTinyUrl] = useState('');
   const [creatingEmptyTinyUrl, setCreatingEmptyTinyUrl] = useState(false);
   const [emptyTinyUrlError, setEmptyTinyUrlError] = useState('');
+  const [emptyTinyUrlType, setEmptyTinyUrlType] = useState('single'); // 'single' or 'multiweek_dfs'
+  const [emptyTinyUrlWeeks, setEmptyTinyUrlWeeks] = useState(4); // Number of weeks for multiweek_dfs
   const [showUpdatingIndicator, setShowUpdatingIndicator] = useState(false);
   const [lastUpdateTime, setLastUpdateTime] = useState(null);
   const [revealTime, setRevealTime] = useState(null);
@@ -129,6 +131,12 @@ function DFSResults() {
   const [loadingUserLeagues, setLoadingUserLeagues] = useState(false);
   const [fallbackFantasyPoints, setFallbackFantasyPoints] = useState({});
   const [fetchingFallbackPoints, setFetchingFallbackPoints] = useState(new Set());
+  const [viewMode, setViewMode] = useState('weekly'); // 'weekly' or 'tournament'
+  const [standings, setStandings] = useState(null);
+  const [loadingStandings, setLoadingStandings] = useState(false);
+  const [entryType, setEntryType] = useState(null);
+  const [skipSlowRoll, setSkipSlowRoll] = useState(false); // Skip slow roll when switching from tournament view
+  const [expandedStandingsRows, setExpandedStandingsRows] = useState(new Set()); // Track expanded rows in standings
 
   const lineupRefs = useRef({});
   const previousPositionsRef = useRef({});
@@ -687,7 +695,8 @@ function DFSResults() {
       const requestBody = {
         name: emptyTinyUrlName.trim(),
         names: usernames,
-        week: selectedWeek
+        week: selectedWeek,
+        type: emptyTinyUrlType
       };
 
       // Add reveal if provided
@@ -716,6 +725,8 @@ function DFSResults() {
         setEmptyTinyUrlUsernames(''); // Clear the usernames
         setEmptyTinyUrlRevealDate(''); // Clear the date
         setEmptyTinyUrlRevealTime(''); // Clear the time
+        setEmptyTinyUrlType('single'); // Reset to single
+        setEmptyTinyUrlWeeks(4); // Reset weeks
         
         // Refresh the count after successful creation
         fetchTinyUrlCount();
@@ -815,6 +826,20 @@ function DFSResults() {
       const fetchTinyUrlData = async () => {
         setLoadingTinyUrl(true);
         try {
+          // First, fetch details to get the entry type
+          let entryTypeValue = 'single';
+          try {
+            const detailsResponse = await fetch(`${BASE_URL}/tinyurl/${tinyUrlNameParam}/details`);
+            if (detailsResponse.ok) {
+              const detailsData = await detailsResponse.json();
+              entryTypeValue = detailsData.type || 'single';
+              setEntryType(entryTypeValue);
+            }
+          } catch (error) {
+            console.error('Error fetching entry details:', error);
+            setEntryType('single');
+          }
+          
           // Use /data endpoint to get full entry data including reveal time
           // Add admin=true query param if in admin mode to bypass PIN requirement
           const url = isAdminMode 
@@ -1080,7 +1105,7 @@ function DFSResults() {
         setCurrentWeek(week);
         // Only set selectedWeek if not loading from URL or tinyURL
         if (!window.location.hash && !tinyUrlNameParam) {
-          setSelectedWeek(week - 1); // Default to previous week
+          setSelectedWeek(week); // Default to current week
         }
       } else {
         // Fetch if not cached
@@ -1090,7 +1115,7 @@ function DFSResults() {
             setCurrentWeek(data.week);
             // Only set selectedWeek if not loading from URL or tinyURL
             if (!window.location.hash && !tinyUrlNameParam) {
-              setSelectedWeek(data.week - 1); // Default to previous week
+              setSelectedWeek(data.week); // Default to current week
             }
           })
           .catch(err => console.error('Error fetching week:', err));
@@ -1379,7 +1404,7 @@ function DFSResults() {
       console.log('Fetch already in progress, skipping duplicate request');
       return;
     }
-    
+
     // Filter using ref - this prevents duplicate API calls
     // The ref tracks all players we've attempted to fetch
     const idsToFetch = sleeperIds.filter(id => {
@@ -1415,40 +1440,40 @@ function DFSResults() {
         // Process all players at once
         const updates = {};
         idsToFetch.forEach(sleeperId => {
-          const sleeperIdStr = String(sleeperId);
-          let foundPoints = null;
+        const sleeperIdStr = String(sleeperId);
+        let foundPoints = null;
 
-          // Check if response is an object with sleeper_id keys (direct mapping)
-          if (data[sleeperIdStr] !== undefined) {
-            // Could be a number (points) or an object with fantasy_points
-            const value = data[sleeperIdStr];
-            foundPoints = typeof value === 'number' ? value : (value?.fantasy_points ?? value?.points ?? null);
-          } else if (Array.isArray(data)) {
-            // If it's an array, find the player
-            const player = data.find(p => 
-              String(p.sleeper_id) === sleeperIdStr || 
-              String(p.id) === sleeperIdStr ||
-              String(p.player_id) === sleeperIdStr
-            );
-            if (player) {
-              foundPoints = player.fantasy_points ?? player.points ?? player.fpts ?? 0;
-            }
-          } else if (typeof data === 'object' && data !== null) {
-            // Try to find by iterating through values
-            for (const key in data) {
-              const player = data[key];
-              if (player && typeof player === 'object') {
-                if (String(player.sleeper_id) === sleeperIdStr || 
-                    String(player.id) === sleeperIdStr ||
-                    String(player.player_id) === sleeperIdStr) {
-                  foundPoints = player.fantasy_points ?? player.points ?? player.fpts ?? 0;
-                  break;
-                }
+        // Check if response is an object with sleeper_id keys (direct mapping)
+        if (data[sleeperIdStr] !== undefined) {
+          // Could be a number (points) or an object with fantasy_points
+          const value = data[sleeperIdStr];
+          foundPoints = typeof value === 'number' ? value : (value?.fantasy_points ?? value?.points ?? null);
+        } else if (Array.isArray(data)) {
+          // If it's an array, find the player
+          const player = data.find(p => 
+            String(p.sleeper_id) === sleeperIdStr || 
+            String(p.id) === sleeperIdStr ||
+            String(p.player_id) === sleeperIdStr
+          );
+          if (player) {
+            foundPoints = player.fantasy_points ?? player.points ?? player.fpts ?? 0;
+          }
+        } else if (typeof data === 'object' && data !== null) {
+          // Try to find by iterating through values
+          for (const key in data) {
+            const player = data[key];
+            if (player && typeof player === 'object') {
+              if (String(player.sleeper_id) === sleeperIdStr || 
+                  String(player.id) === sleeperIdStr ||
+                  String(player.player_id) === sleeperIdStr) {
+                foundPoints = player.fantasy_points ?? player.points ?? player.fpts ?? 0;
+                break;
               }
             }
           }
+        }
 
-          if (foundPoints !== null && foundPoints !== undefined) {
+        if (foundPoints !== null && foundPoints !== undefined) {
             updates[sleeperIdStr] = {
               fantasy_points: foundPoints,
               sleeper_id: sleeperIdStr
@@ -1501,7 +1526,7 @@ function DFSResults() {
     
     const playerInfo = fantasyPoints[sleeperId];
     const fallbackInfo = fallbackFantasyPoints[sleeperId];
-    
+
     // If it's a name (not numeric ID) and we don't have DFS salary data, and it's NOT a DST, it's a manual entry
     if (isNameNotId && !dfsPlayer && !isDst) {
       return 'Manual pts';
@@ -1793,13 +1818,18 @@ function DFSResults() {
     console.log('hasNotPlayedPlayers:', hasNotPlayedPlayers);
     
     // If there are "TBD" players, show all results immediately
-    if (hasNotPlayedPlayers) {
-      console.log('Not all players have played yet, showing all results immediately');
+    // Also skip slow roll if we're switching from tournament view
+    if (hasNotPlayedPlayers || skipSlowRoll) {
+      console.log('Not all players have played yet, or skipping slow roll, showing all results immediately');
       const allVisible = new Set();
       for (let i = 1; i <= totalLineups; i++) {
         allVisible.add(i);
       }
       setVisibleRanks(allVisible);
+      // Reset skip flag after using it
+      if (skipSlowRoll) {
+        setSkipSlowRoll(false);
+      }
       return;
     }
     
@@ -1888,7 +1918,7 @@ function DFSResults() {
         });
       }, 4000);
     }
-  }, [fantasyPoints, fallbackFantasyPoints, dfsSalaryData, selectedWeek, parseLineups, getFantasyPointsDisplay]);
+  }, [fantasyPoints, fallbackFantasyPoints, dfsSalaryData, selectedWeek, parseLineups, getFantasyPointsDisplay, skipSlowRoll]);
 
   // Trigger animation when data is loaded from URL
   useEffect(() => {
@@ -2474,6 +2504,53 @@ function DFSResults() {
     };
   }, [liveUpdate, selectedWeek, dfsSalaryData, playerMetadata, parseLineups, buildDstSleeperIdSet]);
 
+  // Reset viewMode when not viewing a tinyURL
+  useEffect(() => {
+    if (!tinyUrlNameParam) {
+      setViewMode('weekly');
+      setEntryType(null);
+      setStandings(null);
+    }
+  }, [tinyUrlNameParam]);
+
+  // Fetch standings when entry type is multiweek_dfs (fetch when switching to tournament view)
+  useEffect(() => {
+    if (tinyUrlNameParam && entryType === 'multiweek_dfs') {
+      // If switching to tournament view, fetch standings
+      if (viewMode === 'tournament') {
+        const fetchStandings = async () => {
+          setLoadingStandings(true);
+          try {
+            const response = await fetch(`${BASE_URL}/tinyurl/${tinyUrlNameParam}/standings`);
+            if (response.ok) {
+              const data = await response.json();
+              setStandings(data);
+            } else if (response.status === 400) {
+              // Entry is not multiweek_dfs type
+              setStandings(null);
+              console.error('Entry is not a multiweek_dfs type');
+            } else {
+              setStandings(null);
+              console.error('Failed to fetch standings');
+            }
+          } catch (error) {
+            console.error('Error fetching standings:', error);
+            setStandings(null);
+          } finally {
+            setLoadingStandings(false);
+          }
+        };
+        
+        fetchStandings();
+      } else {
+        // Clear standings when switching to weekly view
+        setStandings(null);
+      }
+    } else {
+      setStandings(null);
+    }
+  }, [tinyUrlNameParam, viewMode, entryType]);
+
   return (
     <div className="dfs-results-container">
       <div className="dfs-results-header">
@@ -2482,6 +2559,34 @@ function DFSResults() {
         </button>
         <h1>DFS Results</h1>
       </div>
+      
+      {/* View mode toggle - only show when viewing a tinyURL */}
+      {tinyUrlNameParam && entryType === 'multiweek_dfs' && (
+        <div className="week-toggle-section" style={{ marginTop: '16px', marginBottom: '16px' }}>
+          <label>View:</label>
+          <div className="week-toggle">
+            <button
+              className={`week-btn ${viewMode === 'weekly' ? 'active' : ''}`}
+              onClick={() => {
+                setViewMode('weekly');
+                // If switching from tournament to weekly, skip slow roll if all games have played
+                setSkipSlowRoll(true);
+              }}
+            >
+              Weekly result
+            </button>
+            <button
+              className={`week-btn ${viewMode === 'tournament' ? 'active' : ''}`}
+              onClick={() => {
+                setViewMode('tournament');
+                setSkipSlowRoll(false); // Reset skip flag when going to tournament
+              }}
+            >
+              Tournament result
+            </button>
+          </div>
+        </div>
+      )}
 
       {!loadedFromUrl && (
         <div className="dfs-results-content">
@@ -2566,6 +2671,55 @@ function DFSResults() {
                   disabled={creatingEmptyTinyUrl}
                 />
               </div>
+              <div className="week-toggle-section" style={{ marginTop: '12px' }}>
+                <label>Type:</label>
+                <div className="week-toggle">
+                  <button
+                    type="button"
+                    className={`week-btn ${emptyTinyUrlType === 'single' ? 'active' : ''}`}
+                    onClick={() => {
+                      setEmptyTinyUrlType('single');
+                      setEmptyTinyUrlError('');
+                    }}
+                    disabled={creatingEmptyTinyUrl}
+                  >
+                    Single Week
+                  </button>
+                  <button
+                    type="button"
+                    className={`week-btn ${emptyTinyUrlType === 'multiweek_dfs' ? 'active' : ''}`}
+                    onClick={() => {
+                      setEmptyTinyUrlType('multiweek_dfs');
+                      setEmptyTinyUrlError('');
+                    }}
+                    disabled={creatingEmptyTinyUrl}
+                  >
+                    Multiweek DFS
+                  </button>
+                </div>
+              </div>
+              {emptyTinyUrlType === 'multiweek_dfs' && (
+                <div className="tinyurl-input-container" style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <label style={{ fontSize: '0.9rem', color: 'inherit', whiteSpace: 'nowrap' }}>
+                    Number of weeks:
+                  </label>
+                  <input
+                    type="number"
+                    min="2"
+                    max="18"
+                    value={emptyTinyUrlWeeks}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value) || 4;
+                      const clampedValue = Math.min(Math.max(2, value), 18);
+                      setEmptyTinyUrlWeeks(clampedValue);
+                      setEmptyTinyUrlError('');
+                    }}
+                    className="tinyurl-input"
+                    style={{ maxWidth: '100px' }}
+                    disabled={creatingEmptyTinyUrl}
+                  />
+                </div>
+              )}
               <div className="tinyurl-input-container" style={{ marginTop: '12px' }}>
                 <textarea
                   value={emptyTinyUrlUsernames}
@@ -2760,7 +2914,7 @@ function DFSResults() {
         </div>
       )}
 
-      {compressedData && inputData && (
+      {compressedData && inputData && viewMode === 'weekly' && (
         <div className="results-grid-section">
           {loadingTinyUrl ? (
             <div className="loading-message">Loading tinyURL data...</div>
@@ -2973,7 +3127,7 @@ function DFSResults() {
                             
                             const backgroundColor = isOut 
                               ? 'rgba(220, 53, 69, 0.8)' 
-                              : getPositionColor(position);
+                                : getPositionColor(position);
                             console.log('Render info', {
                               lineupUsername: lineup.username,
                               sleeperId: player.sleeperId,
@@ -3144,6 +3298,156 @@ function DFSResults() {
                 </div>
               )}
             </>
+          )}
+        </div>
+      )}
+
+      {/* Tournament standings view */}
+      {tinyUrlNameParam && viewMode === 'tournament' && entryType === 'multiweek_dfs' && (
+        <div className="tournament-standings-section">
+          {loadingStandings ? (
+            <div className="loading-message">Loading standings...</div>
+          ) : standings && standings.standings && standings.standings.length > 0 ? (() => {
+            // Calculate average points per week and position per week for each user
+            const allWeeks = new Set();
+            standings.standings.forEach(entry => {
+              Object.keys(entry.week_points || {}).forEach(week => allWeeks.add(week));
+            });
+            const sortedWeeks = Array.from(allWeeks).sort((a, b) => parseInt(a) - parseInt(b));
+            
+            // Calculate average points per week
+            const avgPointsPerWeek = {};
+            sortedWeeks.forEach(week => {
+              const weekPoints = standings.standings
+                .map(entry => entry.week_points?.[week])
+                .filter(points => points !== undefined && points !== null);
+              if (weekPoints.length > 0) {
+                const sum = weekPoints.reduce((acc, val) => acc + val, 0);
+                avgPointsPerWeek[week] = sum / weekPoints.length;
+              }
+            });
+            
+            // Calculate position per week for each user
+            const positionPerWeek = {};
+            sortedWeeks.forEach(week => {
+              const weekRankings = standings.standings
+                .map(entry => ({
+                  username: entry.username,
+                  points: entry.week_points?.[week] || 0
+                }))
+                .sort((a, b) => b.points - a.points);
+              
+              weekRankings.forEach((entry, index) => {
+                if (!positionPerWeek[entry.username]) {
+                  positionPerWeek[entry.username] = {};
+                }
+                positionPerWeek[entry.username][week] = index + 1;
+              });
+            });
+            
+            return (
+              <>
+                <h2>Tournament Standings</h2>
+                <div className="standings-table-container">
+                  <table className="standings-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '40px' }}></th>
+                        <th style={{ width: '50px', textAlign: 'left' }}>Rank</th>
+                        <th style={{ textAlign: 'left' }}>Username</th>
+                        <th style={{ textAlign: 'right' }}>Total Points</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {standings.standings.map((entry, index) => {
+                        const isExpanded = expandedStandingsRows.has(entry.username);
+                        const handleToggle = () => {
+                          setExpandedStandingsRows(prev => {
+                            const next = new Set(prev);
+                            if (next.has(entry.username)) {
+                              next.delete(entry.username);
+                            } else {
+                              next.add(entry.username);
+                            }
+                            return next;
+                          });
+                        };
+                        return (
+                          <React.Fragment key={entry.username}>
+                            <tr className="standings-main-row">
+                              <td>
+                                <button
+                                  className="standings-expand-btn"
+                                  onClick={handleToggle}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    fontSize: '18px',
+                                    padding: '4px 8px',
+                                    color: '#007bff'
+                                  }}
+                                >
+                                  {isExpanded ? '▼' : '►'}
+                                </button>
+                              </td>
+                              <td style={{ textAlign: 'left', fontWeight: '700', fontSize: '14px', paddingRight: '12px' }}>
+                                {index + 1}
+                              </td>
+                              <td style={{ fontWeight: '600', textAlign: 'left' }}>{entry.username}</td>
+                              <td className="total-points" style={{ textAlign: 'right', fontSize: '20px', fontWeight: '700' }}>
+                                {entry.total_points.toFixed(1)}
+                              </td>
+                            </tr>
+                            {isExpanded && (
+                              <tr className="standings-expanded-row">
+                                <td colSpan="4" style={{ padding: '0' }}>
+                                  <div className="standings-expanded-content">
+                                    <table className="standings-week-table">
+                                      <thead>
+                                        <tr>
+                                          <th>Week</th>
+                                          <th>Position</th>
+                                          <th>Week Avg</th>
+                                          <th>My Points</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {sortedWeeks.map(week => {
+                                          const userPoints = entry.week_points?.[week];
+                                          const position = positionPerWeek[entry.username]?.[week] || '-';
+                                          const avgPoints = avgPointsPerWeek[week] || 0;
+                                          return (
+                                            <tr key={week}>
+                                              <td>{week}</td>
+                                              <td style={{ textAlign: 'center', fontWeight: '600' }}>
+                                                {position}
+                                              </td>
+                                              <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
+                                                {avgPoints.toFixed(1)}
+                                              </td>
+                                              <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: '600' }}>
+                                                {userPoints !== undefined && userPoints !== null ? userPoints.toFixed(1) : '-'}
+                                              </td>
+                                            </tr>
+                                          );
+                                        })}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            );
+          })() : (
+            <div className="error-message">No standings data available.</div>
           )}
         </div>
       )}

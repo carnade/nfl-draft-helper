@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import './TournamentCreate.css';
 
 // Add a mock flag
-const mock = false; // Set to true for localhost, false for production
+const mock = true; // Set to true for localhost, false for production
 
 // Define the base URL based on the mock flag
 const BASE_URL = mock
