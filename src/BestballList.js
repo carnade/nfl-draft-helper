@@ -516,7 +516,7 @@ function BestballList() {
 
       const filteredLeagues = leaguesData.filter(
         (league) =>
-          league.settings.best_ball === 1 && league.status === "in_season"
+          league.settings.best_ball === 1 && league.status === "complete"
       );
 
       // Update total drafts

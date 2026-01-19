@@ -158,7 +158,7 @@ function TournamentCreate({ userName: propUserName }) {
       
       // Filter for best ball leagues (same as BestballList)
       const filteredLeagues = leaguesData.filter(
-        (league) => league.settings.best_ball === 1 && league.status === "in_season"
+        (league) => league.settings.best_ball === 1 && league.status === "complete"
       );
       
       setMyLeagues(filteredLeagues.map(league => ({

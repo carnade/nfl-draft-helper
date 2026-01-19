@@ -7,35 +7,11 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage }) {
   const [selectedOption, setSelectedOption] = useState("adp_2qb.csv"); // Set default value
   const navigate = useNavigate();
 
-  const handleLoadCsvClick = () => {
-    document.getElementById("file-input").click(); // Trigger the file input click
-  };
-
-  const handleDropdownChange = (event) => {
-    setSelectedOption(event.target.value);
-  };
-
   const handleFileChange = (event) => {
-    setSelectedFile(event.target.files[0]);
-  };
-
-  const handleDownloadCSV = () => {
-    if (!selectedOption.endsWith(".csv")) {
-      alert("Please select a valid CSV file.");
-      return;
-    }
-
-    const link = document.createElement("a");
-    link.href = `/path/to/your/csv/files/${selectedOption}`; // Replace with the actual path to your files
-    link.download = selectedOption;
-
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const handleStartWithCSV = () => {
-    if (selectedFile) {
+    const file = event.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+      // Automatically start with the selected CSV file
       const reader = new FileReader();
       reader.onload = (e) => {
         const csvData = e.target.result;
@@ -46,15 +22,15 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage }) {
           navigate("/drafthelper"); // Navigate to /draft
         }
       };
-      reader.readAsText(selectedFile);
-    } else {
-      alert("Please select a CSV file.");
+      reader.readAsText(file);
     }
   };
 
-  const handleStartDefault = () => {
+
+  const handlePresetClick = (optionValue) => {
+    setSelectedOption(optionValue);
     setCsvData("");
-    setCsvFileName(selectedOption); // Use default CSV data
+    setCsvFileName(optionValue); // Use default CSV data
     if (isRankingsPage) {
       navigate("/rankings");
     } else {
@@ -62,59 +38,55 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage }) {
     }
   };
 
+  const presetOptions = [
+    { value: "adp_ppr.csv", label: "Sleeper PPR" },
+    { value: "adp_2qb.csv", label: "Sleeper SF" },
+    { value: "adp_half_ppr.csv", label: "Sleeper half-PPR" },
+    { value: "adp_dynasty_ppr.csv", label: "Sleeper Dynasy PPR" },
+    { value: "adp_dynasty_2qb.csv", label: "Sleeper Dynasy SF" },
+    { value: "adp_dynasty_half_ppr.csv", label: "Sleeper Dynasty half-PPR" },
+    { value: "adp_rookies.csv", label: "Rookies" },
+  ];
+
   return (
     <div className="start-page">
       {isRankingsPage ? (
-        <h1>Create Rankings setup</h1>
+        <h1>Create Rankings Setup</h1>
       ) : (
-        <h1>Draft helper setup</h1>
+        <h1>Draft Helper Setup</h1>
       )}
       <hr className="separator" />
-      <h2>Tier based draft tool</h2>
-      <div className="file-input-container">
-        <div className="file-input-button">
-          <button
-            onClick={handleStartWithCSV}
-            disabled={!selectedFile} // Disable button until a file is selected
-          >
-            Start with CSV
-          </button>
+      
+      <div className="setup-section">
+        <h3>Use Preset Rankings</h3>
+        <div className="preset-list-container">
+          {presetOptions.map((option) => (
+            <div
+              key={option.value}
+              className={`preset-option ${selectedOption === option.value ? "selected" : ""}`}
+              onClick={() => handlePresetClick(option.value)}
+            >
+              {option.label}
+            </div>
+          ))}
         </div>
-        <label htmlFor="file-input" className="file-input-label">
-          <button type="button" onClick={handleLoadCsvClick}>
-            Load CSV
-          </button>
-        </label>
-        <input
-          type="file"
-          accept=".csv"
-          id="file-input"
-          style={{ display: "none" }}
-          onChange={handleFileChange}
-        />
+      </div>
 
-        {selectedFile && <span className="file-name">{selectedFile.name}</span>}
+      <div className="setup-section">
+        <h3>Load Custom Rankings</h3>
+        <div className="file-input-container">
+          <label htmlFor="file-input" className="file-input-label">
+            <span>Start with CSV</span>
+            <input
+              type="file"
+              accept=".csv"
+              id="file-input"
+              style={{ display: "none" }}
+              onChange={handleFileChange}
+            />
+          </label>
+        </div>
       </div>
-      <div className="action-buttons">
-        <button onClick={handleStartDefault}>Start preset ranks</button>
-        <select
-          value={selectedOption}
-          onChange={handleDropdownChange}
-          className="modern-dropdown"
-        >
-          <option value="adp_ppr.csv">Sleeper PPR</option>
-          <option value="adp_2qb.csv">Sleeper SF</option>
-          <option value="adp_half_ppr.csv">Sleeper half-PPR</option>
-          <option value="adp_dynasty_ppr.csv">Sleeper Dynasy PPR</option>
-          <option value="adp_dynasty_2qb.csv">Sleeper Dynasy SF</option>
-          <option value="adp_dynasty_half_ppr.csv">
-            Sleeper Dynasty half-PPR
-          </option>
-          <option value="adp_rookies.csv">Rookies</option>
-        </select>
-        <button onClick={handleDownloadCSV}>Download CSV</button>
-      </div>
-      <p></p>
     </div>
   );
 }
