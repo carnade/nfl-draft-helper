@@ -245,3 +245,177 @@ body.dark .modern-button:hover {
   background-color: hsl(174 50% 35%);
   box-shadow: 0 1px 4px hsl(174 50% 45% / 0.3);
 }
+
+.modern-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Draft Rankings Section */
+.draft-input-container {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.draft-ids-input {
+  flex: 1;
+  min-width: 300px;
+  padding: 0.625rem 1rem;
+  font-size: 1rem;
+  font-family: Inter, sans-serif;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.draft-ids-input:focus {
+  border-color: hsl(174 50% 45%);
+}
+
+.draft-source-selector {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  justify-content: center;
+}
+
+.draft-source-selector label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.875rem;
+  color: hsl(var(--foreground));
+  cursor: pointer;
+}
+
+.draft-source-selector input[type="radio"] {
+  cursor: pointer;
+}
+
+.my-leagues-container {
+  margin-bottom: 1.5rem;
+}
+
+.my-leagues-container p {
+  font-family: Inter, sans-serif;
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  text-align: center;
+}
+
+.my-drafts-dropdown-container {
+  display: flex;
+  justify-content: center;
+}
+
+.my-drafts-dropdown {
+  flex: 1;
+  max-width: 500px;
+  padding: 0.625rem 1rem;
+  font-size: 1rem;
+  font-family: Inter, sans-serif;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  outline: none;
+  transition: border-color 0.2s;
+  cursor: pointer;
+}
+
+.my-drafts-dropdown:focus {
+  border-color: hsl(174 50% 45%);
+}
+
+.my-drafts-dropdown:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.draft-actions-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.drafts-list {
+  margin-top: 1.5rem;
+}
+
+.drafts-list h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: Inter, sans-serif;
+  color: hsl(var(--foreground));
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.drafts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.draft-item {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  background-color: hsl(var(--card-background, var(--background)));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  position: relative;
+  gap: 0.5rem;
+}
+
+.draft-name {
+  font-weight: 600;
+  font-size: 1rem;
+  color: hsl(var(--foreground));
+  word-break: break-word;
+}
+
+.draft-id {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  font-family: monospace;
+}
+
+.remove-draft-button {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: none;
+  background-color: hsl(0 65% 50%);
+  color: white;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.25rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+  padding: 0;
+}
+
+.remove-draft-button:hover {
+  background-color: hsl(0 65% 45%);
+}
+
+body.dark .remove-draft-button {
+  background-color: hsl(0 65% 45%);
+}
+
+body.dark .remove-draft-button:hover {
+  background-color: hsl(0 65% 40%);
+}

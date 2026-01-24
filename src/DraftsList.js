@@ -17,6 +17,7 @@ function DraftPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedLeague, setSelectedLeague] = useState(null);
   const [draftIdInput, setDraftIdInput] = useState("");
+  const [positionCounts, setPositionCounts] = useState({}); // draft_id -> {QB: 1, RB: 2, ...}
 
   const formatMilliseconds = (milliseconds) => {
     const totalSeconds = Math.floor(milliseconds / 1000);
@@ -40,6 +41,58 @@ function DraftPage() {
     }
 
     return formattedTime.trim();
+  };
+
+  const formatPositionCounts = (counts) => {
+    if (!counts) return "";
+    
+    const parts = [];
+    if (counts.QB > 0) {
+      parts.push(
+        <React.Fragment key="qb">
+          <span className="position-label qb">QB</span>
+          <span className="position-count">: {counts.QB}</span>
+        </React.Fragment>
+      );
+    }
+    if (counts.RB > 0) {
+      parts.push(
+        <React.Fragment key="rb">
+          {parts.length > 0 && <span className="position-separator"> - </span>}
+          <span className="position-label rb">RB</span>
+          <span className="position-count">: {counts.RB}</span>
+        </React.Fragment>
+      );
+    }
+    if (counts.WR > 0) {
+      parts.push(
+        <React.Fragment key="wr">
+          {parts.length > 0 && <span className="position-separator"> - </span>}
+          <span className="position-label wr">WR</span>
+          <span className="position-count">: {counts.WR}</span>
+        </React.Fragment>
+      );
+    }
+    if (counts.TE > 0) {
+      parts.push(
+        <React.Fragment key="te">
+          {parts.length > 0 && <span className="position-separator"> - </span>}
+          <span className="position-label te">TE</span>
+          <span className="position-count">: {counts.TE}</span>
+        </React.Fragment>
+      );
+    }
+    if (counts.P > 0) {
+      parts.push(
+        <React.Fragment key="p">
+          {parts.length > 0 && <span className="position-separator"> - </span>}
+          <span className="position-label p">P</span>
+          <span className="position-count">: {counts.P}</span>
+        </React.Fragment>
+      );
+    }
+    
+    return parts.length > 0 ? parts : "";
   };
 
   const calcPicksToDraft = (
@@ -148,11 +201,48 @@ function DraftPage() {
         const draftsData = await draftsResponse.json();
 
         // Extracting relevant draft information and fetch additional data
-        const relevantDraftsPromises = draftsData
-          .filter(
-            (draft) => draft.status === "drafting" || draft.status === "paused"
-          )
-          .map(async (draft) => {
+        const filteredDrafts = draftsData.filter(
+          (draft) => draft.status === "drafting" || draft.status === "paused"
+        );
+
+        // First, fetch all picks data for position counting
+        const picksPromises = filteredDrafts.map(async (draft) => {
+          const picksResponse = await fetch(
+            `https://api.sleeper.app/v1/draft/${draft.draft_id}/picks`
+          );
+          const picksData = await picksResponse.json();
+          return {
+            draftId: draft.draft_id,
+            picks: picksData,
+          };
+        });
+        const allPicksData = await Promise.all(picksPromises);
+
+        // Calculate position counts only for picks the user has made
+        const positionCountsMap = {};
+        allPicksData.forEach(({ draftId, picks }) => {
+          const counts = { QB: 0, RB: 0, WR: 0, TE: 0, P: 0 };
+          
+          // Filter picks to only include those made by the current user
+          const userPicks = picks.filter((pick) => pick.picked_by === userId);
+          
+          userPicks.forEach((pick) => {
+            // Position is in pick.metadata.position
+            const position = pick.metadata?.position;
+            if (position === "QB") counts.QB++;
+            else if (position === "RB") counts.RB++;
+            else if (position === "WR") counts.WR++;
+            else if (position === "TE") counts.TE++;
+            else if (position === "P" || position === "P/K" || position === "K") counts.P++;
+          });
+          
+          positionCountsMap[draftId] = counts;
+        });
+
+        setPositionCounts(positionCountsMap);
+
+        // Now fetch draft details and process
+        const relevantDraftsPromises = filteredDrafts.map(async (draft) => {
             const draftId = draft.draft_id;
 
             // Fetch additional draft details
@@ -165,11 +255,8 @@ function DraftPage() {
             const draftPosition = draftDetails.draft_order[userId];
             const { reversal_round, pick_timer, teams } = draftDetails.settings;
 
-            // Fetch picks count
-            const picksResponse = await fetch(
-              `https://api.sleeper.app/v1/draft/${draftId}/picks`
-            );
-            const picksData = await picksResponse.json();
+            // Get picks count from already fetched data
+            const picksData = allPicksData.find(p => p.draftId === draftId)?.picks || [];
             const picksCount = picksData.length;
 
             const picksToDraft = calcPicksToDraft(
@@ -285,6 +372,7 @@ function DraftPage() {
       </div>
       <div className="draft-grid">
         <div className="draft-grid-header">Name</div>
+        <div className="draft-grid-header">Drafted Positions</div>
         <div className="draft-grid-header">Picks Before You</div>
         <div className="draft-grid-header">Round</div>
         <div className="draft-grid-header">Current Clock</div>
@@ -294,6 +382,9 @@ function DraftPage() {
               <React.Fragment key={index}>
                 <div className="draft-grid-item draft-grid-name">
                   {draft.name}
+                </div>
+                <div className="draft-grid-item draft-grid-positions">
+                  {formatPositionCounts(positionCounts[draft.draft_id])}
                 </div>
                 <div className="draft-grid-item">
                   {draft.picksToDraft === 0 ? (

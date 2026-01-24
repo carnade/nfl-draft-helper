@@ -111,3 +111,8 @@ body.dark .modern-button:hover {
   background-color: hsl(174 50% 35%);
   box-shadow: 0 1px 4px hsl(174 50% 45% / 0.3);
 }
+
+.modern-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
