@@ -196,7 +196,7 @@ function DraftPage() {
       // Second API request to get draft data using user_id
       if (userId) {
         const draftsResponse = await fetch(
-          `https://api.sleeper.app/v1/user/${userId}/drafts/nfl/2025`
+          `https://api.sleeper.app/v1/user/${userId}/drafts/nfl/2026`
         );
         const draftsData = await draftsResponse.json();
 

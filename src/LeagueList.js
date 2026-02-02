@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faUserInjured,
   faQuestion,
   faExternalLinkAlt,
   faTableCells,
@@ -48,6 +47,7 @@ function LeagueList() {
   const [selectedPosition, setSelectedPosition] = useState(null); // Filter by position
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedLeague, setSelectedLeague] = useState(null);
+  const [dynastyOnly, setDynastyOnly] = useState(true); // Filter for dynasty leagues only
 
   // Add state for sorting
   const [sortConfig, setSortConfig] = useState({
@@ -709,7 +709,7 @@ function LeagueList() {
       setUserId(userId);
 
       const leaguesResponse = await fetch(
-        `https://api.sleeper.app/v1/user/${userId}/leagues/nfl/2025`
+        `https://api.sleeper.app/v1/user/${userId}/leagues/nfl/2026`
       );
       const leaguesData = await leaguesResponse.json();
 
@@ -1145,6 +1145,17 @@ function LeagueList() {
             </div>
           )}
         </div>
+        
+        <div className="dynasty-filter-container">
+          <label className="dynasty-filter-label">
+            <input
+              type="checkbox"
+              checked={dynastyOnly}
+              onChange={(e) => setDynastyOnly(e.target.checked)}
+            />
+            <span>Dynasty only</span>
+          </label>
+        </div>
       </div>
 
       <div className="league-main-content">
@@ -1159,7 +1170,17 @@ function LeagueList() {
             <div className="league-grid-header">Actions</div>
 
             {leagues.length > 0 ? (
-              leagues.map((league, index) => {
+              leagues
+                .filter((league) => {
+                  // Filter by dynasty if checkbox is checked
+                  if (dynastyOnly) {
+                    // Check if league is dynasty - Sleeper uses settings.type === 2 for dynasty
+                    // type: 0 = redraft, 2 = dynasty
+                    return league.settings?.type === 2;
+                  }
+                  return true; // Show all leagues if checkbox is unchecked
+                })
+                .map((league, index) => {
                 const { redCount, orangeCount } = countInjuries(
                   league.userRoster?.starters || [],
                   league.league_id
@@ -1197,9 +1218,10 @@ function LeagueList() {
                     <div className="league-grid-item">
                       {redCount > 0 && (
                         <>
-                          <FontAwesomeIcon
-                            icon={faUserInjured}
-                            style={{ color: "red" }}
+                          <img
+                            src="/cross.png"
+                            alt="Injured"
+                            className="medical-cross-icon"
                           />{" "}
                           {redCount}{" "}
                         </>
@@ -1500,9 +1522,10 @@ function LeagueList() {
                           <div className="team-injury-icons">
                             {redCount > 0 && (
                               <span className="injury-icon">
-                                <FontAwesomeIcon
-                                  icon={faUserInjured}
-                                  style={{ color: "red" }}
+                                <img
+                                  src="/cross.png"
+                                  alt="Injured"
+                                  className="medical-cross-icon"
                                 />{" "}
                                 {redCount}
                               </span>

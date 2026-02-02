@@ -278,6 +278,60 @@ body.dark .modern-button:hover {
   border-color: hsl(174 50% 45%);
 }
 
+/* Year toggle (2025 | 2026) - same style as DFS week selector */
+.year-toggle-section {
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.year-toggle-section .year-toggle-label {
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: Inter, sans-serif;
+  color: hsl(var(--foreground));
+}
+
+.year-toggle {
+  display: flex;
+  gap: 0;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.year-btn {
+  padding: 0.625rem 1.5rem;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  border: none;
+  font-size: 1rem;
+  font-weight: 500;
+  font-family: Inter, sans-serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-right: 1px solid hsl(var(--border));
+}
+
+.year-btn:last-child {
+  border-right: none;
+}
+
+.year-btn:hover {
+  background: hsl(var(--muted) / 0.5);
+}
+
+.year-btn.active {
+  background-color: hsl(174 50% 45%);
+  color: hsl(var(--primary-foreground));
+}
+
+body.dark .year-btn.active {
+  background-color: hsl(174 45% 42%);
+}
+
 .draft-source-selector {
   display: flex;
   gap: 1.5rem;
@@ -301,6 +355,31 @@ body.dark .modern-button:hover {
 
 .my-leagues-container {
   margin-bottom: 1.5rem;
+}
+
+.other-user-container {
+  margin-bottom: 1.5rem;
+}
+
+.other-user-input-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.other-user-input-row .other-user-input {
+  flex: 1;
+  min-width: 200px;
+}
+
+.other-user-container p {
+  font-family: Inter, sans-serif;
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  text-align: center;
+  margin: 0.5rem 0;
 }
 
 .my-leagues-container p {
@@ -337,6 +416,130 @@ body.dark .modern-button:hover {
 .my-drafts-dropdown:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* 6-column leagues table (dropdown replacement) */
+.leagues-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background-color: hsl(var(--card));
+}
+
+.leagues-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  font-family: Inter, sans-serif;
+}
+
+.leagues-table thead {
+  user-select: none;
+  pointer-events: none;
+}
+
+.leagues-table thead th {
+  padding: 0.75rem 0.5rem;
+  text-align: left;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+  background-color: hsl(var(--muted) / 0.3);
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.leagues-table tbody tr.clickable {
+  cursor: pointer;
+}
+
+.leagues-table tbody tr.clickable:hover {
+  background-color: hsl(var(--muted) / 0.4);
+}
+
+.leagues-table tbody tr.disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.leagues-table tbody td {
+  padding: 0.625rem 0.5rem;
+  border-bottom: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+}
+
+.leagues-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.leagues-table .col-name {
+  max-width: 200px;
+  word-break: break-word;
+}
+
+.leagues-table .stats-cell {
+  font-weight: 500;
+}
+
+.leagues-table .stats-cell.stats-complete {
+  color: hsl(142 76% 36%);
+}
+
+body.dark .leagues-table .stats-cell.stats-complete {
+  color: hsl(142 70% 45%);
+}
+
+.leagues-table .stats-cell.stats-drafting {
+  color: hsl(45 93% 47%);
+}
+
+body.dark .leagues-table .stats-cell.stats-drafting {
+  color: hsl(45 93% 55%);
+}
+
+.leagues-table .stats-cell.stats-other,
+.leagues-table .stats-cell.stats-pre_draft {
+  color: hsl(var(--foreground));
+}
+
+/* Type colors: Dynasty=purple, Best Ball=yellow, Redraft=turquoise */
+.leagues-table .type-dynasty {
+  color: hsl(270 60% 50%);
+  font-weight: 500;
+}
+
+body.dark .leagues-table .type-dynasty {
+  color: hsl(270 55% 60%);
+}
+
+.leagues-table .type-best-ball {
+  color: hsl(45 93% 40%);
+  font-weight: 500;
+}
+
+body.dark .leagues-table .type-best-ball {
+  color: hsl(45 93% 55%);
+}
+
+.leagues-table .type-redraft {
+  color: hsl(174 55% 38%);
+  font-weight: 500;
+}
+
+body.dark .leagues-table .type-redraft {
+  color: hsl(174 50% 50%);
+}
+
+.leagues-table .col-remove {
+  width: 2.5rem;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.selected-leagues-table .remove-draft-button {
+  position: static;
+  width: 1.75rem;
+  height: 1.75rem;
+  font-size: 1.1rem;
 }
 
 .draft-actions-container {

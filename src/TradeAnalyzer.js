@@ -119,7 +119,7 @@ function TradeAnalyzer({ userName, setUserName }) {
     try {
       console.log('📡 Fetching projections data from Sleeper API...');
       const response = await fetch(
-        'https://api.sleeper.com/projections/nfl/2025?season_type=regular&position[]=DEF&position[]=K&position[]=QB&position[]=RB&position[]=TE&position[]=WR&order_by=adp_ppr'
+        'https://api.sleeper.com/projections/nfl/2026?season_type=regular&position[]=DEF&position[]=K&position[]=QB&position[]=RB&position[]=TE&position[]=WR&order_by=adp_ppr'
       );
       
       if (!response.ok) {
@@ -143,7 +143,7 @@ function TradeAnalyzer({ userName, setUserName }) {
     try {
       console.log('📡 Fetching stats data from Sleeper API...');
       const response = await fetch(
-        'https://api.sleeper.com/stats/nfl/2025?season_type=regular&position[]=DEF&position[]=K&position[]=QB&position[]=RB&position[]=TE&position[]=WR&order_by=adp_ppr'
+        'https://api.sleeper.com/stats/nfl/2026?season_type=regular&position[]=DEF&position[]=K&position[]=QB&position[]=RB&position[]=TE&position[]=WR&order_by=adp_ppr'
       );
       
       if (!response.ok) {
@@ -209,7 +209,7 @@ function TradeAnalyzer({ userName, setUserName }) {
       
       
       const response = await fetch(
-        `https://api.sleeper.app/v1/user/${resolvedUserId}/leagues/nfl/2025`
+        `https://api.sleeper.app/v1/user/${resolvedUserId}/leagues/nfl/2026`
       );
       
       if (!response.ok) {
@@ -543,8 +543,8 @@ function TradeAnalyzer({ userName, setUserName }) {
     return total.toFixed(1);
   };
 
-  // Calculate total 2025 points per game for a team (excluding picks)
-  const calculateTotal2025PtsPerGame = (players) => {
+  // Calculate total 2026 points per game for a team (excluding picks)
+  const calculateTotal2026PtsPerGame = (players) => {
     const realPlayers = players.filter(p => !p.isPick);
     if (realPlayers.length === 0) return 0;
     const total = realPlayers.reduce((sum, player) => {
@@ -820,7 +820,7 @@ function TradeAnalyzer({ userName, setUserName }) {
                   {/* Team 2 Panel - Trade Partner (now on left) */}
                   <div className="trade-panel">
                     <div className="panel-header">
-                      <h3>Trade Partner gets...</h3>
+                      <h3>{userName ? `${userName.charAt(0).toUpperCase() + userName.slice(1)} gets...` : 'User gets...'}</h3>
                     </div>
                     
                     <div className="search-container">
@@ -906,7 +906,7 @@ function TradeAnalyzer({ userName, setUserName }) {
                                   <span className="value-separator">|</span>
                                   <span className="value-label">Proj:</span>
                                   <span className="value-proj">{player.projPtsPerGame}</span>
-                                  <span className="value-label">2025:</span>
+                                  <span className="value-label">2026:</span>
                                   <span className={`value-stats ${parseFloat(player.actualPtsPerGame) > parseFloat(player.projPtsPerGame) ? 'stats-better' : 'stats-worse'}`}>
                                     {player.actualPtsPerGame}
                                   </span>
@@ -940,7 +940,7 @@ function TradeAnalyzer({ userName, setUserName }) {
                   {/* Team 1 Panel - Username (now on right) */}
                   <div className="trade-panel">
                     <div className="panel-header">
-                      <h3>{userName ? `${userName.charAt(0).toUpperCase() + userName.slice(1)} gets...` : 'Username gets...'}</h3>
+                      <h3>Trade Partner gets...</h3>
                     </div>
                     
                     <div className="search-container">
@@ -1026,7 +1026,7 @@ function TradeAnalyzer({ userName, setUserName }) {
                                   <span className="value-separator">|</span>
                                   <span className="value-label">Proj:</span>
                                   <span className="value-proj">{player.projPtsPerGame}</span>
-                                  <span className="value-label">2025:</span>
+                                  <span className="value-label">2026:</span>
                                   <span className={`value-stats ${parseFloat(player.actualPtsPerGame) > parseFloat(player.projPtsPerGame) ? 'stats-better' : 'stats-worse'}`}>
                                     {player.actualPtsPerGame}
                                   </span>
@@ -1148,20 +1148,20 @@ function TradeAnalyzer({ userName, setUserName }) {
                             </div>
                           </div>
 
-                          {/* 2025 Points per Game Row */}
+                          {/* 2026 Points per Game Row */}
                           <div className="comparison-row">
                             <div className="team-value">
-                              {calculateTotal2025PtsPerGame(team1Players)}
+                              {calculateTotal2026PtsPerGame(team1Players)}
                             </div>
                             <div className="diff-value">
                               {(() => {
-                                const team1PPG = parseFloat(calculateTotal2025PtsPerGame(team1Players));
-                                const team2PPG = parseFloat(calculateTotal2025PtsPerGame(team2Players));
+                                const team1PPG = parseFloat(calculateTotal2026PtsPerGame(team1Players));
+                                const team2PPG = parseFloat(calculateTotal2026PtsPerGame(team2Players));
                                 const diff = Math.abs(team1PPG - team2PPG);
                                 const arrow = team1PPG > team2PPG ? '←' : team1PPG < team2PPG ? '→' : '=';
                                 return (
                                   <div className="diff-content">
-                                    <div className="diff-label">2025 Pts/Game</div>
+                                    <div className="diff-label">2026 Pts/Game</div>
                                     <div className="diff-arrow">{arrow}</div>
                                     <div className="diff-number">{diff.toFixed(1)}</div>
                                   </div>
@@ -1169,7 +1169,7 @@ function TradeAnalyzer({ userName, setUserName }) {
                               })()}
                             </div>
                             <div className="team-value">
-                              {calculateTotal2025PtsPerGame(team2Players)}
+                              {calculateTotal2026PtsPerGame(team2Players)}
                             </div>
                           </div>
 

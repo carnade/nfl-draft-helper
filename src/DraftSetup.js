@@ -11,9 +11,60 @@ const BASE_URL = mock
 // Default league year constant (can be easily changed)
 const DEFAULT_LEAGUE_YEAR = 2026;
 
+// Derive type (Dynasty / Best Ball / Redraft), QB count, PPR, TEP from league
+function getLeagueDisplayInfo(league) {
+  const typeNum = league.settings?.type ?? 0;
+  const bestBall = league.settings?.best_ball === 1;
+  const type = typeNum === 2 ? "Dynasty" : bestBall ? "Best Ball" : "Redraft";
+  const roster = league.roster_positions || [];
+  const qb = roster.includes("SUPER_FLEX") ? 2 : 1;
+  const ppr = league.scoring_settings?.rec ?? 0;
+  const tep = league.scoring_settings?.bonus_rec_te ?? 0;
+  return { type, qb, ppr, tep };
+}
+
+// Sort order: complete first, then drafting, then rest (case-insensitive)
+function getStatusSortOrder(status) {
+  const s = (status || "").toLowerCase();
+  if (s === "complete") return 0;
+  if (s === "drafting") return 1;
+  return 2;
+}
+
+// Sort order for type: Dynasty first, then Best Ball, then Redraft
+function getTypeSortOrder(type) {
+  const t = (type || "").trim();
+  if (t === "Dynasty") return 0;
+  if (t === "Best Ball") return 1;
+  if (t === "Redraft") return 2;
+  return 3;
+}
+
+// Sort: 1) status (complete > drafting > rest), 2) type (Dynasty > Best Ball > Redraft), 3) name A–Z
+function sortDraftsByStatusTypeName(drafts) {
+  return [...drafts].sort((a, b) => {
+    const statusDiff = getStatusSortOrder(a.status) - getStatusSortOrder(b.status);
+    if (statusDiff !== 0) return statusDiff;
+    const typeDiff = getTypeSortOrder(a.type) - getTypeSortOrder(b.type);
+    if (typeDiff !== 0) return typeDiff;
+    return (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" });
+  });
+}
+
+// CSS class for type color (Dynasty=purple, Best Ball=yellow, Redraft=turquoise)
+function getTypeClassName(type) {
+  if (!type) return "";
+  const key = type.toLowerCase().replace(/\s+/g, "-");
+  return `type-${key}`;
+}
+
+function formatStatusLabel(status) {
+  if (!status) return "—";
+  return status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, " ");
+}
+
 function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
   const [selectedFile, setSelectedFile] = useState(null);
-  const [selectedOption, setSelectedOption] = useState("adp_2qb.csv"); // Set default value
   const navigate = useNavigate();
   
   // State for draft rankings feature (only used when isRankingsPage is true)
@@ -21,11 +72,17 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
   const [drafts, setDrafts] = useState([]); // Array of { draftId, name, picks: [] }
   const [isLoadingDrafts, setIsLoadingDrafts] = useState(false);
   const [isCompiling, setIsCompiling] = useState(false);
-  const [leagueYear, setLeagueYear] = useState(DEFAULT_LEAGUE_YEAR);
+  const [leagueYear, setLeagueYear] = useState(DEFAULT_LEAGUE_YEAR); // 2025 or 2026
+  const [myDraftsCache, setMyDraftsCache] = useState({ 2025: null, 2026: null }); // null = not loaded, array = loaded
   const [myLeagues, setMyLeagues] = useState([]);
   const [myDrafts, setMyDrafts] = useState([]);
   const [isLoadingMyLeagues, setIsLoadingMyLeagues] = useState(false);
-  const [draftSource, setDraftSource] = useState("manual"); // "manual" or "myLeagues"
+  const [draftSource, setDraftSource] = useState("manual"); // "manual" | "myLeagues" | "otherUser"
+  const [otherUserInput, setOtherUserInput] = useState("");
+  const [otherUserDraftsCache, setOtherUserDraftsCache] = useState({}); // { username: { 2025: []|null, 2026: []|null } }
+  const [otherUserDrafts, setOtherUserDrafts] = useState([]);
+  const [isLoadingOtherUser, setIsLoadingOtherUser] = useState(false);
+  const [otherUserSubmitted, setOtherUserSubmitted] = useState(false);
 
   const handleFileChange = (event) => {
     const file = event.target.files[0];
@@ -48,7 +105,6 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
 
 
   const handlePresetClick = (optionValue) => {
-    setSelectedOption(optionValue);
     setCsvData("");
     setCsvFileName(optionValue); // Use default CSV data
     if (isRankingsPage) {
@@ -67,25 +123,6 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
     { value: "adp_dynasty_half_ppr.csv", label: "Sleeper Dynasty half-PPR" },
     { value: "adp_rookies.csv", label: "Rookies" },
   ];
-
-  // Fetch league year from state endpoint on mount
-  useEffect(() => {
-    const fetchLeagueYear = async () => {
-      try {
-        const response = await fetch("https://api.sleeper.app/v1/state/nfl");
-        if (response.ok) {
-          const data = await response.json();
-          if (data.season) {
-            setLeagueYear(data.season);
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching league year, using default:", error);
-        // Keep default year
-      }
-    };
-    fetchLeagueYear();
-  }, []);
 
   const fetchMyLeagues = useCallback(async () => {
     if (!userName) {
@@ -120,10 +157,16 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
           );
           if (draftsResponse.ok) {
             const draftsData = await draftsResponse.json();
+            const info = getLeagueDisplayInfo(league);
             return draftsData.map((draft) => ({
               draftId: draft.draft_id,
-              name: draft.metadata?.name || `Draft ${draft.draft_id}`,
+              name: draft.metadata?.name || league.name || `Draft ${draft.draft_id}`,
               leagueId: league.league_id,
+              type: info.type,
+              qb: info.qb,
+              ppr: info.ppr,
+              tep: info.tep,
+              status: draft.status || "",
             }));
           }
           return [];
@@ -134,7 +177,9 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
       });
 
       const allDrafts = (await Promise.all(draftsPromises)).flat();
-      setMyDrafts(allDrafts);
+      const sorted = sortDraftsByStatusTypeName(allDrafts);
+      setMyDraftsCache((prev) => ({ ...prev, [leagueYear]: sorted }));
+      setMyDrafts(sorted);
       setMyLeagues(leaguesData);
     } catch (error) {
       console.error("Error fetching my leagues:", error);
@@ -144,12 +189,106 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
     }
   }, [userName, leagueYear]);
 
-  // Fetch user's leagues when draftSource changes to "myLeagues"
-  useEffect(() => {
-    if (isRankingsPage && draftSource === "myLeagues" && userName) {
-      fetchMyLeagues();
+  // Fetch another user's leagues for a given year; cache by username + year
+  const fetchOtherUserLeagues = useCallback(async (username, yearOverride) => {
+    const year = yearOverride ?? leagueYear;
+    if (!username || !username.trim()) {
+      alert("Please enter a username");
+      return;
     }
-  }, [draftSource, userName, isRankingsPage, fetchMyLeagues]);
+    const trimmed = username.trim();
+    setOtherUserSubmitted(true);
+    setIsLoadingOtherUser(true);
+    setOtherUserDrafts([]);
+    try {
+      const userResponse = await fetch(`https://api.sleeper.app/v1/user/${trimmed}`);
+      if (!userResponse.ok) {
+        throw new Error("Failed to fetch user");
+      }
+      const userData = await userResponse.json();
+      const userId = userData.user_id;
+
+      const leaguesResponse = await fetch(
+        `https://api.sleeper.app/v1/user/${userId}/leagues/nfl/${year}`
+      );
+      if (!leaguesResponse.ok) {
+        throw new Error("Failed to fetch leagues");
+      }
+      const leaguesData = await leaguesResponse.json();
+
+      const draftsPromises = leaguesData.map(async (league) => {
+        try {
+          const draftsResponse = await fetch(
+            `https://api.sleeper.app/v1/league/${league.league_id}/drafts`
+          );
+          if (draftsResponse.ok) {
+            const draftsData = await draftsResponse.json();
+            const info = getLeagueDisplayInfo(league);
+            return draftsData.map((draft) => ({
+              draftId: draft.draft_id,
+              name: draft.metadata?.name || league.name || `Draft ${draft.draft_id}`,
+              leagueId: league.league_id,
+              type: info.type,
+              qb: info.qb,
+              ppr: info.ppr,
+              tep: info.tep,
+              status: draft.status || "",
+            }));
+          }
+          return [];
+        } catch (error) {
+          console.error(`Error fetching drafts for league ${league.league_id}:`, error);
+          return [];
+        }
+      });
+
+      const allDrafts = (await Promise.all(draftsPromises)).flat();
+      const sorted = sortDraftsByStatusTypeName(allDrafts);
+      setOtherUserDraftsCache((prev) => ({
+        ...prev,
+        [trimmed]: { ...(prev[trimmed] || { 2025: null, 2026: null }), [year]: sorted },
+      }));
+      setOtherUserDrafts(sorted);
+    } catch (error) {
+      console.error("Error fetching other user leagues:", error);
+      alert(`Error fetching leagues: ${error.message}`);
+    } finally {
+      setIsLoadingOtherUser(false);
+    }
+  }, [leagueYear]);
+
+  // Load My Leagues: use cache for selected year or fetch once per year (always re-sort when displaying)
+  useEffect(() => {
+    if (!isRankingsPage || draftSource !== "myLeagues" || !userName) return;
+    const cached = myDraftsCache[leagueYear];
+    if (cached !== null && cached !== undefined) {
+      setMyDrafts(sortDraftsByStatusTypeName(cached));
+      return;
+    }
+    setMyDrafts([]);
+    fetchMyLeagues();
+  }, [draftSource, leagueYear, userName, isRankingsPage, fetchMyLeagues, myDraftsCache]);
+
+  // Reset other-user state when switching away
+  useEffect(() => {
+    if (draftSource !== "otherUser") {
+      setOtherUserSubmitted(false);
+    }
+  }, [draftSource]);
+
+  // When year changes on Other user: use cache or fetch for that year (always re-sort when displaying)
+  useEffect(() => {
+    if (!isRankingsPage || draftSource !== "otherUser" || !otherUserSubmitted || !otherUserInput.trim()) return;
+    const trimmed = otherUserInput.trim();
+    const userCache = otherUserDraftsCache[trimmed];
+    const cached = userCache?.[leagueYear];
+    if (cached !== null && cached !== undefined) {
+      setOtherUserDrafts(sortDraftsByStatusTypeName(cached));
+      return;
+    }
+    setOtherUserDrafts([]);
+    fetchOtherUserLeagues(trimmed, leagueYear);
+  }, [leagueYear, draftSource, otherUserSubmitted, otherUserInput, isRankingsPage, otherUserDraftsCache, fetchOtherUserLeagues]);
 
   // Function to recalculate position ranks and tiers
   // Position tiers: 5 players per tier
@@ -215,13 +354,11 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
     const newDrafts = [];
 
     for (const draftId of draftIds) {
-      // Check if draft already exists
       if (drafts.some((d) => d.draftId === draftId)) {
         continue;
       }
 
       try {
-        // Fetch draft details (without /picks)
         const draftResponse = await fetch(
           `https://api.sleeper.app/v1/draft/${draftId}`
         );
@@ -231,7 +368,6 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
         }
         const draftData = await draftResponse.json();
 
-        // Fetch picks
         const picksResponse = await fetch(
           `https://api.sleeper.app/v1/draft/${draftId}/picks`
         );
@@ -241,13 +377,33 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
         }
         const picksData = await picksResponse.json();
 
-        // Get name from metadata.name (which contains league name)
         const draftName = draftData.metadata?.name || `Draft ${draftId}`;
+        let type = null, qb = null, ppr = null, tep = null;
+        const status = draftData.status ?? null;
+
+        if (draftData.league_id) {
+          const leagueResponse = await fetch(
+            `https://api.sleeper.app/v1/league/${draftData.league_id}`
+          );
+          if (leagueResponse.ok) {
+            const league = await leagueResponse.json();
+            const info = getLeagueDisplayInfo(league);
+            type = info.type;
+            qb = info.qb;
+            ppr = info.ppr;
+            tep = info.tep;
+          }
+        }
 
         newDrafts.push({
           draftId,
           name: draftName,
           picks: picksData,
+          type,
+          qb,
+          ppr,
+          tep,
+          status,
         });
       } catch (error) {
         console.error(`Error fetching draft ${draftId}:`, error);
@@ -259,9 +415,9 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
     setIsLoadingDrafts(false);
   };
 
-  // Function to add draft from "My Leagues" dropdown
-  const handleAddDraftFromMyLeagues = async (draftId) => {
-    // Check if draft already exists
+  // Function to add draft from "My Leagues" or "Other user" table (receives full draft item)
+  const handleAddDraftFromList = async (draftItem) => {
+    const { draftId, name, type, qb, ppr, tep, status } = draftItem;
     if (drafts.some((d) => d.draftId === draftId)) {
       alert("This draft is already added");
       return;
@@ -269,7 +425,6 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
 
     setIsLoadingDrafts(true);
     try {
-      // Fetch draft details
       const draftResponse = await fetch(
         `https://api.sleeper.app/v1/draft/${draftId}`
       );
@@ -278,7 +433,6 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
       }
       const draftData = await draftResponse.json();
 
-      // Fetch picks
       const picksResponse = await fetch(
         `https://api.sleeper.app/v1/draft/${draftId}/picks`
       );
@@ -287,8 +441,7 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
       }
       const picksData = await picksResponse.json();
 
-      // Get name from metadata.name (which contains league name)
-      const draftName = draftData.metadata?.name || `Draft ${draftId}`;
+      const draftName = draftData.metadata?.name || name || `Draft ${draftId}`;
 
       setDrafts([
         ...drafts,
@@ -296,6 +449,11 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
           draftId,
           name: draftName,
           picks: picksData,
+          type: type ?? null,
+          qb: qb ?? null,
+          ppr: ppr ?? null,
+          tep: tep ?? null,
+          status: status ?? null,
         },
       ]);
     } catch (error) {
@@ -461,7 +619,7 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
           {presetOptions.map((option) => (
             <div
               key={option.value}
-              className={`preset-option ${selectedOption === option.value ? "selected" : ""}`}
+              className="preset-option"
               onClick={() => handlePresetClick(option.value)}
             >
               {option.label}
@@ -489,7 +647,27 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
       {isRankingsPage && (
         <div className="setup-section">
           <h3>Create Rankings from Drafts</h3>
-          
+
+          <div className="year-toggle-section">
+            <label className="year-toggle-label">Year</label>
+            <div className="year-toggle">
+              <button
+                type="button"
+                className={`year-btn ${leagueYear === 2025 ? "active" : ""}`}
+                onClick={() => setLeagueYear(2025)}
+              >
+                2025
+              </button>
+              <button
+                type="button"
+                className={`year-btn ${leagueYear === 2026 ? "active" : ""}`}
+                onClick={() => setLeagueYear(2026)}
+              >
+                2026
+              </button>
+            </div>
+          </div>
+
           {/* Draft source selector */}
           <div className="draft-source-selector">
             <label>
@@ -511,6 +689,16 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
                 onChange={(e) => setDraftSource(e.target.value)}
               />
               My Leagues
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="draftSource"
+                value="otherUser"
+                checked={draftSource === "otherUser"}
+                onChange={(e) => setDraftSource(e.target.value)}
+              />
+              Other user
             </label>
           </div>
 
@@ -536,6 +724,72 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
                 {isLoadingDrafts ? "Adding..." : "Add Drafts"}
               </button>
             </div>
+          ) : draftSource === "otherUser" ? (
+            <div className="other-user-container">
+              <div className="other-user-input-row">
+                <input
+                  type="text"
+                  className="draft-ids-input other-user-input"
+                  placeholder="Sleeper username"
+                  value={otherUserInput}
+                  onChange={(e) => setOtherUserInput(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      setOtherUserSubmitted(true);
+                    }
+                  }}
+                />
+                <button
+                  className="modern-button"
+                  onClick={() => setOtherUserSubmitted(true)}
+                  disabled={isLoadingOtherUser}
+                >
+                  {isLoadingOtherUser ? "Loading..." : "Submit"}
+                </button>
+              </div>
+              {isLoadingOtherUser ? (
+                <p>Loading leagues for {otherUserInput.trim()}...</p>
+              ) : otherUserDrafts.length === 0 ? (
+                <p>
+                  {otherUserSubmitted
+                    ? `No drafts found for this user in ${leagueYear}`
+                    : `Enter a username and click Submit to load their leagues for ${leagueYear}`}
+                </p>
+              ) : (
+                <div className="leagues-table-wrapper">
+                  <table className="leagues-table">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>QB</th>
+                        <th>PPR</th>
+                        <th>TEP</th>
+                        <th>Stats</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {otherUserDrafts.map((draft) => (
+                        <tr
+                          key={draft.draftId}
+                          onClick={() => !isLoadingDrafts && handleAddDraftFromList(draft)}
+                          className={isLoadingDrafts ? "disabled" : "clickable"}
+                        >
+                          <td className="col-name">{draft.name}</td>
+                          <td className={getTypeClassName(draft.type)}>{draft.type ?? "—"}</td>
+                          <td>{draft.qb ?? "—"}</td>
+                          <td>{draft.ppr != null ? Number(draft.ppr) : "—"}</td>
+                          <td>{draft.tep != null ? Number(draft.tep) : "—"}</td>
+                          <td className={`stats-cell stats-${draft.status || "other"}`}>
+                            {formatStatusLabel(draft.status)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           ) : (
             <div className="my-leagues-container">
               {isLoadingMyLeagues ? (
@@ -543,24 +797,37 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
               ) : myDrafts.length === 0 ? (
                 <p>No drafts found in your leagues for {leagueYear}</p>
               ) : (
-                <div className="my-drafts-dropdown-container">
-                  <select
-                    className="my-drafts-dropdown"
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        handleAddDraftFromMyLeagues(e.target.value);
-                        e.target.value = ""; // Reset dropdown
-                      }
-                    }}
-                    disabled={isLoadingDrafts}
-                  >
-                    <option value="">Select a draft to add...</option>
-                    {myDrafts.map((draft) => (
-                      <option key={draft.draftId} value={draft.draftId}>
-                        {draft.name}
-                      </option>
-                    ))}
-                  </select>
+                <div className="leagues-table-wrapper">
+                  <table className="leagues-table">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>QB</th>
+                        <th>PPR</th>
+                        <th>TEP</th>
+                        <th>Stats</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {myDrafts.map((draft) => (
+                        <tr
+                          key={draft.draftId}
+                          onClick={() => !isLoadingDrafts && handleAddDraftFromList(draft)}
+                          className={isLoadingDrafts ? "disabled" : "clickable"}
+                        >
+                          <td className="col-name">{draft.name}</td>
+                          <td className={getTypeClassName(draft.type)}>{draft.type ?? "—"}</td>
+                          <td>{draft.qb ?? "—"}</td>
+                          <td>{draft.ppr != null ? Number(draft.ppr) : "—"}</td>
+                          <td>{draft.tep != null ? Number(draft.tep) : "—"}</td>
+                          <td className={`stats-cell stats-${draft.status || "other"}`}>
+                            {formatStatusLabel(draft.status)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
@@ -578,21 +845,48 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
 
           {drafts.length > 0 && (
             <div className="drafts-list">
-              <h4>Added Drafts:</h4>
-              <div className="drafts-grid">
-                {drafts.map((draft) => (
-                  <div key={draft.draftId} className="draft-item">
-                    <span className="draft-name">{draft.name}</span>
-                    <span className="draft-id">ID: {draft.draftId}</span>
-                    <button
-                      className="remove-draft-button"
-                      onClick={() => handleRemoveDraft(draft.draftId)}
-                      title="Remove draft"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
+              <h4>Selected leagues</h4>
+              <div className="leagues-table-wrapper selected-leagues-table">
+                <table className="leagues-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Type</th>
+                      <th>QB</th>
+                      <th>PPR</th>
+                      <th>TEP</th>
+                      <th>Stats</th>
+                      <th className="col-remove"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortDraftsByStatusTypeName(drafts).map((draft) => (
+                      <tr key={draft.draftId}>
+                        <td className="col-name">{draft.name}</td>
+                        <td className={getTypeClassName(draft.type)}>{draft.type ?? "—"}</td>
+                        <td>{draft.qb ?? "—"}</td>
+                        <td>{draft.ppr != null ? Number(draft.ppr) : "—"}</td>
+                        <td>{draft.tep != null ? Number(draft.tep) : "—"}</td>
+                        <td className={`stats-cell stats-${draft.status || "other"}`}>
+                          {formatStatusLabel(draft.status)}
+                        </td>
+                        <td className="col-remove">
+                          <button
+                            type="button"
+                            className="remove-draft-button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveDraft(draft.draftId);
+                            }}
+                            title="Remove draft"
+                          >
+                            ×
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}

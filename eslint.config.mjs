@@ -1,11 +1,12 @@
 import globals from "globals";
 import pluginJs from "@eslint/js";
 import pluginReact from "eslint-plugin-react";
+import reactHooks from "eslint-plugin-react-hooks";
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
   {
-    ignores: ["build/**", "public/**"],
+    ignores: ["build/**", "public/**", "node_modules/**"],
   },
   {
     files: ["**/*.js", "**/*.jsx"],
@@ -14,8 +15,12 @@ export default [
       sourceType: "module",
       globals: globals.browser,
     },
+    plugins: {
+      "react-hooks": reactHooks,
+    },
     rules: {
-      "react-hooks/exhaustive-deps": "warn", // Ensure React hooks dependencies are checked
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
     },
   },
   pluginJs.configs.recommended,
