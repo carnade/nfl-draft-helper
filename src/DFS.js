@@ -545,15 +545,15 @@ function DFS({ userName }) {
       const lineups = (availableData.entries || []).map(entry => {
         // Handle both string and object formats
         if (typeof entry === 'string') {
-          return {
+            return {
             entryName: entry,
-            week: null,
-            hasData: false,
+              week: null,
+              hasData: false,
             hasPin: false
           };
         }
         
-        return {
+            return {
           entryName: entry.name || entry,
           week: entry.week || null,
           hasData: entry.has_data || false,
@@ -1216,7 +1216,7 @@ function DFS({ userName }) {
         setShowGameStartedModal(true);
       } else {
         // Add to roster normally
-        addPlayerToRoster(player);
+      addPlayerToRoster(player);
       }
     }
   };
@@ -1255,12 +1255,12 @@ function DFS({ userName }) {
   const getPositionColor = (key) => {
     const position = getPositionLabel(key);
     const colors = {
-      QB: 'rgba(239, 116, 161, 0.8)',
-      RB: 'rgba(143, 242, 202, 0.8)',
-      WR: 'rgba(86, 201, 248, 0.8)',
-      TE: 'rgba(254, 174, 88, 0.8)',
-      FLX: 'rgb(235, 88, 254, 0.8)',
-      DST: 'rgb(239, 91, 47, 0.8)'
+      QB: 'hsl(339 44% 59% / 0.8)',
+      RB: 'hsl(155 43% 64% / 0.8)',
+      WR: 'hsl(201 54% 56% / 0.8)',
+      TE: 'hsl(30 61% 57% / 0.8)',
+      FLX: 'hsl(280 81% 67% / 0.8)',
+      DST: 'hsl(12 86% 56% / 0.8)'
     };
     return colors[position] || '#ccc';
   };
@@ -1744,8 +1744,8 @@ function DFS({ userName }) {
                       const isGrey = !lineup.hasData;
                       
                       return (
-                        <button
-                          key={lineup.entryName}
+                      <button
+                        key={lineup.entryName}
                           onClick={() => {
                             if (isGreen) {
                               setSelectedLineupForPin(lineup);
@@ -1766,9 +1766,9 @@ function DFS({ userName }) {
                             cursor: (isRed || isGrey) ? 'not-allowed' : 'pointer',
                             opacity: (isRed || isGrey) ? 0.6 : 1
                           }}
-                        >
-                          {lineup.entryName} {lineup.week && `(Week ${lineup.week})`} {!lineup.hasData && '(No data)'}
-                        </button>
+                      >
+                        {lineup.entryName} {lineup.week && `(Week ${lineup.week})`} {!lineup.hasData && '(No data)'}
+                      </button>
                       );
                     })}
                   </div>

@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faUserInjured,
   faQuestion,
   faExternalLinkAlt,
   faTableCells,
@@ -48,6 +47,13 @@ function LeagueList() {
   const [selectedPosition, setSelectedPosition] = useState(null); // Filter by position
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedLeague, setSelectedLeague] = useState(null);
+  const [dynastyOnly, setDynastyOnly] = useState(true); // Filter for dynasty leagues only
+
+  // Add state for sorting
+  const [sortConfig, setSortConfig] = useState({
+    key: "count",
+    direction: "descending",
+  });
 
   let searchTimeout;
 
@@ -566,45 +572,102 @@ function LeagueList() {
           });
         });
         console.log("Player Count Map: ", playerCountMap);
-        // Map player data to portfolio format
-        const portfolio = Object.keys(playerCountMap).map((playerId) => {
-          let player = null;
-
-          // Convert playerId to a string for comparison
-          const playerIdStr = String(playerId);
-
-          // Iterate through each league in the data array
-          for (const league of data) {
-            // Iterate through league.players and include the player ID
-            player = Object.entries(league.players).find(([key, value]) => {
-              return key === playerIdStr;
-            });
-
-            if (player) {
-              // Extract the player object and include the ID
-              player = { id: player[0], ...player[1] };
-              break; // Exit the loop once the player is found
-            }
-          }
-
-          return {
-            name: `${player?.first_name || ""} ${player?.last_name || ""}`,
-            position: player?.position || "N/A",
-            count: playerCountMap[playerId],
-            percentage: (
-              (playerCountMap[playerId] / leagues.length) *
-              100
-            ).toFixed(0),
-          };
-        });
-
-        setPortfolioData(portfolio);
+        // Portfolio data will be fetched separately when Portfolio tab is opened
       } catch (error) {
         console.error("Error fetching player data:", error);
       }
     },
     [userName]
   );
+
+  // Sorting function
+  const handleSort = (key, defaultDirection = "descending") => {
+    setSortConfig((prevConfig) => {
+      const isSameKey = prevConfig.key === key;
+      const newDirection = isSameKey
+        ? prevConfig.direction === "ascending"
+          ? "descending"
+          : "ascending"
+        : defaultDirection;
+      return { key, direction: newDirection };
+    });
+  };
+
+  const getSortIcon = (key) => {
+    if (sortConfig.key !== key) return "⇅";
+    return sortConfig.direction === "ascending" ? "↑" : "↓";
+  };
+
+  const fetchPortfolioData = useCallback(async (leagues) => {
+    if (!leagues || leagues.length === 0) return;
+
+    // Build player count map
+    const playerCountMap = {};
+    leagues.forEach((league) => {
+      const players = [
+        ...league.userRoster.starters,
+        ...league.userRoster.reserve,
+        ...league.userRoster.taxi,
+        ...league.userRoster.uniquePlayers,
+      ];
+
+      players.forEach((playerId) => {
+        if (playerId && playerId !== "0") {
+          if (!playerCountMap[playerId]) {
+            playerCountMap[playerId] = 0;
+          }
+          playerCountMap[playerId]++;
+        }
+      });
+    });
+
+    const playerIds = Object.keys(playerCountMap);
+
+    if (playerIds.length === 0) {
+      setPortfolioData([]);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${BASE_URL}/getplayers/data`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          playerlist: playerIds,
+        }),
+      });
+
+      const data = await response.json();
+
+      // Map player data to portfolio format
+      const portfolio = Object.entries(data).map(([playerId, player]) => {
+        const count = playerCountMap[playerId] || 0;
+        const percentage = leagues.length > 0
+          ? ((count / leagues.length) * 100).toFixed(0)
+          : "0";
+
+        // Calculate FPTS/G (pts_ppr / gp)
+        const fpts_g = (player.pts_ppr !== null && player.pts_ppr !== undefined && player.gp && player.gp > 0)
+          ? (player.pts_ppr / player.gp).toFixed(1)
+          : "N/A";
+
+        return {
+          name: `${player.first_name || ""} ${player.last_name || ""}`.trim(),
+          position: player.position || "N/A",
+          count,
+          percentage,
+          fpts_g,
+        };
+      });
+
+      setPortfolioData(portfolio);
+    } catch (error) {
+      console.error("Error fetching portfolio data:", error);
+      setPortfolioData([]);
+    }
+  }, []);
 
   const fetchDfsProjections = useCallback(async (week) => {
     try {
@@ -646,7 +709,7 @@ function LeagueList() {
       setUserId(userId);
 
       const leaguesResponse = await fetch(
-        `https://api.sleeper.app/v1/user/${userId}/leagues/nfl/2025`
+        `https://api.sleeper.app/v1/user/${userId}/leagues/nfl/2026`
       );
       const leaguesData = await leaguesResponse.json();
 
@@ -793,6 +856,13 @@ function LeagueList() {
     // This ensures we get usernames for new leagues even if we have many cached
     fetchOwnerIdsFromLeagues();
   }, [leagues, fetchOwnerIdsFromLeagues]);
+
+  useEffect(() => {
+    // Fetch portfolio data only when Portfolio tab is opened
+    if (activeTab === "Portfolio" && leagues.length > 0) {
+      fetchPortfolioData(leagues);
+    }
+  }, [activeTab, leagues, fetchPortfolioData]);
 
   const renderPlayerInfo = (playerId, leagueId) => {
     const player = playerData[leagueId]?.players[playerId];
@@ -1075,6 +1145,17 @@ function LeagueList() {
             </div>
           )}
         </div>
+        
+        <div className="dynasty-filter-container">
+          <label className="dynasty-filter-label">
+            <input
+              type="checkbox"
+              checked={dynastyOnly}
+              onChange={(e) => setDynastyOnly(e.target.checked)}
+            />
+            <span>Dynasty only</span>
+          </label>
+        </div>
       </div>
 
       <div className="league-main-content">
@@ -1089,7 +1170,17 @@ function LeagueList() {
             <div className="league-grid-header">Actions</div>
 
             {leagues.length > 0 ? (
-              leagues.map((league, index) => {
+              leagues
+                .filter((league) => {
+                  // Filter by dynasty if checkbox is checked
+                  if (dynastyOnly) {
+                    // Check if league is dynasty - Sleeper uses settings.type === 2 for dynasty
+                    // type: 0 = redraft, 2 = dynasty
+                    return league.settings?.type === 2;
+                  }
+                  return true; // Show all leagues if checkbox is unchecked
+                })
+                .map((league, index) => {
                 const { redCount, orangeCount } = countInjuries(
                   league.userRoster?.starters || [],
                   league.league_id
@@ -1127,9 +1218,10 @@ function LeagueList() {
                     <div className="league-grid-item">
                       {redCount > 0 && (
                         <>
-                          <FontAwesomeIcon
-                            icon={faUserInjured}
-                            style={{ color: "red" }}
+                          <img
+                            src="/cross.png"
+                            alt="Injured"
+                            className="medical-cross-icon"
                           />{" "}
                           {redCount}{" "}
                         </>
@@ -1430,9 +1522,10 @@ function LeagueList() {
                           <div className="team-injury-icons">
                             {redCount > 0 && (
                               <span className="injury-icon">
-                                <FontAwesomeIcon
-                                  icon={faUserInjured}
-                                  style={{ color: "red" }}
+                                <img
+                                  src="/cross.png"
+                                  alt="Injured"
+                                  className="medical-cross-icon"
                                 />{" "}
                                 {redCount}
                               </span>
@@ -1545,21 +1638,53 @@ function LeagueList() {
                   <div className="league-portfolio-grid-header align_center">
                     Position
                   </div>
-                  <div className="league-portfolio-grid-header align_center">
-                    Count
+                  <div 
+                    className="league-portfolio-grid-header align_center"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => handleSort("count", "descending")}
+                  >
+                    Count {getSortIcon("count")}
                   </div>
-                  <div className="league-portfolio-grid-header align_center">
-                    FPTS/G
+                  <div 
+                    className="league-portfolio-grid-header align_center"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => handleSort("fpts_g", "descending")}
+                  >
+                    FPTS/G {getSortIcon("fpts_g")}
                   </div>
 
-                  {portfolioData
-                    .filter((player) =>
-                      selectedPosition
-                        ? player.position === selectedPosition
-                        : true
-                    )
-                    .sort((a, b) => b.count - a.count)
-                    .map((player, index) => {
+                  {(() => {
+                    // Sort portfolio data
+                    const sortedData = [...portfolioData]
+                      .filter((player) =>
+                        selectedPosition
+                          ? player.position === selectedPosition
+                          : true
+                      )
+                      .sort((a, b) => {
+                        if (!sortConfig.key) return 0;
+
+                        let aValue, bValue;
+
+                        if (sortConfig.key === "count") {
+                          aValue = a.count ?? -Infinity;
+                          bValue = b.count ?? -Infinity;
+                        } else if (sortConfig.key === "fpts_g") {
+                          // Convert "N/A" to -Infinity for sorting
+                          aValue = a.fpts_g === "N/A" ? -Infinity : parseFloat(a.fpts_g) ?? -Infinity;
+                          bValue = b.fpts_g === "N/A" ? -Infinity : parseFloat(b.fpts_g) ?? -Infinity;
+                        } else {
+                          return 0;
+                        }
+
+                        if (sortConfig.direction === "ascending") {
+                          return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+                        } else {
+                          return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+                        }
+                      });
+
+                    return sortedData.map((player, index) => {
                       const playerId = player.name.replace(" ", "-"); // Use player name as the unique identifier
                       return (
                         <React.Fragment key={index}>
@@ -1587,9 +1712,13 @@ function LeagueList() {
                               ({player.percentage}%)
                             </span>
                           </div>
+                          <div className="league-portfolio-grid-item align_center">
+                            {player.fpts_g || "N/A"}
+                          </div>
                         </React.Fragment>
                       );
-                    })}
+                    });
+                  })()}
                 </div>
               </div>
             )}

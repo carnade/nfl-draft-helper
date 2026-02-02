@@ -8,7 +8,7 @@ import { GiGoat } from "react-icons/gi";
 import { GiAmericanFootballPlayer, GiSheep, GiTurd } from "react-icons/gi";
 import { GiFireworkRocket } from "react-icons/gi";
 import { TbArrowsLeftRight } from "react-icons/tb";
-import { FaTrashAlt } from "react-icons/fa";
+import { FaTrashAlt, FaCopy } from "react-icons/fa";
 
 // Add a mock flag
 const mock = false; // Set to true for localhost, false for production
@@ -38,6 +38,8 @@ function DraftModal({ league, draftId, onClose, userId }) {
   const [isGoatActive, setIsGoatActive] = useState(false); // Add Goat toggle state
   const [isLoading, setIsLoading] = useState(true); // Add loading state
   const [qbCount, setQbCount] = useState(0); // Add QbCount state
+  const [usernames, setUsernames] = useState({}); // Store username mapping: userId -> username
+  const [leagueId, setLeagueId] = useState(null); // Store league_id from draft
 
   const calculateGoatValues = useCallback(
     (picks, draftType) => {
@@ -284,6 +286,33 @@ function DraftModal({ league, draftId, onClose, userId }) {
     }
   }, [isGoatActive, updateGoatResults]);
 
+  // Fetch league users to get usernames
+  useEffect(() => {
+    const fetchLeagueUsers = async () => {
+      // Try league.league_id first, then fallback to leagueId state
+      const targetLeagueId = league?.league_id || leagueId;
+      if (!targetLeagueId) return;
+      
+      try {
+        const response = await fetch(
+          `https://api.sleeper.app/v1/league/${targetLeagueId}/users`
+        );
+        if (response.ok) {
+          const users = await response.json();
+          const usernameMap = {};
+          users.forEach(user => {
+            usernameMap[user.user_id] = user.display_name || user.username || `User_${user.user_id}`;
+          });
+          setUsernames(usernameMap);
+        }
+      } catch (error) {
+        console.error("Error fetching league users:", error);
+      }
+    };
+
+    fetchLeagueUsers();
+  }, [league?.league_id, leagueId]);
+
   useEffect(() => {
     setIsLoading(true); // Set loading to true before fetching data
     if (draftId) {
@@ -297,6 +326,10 @@ function DraftModal({ league, draftId, onClose, userId }) {
             setDraftType(data.type);
             setReversalRound(data.settings.reversal_round);
             setDraftOrder(data.draft_order);
+            // Store league_id from draft
+            if (data.league_id) {
+              setLeagueId(data.league_id);
+            }
 
             // Extract scoring type from metadata
             const scoring =
@@ -704,14 +737,16 @@ function DraftModal({ league, draftId, onClose, userId }) {
     return (
       <div className="team-buttons-grid">
         {sortedDraftOrder.map(([uid, position]) => {
-          const buttonLabel = uid === userId ? "Myself" : position;
+          // Get username, fallback to position number if not available yet
+          const username = usernames[uid] || `Team ${position}`;
+          const buttonLabel = uid === userId ? usernames[uid] || "You" : username;
           return (
             <button
               key={uid}
               className={`team-button ${
                 selectedTeam === uid ? "selected" : ""
               }`}
-              title={`Team ${position}`}
+              title={usernames[uid] || `Team ${position}`}
               onClick={() => handleTeamButtonClick(uid)}
             >
               {buttonLabel}
@@ -942,9 +977,39 @@ function DraftModal({ league, draftId, onClose, userId }) {
               </div>
               <h2
                 className="league-title"
-                style={{ flex: 1, textAlign: "center", margin: 0 }}
+                style={{ flex: 1, textAlign: "center", margin: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem" }}
               >
                 {league.name}
+                {draftId && (
+                  <span style={{ fontSize: "0.875rem", fontWeight: 400, color: "hsl(var(--muted-foreground))", fontFamily: "monospace" }}>
+                    ID: {draftId}
+                  </span>
+                )}
+                {draftId && (
+                  <button
+                    className="copy-draft-id-button"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(draftId);
+                      } catch (error) {
+                        console.error("Failed to copy draft ID to clipboard:", error);
+                        alert("Failed to copy draft ID to clipboard");
+                      }
+                    }}
+                    title="Copy draft ID to clipboard"
+                    style={{ 
+                      background: "none", 
+                      border: "none", 
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      padding: "0.25rem",
+                      color: "hsl(var(--muted-foreground))"
+                    }}
+                  >
+                    <FaCopy />
+                  </button>
+                )}
               </h2>
               <div
                 className="switches-container"

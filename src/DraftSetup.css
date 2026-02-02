@@ -1,107 +1,182 @@
 .start-page {
   text-align: center;
-  margin-top: 50px;
+  margin-top: 3rem;
+  padding: 1.5rem;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.start-page h1 {
+  font-size: 2rem;
+  font-weight: 600;
+  font-family: Inter, sans-serif;
+  color: hsl(var(--foreground));
+  margin-bottom: 1.5rem;
+}
+
+.start-page h2 {
+  font-size: 1.25rem;
+  font-weight: 500;
+  font-family: Inter, sans-serif;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 2rem;
 }
 
 .separator {
   border: none;
-  border-top: 2px solid #ddd;
-  margin: 20px 0;
+  border-top: 1px solid hsl(var(--border));
+  margin: 2rem 0;
+  width: 100%;
+}
+
+/* Card container for setup sections */
+.setup-section {
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 3px hsl(var(--foreground) / 0.1);
+}
+
+.setup-section h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  font-family: Inter, sans-serif;
+  color: hsl(var(--foreground));
+  margin-bottom: 1rem;
+  text-align: center;
 }
 
 .file-input-container {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 20px;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
-/* Typically you might see something like this for .file-input-button button: */
-.file-input-button button {
-  padding: 10px 20px;
-  font-size: 16px;
-  margin: 10px; /* or maybe 0? Up to you */
-  border-radius: 25px;
-  border: none;
-  background-color: #28a745;
-  color: white;
+.file-input-label {
   cursor: pointer;
-  transition: background-color 0.3s;
-}
-.file-input-button button:hover {
-  background-color: #218838;
-}
-.file-input-button button:disabled {
-  background-color: gray !important;
-  color: white;
-  cursor: not-allowed;
 }
 
+.file-input-label span {
+  display: inline-block;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: Inter, sans-serif;
+  border-radius: var(--radius);
+  background-color: hsl(174 50% 45%);
+  color: hsl(var(--primary-foreground));
+  transition: background-color 0.2s, box-shadow 0.2s;
+}
+
+body.dark .file-input-label span {
+  background-color: hsl(174 45% 42%);
+}
+
+.file-input-label:hover span {
+  background-color: hsl(174 50% 40%);
+  box-shadow: 0 2px 8px hsl(174 50% 45% / 0.3);
+}
+
+body.dark .file-input-label:hover span {
+  background-color: hsl(174 45% 38%);
+}
+
+.file-input-button button,
 .file-input-label button {
-  /* If you want a similar style for the "Load CSV" button, you can define it here, 
-     or use .load-csv-button if you prefer. */
-  padding: 10px 20px;
-  font-size: 16px;
-  border-radius: 25px;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: Inter, sans-serif;
+  border-radius: var(--radius);
   border: none;
-  background-color: #007bff;
-  color: white;
+  background-color: hsl(174 50% 45%);
+  color: hsl(var(--primary-foreground));
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: background-color 0.2s, box-shadow 0.2s;
 }
+
+body.dark .file-input-button button,
+body.dark .file-input-label button {
+  background-color: hsl(174 45% 42%);
+}
+
+.file-input-button button:hover,
 .file-input-label button:hover {
-  background-color: #0056b3;
+  background-color: hsl(174 50% 40%);
+  box-shadow: 0 2px 8px hsl(174 50% 45% / 0.3);
+}
+
+body.dark .file-input-button button:hover,
+body.dark .file-input-label button:hover {
+  background-color: hsl(174 45% 38%);
+}
+
+.file-input-button button:disabled {
+  background-color: hsl(var(--muted)) !important;
+  color: hsl(var(--muted-foreground)) !important;
+  cursor: not-allowed;
+  opacity: 0.6;
+  box-shadow: none;
 }
 
 .file-name {
-  margin-left: 10px;
-  font-size: 16px;
-  color: #333;
+  margin-left: 0.625rem;
+  font-size: 0.875rem;
+  font-family: Inter, sans-serif;
+  color: hsl(var(--muted-foreground));
 }
 
-.action-buttons button {
-  padding: 10px 20px;
-  font-size: 16px;
-  margin: 10px;
-  border-radius: 25px;
-  border: none;
-  background-color: #28a745;
-  color: white;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-.action-buttons button:hover {
-  background-color: #218838;
-}
-.action-buttons button:disabled {
-  background-color: gray !important;
-  color: white;
-  cursor: not-allowed;
-}
 
-/* If you want a generic .disabled-button class (not used by default in the code),
-   keep it or remove it as needed. */
 .disabled-button {
-  background-color: gray !important;
-  color: white;
+  background-color: hsl(var(--muted)) !important;
+  color: hsl(var(--muted-foreground)) !important;
   cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .checkbox-container {
-  margin-top: 20px;
-  font-size: 16px;
+  margin-top: 1.5rem;
+  font-size: 0.875rem;
+  font-family: Inter, sans-serif;
+  color: hsl(var(--foreground));
 }
 
-.modern-dropdown {
-  padding: 10px;
-  font-size: 16px;
-  border: 2px solid #ddd;
-  border-radius: 25px;
-  background-color: #f8f8f8;
-  margin-left: 10px;
+.preset-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  background-color: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.preset-option {
+  padding: 0.625rem;
+  border-radius: calc(var(--radius) - 2px);
   cursor: pointer;
-  transition: border-color 0.3s, box-shadow 0.3s;
-  outline: none;
+  transition: background-color 0.2s;
+  font-family: Inter, sans-serif;
+  font-size: 0.875rem;
+  color: hsl(var(--foreground));
+  text-align: left;
+}
+
+.preset-option:hover {
+  background-color: hsl(var(--muted) / 0.5);
+}
+
+.preset-option.selected {
+  background-color: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+  font-weight: 600;
 }
 
 .base-container {
@@ -109,45 +184,441 @@
   position: relative;
   justify-content: center;
   align-items: center;
-  margin-bottom: 20px;
-  gap: 10px;
+  margin-bottom: 1.5rem;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .modern-input {
-  padding: 10px;
-  font-size: 16px;
-  border: 2px solid #ddd;
-  border-radius: 25px;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  font-family: Inter, sans-serif;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
   width: 200px;
-  transition: border-color 0.3s, box-shadow 0.3s;
+  transition: border-color 0.2s, box-shadow 0.2s;
   outline: none;
-  margin-right: 10px;
+  margin-right: 0.625rem;
 }
+
 .modern-input::placeholder {
-  color: #aaa;
+  color: hsl(var(--muted-foreground));
+  opacity: 0.7;
   font-style: italic;
 }
+
 .modern-input:focus {
-  border-color: #28a745;
-  box-shadow: 0 0 8px rgba(40, 167, 69, 0.3);
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
 }
 
 .modern-button {
-  padding: 10px 20px;
-  font-size: 16px;
-  color: white;
-  background-color: #28a745;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: Inter, sans-serif;
+  color: hsl(var(--primary-foreground));
+  background-color: hsl(174 50% 45%);
   border: none;
-  border-radius: 25px;
+  border-radius: var(--radius);
   cursor: pointer;
-  transition: background-color 0.3s, box-shadow 0.3s;
+  transition: background-color 0.2s, box-shadow 0.2s;
   outline: none;
 }
-.modern-button:hover {
-  background-color: #218838;
-  box-shadow: 0 0 8px rgba(33, 136, 56, 0.3);
+
+body.dark .modern-button {
+  background-color: hsl(174 45% 42%);
 }
+
+.modern-button:hover {
+  background-color: hsl(174 50% 40%);
+  box-shadow: 0 2px 8px hsl(174 50% 45% / 0.3);
+}
+
+body.dark .modern-button:hover {
+  background-color: hsl(174 45% 38%);
+}
+
 .modern-button:active {
-  background-color: #1e7e34;
-  box-shadow: 0 0 8px rgba(30, 126, 52, 0.3);
+  background-color: hsl(174 50% 35%);
+  box-shadow: 0 1px 4px hsl(174 50% 45% / 0.3);
+}
+
+.modern-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Draft Rankings Section */
+.draft-input-container {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.draft-ids-input {
+  flex: 1;
+  min-width: 300px;
+  padding: 0.625rem 1rem;
+  font-size: 1rem;
+  font-family: Inter, sans-serif;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.draft-ids-input:focus {
+  border-color: hsl(174 50% 45%);
+}
+
+/* Year toggle (2025 | 2026) - same style as DFS week selector */
+.year-toggle-section {
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.year-toggle-section .year-toggle-label {
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: Inter, sans-serif;
+  color: hsl(var(--foreground));
+}
+
+.year-toggle {
+  display: flex;
+  gap: 0;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.year-btn {
+  padding: 0.625rem 1.5rem;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  border: none;
+  font-size: 1rem;
+  font-weight: 500;
+  font-family: Inter, sans-serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-right: 1px solid hsl(var(--border));
+}
+
+.year-btn:last-child {
+  border-right: none;
+}
+
+.year-btn:hover {
+  background: hsl(var(--muted) / 0.5);
+}
+
+.year-btn.active {
+  background-color: hsl(174 50% 45%);
+  color: hsl(var(--primary-foreground));
+}
+
+body.dark .year-btn.active {
+  background-color: hsl(174 45% 42%);
+}
+
+.draft-source-selector {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  justify-content: center;
+}
+
+.draft-source-selector label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.875rem;
+  color: hsl(var(--foreground));
+  cursor: pointer;
+}
+
+.draft-source-selector input[type="radio"] {
+  cursor: pointer;
+}
+
+.my-leagues-container {
+  margin-bottom: 1.5rem;
+}
+
+.other-user-container {
+  margin-bottom: 1.5rem;
+}
+
+.other-user-input-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.other-user-input-row .other-user-input {
+  flex: 1;
+  min-width: 200px;
+}
+
+.other-user-container p {
+  font-family: Inter, sans-serif;
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  text-align: center;
+  margin: 0.5rem 0;
+}
+
+.my-leagues-container p {
+  font-family: Inter, sans-serif;
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  text-align: center;
+}
+
+.my-drafts-dropdown-container {
+  display: flex;
+  justify-content: center;
+}
+
+.my-drafts-dropdown {
+  flex: 1;
+  max-width: 500px;
+  padding: 0.625rem 1rem;
+  font-size: 1rem;
+  font-family: Inter, sans-serif;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  outline: none;
+  transition: border-color 0.2s;
+  cursor: pointer;
+}
+
+.my-drafts-dropdown:focus {
+  border-color: hsl(174 50% 45%);
+}
+
+.my-drafts-dropdown:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 6-column leagues table (dropdown replacement) */
+.leagues-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background-color: hsl(var(--card));
+}
+
+.leagues-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  font-family: Inter, sans-serif;
+}
+
+.leagues-table thead {
+  user-select: none;
+  pointer-events: none;
+}
+
+.leagues-table thead th {
+  padding: 0.75rem 0.5rem;
+  text-align: left;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+  background-color: hsl(var(--muted) / 0.3);
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.leagues-table tbody tr.clickable {
+  cursor: pointer;
+}
+
+.leagues-table tbody tr.clickable:hover {
+  background-color: hsl(var(--muted) / 0.4);
+}
+
+.leagues-table tbody tr.disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.leagues-table tbody td {
+  padding: 0.625rem 0.5rem;
+  border-bottom: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+}
+
+.leagues-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.leagues-table .col-name {
+  max-width: 200px;
+  word-break: break-word;
+}
+
+.leagues-table .stats-cell {
+  font-weight: 500;
+}
+
+.leagues-table .stats-cell.stats-complete {
+  color: hsl(142 76% 36%);
+}
+
+body.dark .leagues-table .stats-cell.stats-complete {
+  color: hsl(142 70% 45%);
+}
+
+.leagues-table .stats-cell.stats-drafting {
+  color: hsl(45 93% 47%);
+}
+
+body.dark .leagues-table .stats-cell.stats-drafting {
+  color: hsl(45 93% 55%);
+}
+
+.leagues-table .stats-cell.stats-other,
+.leagues-table .stats-cell.stats-pre_draft {
+  color: hsl(var(--foreground));
+}
+
+/* Type colors: Dynasty=purple, Best Ball=yellow, Redraft=turquoise */
+.leagues-table .type-dynasty {
+  color: hsl(270 60% 50%);
+  font-weight: 500;
+}
+
+body.dark .leagues-table .type-dynasty {
+  color: hsl(270 55% 60%);
+}
+
+.leagues-table .type-best-ball {
+  color: hsl(45 93% 40%);
+  font-weight: 500;
+}
+
+body.dark .leagues-table .type-best-ball {
+  color: hsl(45 93% 55%);
+}
+
+.leagues-table .type-redraft {
+  color: hsl(174 55% 38%);
+  font-weight: 500;
+}
+
+body.dark .leagues-table .type-redraft {
+  color: hsl(174 50% 50%);
+}
+
+.leagues-table .col-remove {
+  width: 2.5rem;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.selected-leagues-table .remove-draft-button {
+  position: static;
+  width: 1.75rem;
+  height: 1.75rem;
+  font-size: 1.1rem;
+}
+
+.draft-actions-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.drafts-list {
+  margin-top: 1.5rem;
+}
+
+.drafts-list h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: Inter, sans-serif;
+  color: hsl(var(--foreground));
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.drafts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.draft-item {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  background-color: hsl(var(--card-background, var(--background)));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  position: relative;
+  gap: 0.5rem;
+}
+
+.draft-name {
+  font-weight: 600;
+  font-size: 1rem;
+  color: hsl(var(--foreground));
+  word-break: break-word;
+}
+
+.draft-id {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  font-family: monospace;
+}
+
+.remove-draft-button {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: none;
+  background-color: hsl(0 65% 50%);
+  color: white;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.25rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+  padding: 0;
+}
+
+.remove-draft-button:hover {
+  background-color: hsl(0 65% 45%);
+}
+
+body.dark .remove-draft-button {
+  background-color: hsl(0 65% 45%);
+}
+
+body.dark .remove-draft-button:hover {
+  background-color: hsl(0 65% 40%);
 }

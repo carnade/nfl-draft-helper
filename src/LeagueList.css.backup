@@ -4,20 +4,18 @@
 }
 
 .back-button {
-  padding: 0.625rem 1.25rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: hsl(var(--primary-foreground));
-  background-color: hsl(var(--primary));
+  padding: 10px 20px;
+  font-size: 16px;
+  color: white;
+  background-color: #007bff;
   border: none;
-  border-radius: var(--radius);
+  border-radius: 25px;
   cursor: pointer;
-  transition: background-color 0.2s;
-  font-family: Inter, sans-serif;
+  transition: background-color 0.3s;
 }
 
 .back-button:hover {
-  background-color: hsl(var(--primary) / 0.9);
+  background-color: #0056b3;
 }
 
 /* Search area */
@@ -37,87 +35,58 @@
 }
 
 .search-label {
-  margin-right: 0.375rem;
-  font-weight: 600;
-  font-size: 0.875rem;
-  color: hsl(var(--foreground));
-  width: auto;
+  margin-right: 6px; /* bring label closer to the input */
+  font-weight: bold;
+  width: auto; /* let label size naturally */
   white-space: nowrap;
 }
 
-.dynasty-filter-container {
-  margin-top: 1rem;
-  margin-bottom: 1rem;
-}
-
-.dynasty-filter-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-family: Inter, sans-serif;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: hsl(var(--foreground));
-  cursor: pointer;
-}
-
-.dynasty-filter-label input[type="checkbox"] {
-  width: 1rem;
-  height: 1rem;
-  cursor: pointer;
-  accent-color: hsl(174 50% 45%);
-}
-
-/* Medical cross icon - soft red, toned down from vibrant but still clearly red */
-.medical-cross-icon {
-  width: 1.1rem;
-  height: 1.1rem;
-  display: inline-block;
-  vertical-align: baseline;
-  margin-bottom: -0.1rem;
-  filter: brightness(0) saturate(100%) invert(28%) sepia(82%) saturate(1700%) hue-rotate(350deg) brightness(90%) contrast(93%);
-}
-
-body.dark .medical-cross-icon {
-  filter: brightness(0) saturate(100%) invert(32%) sepia(78%) saturate(1500%) hue-rotate(350deg) brightness(92%) contrast(89%);
+.injury-report-search {
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
 }
 
 /* Make player search visually match the owner-search input */
 .injury-report-search {
-  width: 260px;
-  padding: 0.5rem 0.625rem;
-  border: 1px solid hsl(var(--border));
-  border-radius: calc(var(--radius) - 4px);
-  font-size: 0.875rem;
-  background: hsl(var(--background));
-  color: hsl(var(--foreground));
-  font-family: Inter, sans-serif;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  outline: none;
+  width: 260px; /* match owner-search width */
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  background: #fff;
+  color: #000;
 }
 
-.injury-report-search:focus {
-  border-color: hsl(var(--primary));
-  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
+body.dark .injury-report-search {
+  background-color: #2a2a2a;
+  color: #fff;
+  border-color: #555;
 }
 
-.injury-report-search::placeholder {
-  color: hsl(var(--muted-foreground));
-  opacity: 0.7;
+body.dark .injury-report-search::placeholder {
+  color: #aaa;
+}
+
+body.light .injury-report-search::placeholder {
+  color: #666;
 }
 
 /* Main layout */
 .league-main-content {
   display: flex;
   justify-content: space-between;
-  gap: 1.25rem;
-  width: 100%;
-  margin: 0 auto;
-  padding: 1.25rem;
-  box-sizing: border-box;
-  overflow-x: hidden;
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
+  gap: 20px;
+  width: 100%; /* Ensure it takes up the full width of its parent */
+  margin: 0 auto; /* Center the content */
+  padding: 20px; /* Add consistent padding */
+  box-sizing: border-box; /* Include padding in width calculation */
+  overflow-x: hidden; /* Prevent horizontal scrollbars */
+}
+
+body.dark .league-main-content {
+  background-color: #25252b; /* Match dark mode background */
+  color: #e2e2e2; /* Match dark mode text color */
 }
 
 /* Left side: league list */
@@ -133,36 +102,42 @@ body.dark .medical-cross-icon {
 }
 
 .league-grid-header {
-  font-weight: 600;
-  font-size: 0.875rem;
-  border-bottom: 1px solid hsl(var(--border));
-  padding: 0.75rem;
+  font-weight: bold;
+  border-bottom: 2px solid #ccc;
+  padding: 10px;
   text-align: left;
-  border-radius: var(--radius) var(--radius) 0 0;
-  background-color: hsl(222 47% 8%);
-  color: hsl(var(--foreground));
+  border-radius: 5px 5px 0 0;
 }
 
 body.light .league-grid-header {
-  background-color: hsl(220 14% 97%);
+  background-color: #e2e2e2;
+  color: #000;
 }
 
 body.dark .league-grid-header {
-  background-color: hsl(222 47% 10%);
+  background-color: #35353b;
+  color: #fff;
 }
 
 .league-grid-item {
-  padding: 0.75rem;
-  border-bottom: 1px solid hsl(var(--border));
-  color: hsl(var(--foreground));
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+}
+
+body.light .league-grid-item {
+  background-color: transparent;
+  color: #000;
+}
+
+body.dark .league-grid-item {
+  color: #e2e2e2;
 }
 
 /* The league name with possible highlighting */
 .league-name {
-  font-family: Inter, sans-serif;
-  font-size: 1rem;
+  font-family: "Poppins", sans-serif;
+  font-size: 18px;
   font-weight: 500;
-  color: hsl(var(--foreground));
 }
 
 .league-highlighted-league {
@@ -202,20 +177,8 @@ body.dark .league-highlighted-league {
 }
 
 .roster-header {
-  font-weight: 600;
-  font-size: 0.875rem;
-  background-color: hsl(222 47% 8%);
-  color: hsl(var(--foreground));
-  padding: 0.75rem;
-  border-bottom: 1px solid hsl(var(--border));
-}
-
-body.light .roster-header {
-  background-color: hsl(220 14% 97%);
-}
-
-body.dark .roster-header {
-  background-color: hsl(222 47% 10%);
+  font-weight: bold;
+  background-color: #f1f1f1;
 }
 
 .roster-grid {
@@ -274,172 +237,108 @@ body.dark .roster-header {
 }
 
 .league-tab-button {
-  padding: 0.625rem 1.25rem;
+  padding: 10px 20px;
   border: none;
-  background-color: transparent;
-  color: hsl(var(--foreground) / 0.7);
+  background-color: #f1f1f1;
   cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 500;
-  border-radius: var(--radius) var(--radius) 0 0;
-  transition: background-color 0.2s, color 0.2s;
-  font-family: Inter, sans-serif;
-  border-bottom: 2px solid transparent;
+  font-size: 16px;
+  font-weight: bold;
+  border-radius: 5px 5px 0 0;
+  transition: background-color 0.3s, color 0.3s;
 }
 
-.league-tab-button:hover {
-  background-color: hsl(var(--muted) / 0.5);
-  color: hsl(var(--foreground));
+body.light .league-tab-button {
+  background-color: #f1f1f1;
+  color: #000;
 }
 
-.league-tab-button.active {
-  background-color: transparent;
-  color: hsl(var(--foreground));
-  border-bottom-color: hsl(var(--primary));
-  font-weight: 600;
+body.dark .league-tab-button {
+  background-color: #35353b;
+  color: #fff;
+}
+
+body.light .league-tab-button.active {
+  background-color: #007bff;
+  color: #fff;
+}
+
+body.dark .league-tab-button.active {
+  background-color: #0056b3;
+  color: #fff;
 }
 
 /* Tab Content */
 .league-tab-content {
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 1.25rem;
-  box-sizing: border-box;
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
+  width: 100%; /* Ensure full width */
+  max-width: 1200px; /* Optional: Set a max width for consistency */
+  margin: 0 auto; /* Center the content */
+  padding: 20px; /* Add consistent padding */
+  box-sizing: border-box; /* Include padding in width calculation */
+}
+
+body.dark .league-tab-content {
+  background-color: #25252b; /* Match dark mode background */
+  color: #e2e2e2; /* Match dark mode text color */
 }
 
 /* Injury Report */
 .league-injury-report-container {
-  padding-left: 1.25rem;
-  border-left: 1px solid hsl(var(--border));
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
+  padding-left: 20px;
+  border-left: 1px solid #ccc;
+}
+
+body.dark .league-injury-report-container {
+  background-color: #25252b;
+  color: #e2e2e2;
 }
 
 /* Portfolio */
 .league-portfolio-container {
-  padding: 0;
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
+  padding: 0; /* placeholder to satisfy linter */
 }
 
-/* Filter Container */
-.filter-container {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-}
-
-.filter-label {
-  font-weight: 600;
-  font-size: 0.875rem;
-  color: hsl(var(--foreground));
-}
-
-.filter-buttons {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.filter-button {
-  padding: 0.5rem 1rem;
-  border: 1px solid hsl(var(--border));
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground) / 0.7);
-  border-radius: calc(var(--radius) - 2px);
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
-  font-family: Inter, sans-serif;
-}
-
-.filter-button:hover {
-  background-color: hsl(var(--muted) / 0.5);
-  color: hsl(var(--foreground));
-}
-
-.filter-button.qb-active {
-  background-color: hsl(339 44% 59%);
-  border-color: hsl(339 44% 54%);
-  color: hsl(339 50% 20%);
-}
-
-body.dark .filter-button.qb-active {
-  background-color: hsl(339 44% 59%);
-  border-color: hsl(339 44% 54%);
-  color: hsl(339 30% 90%);
-}
-
-.filter-button.rb-active {
-  background-color: hsl(155 43% 64%);
-  border-color: hsl(155 43% 59%);
-  color: hsl(155 50% 20%);
-}
-
-body.dark .filter-button.rb-active {
-  background-color: hsl(155 43% 64%);
-  border-color: hsl(155 43% 59%);
-  color: hsl(155 30% 90%);
-}
-
-.filter-button.wr-active {
-  background-color: hsl(201 54% 56%);
-  border-color: hsl(201 54% 51%);
-  color: hsl(201 50% 20%);
-}
-
-body.dark .filter-button.wr-active {
-  background-color: hsl(201 54% 56%);
-  border-color: hsl(201 54% 51%);
-  color: hsl(201 30% 90%);
-}
-
-.filter-button.te-active {
-  background-color: hsl(30 61% 57%);
-  border-color: hsl(30 61% 52%);
-  color: hsl(30 50% 20%);
-}
-
-body.dark .filter-button.te-active {
-  background-color: hsl(30 61% 57%);
-  border-color: hsl(30 61% 52%);
-  color: hsl(30 30% 90%);
+body.dark .league-portfolio-container {
+  background-color: #25252b;
+  color: #e2e2e2;
 }
 
 /* Portfolio Grid */
 .league-portfolio-grid {
   display: grid;
-  grid-template-columns: 6fr 1fr 3fr 2fr;
+  grid-template-columns: 6fr 1fr 3fr;
   gap: 10px;
   margin-top: 15px;
 }
 
 .league-portfolio-grid-header {
-  font-weight: 600;
-  font-size: 0.875rem;
-  background-color: hsl(222 47% 8%);
-  color: hsl(var(--foreground));
-  padding: 0.75rem;
+  font-weight: bold;
+  background-color: #f1f1f1;
+  padding: 10px;
   text-align: left;
-  border-bottom: 1px solid hsl(var(--border));
 }
 
 body.light .league-portfolio-grid-header {
-  background-color: hsl(220 14% 97%);
+  background-color: #f1f1f1;
+  color: #000;
 }
 
 body.dark .league-portfolio-grid-header {
-  background-color: hsl(222 47% 10%);
+  background-color: #35353b;
+  color: #fff;
 }
 
 .league-portfolio-grid-item {
-  padding: 0.75rem;
-  border-bottom: 1px solid hsl(var(--border));
-  color: hsl(var(--foreground));
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+}
+
+body.light .league-portfolio-grid-item {
+  color: #000;
+}
+
+body.dark .league-portfolio-grid-item {
+  background-color: #25252b;
+  color: #e2e2e2;
 }
 
 /* Scoped styling for count inside league-portfolio-grid-item */
@@ -551,22 +450,21 @@ body.dark .opponent-option:hover {
 /* The header row is a grid container with 3 columns */
 .injury-grid-header {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr;
+  grid-template-columns: 2fr 1fr 1fr; /* match your column widths */
   align-items: center;
-  padding: 0.75rem 0;
-  font-weight: 600;
-  font-size: 0.875rem;
-  border-bottom: 1px solid hsl(var(--border));
-  background-color: hsl(222 47% 8%);
-  color: hsl(var(--foreground));
+  padding: 5px 0;
+  font-weight: bold;
+  border-bottom: 2px solid #ccc;
 }
 
 body.light .injury-grid-header {
-  background-color: hsl(220 14% 97%);
+  background-color: #f1f1f1;
+  color: #000;
 }
 
 body.dark .injury-grid-header {
-  background-color: hsl(222 47% 10%);
+  background-color: #35353b;
+  color: #fff;
 }
 
 /* Each data row is also a grid container with the same 3 columns */
@@ -574,25 +472,30 @@ body.dark .injury-grid-header {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr;
   align-items: center;
-  padding: 0.5rem 0;
-  cursor: pointer;
-  color: hsl(var(--foreground));
-  border-bottom: 1px solid hsl(var(--border));
+  padding: 5px 0;
+  cursor: pointer; /* if clickable */
 }
 
-.injury-grid-row:hover {
-  background-color: hsl(var(--muted) / 0.5);
+body.light .injury-grid-row {
+  background-color: #f2f2f2;
+  color: #000;
+}
+
+body.dark .injury-grid-row {
+  background-color: #25252b;
+  color: #e2e2e2;
 }
 
 /* Then each column cell inside the row */
 .injury-grid-column {
-  padding: 0.125rem 0.5rem;
+  padding: 2px;
+  /* or text-align: left / center as needed */
 }
 
 /* Highlight the row when selected */
 .injury-grid-row.selected-player {
-  background-color: hsl(var(--accent) / 0.5);
-  border-left: 2px solid hsl(var(--primary));
+  background-color: #ffe5e5;
+  /* or border, or different color, etc. */
 }
 
 /* Opponent / owner input container for positioning (matching Bestball styles) */
@@ -604,20 +507,10 @@ body.dark .injury-grid-header {
 
 .owner-search input {
   width: 100%;
-  padding: 0.5rem 0.625rem;
-  border: 1px solid hsl(var(--border));
-  border-radius: calc(var(--radius) - 4px);
-  font-size: 0.875rem;
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
-  font-family: Inter, sans-serif;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  outline: none;
-}
-
-.owner-search input:focus {
-  border-color: hsl(var(--primary));
-  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
 }
 
 .opponent-dropdown {
@@ -625,32 +518,58 @@ body.dark .injury-grid-header {
   top: 100%;
   left: 0;
   right: 0;
-  background-color: hsl(var(--popover));
-  border: 1px solid hsl(var(--border));
-  border-radius: calc(var(--radius) - 2px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   max-height: 200px;
   overflow-y: auto;
-  z-index: 9999;
-  color: hsl(var(--popover-foreground));
+  z-index: 9999; /* ensure visibility above other content */
 }
 
 .opponent-option {
-  padding: 0.5rem 0.75rem;
+  padding: 8px 12px;
   cursor: pointer;
-  border-bottom: 1px solid hsl(var(--border));
+  border-bottom: 1px solid #f0f0f0;
   transition: background-color 0.2s;
-  color: hsl(var(--popover-foreground));
+  color: #000;
 }
 
 .opponent-option:hover,
 .opponent-option.selected {
-  background-color: hsl(var(--accent));
-  color: hsl(var(--accent-foreground));
+  background-color: #f0f0f0;
 }
 
 .opponent-option:last-child {
   border-bottom: none;
+}
+
+/* Dark mode variants */
+body.dark .owner-search input {
+  background-color: #2a2a2a;
+  color: #fff;
+  border-color: #555;
+}
+
+body.dark .opponent-dropdown {
+  background-color: #2a2a2a;
+  border-color: #555;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+body.dark .opponent-option {
+  border-bottom-color: #444;
+  color: #fff;
+}
+
+/* ensure light-mode dropdown text is visible */
+body.light .opponent-option {
+  color: #000;
+}
+
+body.dark .opponent-option:hover,
+body.dark .opponent-option.selected {
+  background-color: #444;
 }
 
 .injury-status {
@@ -674,22 +593,19 @@ body.dark .injury-grid-header {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  margin-top: 1.25rem;
+  margin-top: 20px;
 }
 
 .injury-team {
   display: flex;
   align-items: center;
-  padding: 0.5rem 0;
+  padding: 5px 0;
   flex-wrap: wrap;
-  border-bottom: 1px solid hsl(var(--border));
 }
 
 .team-name {
-  font-weight: 600;
-  font-size: 0.875rem;
+  font-weight: bold;
   cursor: pointer;
-  color: hsl(var(--foreground));
 }
 
 .team-injury-icons {
@@ -699,23 +615,17 @@ body.dark .injury-grid-header {
 
 .team-injury-list {
   display: block;
-  margin-top: 0.5rem;
-  padding-left: 1.25rem;
+  margin-top: 5px;
+  padding-left: 20px;
   width: 100%;
 }
 
 .injury-player {
   cursor: pointer;
-  margin: 0.375rem 0;
+  margin: 5px 0;
   display: flex;
   justify-content: space-between;
-  padding: 0.375rem 0;
-  color: hsl(var(--foreground));
-}
-
-.injury-player:hover {
-  background-color: hsl(var(--muted) / 0.5);
-  border-radius: calc(var(--radius) - 4px);
+  padding: 5px 0;
 }
 
 .injury {
@@ -733,7 +643,18 @@ body.dark .injury-grid-header {
   margin-right: 10px;
 }
 
-/* Grid headers are now styled consistently above */
+/* Grid headers for light and dark modes */
+body.light .league-grid-header,
+body.light .roster-header {
+  background-color: #f1f1f1; /* Light background */
+  color: #000; /* Dark text */
+}
+
+body.dark .league-grid-header,
+body.dark .roster-header {
+  background-color: #35353b; /* Dark background */
+  color: #fff; /* Light text */
+}
 /* Value-neutral for light and dark modes */
 body.light .value-neutral {
   color: #000; /* Neutral black text for light mode */
@@ -836,33 +757,33 @@ body.dark .league-action-icon:hover {
 
 /* Modal content */
 .modal-content {
-  background-color: hsl(var(--card));
-  color: hsl(var(--card-foreground));
-  padding: 1.25rem;
-  border-radius: var(--radius);
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 10px;
   width: 400px;
   text-align: center;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-  border: 1px solid hsl(var(--border));
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+body.dark .modal-content {
+  background-color: #35353b;
+  color: #e2e2e2;
 }
 
 /* Close button */
 .close-modal-button {
-  margin-top: 1.25rem;
-  padding: 0.625rem 1.25rem;
-  background-color: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
+  margin-top: 20px;
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: #fff;
   border: none;
-  border-radius: var(--radius);
+  border-radius: 5px;
   cursor: pointer;
-  font-weight: 500;
-  font-size: 0.875rem;
-  transition: background-color 0.2s;
-  font-family: Inter, sans-serif;
+  transition: background-color 0.3s;
 }
 
 .close-modal-button:hover {
-  background-color: hsl(var(--primary) / 0.9);
+  background-color: #0056b3;
 }
 
 /* Style for the actions container */

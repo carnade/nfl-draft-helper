@@ -1,48 +1,48 @@
+/* Common styles using design system */
+
 .draftname {
-  text-align: center; /* Center the h1 within its parent container */
+  text-align: center;
 }
 
-/* If you’re using the decorative lines around the .draftname h1: */
 .draftname h1 {
   display: inline-flex;
   align-items: center;
-  font-size: 30px;
-  font-weight: 300;
-  color: #222;
-  letter-spacing: 1px;
+  font-size: 1.875rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  margin: 10px;
+  margin: 0.625rem;
 }
 
 .draftname h1:before,
 .draftname h1:after {
   content: " ";
   display: block;
-  width: 50px;
-  border-bottom: 1px solid #c50000;
-  border-top: 1px solid #c50000;
-  height: 5px;
-  background-color: #f8f8f8;
+  width: 3.125rem;
+  border-bottom: 1px solid hsl(var(--border));
+  border-top: 1px solid hsl(var(--border));
+  height: 0.3125rem;
+  background-color: hsl(var(--background));
 }
 
 .draftname h1:before {
-  margin-right: 10px;
+  margin-right: 0.625rem;
 }
 
 .draftname h1:after {
-  margin-left: 10px;
+  margin-left: 0.625rem;
 }
 
 .draftname span {
-  font-size: 15px;
-  color: #444;
-  word-spacing: 1px;
-  font-weight: normal;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  font-family: "Raleway", sans-serif;
+  font-size: 0.9375rem;
+  color: hsl(var(--foreground) / 0.8);
+  word-spacing: 0.0625rem;
   font-weight: 500;
-  margin-bottom: 15px;
+  letter-spacing: 0.125rem;
+  text-transform: uppercase;
+  font-family: Inter, sans-serif;
+  margin-bottom: 0.9375rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -52,18 +52,18 @@
 .draftname span:after {
   content: " ";
   display: block;
-  width: 50px;
-  border-bottom: 1px solid #ccc;
-  border-top: 1px solid #ccc;
-  height: 5px;
-  background-color: #f8f8f8;
-  margin: 0 10px; /* Adjust this to control spacing between line and text */
+  width: 3.125rem;
+  border-bottom: 1px solid hsl(var(--border));
+  border-top: 1px solid hsl(var(--border));
+  height: 0.3125rem;
+  background-color: hsl(var(--background));
+  margin: 0 0.625rem;
 }
 
 .draftname span:before {
-  margin-right: 10px;
+  margin-right: 0.625rem;
 }
 
 .draftname span:after {
-  margin-left: 10px;
+  margin-left: 0.625rem;
 }

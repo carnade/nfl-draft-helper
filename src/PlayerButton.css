@@ -2,13 +2,13 @@
 .player-button {
   display: block;
   width: 100%;
-  padding: 10px;
-  margin: 5px 0;
+  padding: 0.625rem;
+  margin: 0.3125rem 0;
   border: none;
-  border-radius: 5px;
+  border-radius: var(--radius);
   cursor: pointer;
   text-align: center;
-  color: white;
+  font-family: Inter, sans-serif;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -18,7 +18,7 @@
 
 .player-button:hover {
   transform: scale(1.02);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0.25rem 0.5rem hsl(var(--foreground) / 0.2);
 }
 
 .player-button:disabled {
@@ -30,7 +30,7 @@
   display: grid;
   grid-template-columns: 1fr 4fr 1fr; /* 3 columns: edges smaller, middle larger */
   grid-template-rows: 1fr 1fr; /* 2 rows */
-  gap: 5px;
+  gap: 0.3125rem;
   align-items: center;
   justify-items: center;
 }
@@ -41,14 +41,17 @@
 }
 
 .grid-item {
-  font-size: 16px;
+  font-size: 1rem;
+  font-family: Inter, sans-serif;
   text-align: center;
-  color: rgba(220, 220, 220, 0.95);
+  color: inherit; /* Inherit from parent button */
 }
 
 .player-button.disabled {
-  background-color: gray !important;
+  background-color: hsl(var(--muted)) !important;
+  color: hsl(var(--muted-foreground)) !important;
   cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .button-content {
@@ -66,95 +69,256 @@
 }
 
 .player-name {
-  color: white;
-  font-size: 18px; /* Set font size for player name */
+  color: inherit; /* Inherit from parent button */
+  font-size: 1.125rem; /* Set font size for player name */
+  font-weight: 600;
   text-align: center; /* Center the text */
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6); /* Subtle shadow */
+  text-shadow: 0.0625rem 0.0625rem 0.125rem hsl(var(--foreground) / 0.3); /* Subtle shadow */
 }
 
-/* Position-specific styles */
-.player-button.wr {
-  background-color: #2f49cdd4; /* Example color for WR */
-}
+/* Position-specific styles - Using HSL colors with lightness around 49 for dark mode */
+/* Matching the user's preference: RB at 155 30 49 */
+/* All positions use the RB glassmorphism style with gradient background */
 
-.player-button.rb {
-  background-color: rgba(18, 121, 18, 0.849); /* Example color for RB */
-}
-
-.player-button.te {
-  background-color: #d79b2cd5; /* Example color for TE */
-}
-
+/* QB - Glass with gradient background (medium opacity) */
 .player-button.qb {
-  background-color: #e02323e3; /* Example color for QB */
+  background: linear-gradient(
+    135deg,
+    hsl(339 44% 49% / 0.3) 0%,
+    hsl(339 44% 49% / 0.175) 100%
+  );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 2px solid hsl(339 44% 49%);
+  color: hsl(339 30% 90%);
+  box-shadow: 
+    0 4px 8px hsl(339 44% 49% / 0.25),
+    inset 0 1px 1px hsl(339 44% 49% / 0.3);
+}
+
+/* RB - Glass with gradient background (medium opacity) */
+.player-button.rb {
+  background: linear-gradient(
+    135deg,
+    hsl(155 30% 49% / 0.3) 0%,
+    hsl(155 30% 49% / 0.175) 100%
+  );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 2px solid hsl(155 30% 49%);
+  color: hsl(155 30% 90%);
+  box-shadow: 
+    0 4px 8px hsl(155 30% 49% / 0.25),
+    inset 0 1px 1px hsl(155 30% 49% / 0.3);
+}
+
+/* WR - Glass with gradient background (medium opacity) */
+.player-button.wr {
+  background: linear-gradient(
+    135deg,
+    hsl(201 54% 49% / 0.3) 0%,
+    hsl(201 54% 49% / 0.175) 100%
+  );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 2px solid hsl(201 54% 49%);
+  color: hsl(201 30% 90%);
+  box-shadow: 
+    0 4px 8px hsl(201 54% 49% / 0.25),
+    inset 0 1px 1px hsl(201 54% 49% / 0.3);
+}
+
+/* TE - Glass with gradient background (medium opacity) */
+.player-button.te {
+  background: linear-gradient(
+    135deg,
+    hsl(30 61% 49% / 0.3) 0%,
+    hsl(30 61% 49% / 0.175) 100%
+  );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 2px solid hsl(30 61% 49%);
+  color: hsl(30 30% 90%);
+  box-shadow: 
+    0 4px 8px hsl(30 61% 49% / 0.25),
+    inset 0 1px 1px hsl(30 61% 49% / 0.3);
 }
 
 .player-button.dst {
-  background-color: #a52a2a; /* Example color for D/ST */
+  background-color: hsl(12 86% 49%);
+  color: hsl(12 30% 90%);
 }
 
 .player-button.k {
-  background-color: #800080; /* Example color for K */
+  background-color: hsl(280 60% 49%); /* Purple for K */
+  color: hsl(280 30% 90%);
 }
 
 .player-button.default {
-  background-color: gray; /* Default color */
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
 }
 
-/* Light mode styles */
-body.light .player-button.wr {
-  background-color: #1540bc; /* Example color for WR */
-}
+/* Light mode - keep slightly brighter for better visibility */
+/* All positions use the RB glassmorphism style with gradient background (more transparent) */
 
-body.light .player-button.rb {
-  background-color: #108410; /* Example color for RB */
-}
-
-body.light .player-button.te {
-  background-color: #d7810e; /* Example color for TE */
-}
-
+/* QB - Glass with gradient background (medium opacity) */
 body.light .player-button.qb {
-  background-color: #ce1616; /* Example color for QB */
+  background: linear-gradient(
+    135deg,
+    hsl(339 44% 54% / 0.4) 0%,
+    hsl(339 44% 54% / 0.25) 100%
+  );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 2px solid hsl(339 44% 54%);
+  color: hsl(339 50% 20%);
+  box-shadow: 
+    0 4px 8px hsl(339 44% 54% / 0.25),
+    inset 0 1px 1px hsl(339 44% 54% / 0.3);
+}
+
+/* RB - Glass with gradient background (medium opacity) */
+body.light .player-button.rb {
+  background: linear-gradient(
+    135deg,
+    hsl(155 30% 54% / 0.4) 0%,
+    hsl(155 30% 54% / 0.25) 100%
+  );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 2px solid hsl(155 30% 54%);
+  color: hsl(155 50% 20%);
+  box-shadow: 
+    0 4px 8px hsl(155 30% 54% / 0.25),
+    inset 0 1px 1px hsl(155 30% 54% / 0.3);
+}
+
+/* WR - Glass with gradient background (medium opacity) */
+body.light .player-button.wr {
+  background: linear-gradient(
+    135deg,
+    hsl(201 54% 51% / 0.4) 0%,
+    hsl(201 54% 51% / 0.25) 100%
+  );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 2px solid hsl(201 54% 51%);
+  color: hsl(201 50% 20%);
+  box-shadow: 
+    0 4px 8px hsl(201 54% 51% / 0.25),
+    inset 0 1px 1px hsl(201 54% 51% / 0.3);
+}
+
+/* TE - Glass with gradient background (medium opacity) */
+body.light .player-button.te {
+  background: linear-gradient(
+    135deg,
+    hsl(30 61% 52% / 0.4) 0%,
+    hsl(30 61% 52% / 0.25) 100%
+  );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 2px solid hsl(30 61% 52%);
+  color: hsl(30 50% 20%);
+  box-shadow: 
+    0 4px 8px hsl(30 61% 52% / 0.25),
+    inset 0 1px 1px hsl(30 61% 52% / 0.3);
 }
 
 body.light .player-button.dst {
-  background-color: #8f1f1f; /* Example color for D/ST */
+  background-color: hsl(12 86% 51%);
+  color: hsl(12 50% 20%);
 }
 
 body.light .player-button.k {
-  background-color: #6700b1; /* Example color for K */
+  background-color: hsl(280 60% 45%);
+  color: hsl(280 50% 20%);
 }
 
 body.light .player-button.default {
-  background-color: gray; /* Default color */
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
 }
 
-/* Dark mode styles */
-body.dark .player-button.wr {
-  background-color: #1e3a8a; /* Darker blue for WR */
-}
+/* Dark mode - using lightness 49 for all positions */
+/* All positions use the RB glassmorphism style with gradient background (more transparent) */
 
-body.dark .player-button.rb {
-  background-color: #145214; /* Darker green for RB */
-}
-
-body.dark .player-button.te {
-  background-color: #b3741f; /* Darker orange for TE */
-}
-
+/* QB - Glass with gradient background (medium opacity) */
 body.dark .player-button.qb {
-  background-color: #a81c1c; /* Darker red for QB */
+  background: linear-gradient(
+    135deg,
+    hsl(339 44% 49% / 0.3) 0%,
+    hsl(339 44% 49% / 0.175) 100%
+  );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 2px solid hsl(339 44% 49%);
+  color: hsl(339 30% 90%);
+  box-shadow: 
+    0 4px 8px hsl(339 44% 49% / 0.25),
+    inset 0 1px 1px hsl(339 44% 49% / 0.3);
+}
+
+/* RB - Glass with gradient background (medium opacity) */
+body.dark .player-button.rb {
+  background: linear-gradient(
+    135deg,
+    hsl(155 30% 49% / 0.3) 0%,
+    hsl(155 30% 49% / 0.175) 100%
+  );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 2px solid hsl(155 30% 49%);
+  color: hsl(155 30% 90%);
+  box-shadow: 
+    0 4px 8px hsl(155 30% 49% / 0.25),
+    inset 0 1px 1px hsl(155 30% 49% / 0.3);
+}
+
+/* WR - Glass with gradient background (medium opacity) */
+body.dark .player-button.wr {
+  background: linear-gradient(
+    135deg,
+    hsl(201 54% 49% / 0.3) 0%,
+    hsl(201 54% 49% / 0.175) 100%
+  );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 2px solid hsl(201 54% 49%);
+  color: hsl(201 30% 90%);
+  box-shadow: 
+    0 4px 8px hsl(201 54% 49% / 0.25),
+    inset 0 1px 1px hsl(201 54% 49% / 0.3);
+}
+
+/* TE - Glass with gradient background (medium opacity) */
+body.dark .player-button.te {
+  background: linear-gradient(
+    135deg,
+    hsl(30 61% 49% / 0.3) 0%,
+    hsl(30 61% 49% / 0.175) 100%
+  );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 2px solid hsl(30 61% 49%);
+  color: hsl(30 30% 90%);
+  box-shadow: 
+    0 4px 8px hsl(30 61% 49% / 0.25),
+    inset 0 1px 1px hsl(30 61% 49% / 0.3);
 }
 
 body.dark .player-button.dst {
-  background-color: #6e2c2c; /* Darker brown for D/ST */
+  background-color: hsl(12 86% 49%);
+  color: hsl(12 30% 90%);
 }
 
 body.dark .player-button.k {
-  background-color: #4b0082; /* Darker purple for K */
+  background-color: hsl(280 60% 49%);
+  color: hsl(280 30% 90%);
 }
 
 body.dark .player-button.default {
-  background-color: #555; /* Darker gray for default */
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
 }

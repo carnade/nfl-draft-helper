@@ -368,7 +368,7 @@ function BestballList() {
     );
   };
 
-  const LEAGUE_YEAR = 2025;
+  const LEAGUE_YEAR = 2026;
 
   const handleToggle = (leagueId) => {
     setExpandedLeagueIds((prevIds) => {
@@ -516,7 +516,7 @@ function BestballList() {
 
       const filteredLeagues = leaguesData.filter(
         (league) =>
-          league.settings.best_ball === 1 && league.status === "in_season"
+          league.settings.best_ball === 1 && league.status === "complete"
       );
 
       // Update total drafts

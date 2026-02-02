@@ -50,7 +50,7 @@
 /* The main grid for drafts data */
 .draft-grid {
   display: grid;
-  grid-template-columns: 3fr 2fr 1fr 2fr 1fr; /* 5 columns to match 5 headers */
+  grid-template-columns: 3fr 3fr 2fr 1fr 2fr 1fr; /* 6 columns to match 6 headers */
   gap: 10px;
   padding: 20px;
   margin-left: auto;
@@ -82,6 +82,47 @@
   font-family: "Poppins", sans-serif;
   font-size: 16px;
   font-weight: 500;
+}
+
+.draft-grid-positions {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  gap: 0.25rem;
+}
+
+.draft-grid-positions .position-label {
+  font-weight: 600;
+}
+
+.draft-grid-positions .position-label.qb {
+  color: hsl(339 44% 59%);
+}
+
+.draft-grid-positions .position-label.rb {
+  color: hsl(155 43% 64%);
+}
+
+.draft-grid-positions .position-label.wr {
+  color: hsl(201 54% 56%);
+}
+
+.draft-grid-positions .position-label.te {
+  color: hsl(30 61% 57%);
+}
+
+.draft-grid-positions .position-label.p {
+  color: hsl(280 81% 67%);
+}
+
+.draft-grid-positions .position-count {
+  color: white;
+  margin-right: 0.25rem;
+}
+
+.draft-grid-positions .position-separator {
+  color: hsl(var(--muted-foreground));
+  margin: 0 0.125rem;
 }
 
 /* Optional icon styling in the last column */
