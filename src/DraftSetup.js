@@ -64,7 +64,6 @@ function formatStatusLabel(status) {
 }
 
 function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
-  const [selectedFile, setSelectedFile] = useState(null);
   const navigate = useNavigate();
   
   // State for draft rankings feature (only used when isRankingsPage is true)
@@ -74,7 +73,6 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
   const [isCompiling, setIsCompiling] = useState(false);
   const [leagueYear, setLeagueYear] = useState(DEFAULT_LEAGUE_YEAR); // 2025 or 2026
   const [myDraftsCache, setMyDraftsCache] = useState({ 2025: null, 2026: null }); // null = not loaded, array = loaded
-  const [myLeagues, setMyLeagues] = useState([]);
   const [myDrafts, setMyDrafts] = useState([]);
   const [isLoadingMyLeagues, setIsLoadingMyLeagues] = useState(false);
   const [draftSource, setDraftSource] = useState("manual"); // "manual" | "myLeagues" | "otherUser"
@@ -87,7 +85,6 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
   const handleFileChange = (event) => {
     const file = event.target.files[0];
     if (file) {
-      setSelectedFile(file);
       // Automatically start with the selected CSV file
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -180,7 +177,6 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
       const sorted = sortDraftsByStatusTypeName(allDrafts);
       setMyDraftsCache((prev) => ({ ...prev, [leagueYear]: sorted }));
       setMyDrafts(sorted);
-      setMyLeagues(leaguesData);
     } catch (error) {
       console.error("Error fetching my leagues:", error);
       alert(`Error fetching leagues: ${error.message}`);
