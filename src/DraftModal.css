@@ -34,7 +34,7 @@
   z-index: 1000;
 }
 
-/* Main modal panel – glass style matching rankings (lighter body for larger surface) */
+/* Main modal panel – fixed height so inner grid can scroll */
 .draft-modal-content {
   background: linear-gradient(
     135deg,
@@ -46,15 +46,17 @@
   padding: 1.25rem;
   border-radius: var(--radius);
   width: 95%;
-  border: 2px solid hsl(var(--border));
-  box-shadow:
-    0 8px 32px hsl(var(--foreground) / 0.12),
-    inset 0 1px 0 hsl(var(--foreground) / 0.05);
+  height: 80vh;
   max-height: 80vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   color: hsl(var(--foreground));
   font-family: Inter, sans-serif;
+  box-shadow:
+    0 8px 32px hsl(var(--foreground) / 0.12),
+    inset 0 1px 0 hsl(var(--foreground) / 0.05);
+  border: 2px solid hsl(var(--border));
 }
 
 body.dark .draft-modal-content {
@@ -95,15 +97,23 @@ body.dark .close-modal-button:hover {
   background-color: hsl(174 45% 38%);
 }
 
-/* Renamed grid-container to draftmodal-gridcontainer */
+/* Scroll wrapper – bounded height so vertical scroll always works */
+.draftmodal-gridscroll {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 55vh; /* Bounded height so overflow scrolls (all 53+ picks) */
+  margin-top: 1.25rem;
+  margin-bottom: 1.25rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Grid of player cards – layout only, no flex/overflow (old spacing) */
 .draftmodal-gridcontainer {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
   gap: 0.625rem;
-  margin-top: 1.25rem;
-  flex: 1; /* Allow the grid to take up remaining space */
-  overflow-y: auto; /* Make the grid content scrollable */
-  margin-bottom: 1.25rem; /* Add spacing between grid and close button */
 }
 
 /* Player card – glass style matching rankings page */
@@ -346,6 +356,13 @@ body.dark .draft-modal-content .player-card.default {
   transform: scale(0.95);
 }
 
+/* Keep header, team buttons, and results from shrinking so only the picks grid scrolls */
+.draft-modal-content > .header-container,
+.draft-modal-content > .team-buttons-container,
+.draft-modal-content > .results-container {
+  flex-shrink: 0;
+}
+
 /* Added styles for header-container */
 .header-container {
   display: flex;
@@ -569,6 +586,12 @@ body.dark button.team-button {
   height: 100%; /* Take full height of the card */
   padding: 10px; /* Add some padding */
   box-sizing: border-box; /* Include padding in width/height */
+}
+
+/* Grey out cards for picks that don't belong to the selected team */
+.player-card.player-card-dimmed {
+  opacity: 0.35;
+  filter: grayscale(0.85);
 }
 
 .dimmed {

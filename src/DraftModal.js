@@ -479,45 +479,29 @@ function DraftModal({ league, draftId, onClose, userId }) {
     draftType,
     reversalRound
   ) => {
-    const orderedPicks = [];
+    if (!picks || picks.length === 0) return [];
 
-    for (let i = 0; i < picks.length; i++) {
-      const round = Math.floor(i / teamsCount) + 1;
-      const draftPosition = (i % teamsCount) + 1;
-      const reverseDraftPosition = teamsCount - draftPosition + 1;
-
-      let draftPositionInRound;
-
-      if (draftType === "snake") {
-        if (reversalRound && round === reversalRound) {
-          draftPositionInRound = reverseDraftPosition;
-        } else if (reversalRound && round > reversalRound) {
-          if (round % 2 === 1) {
-            draftPositionInRound = reverseDraftPosition;
-          } else {
-            draftPositionInRound = draftPosition;
-          }
-        } else {
-          if (round % 2 === 1) {
-            draftPositionInRound = draftPosition;
-          } else {
-            draftPositionInRound = reverseDraftPosition;
-          }
-        }
-
-        const pick = picks.find(
-          (pick, index) =>
-            Math.floor(index / teamsCount) + 1 === round &&
-            (index % teamsCount) + 1 === draftPositionInRound
-        );
-
-        orderedPicks.push(pick);
-      } else {
-        orderedPicks.push(picks[i]);
-      }
+    if (draftType !== "snake") {
+      return [...picks];
     }
 
-    return orderedPicks;
+    // Sort picks by grid order (round, slot) so every pick is shown—no index→pick_no lookup that can drop picks.
+    const getSortKey = (pickNo) => {
+      const round = Math.ceil(pickNo / teamsCount);
+      const slotInRound1Based = ((pickNo - 1) % teamsCount) + 1;
+      const reverseSlot = teamsCount - slotInRound1Based + 1;
+      let displaySlot;
+      if (reversalRound && round === reversalRound) {
+        displaySlot = reverseSlot;
+      } else if (reversalRound && round > reversalRound) {
+        displaySlot = round % 2 === 1 ? reverseSlot : slotInRound1Based;
+      } else {
+        displaySlot = round % 2 === 1 ? slotInRound1Based : reverseSlot;
+      }
+      return round * 1000 + displaySlot;
+    };
+
+    return [...picks].sort((a, b) => getSortKey(a.pick_no) - getSortKey(b.pick_no));
   };
 
   const filteredPicks = (picks || []).map((pick) => {
@@ -862,7 +846,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
                 } else if (adjustedPointDiff >= 35) {
                   return <GiFireworkRocket className="result-icon" />;
                 } else if (adjustedPointDiff >= 20) {
-                  return <GiAmericanFootballPlayer c4lassName="result-icon" />;
+                  return <GiAmericanFootballPlayer className="result-icon" />;
                 } else if (adjustedPointDiff <= -50) {
                   return <GiTurd className="result-icon brown" />;
                 } else if (adjustedPointDiff <= -35) {
@@ -881,7 +865,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
                 } else if (adjustedPointDiff >= 35) {
                   return <GiFireworkRocket className="result-icon" />;
                 } else if (adjustedPointDiff >= 20) {
-                  return <GiAmericanFootballPlayer c4lassName="result-icon" />;
+                  return <GiAmericanFootballPlayer className="result-icon" />;
                 } else if (adjustedPointDiff <= -50) {
                   return <GiTurd className="result-icon brown" />;
                 } else if (adjustedPointDiff <= -35) {
@@ -907,7 +891,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
             } else if (adjustedRankDifference >= 3) {
               return <GiFireworkRocket className="result-icon" />;
             } else if (adjustedRankDifference >= 2) {
-              return <GiAmericanFootballPlayer c4lassName="result-icon" />;
+              return <GiAmericanFootballPlayer className="result-icon" />;
             } else if (adjustedRankDifference <= -4) {
               return <GiTurd className="result-icon brown" />;
             } else if (adjustedRankDifference <= -3) {
@@ -1062,6 +1046,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
               isGoatActive={isGoatActive}
             />
 
+            <div className="draftmodal-gridscroll">
             <div className="draftmodal-gridcontainer">
               {draftType ? (
                 calculatePresentationOrder(
@@ -1084,7 +1069,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
                       key={pick.pick_no}
                       className={`player-card ${
                         metadata.position?.toLowerCase() || "unknown"
-                      }`}
+                      } ${pick.isDimmed ? "player-card-dimmed" : ""}`}
                       data-picked-by={pick.picked_by}
                       data-pick-no={pick.pick_no}
                       style={{
@@ -1201,6 +1186,7 @@ function DraftModal({ league, draftId, onClose, userId }) {
                   No draft found
                 </div>
               )}
+            </div>
             </div>
           </>
         )}
