@@ -116,7 +116,7 @@
 }
 
 .draft-grid-positions .position-count {
-  color: white;
+  color: hsl(var(--foreground));
   margin-right: 0.25rem;
 }
 

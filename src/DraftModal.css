@@ -18,27 +18,39 @@
     font-size: clamp(0.6em, 1em, 1.2em);
   }
 }
+/* Glassy overlay – blur background like rankings page */
 .draft-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: hsl(222 30% 10% / 0.5);
+  background-color: hsl(222 30% 10% / 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
 }
 
+/* Main modal panel – glass style matching rankings (lighter body for larger surface) */
 .draft-modal-content {
-  background: hsl(var(--card));
+  background: linear-gradient(
+    135deg,
+    hsl(var(--card) / 0.92) 0%,
+    hsl(var(--card) / 0.78) 100%
+  );
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   padding: 1.25rem;
   border-radius: var(--radius);
   width: 95%;
   border: 2px solid hsl(var(--border));
-  box-shadow: 0 0.25rem 0.375rem hsl(var(--foreground) / 0.1);
-  max-height: 80vh; /* 80% of the screen height */
+  box-shadow:
+    0 8px 32px hsl(var(--foreground) / 0.12),
+    inset 0 1px 0 hsl(var(--foreground) / 0.05);
+  max-height: 80vh;
   display: flex;
   flex-direction: column;
   color: hsl(var(--foreground));
@@ -46,9 +58,13 @@
 }
 
 body.dark .draft-modal-content {
-  background-color: hsl(var(--card));
+  background: linear-gradient(
+    135deg,
+    hsl(var(--card) / 0.95) 0%,
+    hsl(var(--card) / 0.82) 100%
+  );
   color: hsl(var(--foreground));
-  border-color: hsl(var(--border));
+  border-color: hsl(var(--border) / 0.8);
 }
 
 .close-modal-button {
@@ -90,42 +106,45 @@ body.dark .close-modal-button:hover {
   margin-bottom: 1.25rem; /* Add spacing between grid and close button */
 }
 
-/* Adjusted the grid layout to align names with the ranks area */
+/* Player card – glass style matching rankings page */
 .player-card {
   display: grid;
   grid-template-areas:
     "pick name name"
     "ktc ktc-rank ktc-rank"
     "fc fc-rank fc-rank";
-  grid-template-columns: 1fr 2fr 1fr; /* Adjusted column sizes */
+  grid-template-columns: 1fr 2fr 1fr;
   grid-template-rows: auto auto auto;
   gap: 0.3125rem;
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
   border-radius: var(--radius);
   padding: 0.625rem;
-  box-shadow: 0 0.125rem 0.25rem hsl(var(--foreground) / 0.1);
   width: 85%;
   height: 100px;
   color: hsl(var(--foreground));
   font-family: Inter, sans-serif;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 2px 8px hsl(var(--foreground) / 0.1);
 }
 
 .player-card-container {
-  position: relative; /* Make the container a positioning context */
+  position: relative;
 }
 
+/* Icon badge – subtle glass (lighter body) */
 .player-card-icon {
   position: relative;
-  /* top: -150%; */
-  /* left: 120%; */
   transform: translate(66%, -100%);
   z-index: 10;
   font-size: 3.5rem;
   pointer-events: none;
-  /* align-items: center; */
-  /* border: 3px; */
-  background-color: hsl(var(--card));
+  background: linear-gradient(
+    135deg,
+    hsl(var(--card) / 0.95) 0%,
+    hsl(var(--card) / 0.85) 100%
+  );
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius);
   padding: 0.0625rem;
@@ -188,82 +207,110 @@ body.dark .close-modal-button:hover {
   grid-column: span 2; /* Take less space */
 }
 
-/* Light mode styles for modal cards - matching DFS filter buttons */
+/* Glass cards by position – lighter body for larger cards (light) */
 body.light .draft-modal-content .player-card.qb {
-  background-color: hsl(339 44% 59%);
+  background: linear-gradient(135deg, hsl(339 44% 62% / 0.55) 0%, hsl(339 44% 59% / 0.38) 100%);
+  border: 2px solid hsl(339 44% 49%);
   color: hsl(339 50% 20%);
+  box-shadow: 0 4px 8px hsl(339 44% 49% / 0.2), inset 0 1px 1px hsl(339 44% 49% / 0.2);
 }
 
 body.light .draft-modal-content .player-card.rb {
-  background-color: hsl(155 43% 64%);
+  background: linear-gradient(135deg, hsl(155 43% 67% / 0.55) 0%, hsl(155 43% 64% / 0.38) 100%);
+  border: 2px solid hsl(155 30% 49%);
   color: hsl(155 50% 20%);
+  box-shadow: 0 4px 8px hsl(155 30% 49% / 0.2), inset 0 1px 1px hsl(155 30% 49% / 0.2);
 }
 
 body.light .draft-modal-content .player-card.wr {
-  background-color: hsl(201 54% 56%);
+  background: linear-gradient(135deg, hsl(201 54% 59% / 0.55) 0%, hsl(201 54% 56% / 0.38) 100%);
+  border: 2px solid hsl(201 54% 49%);
   color: hsl(201 50% 20%);
+  box-shadow: 0 4px 8px hsl(201 54% 49% / 0.2), inset 0 1px 1px hsl(201 54% 49% / 0.2);
 }
 
 body.light .draft-modal-content .player-card.te {
-  background-color: hsl(30 61% 57%);
+  background: linear-gradient(135deg, hsl(30 61% 60% / 0.55) 0%, hsl(30 61% 57% / 0.38) 100%);
+  border: 2px solid hsl(30 61% 49%);
   color: hsl(30 50% 20%);
+  box-shadow: 0 4px 8px hsl(30 61% 49% / 0.2), inset 0 1px 1px hsl(30 61% 49% / 0.2);
 }
 
 body.light .draft-modal-content .player-card.dst {
-  background-color: hsl(12 86% 56%);
+  background: linear-gradient(135deg, hsl(12 86% 59% / 0.55) 0%, hsl(12 86% 56% / 0.38) 100%);
+  border: 2px solid hsl(12 86% 49%);
   color: hsl(12 50% 20%);
+  box-shadow: 0 4px 8px hsl(12 86% 49% / 0.2), inset 0 1px 1px hsl(12 86% 49% / 0.2);
 }
 
 body.light .draft-modal-content .player-card.k {
-  background-color: hsl(280 60% 50%);
+  background: linear-gradient(135deg, hsl(280 60% 55% / 0.55) 0%, hsl(280 60% 50% / 0.38) 100%);
+  border: 2px solid hsl(280 60% 45%);
   color: hsl(280 50% 20%);
+  box-shadow: 0 4px 8px hsl(280 60% 45% / 0.2), inset 0 1px 1px hsl(280 60% 45% / 0.2);
 }
 
 body.light .draft-modal-content .player-card.default {
-  background-color: hsl(var(--muted));
+  background: linear-gradient(135deg, hsl(var(--muted) / 0.75) 0%, hsl(var(--muted) / 0.55) 100%);
+  border: 2px solid hsl(var(--border));
   color: hsl(var(--foreground));
+  box-shadow: 0 2px 6px hsl(var(--foreground) / 0.08);
 }
 
 /* Dark mode styles */
 body.dark .draftmodal-player-name,
 body.dark .player-info {
-  color: hsl(var(--foreground)); /* Use design system foreground */
+  color: hsl(var(--foreground));
 }
 
-/* Dark mode styles for modal cards - matching DFS filter buttons */
+/* Glass cards by position – lighter body for larger cards (dark) */
 body.dark .draft-modal-content .player-card.qb {
-  background-color: hsl(339 44% 59%);
+  background: linear-gradient(135deg, hsl(339 44% 52% / 0.42) 0%, hsl(339 44% 49% / 0.28) 100%);
+  border: 2px solid hsl(339 44% 49%);
   color: hsl(339 30% 90%);
+  box-shadow: 0 4px 8px hsl(339 44% 49% / 0.25), inset 0 1px 1px hsl(339 44% 49% / 0.3);
 }
 
 body.dark .draft-modal-content .player-card.rb {
-  background-color: hsl(155 43% 64%);
+  background: linear-gradient(135deg, hsl(155 30% 52% / 0.42) 0%, hsl(155 30% 49% / 0.28) 100%);
+  border: 2px solid hsl(155 30% 49%);
   color: hsl(155 30% 90%);
+  box-shadow: 0 4px 8px hsl(155 30% 49% / 0.25), inset 0 1px 1px hsl(155 30% 49% / 0.3);
 }
 
 body.dark .draft-modal-content .player-card.wr {
-  background-color: hsl(201 54% 56%);
+  background: linear-gradient(135deg, hsl(201 54% 52% / 0.42) 0%, hsl(201 54% 49% / 0.28) 100%);
+  border: 2px solid hsl(201 54% 49%);
   color: hsl(201 30% 90%);
+  box-shadow: 0 4px 8px hsl(201 54% 49% / 0.25), inset 0 1px 1px hsl(201 54% 49% / 0.3);
 }
 
 body.dark .draft-modal-content .player-card.te {
-  background-color: hsl(30 61% 57%);
+  background: linear-gradient(135deg, hsl(30 61% 52% / 0.42) 0%, hsl(30 61% 49% / 0.28) 100%);
+  border: 2px solid hsl(30 61% 49%);
   color: hsl(30 30% 90%);
+  box-shadow: 0 4px 8px hsl(30 61% 49% / 0.25), inset 0 1px 1px hsl(30 61% 49% / 0.3);
 }
 
 body.dark .draft-modal-content .player-card.dst {
-  background-color: hsl(12 86% 56%);
+  background: linear-gradient(135deg, hsl(12 86% 52% / 0.42) 0%, hsl(12 86% 49% / 0.28) 100%);
+  border: 2px solid hsl(12 86% 49%);
   color: hsl(12 30% 90%);
+  box-shadow: 0 4px 8px hsl(12 86% 49% / 0.25), inset 0 1px 1px hsl(12 86% 49% / 0.3);
 }
 
 body.dark .draft-modal-content .player-card.k {
-  background-color: hsl(280 60% 50%);
+  background: linear-gradient(135deg, hsl(280 60% 53% / 0.42) 0%, hsl(280 60% 50% / 0.28) 100%);
+  border: 2px solid hsl(280 60% 50%);
   color: hsl(280 30% 90%);
+  box-shadow: 0 4px 8px hsl(280 60% 50% / 0.25), inset 0 1px 1px hsl(280 60% 50% / 0.3);
 }
 
 body.dark .draft-modal-content .player-card.default {
-  background-color: hsl(var(--muted));
+  background: linear-gradient(135deg, hsl(var(--muted) / 0.62) 0%, hsl(var(--muted) / 0.42) 100%);
+  border: 2px solid hsl(var(--border));
   color: hsl(var(--foreground));
+  box-shadow: 0 2px 6px hsl(var(--foreground) / 0.1);
 }
 
 .modal-title {
@@ -321,18 +368,20 @@ button.team-button {
   border-radius: var(--radius);
   width: 70%;
   border: 1px solid hsl(var(--border));
-  background-color: hsl(var(--card));
+  background: linear-gradient(135deg, hsl(var(--card) / 0.95) 0%, hsl(var(--card) / 0.85) 100%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   color: hsl(var(--foreground));
-  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
-  box-shadow: 0 1px 3px hsl(var(--foreground) / 0.1);
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+  box-shadow: 0 1px 3px hsl(var(--foreground) / 0.1), inset 0 1px 0 hsl(var(--foreground) / 0.05);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  min-width: 0; /* Allow text truncation */
+  min-width: 0;
 }
 
 button.team-button:hover {
-  background-color: hsl(var(--muted));
+  background: linear-gradient(135deg, hsl(var(--muted) / 0.9) 0%, hsl(var(--muted) / 0.75) 100%);
   border-color: hsl(var(--border));
 }
 
@@ -344,12 +393,12 @@ button.team-button.selected {
 }
 
 body.light button.team-button {
-  background-color: hsl(var(--card));
+  background: linear-gradient(135deg, hsl(var(--card) / 0.98) 0%, hsl(var(--card) / 0.9) 100%);
   color: hsl(var(--foreground));
 }
 
 body.dark button.team-button {
-  background-color: hsl(var(--card));
+  background: linear-gradient(135deg, hsl(var(--card) / 0.96) 0%, hsl(var(--card) / 0.86) 100%);
   color: hsl(var(--foreground));
 }
 
