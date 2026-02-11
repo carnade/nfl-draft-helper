@@ -109,11 +109,30 @@ body.dark .close-modal-button:hover {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Grid of player cards – layout only, no flex/overflow (old spacing) */
+/* Grid of player cards – column of round rows (snake) or flat grid (linear) */
 .draftmodal-gridcontainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+/* Each round row: 12 columns; left-aligned or right-aligned for snake */
+.draftmodal-round-row {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
   gap: 0.625rem;
+}
+
+.draftmodal-round-left {
+  justify-items: start;
+}
+
+.draftmodal-round-right {
+  justify-items: end;
+}
+
+.draftmodal-slot-empty {
+  min-width: 0;
 }
 
 /* Player card – glass style matching rankings page */

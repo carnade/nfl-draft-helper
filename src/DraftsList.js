@@ -45,54 +45,24 @@ function DraftPage() {
 
   const formatPositionCounts = (counts) => {
     if (!counts) return "";
-    
-    const parts = [];
-    if (counts.QB > 0) {
-      parts.push(
-        <React.Fragment key="qb">
-          <span className="position-label qb">QB</span>
-          <span className="position-count">: {counts.QB}</span>
-        </React.Fragment>
+
+    const chunks = [];
+    const addChunk = (key, labelClass, label, count) => {
+      if (chunks.length > 0) chunks.push(<span key={`sep-${key}`} className="position-separator"> </span>);
+      chunks.push(
+        <span key={key} className="position-chunk">
+          <span className={`position-label ${labelClass}`}>{label}</span>
+          <span className="position-count">: {count}</span>
+        </span>
       );
-    }
-    if (counts.RB > 0) {
-      parts.push(
-        <React.Fragment key="rb">
-          {parts.length > 0 && <span className="position-separator"> - </span>}
-          <span className="position-label rb">RB</span>
-          <span className="position-count">: {counts.RB}</span>
-        </React.Fragment>
-      );
-    }
-    if (counts.WR > 0) {
-      parts.push(
-        <React.Fragment key="wr">
-          {parts.length > 0 && <span className="position-separator"> - </span>}
-          <span className="position-label wr">WR</span>
-          <span className="position-count">: {counts.WR}</span>
-        </React.Fragment>
-      );
-    }
-    if (counts.TE > 0) {
-      parts.push(
-        <React.Fragment key="te">
-          {parts.length > 0 && <span className="position-separator"> - </span>}
-          <span className="position-label te">TE</span>
-          <span className="position-count">: {counts.TE}</span>
-        </React.Fragment>
-      );
-    }
-    if (counts.P > 0) {
-      parts.push(
-        <React.Fragment key="p">
-          {parts.length > 0 && <span className="position-separator"> - </span>}
-          <span className="position-label p">P</span>
-          <span className="position-count">: {counts.P}</span>
-        </React.Fragment>
-      );
-    }
-    
-    return parts.length > 0 ? parts : "";
+    };
+    if (counts.QB > 0) addChunk("qb", "qb", "QB", counts.QB);
+    if (counts.RB > 0) addChunk("rb", "rb", "RB", counts.RB);
+    if (counts.WR > 0) addChunk("wr", "wr", "WR", counts.WR);
+    if (counts.TE > 0) addChunk("te", "te", "TE", counts.TE);
+    if (counts.P > 0) addChunk("p", "p", "P", counts.P);
+
+    return chunks.length > 0 ? chunks : "";
   };
 
   const calcPicksToDraft = (
