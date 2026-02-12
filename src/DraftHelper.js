@@ -109,30 +109,41 @@ function DraftHelper({ csvData, csvFileName }) {
         }
       };
 
-      const playersToRemove = new Set();
+      const pickedSleeperIds = new Set();
+      const removedNames = new Set();
+
       picksData.forEach((pick) => {
-        const fetchedLastName = pick.metadata.last_name;
-
-        let fetchedTeam = fixTeamNames(pick.metadata.team);
-        const fetchedPosition = pick.metadata.position;
-
+        const pid = pick.player_id;
+        if (pid) {
+          pickedSleeperIds.add(pid);
+          const inList = playersArr.find((p) => String(p.SleeperId) === String(pid));
+          if (inList?.Name) removedNames.add(inList.Name);
+        }
+        const meta = pick.metadata || {};
+        const fetchedLastName = meta.last_name;
+        const fetchedTeam = fixTeamNames(meta.team);
+        const fetchedPosition = meta.position;
+        if (!fetchedLastName && !pid) return;
         for (const p of playersArr) {
+          if (pickedSleeperIds.has(String(p.SleeperId))) continue;
           if (
+            fetchedLastName &&
             p.Name?.includes(fetchedLastName) &&
-            p.Team === fetchedTeam &&
-            p.Position === fetchedPosition
+            (fetchedTeam == null || p.Team === fetchedTeam) &&
+            (fetchedPosition == null || p.Position === fetchedPosition)
           ) {
-            playersToRemove.add(p.Name);
+            pickedSleeperIds.add(String(p.SleeperId));
+            removedNames.add(p.Name);
           }
         }
       });
 
-      console.log("Players to remove:", playersToRemove);
-      setRemovedPlayers(playersToRemove);
+      setRemovedPlayers(removedNames);
 
       const filteredArr = playersArr.filter(
-        (p) => !playersToRemove.has(p.Name)
+        (p) => !pickedSleeperIds.has(String(p.SleeperId))
       );
+      console.log("Players to remove:", removedNames.size, "Filtered count:", filteredArr.length);
 
       // Also fetch league data for the draftName
       const leagueResp = await fetch(
@@ -222,15 +233,10 @@ function DraftHelper({ csvData, csvFileName }) {
       return;
     }
     console.log("Manual fetch draft data for:", draftId);
-
-    // We'll remove picks from the current players
-    setPlayers((prev) => {
-      removePickedPlayers(draftId, prev).then((filteredArr) => {
-        setPlayers(filteredArr);
-      });
-      return prev; // immediate return, updated in .then
-    });
-  }, [draftId, removePickedPlayers]);
+    const currentPlayers = players;
+    const filteredArr = await removePickedPlayers(draftId, currentPlayers);
+    setPlayers(filteredArr);
+  }, [draftId, players, removePickedPlayers]);
 
   // autoReload effect
   useEffect(() => {
