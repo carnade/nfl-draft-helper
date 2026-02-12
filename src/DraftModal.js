@@ -504,6 +504,14 @@ function DraftModal({ league, draftId, onClose, userId }) {
     return [...picks].sort((a, b) => getSortKey(a.pick_no) - getSortKey(b.pick_no));
   };
 
+  // For snake: odd rounds start left, even start right. Third-round reversal flips that round and all later rounds.
+  const roundStartsLeft = (round, reversalRound) => {
+    const normalStartsLeft = round % 2 === 1;
+    if (!reversalRound) return normalStartsLeft;
+    if (round < reversalRound) return normalStartsLeft;
+    return !normalStartsLeft; // reversal round and every round after: flip direction
+  };
+
   const filteredPicks = (picks || []).map((pick) => {
     const player = playerData[pick.player_id] || {};
     const pickNumber = pick.pick_no;
@@ -923,6 +931,108 @@ function DraftModal({ league, draftId, onClose, userId }) {
     return numPrior + 1;
   }
 
+  const renderPlayerCard = (pick, player, metadata, teamsCount, formattedRank) => (
+    <div
+      key={pick.pick_no}
+      className={`player-card ${
+        metadata.position?.toLowerCase() || "unknown"
+      } ${pick.isDimmed ? "player-card-dimmed" : ""}`}
+      data-picked-by={pick.picked_by}
+      data-pick-no={pick.pick_no}
+      style={{
+        ...calculateBorders(pick),
+        ...calculateBackground(pick),
+      }}
+    >
+      <div className="pick-number">
+        {formattedRank} :{pick.pick_no}
+      </div>
+      <div className="draftmodal-player-name">
+        <div
+          className="draftmodal-player-firstname autoshrink-text"
+          title={
+            (metadata.first_name || player.first_name || "Unknown") +
+            " " +
+            (metadata.last_name || player.last_name || "Player")
+          }
+        >
+          {metadata.first_name || player.first_name || "Unknown"}
+        </div>
+        <div
+          className="draftmodal-player-lastname autoshrink-text"
+          title={
+            (metadata.first_name || player.first_name || "Unknown") +
+            " " +
+            (metadata.last_name || player.last_name || "Player")
+          }
+        >
+          {metadata.last_name || player.last_name || "Player"}
+        </div>
+      </div>
+      {isRanksMode ? (
+        <>
+          <div className="player-info ktc">
+            <div className="draft-modal-card-text">KTC:</div>
+            {player["KTC Value"] || "N/A"}
+          </div>
+          <div className="player-info ktc-rank">
+            <div className="draft-modal-card-text">R:</div>
+            {player.ktcRankCalculated || "N/A"}
+          </div>
+          <div className="player-info fc">
+            <div className="draft-modal-card-text">FAC:</div>
+            {player["FC Value"] || "N/A"}
+          </div>
+          <div className="player-info fc-rank">
+            <div className="draft-modal-card-text">R:</div>
+            {player.fcRankCalculated || "N/A"}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="player-info ktc">
+            {scoringType && scoringType.toLowerCase().includes("half_ppr")
+              ? Math.round(player.pts_half_ppr ?? 0)
+              : Math.round(player.pts_ppr ?? 0)}
+            p
+          </div>
+          <div className="player-info ktc-rank">
+            <div className="draft-modal-card-text">Pk:</div>
+            {(() => {
+              const currentPickNo = pick.pick_no;
+              const currentPosition = player.position;
+              if (!currentPosition || !currentPickNo) return "-";
+              const draftPosRank = getDraftPosRank(picks, playerData, currentPickNo, currentPosition);
+              return ` ${draftPosRank}`;
+            })()}
+          </div>
+          <div className="player-info fc">
+            {scoringType && scoringType.toLowerCase().includes("half_ppr")
+              ? (player.pts_half_ppr / player.gp ?? 0).toFixed(1)
+              : (isNaN(player.pts_ppr / player.gp) ? 0 : (player.pts_ppr / player.gp)).toFixed(1)}
+            /g
+          </div>
+          <div className="player-info fc-rank">
+            <div className="draft-modal-card-text">Pts:</div>
+            {(() => {
+              const position = player.position;
+              if (!position) return "-";
+              const posRank = scoringType?.toLowerCase().includes("half_ppr")
+                ? player.pos_rank_half_ppr
+                : player.pos_rank_ppr;
+              return posRank ? `${posRank}` : "-";
+            })()}
+          </div>
+        </>
+      )}
+      {isGoatActive && (
+        <div className={`player-card-icon ${pick.isIconDimmed ? "dimmed" : ""}`}>
+          {iconForPick(pick, draftType)}
+        </div>
+      )}
+    </div>
+  );
+
   if (!league) return null;
 
   return (
@@ -1049,138 +1159,64 @@ function DraftModal({ league, draftId, onClose, userId }) {
             <div className="draftmodal-gridscroll">
             <div className="draftmodal-gridcontainer">
               {draftType ? (
-                calculatePresentationOrder(
-                  filteredPicks,
-                  league.teams || 12,
-                  draftType,
-                  reversalRound
-                ).map((pick, index) => {
-                  if (!pick) return null;
-                  
-                  const player = playerData[pick.player_id] || {};
-                  const metadata = pick.metadata || {};
+                (() => {
                   const teamsCount = league.teams || 12;
-                  const round = Math.floor((pick.pick_no - 1) / teamsCount) + 1;
-                  const pickInRound = ((pick.pick_no - 1) % teamsCount) + 1;
-                  const formattedRank = `${round}.${pickInRound.toString().padStart(2, "0")}`;
-
-                  return (
-                    <div
-                      key={pick.pick_no}
-                      className={`player-card ${
-                        metadata.position?.toLowerCase() || "unknown"
-                      } ${pick.isDimmed ? "player-card-dimmed" : ""}`}
-                      data-picked-by={pick.picked_by}
-                      data-pick-no={pick.pick_no}
-                      style={{
-                        ...calculateBorders(pick),
-                        ...calculateBackground(pick),
-                      }}
-                    >
-                      <div className="pick-number">
-                        {formattedRank} :{pick.pick_no}
-                      </div>
-                      <div className="draftmodal-player-name">
-                        <div
-                          className="draftmodal-player-firstname autoshrink-text"
-                          title={
-                            (metadata.first_name ||
-                              player.first_name ||
-                              "Unknown") +
-                            " " +
-                            (metadata.last_name || player.last_name || "Player")
-                          }
-                        >
-                          {metadata.first_name ||
-                            player.first_name ||
-                            "Unknown"}
-                        </div>
-                        <div
-                          className="draftmodal-player-lastname autoshrink-text"
-                          title={
-                            (metadata.first_name ||
-                              player.first_name ||
-                              "Unknown") +
-                            " " +
-                            (metadata.last_name || player.last_name || "Player")
-                          }
-                        >
-                          {metadata.last_name || player.last_name || "Player"}
-                        </div>
-                      </div>
-                      {isRanksMode ? (
-                        <>
-                          <div className="player-info ktc">
-                            <div className="draft-modal-card-text">KTC:</div>
-                            {player["KTC Value"] || "N/A"}
-                          </div>
-                          <div className="player-info ktc-rank">
-                            <div className="draft-modal-card-text">R:</div>
-                            {player.ktcRankCalculated || "N/A"}
-                          </div>
-                          <div className="player-info fc">
-                            <div className="draft-modal-card-text">FAC:</div>
-                            {player["FC Value"] || "N/A"}
-                          </div>
-                          <div className="player-info fc-rank">
-                            <div className="draft-modal-card-text">R:</div>
-                            {player.fcRankCalculated || "N/A"}
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="player-info ktc">
-                            {scoringType &&
-                            scoringType.toLowerCase().includes("half_ppr")
-                              ? Math.round(player.pts_half_ppr ?? 0)
-                              : Math.round(player.pts_ppr ?? 0)}
-                            p
-                          </div>
-                          <div className="player-info ktc-rank">
-                          <div className="draft-modal-card-text">Pk:</div>
-                            {(() => {
-                              const currentPickNo = pick.pick_no;
-                              const currentPosition = player.position;
-                              if (!currentPosition || !currentPickNo) return "-";
-                              
-                              // Calculate draft position rank
-                              const draftPosRank = getDraftPosRank(picks, playerData, currentPickNo, currentPosition);
-
-                              return ` ${draftPosRank}`;
-                            })()}
-                          </div>
-                          <div className="player-info fc">
-                          {scoringType &&
-                            scoringType.toLowerCase().includes("half_ppr")
-                              ? (player.pts_half_ppr / player.gp ?? 0).toFixed(1)
-                              : (isNaN(player.pts_ppr / player.gp) ? 0 : (player.pts_ppr / player.gp)).toFixed(1)}
-                              /g               
-                         </div>
-                          <div className="player-info fc-rank">
-                          <div className="draft-modal-card-text">Pts:</div> 
-                              {(() => {
-                                const position = player.position;
-                                if (!position) return "-";
-                                const posRank = scoringType?.toLowerCase().includes("half_ppr")
-                                  ? player.pos_rank_half_ppr
-                                  : player.pos_rank_ppr;
-                                return posRank ? `${posRank}` : "-";
-                              })()}
-                          </div>
-                        </>
-                      )}
-                      {isGoatActive && (
-                        <div
-                          className={`player-card-icon ${
-                            pick.isIconDimmed ? "dimmed" : ""
-                          }`}
-                        >
-                          {iconForPick(pick, draftType)}
-                        </div>
-                      )}
-                    </div>
+                  const ordered = calculatePresentationOrder(
+                    filteredPicks,
+                    teamsCount,
+                    draftType,
+                    reversalRound
                   );
-                })
+                  if (draftType !== "snake") {
+                    return (
+                      <div className="draftmodal-round-row draftmodal-round-left">
+                        {ordered.map((pick) => {
+                          if (!pick) return null;
+                          const player = playerData[pick.player_id] || {};
+                          const metadata = pick.metadata || {};
+                          const round = Math.floor((pick.pick_no - 1) / teamsCount) + 1;
+                          const pickInRound = ((pick.pick_no - 1) % teamsCount) + 1;
+                          const formattedRank = `${round}.${pickInRound.toString().padStart(2, "0")}`;
+                          return renderPlayerCard(pick, player, metadata, teamsCount, formattedRank);
+                        })}
+                      </div>
+                    );
+                  }
+                  // Snake: group by round, then each row left- or right-aligned
+                  const byRound = new Map();
+                  ordered.forEach((pick) => {
+                    if (!pick) return;
+                    const round = Math.ceil(pick.pick_no / teamsCount);
+                    if (!byRound.has(round)) byRound.set(round, []);
+                    byRound.get(round).push(pick);
+                  });
+                  const rounds = [...byRound.entries()].sort((a, b) => a[0] - b[0]);
+                  return rounds.map(([roundNum, roundPicks]) => {
+                    const startsLeft = roundStartsLeft(roundNum, reversalRound);
+                    const rowSlots = teamsCount;
+                    const filled = roundPicks.length;
+                    const emptyCount = rowSlots - filled;
+                    const slotItems = startsLeft
+                      ? [...roundPicks, ...Array(emptyCount).fill(null)]
+                      : [...Array(emptyCount).fill(null), ...roundPicks];
+                    return (
+                      <div
+                        key={roundNum}
+                        className={`draftmodal-round-row ${startsLeft ? "draftmodal-round-left" : "draftmodal-round-right"}`}
+                      >
+                        {slotItems.map((pick, idx) => {
+                          if (!pick) return <div key={`r${roundNum}-e${idx}`} className="draftmodal-slot-empty" aria-hidden="true" />;
+                          const player = playerData[pick.player_id] || {};
+                          const metadata = pick.metadata || {};
+                          const round = Math.floor((pick.pick_no - 1) / teamsCount) + 1;
+                          const pickInRound = ((pick.pick_no - 1) % teamsCount) + 1;
+                          const formattedRank = `${round}.${pickInRound.toString().padStart(2, "0")}`;
+                          return renderPlayerCard(pick, player, metadata, teamsCount, formattedRank);
+                        })}
+                      </div>
+                    );
+                  });
+                })()
               ) : (
                 <div className="center-content draft-modal-not-found-text">
                   No draft found

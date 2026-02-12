@@ -34,7 +34,7 @@ def main():
         last_name = player_obj.get("last_name", "")
         team = entry.get("team", "") or player_obj.get("team", "")
         position = player_obj.get("position", "")
-        rookie_year = (player_obj.get("metadata") or {}).get("rookie_year", "")
+        years_exp = player_obj.get("years_exp")  # 0 = rookie (may be None if missing)
 
         # Build a dictionary that has all ADP fields plus what we need for output
         p = {
@@ -42,19 +42,22 @@ def main():
             "name": f"{first_name} {last_name}".strip(),
             "position": position,
             "team": team,
-            "rookie_year": rookie_year,  # Include rookie year for filtering
+            "years_exp": years_exp,
         }
-        # Fill in the six ADP fields (default to float('inf') if missing or None)
+        # Fill in ADP fields (default to float('inf') if missing or None)
+        # JSON uses "adp_rookie" for rookie ADP, not "rookies"
         for field in FIELDS_OF_INTEREST.keys():
-            adp_value = stats.get(field, float('inf'))
+            stats_key = "adp_rookie" if field == "rookies" else field
+            adp_value = stats.get(stats_key, float('inf'))
             p[field] = adp_value if adp_value is not None else float('inf')
         players.append(p)
 
     # 3. For each ADP field, sort the players, do tiering, and write CSV
     for adp_field, filename in FIELDS_OF_INTEREST.items():
         if adp_field == "rookies":
-            # Filter rookies
-            filtered_players = [p for p in players if p["rookie_year"] == "0"]
+            # Rookies = players with years_exp == 0 (no rookie_year in metadata for many)
+            filtered_players = [p for p in players if p.get("years_exp") == 0]
+            filtered_players = sorted(filtered_players, key=lambda x: x["rookies"])
         else:
             # Sort ascending by that ADP field
             filtered_players = sorted(players, key=lambda x: x[adp_field])
