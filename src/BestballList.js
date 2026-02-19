@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faExternalLinkAlt,
@@ -34,10 +34,16 @@ function BestballList() {
   const [twoQBDrafts, setTwoQBDrafts] = useState(0);
   const [totalDrafts, setTotalDrafts] = useState(0);
 
-  // Add state for sorting
+  // Add state for sorting (Portfolio tab)
   const [sortConfig, setSortConfig] = useState({
     key: "totalCount",
     direction: "descending",
+  });
+
+  // Results tab: sort by Draft date or Position; null = original order
+  const [resultsSortConfig, setResultsSortConfig] = useState({
+    key: null,
+    direction: "ascending",
   });
 
   const [showNon12TeamDrafts, setShowNon12TeamDrafts] = useState(false);
@@ -62,6 +68,12 @@ function BestballList() {
   const [rank2qbOpponentAvg, setRank2qbOpponentAvg] = useState(null);
   const [h2hUserPoints, setH2hUserPoints] = useState(null);
   const [h2hOpponentPoints, setH2hOpponentPoints] = useState(null);
+
+  // Year for fetching leagues (2025 or 2026) — only leagues for this season are shown
+  const [leagueYear, setLeagueYear] = useState(2026);
+
+  // In-memory cache for draft data (draftId -> { draftPositions, start_time }), same pattern as DraftSetup/LeagueList
+  const draftDataCacheRef = useRef({});
 
   // Get username for a single user id, prefer localStorage cache
   const getUsernameFromId = async (userId) => {
@@ -368,7 +380,6 @@ function BestballList() {
     );
   };
 
-  const LEAGUE_YEAR = 2026;
 
   const handleToggle = (leagueId) => {
     setExpandedLeagueIds((prevIds) => {
@@ -463,11 +474,9 @@ function BestballList() {
     []
   );
 
-  const fetchDraftPosition = async (draftId, userId) => {
-    const cachedDraftData = localStorage.getItem(`draftData_${draftId}`);
-    if (cachedDraftData) {
-      return JSON.parse(cachedDraftData);
-    }
+  const fetchDraftPosition = async (draftId) => {
+    const cached = draftDataCacheRef.current[draftId];
+    if (cached) return cached;
 
     try {
       const response = await fetch(
@@ -475,25 +484,24 @@ function BestballList() {
       );
       const draftData = await response.json();
 
-      // Extract draft positions for all users
-      const draftPositions = Object.entries(draftData.draft_order).reduce(
-        (acc, [userId, draftSlot]) => {
-          acc[userId] = {
+      const draftPositions = Object.entries(draftData.draft_order || {}).reduce(
+        (acc, [uid, draftSlot]) => {
+          acc[uid] = {
             draftSlot,
-            rosterId: draftData.slot_to_roster_id[draftSlot],
+            rosterId: draftData.slot_to_roster_id?.[draftSlot],
           };
           return acc;
         },
         {}
       );
 
-      // Cache the draft positions in localStorage
-      localStorage.setItem(
-        `draftData_${draftId}`,
-        JSON.stringify(draftPositions)
-      );
+      const result = {
+        draftPositions,
+        start_time: draftData.start_time ?? null,
+      };
 
-      return draftPositions;
+      draftDataCacheRef.current[draftId] = result;
+      return result;
     } catch (error) {
       console.error(`Error fetching draft data for draft ${draftId}:`, error);
       return null;
@@ -510,13 +518,16 @@ function BestballList() {
       setUserId(userId);
 
       const leaguesResponse = await fetch(
-        `https://api.sleeper.app/v1/user/${userId}/leagues/nfl/${LEAGUE_YEAR}`
+        `https://api.sleeper.app/v1/user/${userId}/leagues/nfl/${leagueYear}`
       );
       const leaguesData = await leaguesResponse.json();
 
+      // Shown if: best_ball is 1 and status is complete or in_season (so 2026 in-progress leagues show)
+      const allowedStatuses = ["complete", "in_season"];
       const filteredLeagues = leaguesData.filter(
         (league) =>
-          league.settings.best_ball === 1 && league.status === "complete"
+          league.settings?.best_ball === 1 &&
+          allowedStatuses.includes(league.status)
       );
 
       // Update total drafts
@@ -642,20 +653,21 @@ function BestballList() {
         }
       });
 
-      // Add draft position to the sorted league data
+      // Add draft position and draft start_time to the sorted league data
       const leaguesWithDraftPositions = await Promise.all(
         sortedLeagues.map(async (league) => {
-          const draftPositions = await fetchDraftPosition(
-            league.draft_id,
-            userId
-          );
-
+          let draftResult = null;
+          if (league.draft_id) {
+            draftResult = await fetchDraftPosition(league.draft_id);
+          }
+          const draftPositions = draftResult?.draftPositions ?? null;
           const userDraftPosition =
             draftPositions?.[userId]?.draftSlot || "N/A";
           return {
             ...league,
             draftPositions,
             userDraftPosition,
+            draftStartTime: draftResult?.start_time ?? null,
           };
         })
       );
@@ -699,7 +711,7 @@ function BestballList() {
     } catch (error) {
       console.error("Error fetching league data:", error);
     }
-  }, [userName, LEAGUE_YEAR, fetchBestballPlayerData, getAllUsernames]);
+  }, [userName, leagueYear, fetchBestballPlayerData, getAllUsernames]);
 
   useEffect(() => {
     fetchLeagueData();
@@ -771,6 +783,52 @@ function BestballList() {
     if (sortConfig.key !== key) return "\u2195"; // Up-down arrow for unsorted
     return sortConfig.direction === "ascending" ? "\u2191" : "\u2193"; // Up or down arrow
   };
+
+  const handleResultsSort = (columnKey) => {
+    setResultsSortConfig((prev) => {
+      const nextDirection =
+        prev.direction === "ascending" ? "descending" : "ascending";
+      if (prev.key === columnKey) {
+        if (prev.direction === "descending") return { key: null, direction: "ascending" };
+        return { key: columnKey, direction: nextDirection };
+      }
+      return { key: columnKey, direction: "ascending" };
+    });
+  };
+
+  const getResultsSortIcon = (key) => {
+    if (resultsSortConfig.key !== key) return "\u2195";
+    return resultsSortConfig.direction === "ascending" ? "\u2191" : "\u2193";
+  };
+
+  const formatDraftDate = (ts) => {
+    if (ts == null) return "-";
+    const d = new Date(ts);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  const sortedLeaguesForResults =
+    resultsSortConfig.key == null
+      ? leagues
+      : [...leagues].sort((a, b) => {
+          const key = resultsSortConfig.key;
+          const asc = resultsSortConfig.direction === "ascending";
+          let aVal, bVal;
+          if (key === "draftDate") {
+            aVal = a.draftStartTime ?? 0;
+            bVal = b.draftStartTime ?? 0;
+            return asc ? aVal - bVal : bVal - aVal;
+          }
+          if (key === "position") {
+            aVal = a.userPosition ?? 999;
+            bVal = b.userPosition ?? 999;
+            return asc ? aVal - bVal : bVal - aVal;
+          }
+          return 0;
+        });
 
   const handleOpenModal = (league) => {
     console.log("Opening modal for league:", league);
@@ -889,6 +947,23 @@ function BestballList() {
           <h1>Bestball Overview</h1>
           <span>{userName}</span>
         </div>
+        <div className="bestball-year-toggle">
+          <button
+            type="button"
+            className={leagueYear === 2025 ? "active" : ""}
+            onClick={() => setLeagueYear(2025)}
+          >
+            2025
+          </button>
+          <span className="year-sep">|</span>
+          <button
+            type="button"
+            className={leagueYear === 2026 ? "active" : ""}
+            onClick={() => setLeagueYear(2026)}
+          >
+            2026
+          </button>
+        </div>
       </div>
 
       <div className="tab-container">
@@ -915,16 +990,30 @@ function BestballList() {
       <div className="tab-content">
         {activeTab === "Results" && (
           <div className="bestball-grid">
+            <div
+              className={`bestball-grid-header bestball-grid-header-sortable ${resultsSortConfig.key === "draftDate" ? "active" : ""}`}
+              onClick={() => handleResultsSort("draftDate")}
+            >
+              Draft date {getResultsSortIcon("draftDate")}
+            </div>
             <div className="bestball-grid-header">League Name</div>
             <div className="bestball-grid-header">Draft Position</div>
-            <div className="bestball-grid-header">Position</div>
+            <div
+              className={`bestball-grid-header bestball-grid-header-sortable ${resultsSortConfig.key === "position" ? "active" : ""}`}
+              onClick={() => handleResultsSort("position")}
+            >
+              Position {getResultsSortIcon("position")}
+            </div>
             <div className="bestball-grid-header">Behind 1st</div>
             <div className="bestball-grid-header">Record</div>
             <div className="bestball-grid-header">Links</div>
 
-            {leagues.length > 0 ? (
-              leagues.map((league) => (
+            {sortedLeaguesForResults.length > 0 ? (
+              sortedLeaguesForResults.map((league) => (
                 <React.Fragment key={league.league_id}>
+                  <div className="bestball-grid-item bestball-grid-item-draft-date">
+                    {formatDraftDate(league.draftStartTime)}
+                  </div>
                   <div
                     className={`bestball-grid-item ${
                       highlightedLeagueIds.has(league.league_id)
@@ -944,11 +1033,6 @@ function BestballList() {
                     {league.userDraftPosition || "-"}
                   </div>
                   <div className="bestball-grid-item">
-                    {console.log("JSX League:", league)}
-                    {console.log(
-                      "Rendering league.userPosition:",
-                      league.userPosition
-                    )}
                     {league.userPosition || "-"}
                     <span> </span>
                     {league.userPosition === 1 && (

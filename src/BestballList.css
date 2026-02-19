@@ -20,11 +20,60 @@
   background-color: hsl(var(--primary) / 0.9);
 }
 
-/* The grid containing league items */
+/* Header: title + year toggle */
+.dashboard-container .header-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.bestball-year-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.bestball-year-toggle button {
+  padding: 0.5rem 1rem;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  border: none;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  font-family: Inter, sans-serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.bestball-year-toggle button:hover {
+  background: hsl(var(--muted) / 0.5);
+}
+
+.bestball-year-toggle button.active {
+  background-color: hsl(174 50% 45%);
+  color: hsl(var(--primary-foreground));
+}
+
+body.dark .bestball-year-toggle button.active {
+  background-color: hsl(174 45% 42%);
+}
+
+.bestball-year-toggle .year-sep {
+  padding: 0 0.25rem;
+  color: hsl(var(--muted-foreground));
+  font-weight: 500;
+}
+
+/* The grid containing league items (7 columns: Draft date, Name, Draft Position, Position, Behind 1st, Record, Links) */
 .bestball-grid {
   width: 90%;
   display: grid;
-  grid-template-columns: 6fr 1fr 1fr 1fr 1fr 2fr; /* Draft Position, Position, Behind 1st, Record all same size */
+  grid-template-columns: 1.5fr 4fr 1fr 1fr 1fr 1fr 2fr;
   gap: 10px;
   margin-left: auto;
   margin-right: auto;
@@ -37,26 +86,32 @@
   color: hsl(var(--foreground));
 }
 
-/* Style for the draft position column (2nd column) */
-.bestball-grid-item:nth-child(6n+2) {
-  text-align: center; /* Draft position column */
-  font-weight: bold; /* Make the draft position stand out */
-}
-
-/* Style for the Position column (3rd column) */
-.bestball-grid-item:nth-child(6n+3) {
-  text-align: center; /* Position column */
-}
-
-/* Style for the Behind 1st column (4th column) */
-.bestball-grid-item:nth-child(6n+4) {
-  text-align: center; /* Behind 1st column */
+.bestball-grid-item-draft-date {
+  white-space: nowrap;
   font-size: 0.9rem;
 }
 
-/* Style for the Record column (5th column) */
-.bestball-grid-item:nth-child(6n+5) {
-  text-align: center; /* Record column */
+/* Style for the League Name column (2nd) - toggle is here */
+/* Draft position column (3rd) */
+.bestball-grid-item:nth-child(7n+3) {
+  text-align: center;
+  font-weight: bold;
+}
+
+/* Position column (4th) */
+.bestball-grid-item:nth-child(7n+4) {
+  text-align: center;
+}
+
+/* Behind 1st column (5th) */
+.bestball-grid-item:nth-child(7n+5) {
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+/* Record column (6th) */
+.bestball-grid-item:nth-child(7n+6) {
+  text-align: center;
 }
 
 /* Style for links in the bestball grid */
@@ -224,6 +279,19 @@ body.light .bestball-grid-header {
 
 body.dark .bestball-grid-header {
   background-color: hsl(222 47% 10%);
+}
+
+.bestball-grid-header-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.bestball-grid-header-sortable:hover {
+  background-color: hsl(var(--muted) / 0.5);
+}
+
+.bestball-grid-header-sortable.active {
+  color: hsl(var(--primary));
 }
 
 /* Adjust text alignment for numeric columns */
