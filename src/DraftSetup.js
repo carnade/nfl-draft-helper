@@ -728,7 +728,7 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
                   className="draft-ids-input other-user-input"
                   placeholder="Sleeper username"
                   value={otherUserInput}
-                  onChange={(e) => setOtherUserInput(e.target.value)}
+                  onChange={(e) => { setOtherUserInput(e.target.value); setOtherUserSubmitted(false); }}
                   onKeyPress={(e) => {
                     if (e.key === "Enter") {
                       setOtherUserSubmitted(true);

@@ -1071,14 +1071,14 @@ function TradeAnalyzer({ userName, setUserName }) {
                           {/* KTC Row */}
                           <div className="comparison-row">
                             <div className="team-value">
-                              {Math.round(calculateKTCTotal(team1Players))}
+                              {Math.round(calculateKTCTotal(team2Players))}
                             </div>
                             <div className="diff-value">
                               {(() => {
                                 const team1KTC = calculateKTCTotal(team1Players);
                                 const team2KTC = calculateKTCTotal(team2Players);
                                 const diff = Math.abs(team1KTC - team2KTC);
-                                const arrow = team1KTC > team2KTC ? '←' : team1KTC < team2KTC ? '→' : '=';
+                                const arrow = team2KTC > team1KTC ? '←' : team2KTC < team1KTC ? '→' : '=';
                                 return (
                                   <div className="diff-content">
                                     <div className="diff-label">KTC</div>
@@ -1089,21 +1089,21 @@ function TradeAnalyzer({ userName, setUserName }) {
                               })()}
                             </div>
                             <div className="team-value">
-                              {Math.round(calculateKTCTotal(team2Players))}
+                              {Math.round(calculateKTCTotal(team1Players))}
                             </div>
                           </div>
 
                           {/* FantasyCalc Row */}
                           <div className="comparison-row">
                             <div className="team-value">
-                              {Math.round(calculateFCTotal(team1Players))}
+                              {Math.round(calculateFCTotal(team2Players))}
                             </div>
                             <div className="diff-value">
                               {(() => {
                                 const team1FC = calculateFCTotal(team1Players);
                                 const team2FC = calculateFCTotal(team2Players);
                                 const diff = Math.abs(team1FC - team2FC);
-                                const arrow = team1FC > team2FC ? '←' : team1FC < team2FC ? '→' : '=';
+                                const arrow = team2FC > team1FC ? '←' : team2FC < team1FC ? '→' : '=';
                                 return (
                                   <div className="diff-content">
                                     <div className="diff-label">FantasyCalc</div>
@@ -1114,7 +1114,7 @@ function TradeAnalyzer({ userName, setUserName }) {
                               })()}
                             </div>
                             <div className="team-value">
-                              {Math.round(calculateFCTotal(team2Players))}
+                              {Math.round(calculateFCTotal(team1Players))}
                             </div>
                           </div>
                         </div>
@@ -1126,14 +1126,14 @@ function TradeAnalyzer({ userName, setUserName }) {
                           {/* Projected Points per Game Row */}
                           <div className="comparison-row">
                             <div className="team-value">
-                              {calculateTotalProjPtsPerGame(team1Players)}
+                              {calculateTotalProjPtsPerGame(team2Players)}
                             </div>
                             <div className="diff-value">
                               {(() => {
                                 const team1PPG = parseFloat(calculateTotalProjPtsPerGame(team1Players));
                                 const team2PPG = parseFloat(calculateTotalProjPtsPerGame(team2Players));
                                 const diff = Math.abs(team1PPG - team2PPG);
-                                const arrow = team1PPG > team2PPG ? '←' : team1PPG < team2PPG ? '→' : '=';
+                                const arrow = team2PPG > team1PPG ? '←' : team2PPG < team1PPG ? '→' : '=';
                                 return (
                                   <div className="diff-content">
                                     <div className="diff-label">Proj Pts/Game</div>
@@ -1144,21 +1144,21 @@ function TradeAnalyzer({ userName, setUserName }) {
                               })()}
                             </div>
                             <div className="team-value">
-                              {calculateTotalProjPtsPerGame(team2Players)}
+                              {calculateTotalProjPtsPerGame(team1Players)}
                             </div>
                           </div>
 
                           {/* 2026 Points per Game Row */}
                           <div className="comparison-row">
                             <div className="team-value">
-                              {calculateTotal2026PtsPerGame(team1Players)}
+                              {calculateTotal2026PtsPerGame(team2Players)}
                             </div>
                             <div className="diff-value">
                               {(() => {
                                 const team1PPG = parseFloat(calculateTotal2026PtsPerGame(team1Players));
                                 const team2PPG = parseFloat(calculateTotal2026PtsPerGame(team2Players));
                                 const diff = Math.abs(team1PPG - team2PPG);
-                                const arrow = team1PPG > team2PPG ? '←' : team1PPG < team2PPG ? '→' : '=';
+                                const arrow = team2PPG > team1PPG ? '←' : team2PPG < team1PPG ? '→' : '=';
                                 return (
                                   <div className="diff-content">
                                     <div className="diff-label">2026 Pts/Game</div>
@@ -1169,14 +1169,14 @@ function TradeAnalyzer({ userName, setUserName }) {
                               })()}
                             </div>
                             <div className="team-value">
-                              {calculateTotal2026PtsPerGame(team2Players)}
+                              {calculateTotal2026PtsPerGame(team1Players)}
                             </div>
                           </div>
 
                           {/* Average Age Row */}
                           <div className="comparison-row">
                             <div className="team-value">
-                              {calculateAvgAge(team1Players)}
+                              {calculateAvgAge(team2Players)}
                             </div>
                             <div className="diff-value">
                               {(() => {
@@ -1192,7 +1192,7 @@ function TradeAnalyzer({ userName, setUserName }) {
                                   );
                                 }
                                 const diff = Math.abs(parseFloat(team1Age) - parseFloat(team2Age));
-                                const arrow = parseFloat(team1Age) < parseFloat(team2Age) ? '←' : parseFloat(team1Age) > parseFloat(team2Age) ? '→' : '=';
+                                const arrow = parseFloat(team2Age) < parseFloat(team1Age) ? '←' : parseFloat(team2Age) > parseFloat(team1Age) ? '→' : '=';
                                 return (
                                   <div className="diff-content">
                                     <div className="diff-label">Avg Age</div>
@@ -1203,7 +1203,7 @@ function TradeAnalyzer({ userName, setUserName }) {
                               })()}
                             </div>
                             <div className="team-value">
-                              {calculateAvgAge(team2Players)}
+                              {calculateAvgAge(team1Players)}
                             </div>
                           </div>
                         </div>
