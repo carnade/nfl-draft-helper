@@ -181,3 +181,19 @@ body.dark .modern-button:hover {
   padding: 8px 12px;
   height: 100%;
 }
+
+.view-toggle-group {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.view-toggle-btn {
+  opacity: 0.6;
+}
+
+.view-toggle-btn.active {
+  opacity: 1;
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 1px;
+}

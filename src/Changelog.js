@@ -41,6 +41,23 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2026-03-28",
+      title: "Draft Helper Grid View",
+      items: [
+        {
+          text: "New grid board view in Draft Helper:",
+          subitems: [
+            "Toggle between the standard position list view and a 12-wide draft board showing all picks round by round",
+            "Each row shows one complete round — the same layout you'd see at a live draft table",
+            "Drafted players appear greyed out on the board instead of disappearing, so you can see which slots are filled",
+            "Click a greyed-out player to undraft them",
+          ],
+        },
+        "Grid view supports both Snake and 3RR (Third Round Reversal) draft formats, with a toggle to switch between them",
+        "3RR pick order correctly follows the format: round 1 forward, round 2 reversed, round 3 stays reversed, then snakes normally from round 4",
+      ],
+    },
+    {
       date: "2026-02-02",
       title: "Create Rankings from Drafts, League Filters & Year Update",
       items: [

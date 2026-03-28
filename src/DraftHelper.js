@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
 import PlayerList from "./PlayerList";
+import DraftGrid from "./DraftGrid";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faRecycle,
   faExternalLinkAlt,
+  faTableCells,
+  faList,
 } from "@fortawesome/free-solid-svg-icons";
 import Papa from "papaparse";
 import { useLocation, useParams } from "react-router-dom";
@@ -35,6 +38,8 @@ function DraftHelper({ csvData, csvFileName }) {
   const [isFlashing, setIsFlashing] = useState(false);
   const [showPtsMode, setShowPtsMode] = useState(false); // Toggle between pts/g and dynasty rankings
   const [showPortfolio, setShowPortfolio] = useState(true); // Toggle to show/hide portfolio count
+  const [viewMode, setViewMode] = useState("list"); // "list" | "grid"
+  const [draftFormat, setDraftFormat] = useState("3rr"); // "3rr" | "snake"
 
   // The final "draftId" we use (either from route or user input)
   const [draftId, setDraftId] = useState("");
@@ -313,13 +318,7 @@ function DraftHelper({ csvData, csvFileName }) {
         parsedPlayers = await parseCsvAndCheckTier(finalCsvContent);
       }
 
-      // Step C) Remove picks from Sleeper if we have a routeDraftId
-      let finalPlayers = parsedPlayers;
-      if (routeDraftId && finalPlayers.length > 0) {
-        finalPlayers = await removePickedPlayers(routeDraftId, finalPlayers);
-      }
-
-      // Step D) Add BestBallTotal, pts_ppr, and pts_half_ppr fields to each player
+      // Step C) Add BestBallTotal, pts_ppr, and pts_half_ppr fields to the full player list
       const savedPortfolioData = JSON.parse(
         localStorage.getItem("FantasyHelperBestballPortfolio")
       );
@@ -327,7 +326,6 @@ function DraftHelper({ csvData, csvFileName }) {
       if (savedPortfolioData) {
         console.log("Loaded bestball portfolio data:", savedPortfolioData);
 
-        // Create a mapping of player names to their portfolio data
         const portfolioMap = savedPortfolioData.reduce((acc, player) => {
           acc[player.name] = {
             count: player.totalCount || 0,
@@ -337,39 +335,36 @@ function DraftHelper({ csvData, csvFileName }) {
           return acc;
         }, {});
 
-        // Add BestBallTotal, pts_ppr, and pts_half_ppr to each player in finalPlayers
-        finalPlayers = finalPlayers.map((player) => ({
+        parsedPlayers = parsedPlayers.map((player) => ({
           ...player,
-          BestBallTotal: portfolioMap[player.Name]?.count || 0, // Default to 0 if no match
+          BestBallTotal: portfolioMap[player.Name]?.count || 0,
           pts_ppr: portfolioMap[player.Name]?.pts_ppr || null,
           pts_half_ppr: portfolioMap[player.Name]?.pts_half_ppr || null,
         }));
       } else {
         console.log("No bestball portfolio data found in localStorage.");
-        // Add BestBallTotal as 0 and pts fields as null for all players if no portfolio data is found
-        finalPlayers = finalPlayers.map((player) => ({
+        parsedPlayers = parsedPlayers.map((player) => ({
           ...player,
           BestBallTotal: 0,
           pts_ppr: null,
           pts_half_ppr: null,
         }));
       }
+
       console.log("scoringType:", scoringType);
-      // Always fetch KTC/FC values so they're available when user toggles display mode
+      // Always fetch KTC/FC values for the full player list
       try {
-        const playerIds = finalPlayers.map((player) => player.SleeperId).filter(Boolean); // Collect SleeperIds, filter out falsy values
-        
-        // Create cache key from sorted playerIds
-        const cacheKey = `playerData_${playerIds.sort().join(',')}`;
+        const playerIds = parsedPlayers.map((player) => player.SleeperId).filter(Boolean);
+
+        const cacheKey = `playerData_${[...playerIds].sort().join(',')}`;
         const cacheTimestampKey = `${cacheKey}_timestamp`;
-        const cacheExpiry = 60 * 60 * 1000; // 1 hour in milliseconds
-        
-        // Check cache first
+        const cacheExpiry = 60 * 60 * 1000; // 1 hour
+
         let externalPlayers = null;
         const cachedData = sessionStorage.getItem(cacheKey);
         const cachedTimestamp = sessionStorage.getItem(cacheTimestampKey);
         const now = Date.now();
-        
+
         if (cachedData && cachedTimestamp && (now - parseInt(cachedTimestamp)) < cacheExpiry) {
           try {
             externalPlayers = JSON.parse(cachedData);
@@ -378,21 +373,15 @@ function DraftHelper({ csvData, csvFileName }) {
             console.warn("Failed to parse cached player data", e);
           }
         }
-        
-        // Fetch if not cached or cache expired
+
         if (!externalPlayers) {
           const response = await fetch(`${BASE_URL}/getplayers/data`, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ playerlist: playerIds }), // Send playerIds in the body
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ playerlist: playerIds }),
           });
-
           externalPlayers = await response.json();
-          console.log("API Response:", externalPlayers); // Log the response
-          
-          // Cache the response
+          console.log("API Response:", externalPlayers);
           try {
             sessionStorage.setItem(cacheKey, JSON.stringify(externalPlayers));
             sessionStorage.setItem(cacheTimestampKey, now.toString());
@@ -401,33 +390,37 @@ function DraftHelper({ csvData, csvFileName }) {
           }
         }
 
-        // Map externalPlayers data to finalPlayers based on SleeperId
-        finalPlayers = finalPlayers.map((player) => {
-          const externalPlayer = externalPlayers[player.SleeperId]; // Access by SleeperId
+        parsedPlayers = parsedPlayers.map((player) => {
+          const externalPlayer = externalPlayers[player.SleeperId];
           return externalPlayer
             ? {
                 ...player,
                 "FC Value": externalPlayer["FC Value"] || "N/A",
                 "KTC Value": externalPlayer["KTC Value"] || "N/A",
-                gp: externalPlayer.gp || null, // Extract games played for pts/g calculation
-                // Use API data for pts_ppr/pts_half_ppr as it's more reliable (overrides portfolio if present)
-                pts_ppr: externalPlayer.pts_ppr !== undefined && externalPlayer.pts_ppr !== null 
-                  ? externalPlayer.pts_ppr 
-                  : player.pts_ppr, // Fallback to portfolio data if API doesn't have it
+                gp: externalPlayer.gp || null,
+                pts_ppr: externalPlayer.pts_ppr !== undefined && externalPlayer.pts_ppr !== null
+                  ? externalPlayer.pts_ppr
+                  : player.pts_ppr,
                 pts_half_ppr: externalPlayer.pts_half_ppr !== undefined && externalPlayer.pts_half_ppr !== null
                   ? externalPlayer.pts_half_ppr
-                  : player.pts_half_ppr, // Fallback to portfolio data if API doesn't have it
-              } // Merge external data with existing player
-            : player; // Keep the original player if no match is found
+                  : player.pts_half_ppr,
+              }
+            : player;
         });
       } catch (error) {
         console.error("Error fetching external players:", error);
       }
 
+      // Step D) Remove picks from Sleeper — parsedPlayers is now fully enriched
+      let finalPlayers = parsedPlayers;
+      if (routeDraftId && parsedPlayers.length > 0) {
+        finalPlayers = await removePickedPlayers(routeDraftId, parsedPlayers);
+      }
+
       console.log("Final players with BestBallTotal:", finalPlayers);
-      // Step E) Store finalPlayers into state
+      // Step E) Store state — initialPlayers keeps the full enriched list for grid view
       setPlayers(finalPlayers);
-      setInitialPlayers(finalPlayers);
+      setInitialPlayers(parsedPlayers);
     }
 
     loadCsvAndRemovePicks();
@@ -533,70 +526,114 @@ function DraftHelper({ csvData, csvFileName }) {
             <span>Show Portfolio</span>
           </label>
         )}
+
+        <div className="view-toggle-group">
+          <button
+            className={`modern-button view-toggle-btn${viewMode === "list" ? " active" : ""}`}
+            onClick={() => setViewMode("list")}
+            title="List view"
+          >
+            <FontAwesomeIcon icon={faList} /> List
+          </button>
+          <button
+            className={`modern-button view-toggle-btn${viewMode === "grid" ? " active" : ""}`}
+            onClick={() => setViewMode("grid")}
+            title="Grid view"
+          >
+            <FontAwesomeIcon icon={faTableCells} /> Grid
+          </button>
+        </div>
+
+        {viewMode === "grid" && (
+          <div className="view-toggle-group">
+            <button
+              className={`modern-button view-toggle-btn${draftFormat === "3rr" ? " active" : ""}`}
+              onClick={() => setDraftFormat("3rr")}
+            >
+              3RR
+            </button>
+            <button
+              className={`modern-button view-toggle-btn${draftFormat === "snake" ? " active" : ""}`}
+              onClick={() => setDraftFormat("snake")}
+            >
+              Snake
+            </button>
+          </div>
+        )}
       </div>
 
-      <div className="lists-container">
-        <PlayerList
-          title="ALL"
-          players={players}
-          groupBy="OverallTier"
+      {viewMode === "grid" ? (
+        <DraftGrid
+          initialPlayers={initialPlayers}
           removedPlayers={removedPlayers}
           setPlayers={setPlayers}
           setRemovedPlayers={setRemovedPlayers}
-          keepEmptyTiers={keepEmptyTiers}
-          scoringType={scoringType} // Pass scoringType here
-          showPtsMode={showPtsMode} // Pass showPtsMode toggle
-          showPortfolio={showPortfolio} // Pass showPortfolio toggle
+          draftFormat={draftFormat}
         />
-        <PlayerList
-          title="QB"
-          players={players.filter((p) => p.Position === "QB")}
-          groupBy="Tier"
-          removedPlayers={removedPlayers}
-          setPlayers={setPlayers}
-          setRemovedPlayers={setRemovedPlayers}
-          keepEmptyTiers={keepEmptyTiers}
-          scoringType={scoringType} // Pass scoringType here
-          showPtsMode={showPtsMode} // Pass showPtsMode toggle
-          showPortfolio={showPortfolio} // Pass showPortfolio toggle
-        />
-        <PlayerList
-          title="RB"
-          players={players.filter((p) => p.Position === "RB")}
-          groupBy="Tier"
-          removedPlayers={removedPlayers}
-          setPlayers={setPlayers}
-          setRemovedPlayers={setRemovedPlayers}
-          keepEmptyTiers={keepEmptyTiers}
-          scoringType={scoringType} // Pass scoringType here
-          showPtsMode={showPtsMode} // Pass showPtsMode toggle
-          showPortfolio={showPortfolio} // Pass showPortfolio toggle
-        />
-        <PlayerList
-          title="WR"
-          players={players.filter((p) => p.Position === "WR")}
-          groupBy="Tier"
-          removedPlayers={removedPlayers}
-          setPlayers={setPlayers}
-          setRemovedPlayers={setRemovedPlayers}
-          keepEmptyTiers={keepEmptyTiers}
-          scoringType={scoringType} // Pass scoringType here
-          showPtsMode={showPtsMode} // Pass showPtsMode toggle
-          showPortfolio={showPortfolio} // Pass showPortfolio toggle
-        />
-        <PlayerList
-          title="TE"
-          players={players.filter((p) => p.Position === "TE")}
-          groupBy="Tier"
-          removedPlayers={removedPlayers}
-          setPlayers={setPlayers}
-          setRemovedPlayers={setRemovedPlayers}
-          keepEmptyTiers={keepEmptyTiers}
-          scoringType={scoringType} // Pass scoringType here
-          showPtsMode={showPtsMode} // Pass showPtsMode toggle
-          showPortfolio={showPortfolio} // Pass showPortfolio toggle
-        />
-      </div>
+      ) : (
+        <div className="lists-container">
+          <PlayerList
+            title="ALL"
+            players={players}
+            groupBy="OverallTier"
+            removedPlayers={removedPlayers}
+            setPlayers={setPlayers}
+            setRemovedPlayers={setRemovedPlayers}
+            keepEmptyTiers={keepEmptyTiers}
+            scoringType={scoringType}
+            showPtsMode={showPtsMode}
+            showPortfolio={showPortfolio}
+          />
+          <PlayerList
+            title="QB"
+            players={players.filter((p) => p.Position === "QB")}
+            groupBy="Tier"
+            removedPlayers={removedPlayers}
+            setPlayers={setPlayers}
+            setRemovedPlayers={setRemovedPlayers}
+            keepEmptyTiers={keepEmptyTiers}
+            scoringType={scoringType}
+            showPtsMode={showPtsMode}
+            showPortfolio={showPortfolio}
+          />
+          <PlayerList
+            title="RB"
+            players={players.filter((p) => p.Position === "RB")}
+            groupBy="Tier"
+            removedPlayers={removedPlayers}
+            setPlayers={setPlayers}
+            setRemovedPlayers={setRemovedPlayers}
+            keepEmptyTiers={keepEmptyTiers}
+            scoringType={scoringType}
+            showPtsMode={showPtsMode}
+            showPortfolio={showPortfolio}
+          />
+          <PlayerList
+            title="WR"
+            players={players.filter((p) => p.Position === "WR")}
+            groupBy="Tier"
+            removedPlayers={removedPlayers}
+            setPlayers={setPlayers}
+            setRemovedPlayers={setRemovedPlayers}
+            keepEmptyTiers={keepEmptyTiers}
+            scoringType={scoringType}
+            showPtsMode={showPtsMode}
+            showPortfolio={showPortfolio}
+          />
+          <PlayerList
+            title="TE"
+            players={players.filter((p) => p.Position === "TE")}
+            groupBy="Tier"
+            removedPlayers={removedPlayers}
+            setPlayers={setPlayers}
+            setRemovedPlayers={setRemovedPlayers}
+            keepEmptyTiers={keepEmptyTiers}
+            scoringType={scoringType}
+            showPtsMode={showPtsMode}
+            showPortfolio={showPortfolio}
+          />
+        </div>
+      )}
     </div>
   );
 }
