@@ -43,11 +43,14 @@ function getTypeSortOrder(type) {
 // Sort: 1) status (complete > drafting > rest), 2) type (Dynasty > Best Ball > Redraft), 3) name A–Z
 function sortDraftsByStatusTypeName(drafts) {
   return [...drafts].sort((a, b) => {
-    const statusDiff = getStatusSortOrder(a.status) - getStatusSortOrder(b.status);
+    const statusDiff =
+      getStatusSortOrder(a.status) - getStatusSortOrder(b.status);
     if (statusDiff !== 0) return statusDiff;
     const typeDiff = getTypeSortOrder(a.type) - getTypeSortOrder(b.type);
     if (typeDiff !== 0) return typeDiff;
-    return (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" });
+    return (a.name || "").localeCompare(b.name || "", undefined, {
+      sensitivity: "base",
+    });
   });
 }
 
@@ -65,14 +68,17 @@ function formatStatusLabel(status) {
 
 function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
   const navigate = useNavigate();
-  
+
   // State for draft rankings feature (only used when isRankingsPage is true)
   const [draftIdsInput, setDraftIdsInput] = useState("");
   const [drafts, setDrafts] = useState([]); // Array of { draftId, name, picks: [] }
   const [isLoadingDrafts, setIsLoadingDrafts] = useState(false);
   const [isCompiling, setIsCompiling] = useState(false);
   const [leagueYear, setLeagueYear] = useState(DEFAULT_LEAGUE_YEAR); // 2025 or 2026
-  const [myDraftsCache, setMyDraftsCache] = useState({ 2025: null, 2026: null }); // null = not loaded, array = loaded
+  const [myDraftsCache, setMyDraftsCache] = useState({
+    2025: null,
+    2026: null,
+  }); // null = not loaded, array = loaded
   const [myDrafts, setMyDrafts] = useState([]);
   const [isLoadingMyLeagues, setIsLoadingMyLeagues] = useState(false);
   const [draftSource, setDraftSource] = useState("manual"); // "manual" | "myLeagues" | "otherUser"
@@ -100,7 +106,6 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
     }
   };
 
-
   const handlePresetClick = (optionValue) => {
     setCsvData("");
     setCsvFileName(optionValue); // Use default CSV data
@@ -112,6 +117,8 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
   };
 
   const presetOptions = [
+    { value: "communityranks.csv", label: "Sleeper Community" },
+    { value: "400draft2026SF.csv", label: "400 2026 Dynasty Drafts" },
     { value: "adp_ppr.csv", label: "Sleeper PPR" },
     { value: "adp_2qb.csv", label: "Sleeper SF" },
     { value: "adp_half_ppr.csv", label: "Sleeper half-PPR" },
@@ -123,14 +130,18 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
 
   const fetchMyLeagues = useCallback(async () => {
     if (!userName) {
-      alert('Please set a username in the left menu or settings to use "My Leagues"');
+      alert(
+        'Please set a username in the left menu or settings to use "My Leagues"',
+      );
       return;
     }
 
     setIsLoadingMyLeagues(true);
     try {
       // Get user ID from username
-      const userResponse = await fetch(`https://api.sleeper.app/v1/user/${userName}`);
+      const userResponse = await fetch(
+        `https://api.sleeper.app/v1/user/${userName}`,
+      );
       if (!userResponse.ok) {
         throw new Error("Failed to fetch user");
       }
@@ -139,7 +150,7 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
 
       // Fetch user's leagues
       const leaguesResponse = await fetch(
-        `https://api.sleeper.app/v1/user/${userId}/leagues/nfl/${leagueYear}`
+        `https://api.sleeper.app/v1/user/${userId}/leagues/nfl/${leagueYear}`,
       );
       if (!leaguesResponse.ok) {
         throw new Error("Failed to fetch leagues");
@@ -150,14 +161,17 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
       const draftsPromises = leaguesData.map(async (league) => {
         try {
           const draftsResponse = await fetch(
-            `https://api.sleeper.app/v1/league/${league.league_id}/drafts`
+            `https://api.sleeper.app/v1/league/${league.league_id}/drafts`,
           );
           if (draftsResponse.ok) {
             const draftsData = await draftsResponse.json();
             const info = getLeagueDisplayInfo(league);
             return draftsData.map((draft) => ({
               draftId: draft.draft_id,
-              name: draft.metadata?.name || league.name || `Draft ${draft.draft_id}`,
+              name:
+                draft.metadata?.name ||
+                league.name ||
+                `Draft ${draft.draft_id}`,
               leagueId: league.league_id,
               type: info.type,
               qb: info.qb,
@@ -168,7 +182,10 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
           }
           return [];
         } catch (error) {
-          console.error(`Error fetching drafts for league ${league.league_id}:`, error);
+          console.error(
+            `Error fetching drafts for league ${league.league_id}:`,
+            error,
+          );
           return [];
         }
       });
@@ -186,72 +203,86 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
   }, [userName, leagueYear]);
 
   // Fetch another user's leagues for a given year; cache by username + year
-  const fetchOtherUserLeagues = useCallback(async (username, yearOverride) => {
-    const year = yearOverride ?? leagueYear;
-    if (!username || !username.trim()) {
-      alert("Please enter a username");
-      return;
-    }
-    const trimmed = username.trim();
-    setOtherUserSubmitted(true);
-    setIsLoadingOtherUser(true);
-    setOtherUserDrafts([]);
-    try {
-      const userResponse = await fetch(`https://api.sleeper.app/v1/user/${trimmed}`);
-      if (!userResponse.ok) {
-        throw new Error("Failed to fetch user");
+  const fetchOtherUserLeagues = useCallback(
+    async (username, yearOverride) => {
+      const year = yearOverride ?? leagueYear;
+      if (!username || !username.trim()) {
+        alert("Please enter a username");
+        return;
       }
-      const userData = await userResponse.json();
-      const userId = userData.user_id;
-
-      const leaguesResponse = await fetch(
-        `https://api.sleeper.app/v1/user/${userId}/leagues/nfl/${year}`
-      );
-      if (!leaguesResponse.ok) {
-        throw new Error("Failed to fetch leagues");
-      }
-      const leaguesData = await leaguesResponse.json();
-
-      const draftsPromises = leaguesData.map(async (league) => {
-        try {
-          const draftsResponse = await fetch(
-            `https://api.sleeper.app/v1/league/${league.league_id}/drafts`
-          );
-          if (draftsResponse.ok) {
-            const draftsData = await draftsResponse.json();
-            const info = getLeagueDisplayInfo(league);
-            return draftsData.map((draft) => ({
-              draftId: draft.draft_id,
-              name: draft.metadata?.name || league.name || `Draft ${draft.draft_id}`,
-              leagueId: league.league_id,
-              type: info.type,
-              qb: info.qb,
-              ppr: info.ppr,
-              tep: info.tep,
-              status: draft.status || "",
-            }));
-          }
-          return [];
-        } catch (error) {
-          console.error(`Error fetching drafts for league ${league.league_id}:`, error);
-          return [];
+      const trimmed = username.trim();
+      setOtherUserSubmitted(true);
+      setIsLoadingOtherUser(true);
+      setOtherUserDrafts([]);
+      try {
+        const userResponse = await fetch(
+          `https://api.sleeper.app/v1/user/${trimmed}`,
+        );
+        if (!userResponse.ok) {
+          throw new Error("Failed to fetch user");
         }
-      });
+        const userData = await userResponse.json();
+        const userId = userData.user_id;
 
-      const allDrafts = (await Promise.all(draftsPromises)).flat();
-      const sorted = sortDraftsByStatusTypeName(allDrafts);
-      setOtherUserDraftsCache((prev) => ({
-        ...prev,
-        [trimmed]: { ...(prev[trimmed] || { 2025: null, 2026: null }), [year]: sorted },
-      }));
-      setOtherUserDrafts(sorted);
-    } catch (error) {
-      console.error("Error fetching other user leagues:", error);
-      alert(`Error fetching leagues: ${error.message}`);
-    } finally {
-      setIsLoadingOtherUser(false);
-    }
-  }, [leagueYear]);
+        const leaguesResponse = await fetch(
+          `https://api.sleeper.app/v1/user/${userId}/leagues/nfl/${year}`,
+        );
+        if (!leaguesResponse.ok) {
+          throw new Error("Failed to fetch leagues");
+        }
+        const leaguesData = await leaguesResponse.json();
+
+        const draftsPromises = leaguesData.map(async (league) => {
+          try {
+            const draftsResponse = await fetch(
+              `https://api.sleeper.app/v1/league/${league.league_id}/drafts`,
+            );
+            if (draftsResponse.ok) {
+              const draftsData = await draftsResponse.json();
+              const info = getLeagueDisplayInfo(league);
+              return draftsData.map((draft) => ({
+                draftId: draft.draft_id,
+                name:
+                  draft.metadata?.name ||
+                  league.name ||
+                  `Draft ${draft.draft_id}`,
+                leagueId: league.league_id,
+                type: info.type,
+                qb: info.qb,
+                ppr: info.ppr,
+                tep: info.tep,
+                status: draft.status || "",
+              }));
+            }
+            return [];
+          } catch (error) {
+            console.error(
+              `Error fetching drafts for league ${league.league_id}:`,
+              error,
+            );
+            return [];
+          }
+        });
+
+        const allDrafts = (await Promise.all(draftsPromises)).flat();
+        const sorted = sortDraftsByStatusTypeName(allDrafts);
+        setOtherUserDraftsCache((prev) => ({
+          ...prev,
+          [trimmed]: {
+            ...(prev[trimmed] || { 2025: null, 2026: null }),
+            [year]: sorted,
+          },
+        }));
+        setOtherUserDrafts(sorted);
+      } catch (error) {
+        console.error("Error fetching other user leagues:", error);
+        alert(`Error fetching leagues: ${error.message}`);
+      } finally {
+        setIsLoadingOtherUser(false);
+      }
+    },
+    [leagueYear],
+  );
 
   // Load My Leagues: use cache for selected year or fetch once per year (always re-sort when displaying)
   useEffect(() => {
@@ -263,7 +294,14 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
     }
     setMyDrafts([]);
     fetchMyLeagues();
-  }, [draftSource, leagueYear, userName, isRankingsPage, fetchMyLeagues, myDraftsCache]);
+  }, [
+    draftSource,
+    leagueYear,
+    userName,
+    isRankingsPage,
+    fetchMyLeagues,
+    myDraftsCache,
+  ]);
 
   // Reset other-user state when switching away
   useEffect(() => {
@@ -274,7 +312,13 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
 
   // When year changes on Other user: use cache or fetch for that year (always re-sort when displaying)
   useEffect(() => {
-    if (!isRankingsPage || draftSource !== "otherUser" || !otherUserSubmitted || !otherUserInput.trim()) return;
+    if (
+      !isRankingsPage ||
+      draftSource !== "otherUser" ||
+      !otherUserSubmitted ||
+      !otherUserInput.trim()
+    )
+      return;
     const trimmed = otherUserInput.trim();
     const userCache = otherUserDraftsCache[trimmed];
     const cached = userCache?.[leagueYear];
@@ -284,7 +328,15 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
     }
     setOtherUserDrafts([]);
     fetchOtherUserLeagues(trimmed, leagueYear);
-  }, [leagueYear, draftSource, otherUserSubmitted, otherUserInput, isRankingsPage, otherUserDraftsCache, fetchOtherUserLeagues]);
+  }, [
+    leagueYear,
+    draftSource,
+    otherUserSubmitted,
+    otherUserInput,
+    isRankingsPage,
+    otherUserDraftsCache,
+    fetchOtherUserLeagues,
+  ]);
 
   // Function to recalculate position ranks and tiers
   // Position tiers: 5 players per tier
@@ -356,7 +408,7 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
 
       try {
         const draftResponse = await fetch(
-          `https://api.sleeper.app/v1/draft/${draftId}`
+          `https://api.sleeper.app/v1/draft/${draftId}`,
         );
         if (!draftResponse.ok) {
           console.error(`Failed to fetch draft ${draftId}`);
@@ -365,7 +417,7 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
         const draftData = await draftResponse.json();
 
         const picksResponse = await fetch(
-          `https://api.sleeper.app/v1/draft/${draftId}/picks`
+          `https://api.sleeper.app/v1/draft/${draftId}/picks`,
         );
         if (!picksResponse.ok) {
           console.error(`Failed to fetch picks for draft ${draftId}`);
@@ -374,12 +426,15 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
         const picksData = await picksResponse.json();
 
         const draftName = draftData.metadata?.name || `Draft ${draftId}`;
-        let type = null, qb = null, ppr = null, tep = null;
+        let type = null,
+          qb = null,
+          ppr = null,
+          tep = null;
         const status = draftData.status ?? null;
 
         if (draftData.league_id) {
           const leagueResponse = await fetch(
-            `https://api.sleeper.app/v1/league/${draftData.league_id}`
+            `https://api.sleeper.app/v1/league/${draftData.league_id}`,
           );
           if (leagueResponse.ok) {
             const league = await leagueResponse.json();
@@ -422,7 +477,7 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
     setIsLoadingDrafts(true);
     try {
       const draftResponse = await fetch(
-        `https://api.sleeper.app/v1/draft/${draftId}`
+        `https://api.sleeper.app/v1/draft/${draftId}`,
       );
       if (!draftResponse.ok) {
         throw new Error(`Failed to fetch draft ${draftId}`);
@@ -430,7 +485,7 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
       const draftData = await draftResponse.json();
 
       const picksResponse = await fetch(
-        `https://api.sleeper.app/v1/draft/${draftId}/picks`
+        `https://api.sleeper.app/v1/draft/${draftId}/picks`,
       );
       if (!picksResponse.ok) {
         throw new Error(`Failed to fetch picks for draft ${draftId}`);
@@ -507,7 +562,7 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
             avgAdp,
             draftCount: data.count,
           };
-        }
+        },
       );
 
       // Sort by average ADP
@@ -608,7 +663,7 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
         <h1>Draft Helper Setup</h1>
       )}
       <hr className="separator" />
-      
+
       <div className="setup-section">
         <h3>Use Preset Rankings</h3>
         <div className="preset-list-container">
@@ -728,7 +783,10 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
                   className="draft-ids-input other-user-input"
                   placeholder="Sleeper username"
                   value={otherUserInput}
-                  onChange={(e) => { setOtherUserInput(e.target.value); setOtherUserSubmitted(false); }}
+                  onChange={(e) => {
+                    setOtherUserInput(e.target.value);
+                    setOtherUserSubmitted(false);
+                  }}
                   onKeyPress={(e) => {
                     if (e.key === "Enter") {
                       setOtherUserSubmitted(true);
@@ -768,15 +826,21 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
                       {otherUserDrafts.map((draft) => (
                         <tr
                           key={draft.draftId}
-                          onClick={() => !isLoadingDrafts && handleAddDraftFromList(draft)}
+                          onClick={() =>
+                            !isLoadingDrafts && handleAddDraftFromList(draft)
+                          }
                           className={isLoadingDrafts ? "disabled" : "clickable"}
                         >
                           <td className="col-name">{draft.name}</td>
-                          <td className={getTypeClassName(draft.type)}>{draft.type ?? "—"}</td>
+                          <td className={getTypeClassName(draft.type)}>
+                            {draft.type ?? "—"}
+                          </td>
                           <td>{draft.qb ?? "—"}</td>
                           <td>{draft.ppr != null ? Number(draft.ppr) : "—"}</td>
                           <td>{draft.tep != null ? Number(draft.tep) : "—"}</td>
-                          <td className={`stats-cell stats-${draft.status || "other"}`}>
+                          <td
+                            className={`stats-cell stats-${draft.status || "other"}`}
+                          >
                             {formatStatusLabel(draft.status)}
                           </td>
                         </tr>
@@ -809,15 +873,21 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
                       {myDrafts.map((draft) => (
                         <tr
                           key={draft.draftId}
-                          onClick={() => !isLoadingDrafts && handleAddDraftFromList(draft)}
+                          onClick={() =>
+                            !isLoadingDrafts && handleAddDraftFromList(draft)
+                          }
                           className={isLoadingDrafts ? "disabled" : "clickable"}
                         >
                           <td className="col-name">{draft.name}</td>
-                          <td className={getTypeClassName(draft.type)}>{draft.type ?? "—"}</td>
+                          <td className={getTypeClassName(draft.type)}>
+                            {draft.type ?? "—"}
+                          </td>
                           <td>{draft.qb ?? "—"}</td>
                           <td>{draft.ppr != null ? Number(draft.ppr) : "—"}</td>
                           <td>{draft.tep != null ? Number(draft.tep) : "—"}</td>
-                          <td className={`stats-cell stats-${draft.status || "other"}`}>
+                          <td
+                            className={`stats-cell stats-${draft.status || "other"}`}
+                          >
                             {formatStatusLabel(draft.status)}
                           </td>
                         </tr>
@@ -859,11 +929,15 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
                     {sortDraftsByStatusTypeName(drafts).map((draft) => (
                       <tr key={draft.draftId}>
                         <td className="col-name">{draft.name}</td>
-                        <td className={getTypeClassName(draft.type)}>{draft.type ?? "—"}</td>
+                        <td className={getTypeClassName(draft.type)}>
+                          {draft.type ?? "—"}
+                        </td>
                         <td>{draft.qb ?? "—"}</td>
                         <td>{draft.ppr != null ? Number(draft.ppr) : "—"}</td>
                         <td>{draft.tep != null ? Number(draft.tep) : "—"}</td>
-                        <td className={`stats-cell stats-${draft.status || "other"}`}>
+                        <td
+                          className={`stats-cell stats-${draft.status || "other"}`}
+                        >
                           {formatStatusLabel(draft.status)}
                         </td>
                         <td className="col-remove">
