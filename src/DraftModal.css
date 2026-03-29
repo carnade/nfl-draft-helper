@@ -18,100 +18,165 @@
     font-size: clamp(0.6em, 1em, 1.2em);
   }
 }
+/* Glassy overlay – blur background like rankings page */
 .draft-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: hsl(222 30% 10% / 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
 }
 
+/* Main modal panel – fixed height so inner grid can scroll */
 .draft-modal-content {
-  background: #f2f2f2;
-  padding: 20px;
-  border-radius: 8px;
+  background: linear-gradient(
+    135deg,
+    hsl(var(--card) / 0.92) 0%,
+    hsl(var(--card) / 0.78) 100%
+  );
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: 1.25rem;
+  border-radius: var(--radius);
   width: 95%;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  max-height: 80vh; /* 80% of the screen height */
+  height: 80vh;
+  max-height: 80vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  color: hsl(var(--foreground));
+  font-family: Inter, sans-serif;
+  box-shadow:
+    0 8px 32px hsl(var(--foreground) / 0.12),
+    inset 0 1px 0 hsl(var(--foreground) / 0.05);
+  border: 2px solid hsl(var(--border));
 }
 
 body.dark .draft-modal-content {
-  background-color: #35353b;
-  color: #e2e2e2;
+  background: linear-gradient(
+    135deg,
+    hsl(var(--card) / 0.95) 0%,
+    hsl(var(--card) / 0.82) 100%
+  );
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border) / 0.8);
 }
 
 .close-modal-button {
-  margin: 20px auto 0 auto; /* Center the button horizontally */
+  margin: 1.25rem auto 0 auto; /* Center the button horizontally */
   display: block; /* Ensure the button is treated as a block element */
-  padding: 10px 20px;
-  background-color: #007bff;
-  color: #fff;
+  padding: 0.625rem 1.25rem;
+  font-size: 1rem;
+  font-family: Inter, sans-serif;
+  font-weight: 500;
+  background-color: hsl(174 50% 45%);
+  color: hsl(var(--primary-foreground));
   border: none;
-  border-radius: 5px;
+  border-radius: var(--radius);
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: background-color 0.2s;
   flex-shrink: 0; /* Ensure the button does not shrink */
 }
 
-.close-modal-button:hover {
-  background-color: #0056b3;
+body.dark .close-modal-button {
+  background-color: hsl(174 45% 42%);
 }
 
-/* Renamed grid-container to draftmodal-gridcontainer */
+.close-modal-button:hover {
+  background-color: hsl(174 50% 40%);
+}
+
+body.dark .close-modal-button:hover {
+  background-color: hsl(174 45% 38%);
+}
+
+/* Scroll wrapper – bounded height so vertical scroll always works */
+.draftmodal-gridscroll {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 55vh; /* Bounded height so overflow scrolls (all 53+ picks) */
+  margin-top: 1.25rem;
+  margin-bottom: 1.25rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Grid of player cards – column of round rows (snake) or flat grid (linear) */
 .draftmodal-gridcontainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+/* Each round row: 12 columns; left-aligned or right-aligned for snake */
+.draftmodal-round-row {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
-  gap: 10px;
-  margin-top: 20px;
-  flex: 1; /* Allow the grid to take up remaining space */
-  overflow-y: auto; /* Make the grid content scrollable */
-  margin-bottom: 20px; /* Add spacing between grid and close button */
+  gap: 0.625rem;
 }
 
-/* Adjusted the grid layout to align names with the ranks area */
+.draftmodal-round-left {
+  justify-items: start;
+}
+
+.draftmodal-round-right {
+  justify-items: end;
+}
+
+.draftmodal-slot-empty {
+  min-width: 0;
+}
+
+/* Player card – glass style matching rankings page */
 .player-card {
   display: grid;
   grid-template-areas:
     "pick name name"
     "ktc ktc-rank ktc-rank"
     "fc fc-rank fc-rank";
-  grid-template-columns: 1fr 2fr 1fr; /* Adjusted column sizes */
+  grid-template-columns: 1fr 2fr 1fr;
   grid-template-rows: auto auto auto;
-  gap: 5px;
-  background: #f9f9f9;
-  border: 2px solid #999;
-  border-radius: 20px;
-  padding: 10px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  gap: 0.3125rem;
+  border-radius: var(--radius);
+  padding: 0.625rem;
   width: 85%;
   height: 100px;
-  color: rgba(220, 220, 220, 0.95);
+  color: hsl(var(--foreground));
+  font-family: Inter, sans-serif;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 2px 8px hsl(var(--foreground) / 0.1);
 }
 
 .player-card-container {
-  position: relative; /* Make the container a positioning context */
+  position: relative;
 }
 
+/* Icon badge – subtle glass (lighter body) */
 .player-card-icon {
   position: relative;
-  /* top: -150%; */
-  /* left: 120%; */
   transform: translate(66%, -100%);
   z-index: 10;
   font-size: 3.5rem;
   pointer-events: none;
-  /* align-items: center; */
-  /* border: 3px; */
-  background-color: #313131;
-  border-radius: 10px;
-  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    hsl(var(--card) / 0.95) 0%,
+    hsl(var(--card) / 0.85) 100%
+  );
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  padding: 0.0625rem;
 }
 
 .pick-number {
@@ -128,9 +193,9 @@ body.dark .draft-modal-content {
   text-align: right;
   justify-self: stretch; /* Ensure it stretches to align with the ranks */
   grid-column: span 4; /* Take less space */
-
-  color: white;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6); /* Subtle shadow */
+  color: inherit; /* Inherit from parent card */
+  text-shadow: 0.0625rem 0.0625rem 0.125rem hsl(var(--foreground) / 0.3); /* Subtle shadow */
+  font-weight: 600;
 }
 
 .player-team {
@@ -171,86 +236,150 @@ body.dark .draft-modal-content {
   grid-column: span 2; /* Take less space */
 }
 
-/* Light mode styles for modal cards */
-body.light .draft-modal-content .player-card.wr {
-  background-color: #1540bc; /* Example color for WR */
+/* Glass cards by position – lighter body for larger cards (light) */
+body.light .draft-modal-content .player-card.qb {
+  background: linear-gradient(135deg, hsl(339 44% 62% / 0.55) 0%, hsl(339 44% 59% / 0.38) 100%);
+  border: 2px solid hsl(339 44% 49%);
+  color: hsl(339 50% 20%);
+  box-shadow: 0 4px 8px hsl(339 44% 49% / 0.2), inset 0 1px 1px hsl(339 44% 49% / 0.2);
 }
 
 body.light .draft-modal-content .player-card.rb {
-  background-color: #108410; /* Example color for RB */
+  background: linear-gradient(135deg, hsl(155 43% 67% / 0.55) 0%, hsl(155 43% 64% / 0.38) 100%);
+  border: 2px solid hsl(155 30% 49%);
+  color: hsl(155 50% 20%);
+  box-shadow: 0 4px 8px hsl(155 30% 49% / 0.2), inset 0 1px 1px hsl(155 30% 49% / 0.2);
+}
+
+body.light .draft-modal-content .player-card.wr {
+  background: linear-gradient(135deg, hsl(201 54% 59% / 0.55) 0%, hsl(201 54% 56% / 0.38) 100%);
+  border: 2px solid hsl(201 54% 49%);
+  color: hsl(201 50% 20%);
+  box-shadow: 0 4px 8px hsl(201 54% 49% / 0.2), inset 0 1px 1px hsl(201 54% 49% / 0.2);
 }
 
 body.light .draft-modal-content .player-card.te {
-  background-color: #d7810e; /* Example color for TE */
-}
-
-body.light .draft-modal-content .player-card.qb {
-  background-color: #ce1616; /* Example color for QB */
+  background: linear-gradient(135deg, hsl(30 61% 60% / 0.55) 0%, hsl(30 61% 57% / 0.38) 100%);
+  border: 2px solid hsl(30 61% 49%);
+  color: hsl(30 50% 20%);
+  box-shadow: 0 4px 8px hsl(30 61% 49% / 0.2), inset 0 1px 1px hsl(30 61% 49% / 0.2);
 }
 
 body.light .draft-modal-content .player-card.dst {
-  background-color: #8f1f1f; /* Example color for D/ST */
+  background: linear-gradient(135deg, hsl(12 86% 59% / 0.55) 0%, hsl(12 86% 56% / 0.38) 100%);
+  border: 2px solid hsl(12 86% 49%);
+  color: hsl(12 50% 20%);
+  box-shadow: 0 4px 8px hsl(12 86% 49% / 0.2), inset 0 1px 1px hsl(12 86% 49% / 0.2);
 }
 
 body.light .draft-modal-content .player-card.k {
-  background-color: #6700b1; /* Example color for K */
+  background: linear-gradient(135deg, hsl(280 60% 55% / 0.55) 0%, hsl(280 60% 50% / 0.38) 100%);
+  border: 2px solid hsl(280 60% 45%);
+  color: hsl(280 50% 20%);
+  box-shadow: 0 4px 8px hsl(280 60% 45% / 0.2), inset 0 1px 1px hsl(280 60% 45% / 0.2);
 }
 
 body.light .draft-modal-content .player-card.default {
-  background-color: gray; /* Default color */
+  background: linear-gradient(135deg, hsl(var(--muted) / 0.75) 0%, hsl(var(--muted) / 0.55) 100%);
+  border: 2px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+  box-shadow: 0 2px 6px hsl(var(--foreground) / 0.08);
 }
 
 /* Dark mode styles */
-
 body.dark .draftmodal-player-name,
 body.dark .player-info {
-  color: #e2e2e2; /* Light text for dark mode */
+  color: hsl(var(--foreground));
 }
 
-/* Dark mode styles for modal cards */
-body.dark .draft-modal-content .player-card.wr {
-  background-color: #1e3a8a; /* Darker blue for WR */
+/* Glass cards by position – lighter body for larger cards (dark) */
+body.dark .draft-modal-content .player-card.qb {
+  background: linear-gradient(135deg, hsl(339 44% 52% / 0.42) 0%, hsl(339 44% 49% / 0.28) 100%);
+  border: 2px solid hsl(339 44% 49%);
+  color: hsl(339 30% 90%);
+  box-shadow: 0 4px 8px hsl(339 44% 49% / 0.25), inset 0 1px 1px hsl(339 44% 49% / 0.3);
 }
 
 body.dark .draft-modal-content .player-card.rb {
-  background-color: #145214; /* Darker green for RB */
+  background: linear-gradient(135deg, hsl(155 30% 52% / 0.42) 0%, hsl(155 30% 49% / 0.28) 100%);
+  border: 2px solid hsl(155 30% 49%);
+  color: hsl(155 30% 90%);
+  box-shadow: 0 4px 8px hsl(155 30% 49% / 0.25), inset 0 1px 1px hsl(155 30% 49% / 0.3);
+}
+
+body.dark .draft-modal-content .player-card.wr {
+  background: linear-gradient(135deg, hsl(201 54% 52% / 0.42) 0%, hsl(201 54% 49% / 0.28) 100%);
+  border: 2px solid hsl(201 54% 49%);
+  color: hsl(201 30% 90%);
+  box-shadow: 0 4px 8px hsl(201 54% 49% / 0.25), inset 0 1px 1px hsl(201 54% 49% / 0.3);
 }
 
 body.dark .draft-modal-content .player-card.te {
-  background-color: #b3741f; /* Darker orange for TE */
-}
-
-body.dark .draft-modal-content .player-card.qb {
-  background-color: #a81c1c; /* Darker red for QB */
+  background: linear-gradient(135deg, hsl(30 61% 52% / 0.42) 0%, hsl(30 61% 49% / 0.28) 100%);
+  border: 2px solid hsl(30 61% 49%);
+  color: hsl(30 30% 90%);
+  box-shadow: 0 4px 8px hsl(30 61% 49% / 0.25), inset 0 1px 1px hsl(30 61% 49% / 0.3);
 }
 
 body.dark .draft-modal-content .player-card.dst {
-  background-color: #6e2c2c; /* Darker brown for D/ST */
+  background: linear-gradient(135deg, hsl(12 86% 52% / 0.42) 0%, hsl(12 86% 49% / 0.28) 100%);
+  border: 2px solid hsl(12 86% 49%);
+  color: hsl(12 30% 90%);
+  box-shadow: 0 4px 8px hsl(12 86% 49% / 0.25), inset 0 1px 1px hsl(12 86% 49% / 0.3);
 }
 
 body.dark .draft-modal-content .player-card.k {
-  background-color: #4b0082; /* Darker purple for K */
+  background: linear-gradient(135deg, hsl(280 60% 53% / 0.42) 0%, hsl(280 60% 50% / 0.28) 100%);
+  border: 2px solid hsl(280 60% 50%);
+  color: hsl(280 30% 90%);
+  box-shadow: 0 4px 8px hsl(280 60% 50% / 0.25), inset 0 1px 1px hsl(280 60% 50% / 0.3);
 }
 
 body.dark .draft-modal-content .player-card.default {
-  background-color: #555; /* Darker gray for default */
+  background: linear-gradient(135deg, hsl(var(--muted) / 0.62) 0%, hsl(var(--muted) / 0.42) 100%);
+  border: 2px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+  box-shadow: 0 2px 6px hsl(var(--foreground) / 0.1);
 }
 
 .modal-title {
   margin: 0 auto; /* Center the title horizontally */
   text-align: center; /* Ensure the text is centered */
   font-size: 1.5rem;
-  font-weight: bold;
-  color: #333;
+  font-weight: 600;
+  font-family: Inter, sans-serif;
+  color: hsl(var(--foreground));
 }
 
 /* Centered the league name title */
 .league-title {
   text-align: center;
-  font-size: 1.8em;
-  font-weight: bold;
-  margin-bottom: 20px;
+  font-size: 1.8rem;
+  font-weight: 600;
+  font-family: Inter, sans-serif;
+  margin-bottom: 1.25rem;
   flex-grow: 1;
+  color: hsl(var(--foreground));
+}
+
+.copy-draft-id-button {
+  transition: color 0.2s, transform 0.2s;
+}
+
+.copy-draft-id-button:hover {
+  color: hsl(174 50% 45%);
+  transform: scale(1.1);
+}
+
+.copy-draft-id-button:active {
+  transform: scale(0.95);
+}
+
+/* Keep header, team buttons, and results from shrinking so only the picks grid scrolls */
+.draft-modal-content > .header-container,
+.draft-modal-content > .team-buttons-container,
+.draft-modal-content > .results-container {
+  flex-shrink: 0;
 }
 
 /* Added styles for header-container */
@@ -262,53 +391,58 @@ body.dark .draft-modal-content .player-card.default {
 
 .switches-container {
   display: flex;
-  gap: 10px;
+  gap: 0.625rem;
+  align-items: center;
 }
 
 button.team-button {
-  font-size: 1.5rem; /* Larger text */
-  padding: 10px; /* Add some padding */
-  cursor: pointer; /* Pointer cursor on hover */
-  border-radius: 80px;
+  font-size: 1rem;
+  font-family: Inter, sans-serif;
+  font-weight: 500;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  border-radius: var(--radius);
   width: 70%;
-  box-shadow: #222 0px 0px 5px; /* Subtle shadow */
+  border: 1px solid hsl(var(--border));
+  background: linear-gradient(135deg, hsl(var(--card) / 0.95) 0%, hsl(var(--card) / 0.85) 100%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: hsl(var(--foreground));
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+  box-shadow: 0 1px 3px hsl(var(--foreground) / 0.1), inset 0 1px 0 hsl(var(--foreground) / 0.05);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
-/* Light mode styles for team buttons */
+button.team-button:hover {
+  background: linear-gradient(135deg, hsl(var(--muted) / 0.9) 0%, hsl(var(--muted) / 0.75) 100%);
+  border-color: hsl(var(--border));
+}
+
+button.team-button.selected {
+  background-color: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  font-weight: 600;
+}
+
 body.light button.team-button {
-  background-color: #e0e0e0; /* Light gray background */
-  color: #333; /* Dark text */
-  border: 1px solid #ccc; /* Subtle border */
+  background: linear-gradient(135deg, hsl(var(--card) / 0.98) 0%, hsl(var(--card) / 0.9) 100%);
+  color: hsl(var(--foreground));
 }
 
-body.light button.team-button:hover,
-body.light button.team-button.selected {
-  background-color: #d6d6d6; /* Slightly darker gray on hover */
-  font-weight: bold;
-  color: #0b0c0b;
-  border-radius: 5px;
-}
-
-/* Dark mode styles for team buttons */
 body.dark button.team-button {
-  background-color: #444; /* Dark gray background */
-  color: #e2e2e2; /* Light text */
-  border: 2px solid #222; /* Subtle border */
-}
-
-body.dark button.team-button:hover,
-body.dark button.team-button.selected {
-  background-color: #557; /* Slightly lighter gray on hover */
-  font-weight: bold;
-  color: #0b0c0b;
-  border-radius: 80px; /* Ensure consistent border-radius */
+  background: linear-gradient(135deg, hsl(var(--card) / 0.96) 0%, hsl(var(--card) / 0.86) 100%);
+  color: hsl(var(--foreground));
 }
 
 /* Updated styles for team-buttons-grid to include dynamic columns */
 .team-buttons-grid {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
-  gap: 10px;
+  gap: 0.625rem;
   justify-items: center; /* Align buttons horizontally in the center of each grid column */
   align-items: center; /* Align buttons vertically in the middle of the grid */
 }
@@ -317,8 +451,8 @@ body.dark button.team-button.selected {
 .draft-modal-switch {
   position: relative;
   display: inline-block;
-  width: 60px;
-  height: 34px;
+  width: 3.75rem; /* 60px */
+  height: 2.125rem; /* 34px */
 }
 
 /* Hide default HTML checkbox */
@@ -336,35 +470,45 @@ body.dark button.team-button.selected {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #ccc;
+  background-color: hsl(var(--muted));
+  border: 2px solid hsl(174 40% 55% / 0.6);
   -webkit-transition: 0.4s;
   transition: 0.4s;
+  border-radius: 2.125rem; /* Match height for perfect circle */
 }
 
 .draft-modal-slider:before {
   position: absolute;
   content: "";
-  height: 26px;
-  width: 26px;
-  left: 4px;
-  bottom: 4px;
-  background-color: white;
+  height: 1.5rem; /* 24px */
+  width: 1.5rem; /* 24px */
+  left: 0.125rem; /* 2px - accounts for border */
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: hsl(var(--background));
+  border: 2px solid hsl(var(--foreground) / 0.4);
   -webkit-transition: 0.4s;
   transition: 0.4s;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px hsl(var(--foreground) / 0.2);
 }
 
 .draft-modal-switch input:checked + .draft-modal-slider {
-  background-color: #2196f3;
+  background-color: hsl(var(--primary));
+  border-color: hsl(174 50% 60% / 0.8);
 }
 
 .draft-modal-switch input:focus + .draft-modal-slider {
-  box-shadow: 0 0 1px #2196f3;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
 }
 
 .draft-modal-switch input:checked + .draft-modal-slider:before {
-  -webkit-transform: translateX(26px);
-  -ms-transform: translateX(26px);
-  transform: translateX(26px);
+  -webkit-transform: translateY(-50%) translateX(1.75rem); /* Adjusted to keep circle inside border */
+  -ms-transform: translateY(-50%) translateX(1.75rem);
+  transform: translateY(-50%) translateX(1.75rem);
+  background-color: hsl(var(--primary-foreground));
+  border-color: hsl(var(--primary) / 0.8);
+  border-width: 2px;
 }
 
 /* Rounded sliders */
@@ -379,34 +523,38 @@ body.dark button.team-button.selected {
 /* Container for switches */
 .switch-container {
   display: flex;
-  margin-bottom: 10px; /* Add spacing between switches */
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.625rem; /* Add spacing between switches */
+  font-family: Inter, sans-serif;
 }
 
 .switch-container i {
-  width: 20px;
-  height: 20px;
+  width: 1.25rem;
+  height: 1.25rem;
   display: inline-block; /* Ensure they are treated as inline elements */
-  font-size: 1.5em; /* Updated size for the squares */
+  font-size: 1.5rem; /* Updated size for the squares */
+  color: hsl(var(--foreground));
 }
 
 .switch-container .fa-square {
-  width: 33px; /* Explicit width */
-  height: 33px; /* Explicit height */
+  width: 2.0625rem; /* Explicit width */
+  height: 2.0625rem; /* Explicit height */
   display: inline-block; /* Ensure proper alignment */
-  margin-right: 5px; /* Add spacing */
+  color: hsl(var(--foreground));
 }
 
 .results-container {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 10px;
+  gap: 0.625rem;
 }
 
 .results-grid {
   display: grid;
   grid-template-columns: repeat(12, 1fr); /* Match the team-buttons-grid */
-  gap: 10px;
+  gap: 0.625rem;
   justify-items: center; /* Align items horizontally in the center */
   align-items: center; /* Align items vertically in the middle */
   width: 100%; /* Ensure it spans the full width */
@@ -416,7 +564,9 @@ body.dark button.team-button.selected {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 0.3125rem;
+  font-family: Inter, sans-serif;
+  color: hsl(var(--foreground));
 }
 
 /* Center content both horizontally and vertically */
@@ -430,15 +580,19 @@ body.dark button.team-button.selected {
 /* Ensure the 'No draft found' text spans all 12 columns in the grid */
 .draft-modal-not-found-text {
   grid-column: span 12;
-  font-size: 64px;
+  font-size: 4rem;
+  font-family: Inter, sans-serif;
+  font-weight: 600;
   height: 20vh;
   display: flex;
   justify-content: center;
   align-items: center;
+  color: hsl(var(--muted-foreground));
 }
 
 .draft-modal-card-text {
-  color: #c1c1c1; /* Dimmed text color */
+  color: hsl(var(--muted-foreground)); /* Dimmed text color using design system */
+  font-family: Inter, sans-serif;
 }
 
 .player-card-content {
@@ -451,6 +605,12 @@ body.dark button.team-button.selected {
   height: 100%; /* Take full height of the card */
   padding: 10px; /* Add some padding */
   box-sizing: border-box; /* Include padding in width/height */
+}
+
+/* Grey out cards for picks that don't belong to the selected team */
+.player-card.player-card-dimmed {
+  opacity: 0.35;
+  filter: grayscale(0.85);
 }
 
 .dimmed {

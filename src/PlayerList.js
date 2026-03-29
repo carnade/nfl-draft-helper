@@ -35,7 +35,7 @@ function PlayerList({
 
   return (
     <div className="player-list">
-      <h2>{title}</h2>
+      <h2 className={`player-list-header ${title.toLowerCase()}-header`}>{title}</h2>
       {Object.keys(groupedPlayers).map((tier) => {
         const tierHasPlayers = groupedPlayers[tier].some(
           (player) => !removedPlayers.has(`${player.Name}`)

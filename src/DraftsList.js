@@ -17,6 +17,7 @@ function DraftPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedLeague, setSelectedLeague] = useState(null);
   const [draftIdInput, setDraftIdInput] = useState("");
+  const [positionCounts, setPositionCounts] = useState({}); // draft_id -> {QB: 1, RB: 2, ...}
 
   const formatMilliseconds = (milliseconds) => {
     const totalSeconds = Math.floor(milliseconds / 1000);
@@ -40,6 +41,28 @@ function DraftPage() {
     }
 
     return formattedTime.trim();
+  };
+
+  const formatPositionCounts = (counts) => {
+    if (!counts) return "";
+
+    const chunks = [];
+    const addChunk = (key, labelClass, label, count) => {
+      if (chunks.length > 0) chunks.push(<span key={`sep-${key}`} className="position-separator"> </span>);
+      chunks.push(
+        <span key={key} className="position-chunk">
+          <span className={`position-label ${labelClass}`}>{label}</span>
+          <span className="position-count">: {count}</span>
+        </span>
+      );
+    };
+    if (counts.QB > 0) addChunk("qb", "qb", "QB", counts.QB);
+    if (counts.RB > 0) addChunk("rb", "rb", "RB", counts.RB);
+    if (counts.WR > 0) addChunk("wr", "wr", "WR", counts.WR);
+    if (counts.TE > 0) addChunk("te", "te", "TE", counts.TE);
+    if (counts.P > 0) addChunk("p", "p", "P", counts.P);
+
+    return chunks.length > 0 ? chunks : "";
   };
 
   const calcPicksToDraft = (
@@ -143,16 +166,53 @@ function DraftPage() {
       // Second API request to get draft data using user_id
       if (userId) {
         const draftsResponse = await fetch(
-          `https://api.sleeper.app/v1/user/${userId}/drafts/nfl/2025`
+          `https://api.sleeper.app/v1/user/${userId}/drafts/nfl/2026`
         );
         const draftsData = await draftsResponse.json();
 
         // Extracting relevant draft information and fetch additional data
-        const relevantDraftsPromises = draftsData
-          .filter(
-            (draft) => draft.status === "drafting" || draft.status === "paused"
-          )
-          .map(async (draft) => {
+        const filteredDrafts = draftsData.filter(
+          (draft) => draft.status === "drafting" || draft.status === "paused"
+        );
+
+        // First, fetch all picks data for position counting
+        const picksPromises = filteredDrafts.map(async (draft) => {
+          const picksResponse = await fetch(
+            `https://api.sleeper.app/v1/draft/${draft.draft_id}/picks`
+          );
+          const picksData = await picksResponse.json();
+          return {
+            draftId: draft.draft_id,
+            picks: picksData,
+          };
+        });
+        const allPicksData = await Promise.all(picksPromises);
+
+        // Calculate position counts only for picks the user has made
+        const positionCountsMap = {};
+        allPicksData.forEach(({ draftId, picks }) => {
+          const counts = { QB: 0, RB: 0, WR: 0, TE: 0, P: 0 };
+          
+          // Filter picks to only include those made by the current user
+          const userPicks = picks.filter((pick) => pick.picked_by === userId);
+          
+          userPicks.forEach((pick) => {
+            // Position is in pick.metadata.position
+            const position = pick.metadata?.position;
+            if (position === "QB") counts.QB++;
+            else if (position === "RB") counts.RB++;
+            else if (position === "WR") counts.WR++;
+            else if (position === "TE") counts.TE++;
+            else if (position === "P" || position === "P/K" || position === "K") counts.P++;
+          });
+          
+          positionCountsMap[draftId] = counts;
+        });
+
+        setPositionCounts(positionCountsMap);
+
+        // Now fetch draft details and process
+        const relevantDraftsPromises = filteredDrafts.map(async (draft) => {
             const draftId = draft.draft_id;
 
             // Fetch additional draft details
@@ -165,11 +225,8 @@ function DraftPage() {
             const draftPosition = draftDetails.draft_order[userId];
             const { reversal_round, pick_timer, teams } = draftDetails.settings;
 
-            // Fetch picks count
-            const picksResponse = await fetch(
-              `https://api.sleeper.app/v1/draft/${draftId}/picks`
-            );
-            const picksData = await picksResponse.json();
+            // Get picks count from already fetched data
+            const picksData = allPicksData.find(p => p.draftId === draftId)?.picks || [];
             const picksCount = picksData.length;
 
             const picksToDraft = calcPicksToDraft(
@@ -285,6 +342,7 @@ function DraftPage() {
       </div>
       <div className="draft-grid">
         <div className="draft-grid-header">Name</div>
+        <div className="draft-grid-header">Drafted Positions</div>
         <div className="draft-grid-header">Picks Before You</div>
         <div className="draft-grid-header">Round</div>
         <div className="draft-grid-header">Current Clock</div>
@@ -294,6 +352,9 @@ function DraftPage() {
               <React.Fragment key={index}>
                 <div className="draft-grid-item draft-grid-name">
                   {draft.name}
+                </div>
+                <div className="draft-grid-item draft-grid-positions">
+                  {formatPositionCounts(positionCounts[draft.draft_id])}
                 </div>
                 <div className="draft-grid-item">
                   {draft.picksToDraft === 0 ? (

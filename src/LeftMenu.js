@@ -25,7 +25,7 @@ function LeftMenu({ userName, setUserName }) {
 
   // Manually update this timestamp when you want the changelog to be considered "updated".
   // Edit this constant in the source and deploy/build to change the value.
-  const MANUAL_LAST_UPDATED = "2025-12-18T00:00:00.000Z";
+  const MANUAL_LAST_UPDATED = "2026-03-28T00:00:00.000Z";
 
   const checkUnread = () => {
     try {

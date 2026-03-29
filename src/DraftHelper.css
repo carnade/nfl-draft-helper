@@ -1,92 +1,116 @@
 .backButton-container {
   display: flex;
   position: absolute;
-  right: 20px;
-  top: 30px;
+  right: 1.25rem;
+  top: 1.875rem;
 }
 
 .backButton-container button {
-  padding: 10px 20px;
-  font-size: 16px;
-  border-radius: 25px;
+  padding: 0.625rem 1.25rem;
+  font-size: 1rem;
+  font-family: Inter, sans-serif;
+  border-radius: var(--radius);
   border: none;
-  background-color: grey;
-  color: white;
+  background-color: hsl(174 50% 45%);
+  color: hsl(var(--primary-foreground));
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: background-color 0.2s;
+}
+
+body.dark .backButton-container button {
+  background-color: hsl(174 45% 42%);
 }
 
 .backButton-container button:hover {
-  background-color: rgb(65, 65, 65);
+  background-color: hsl(174 50% 40%);
+}
+
+body.dark .backButton-container button:hover {
+  background-color: hsl(174 45% 38%);
 }
 
 .base-container {
   display: flex;
   position: relative;
   flex-wrap: wrap; /* if needed to handle smaller screens */
-  gap: 10px;
-  margin-bottom: 20px;
+  gap: 0.625rem;
+  margin-bottom: 1.25rem;
 }
 
 /* modern-input for text fields */
 .modern-input {
-  padding: 10px;
-  font-size: 16px;
-  border: 2px solid #ddd;
-  border-radius: 25px;
-  transition: border-color 0.3s, box-shadow 0.3s;
+  padding: 0.625rem 0.75rem;
+  font-size: 1rem;
+  font-family: Inter, sans-serif;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  transition: border-color 0.2s, box-shadow 0.2s;
   outline: none;
 }
 
 /* optional placeholder styling */
 .modern-input::placeholder {
-  color: #aaa;
+  color: hsl(var(--foreground) / 0.5);
   font-style: italic;
 }
 
 .modern-input:focus {
-  border-color: #007bff; /* your preferred blue color */
-  box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
 }
 
-/* modern-button: a blue style instead of green */
+/* modern-button: using primary color */
 .modern-button {
-  padding: 10px 20px;
-  font-size: 16px;
-  color: white;
-  background-color: #007bff; /* your main blue color */
+  padding: 0.625rem 1.25rem;
+  font-size: 1rem;
+  font-family: Inter, sans-serif;
+  font-weight: 500;
+  color: hsl(var(--primary-foreground));
+  background-color: hsl(174 50% 45%);
   border: none;
-  border-radius: 25px;
+  border-radius: var(--radius);
   cursor: pointer;
-  transition: background-color 0.3s, box-shadow 0.3s;
+  transition: background-color 0.2s, box-shadow 0.2s;
   outline: none;
 }
 
+body.dark .modern-button {
+  background-color: hsl(174 45% 42%);
+}
+
 .modern-button:hover {
-  background-color: #0056b3;
-  box-shadow: 0 0 8px rgba(0, 86, 179, 0.3);
+  background-color: hsl(174 50% 40%);
+  box-shadow: 0 2px 8px hsl(174 50% 45% / 0.3);
+}
+
+body.dark .modern-button:hover {
+  background-color: hsl(174 45% 38%);
 }
 
 .modern-button:active {
-  background-color: #003f7f;
-  box-shadow: 0 0 8px rgba(0, 63, 127, 0.3);
+  background-color: hsl(174 50% 35%);
+  box-shadow: 0 1px 4px hsl(174 50% 45% / 0.3);
 }
 
 /* modern-dropdown: for <select> */
 .modern-dropdown {
-  padding: 10px;
-  font-size: 16px;
-  border: 2px solid #ddd;
-  border-radius: 25px;
-  background-color: #f8f8f8;
+  padding: 0.625rem 0.75rem;
+  font-size: 1rem;
+  font-family: Inter, sans-serif;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
   cursor: pointer;
-  transition: border-color 0.3s, box-shadow 0.3s;
+  transition: border-color 0.2s, box-shadow 0.2s;
   outline: none;
 }
 
 .modern-dropdown:focus {
-  border-color: #007bff; /* match your button color if you like */
-  box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
 }
 
 /* Optional: style your checkbox if desired. 
@@ -94,14 +118,16 @@
 .modern-checkbox {
   display: flex;
   align-items: center;
-  gap: 5px; /* space between checkbox and label text */
-  font-size: 16px;
+  gap: 0.3125rem; /* space between checkbox and label text */
+  font-size: 1rem;
+  font-family: Inter, sans-serif;
   cursor: pointer;
+  color: hsl(var(--foreground));
 }
 
 .modern-checkbox input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
+  width: 1.125rem;
+  height: 1.125rem;
   cursor: pointer;
 }
 
@@ -110,18 +136,19 @@
   position: relative; /* Needed if .flash-text is absolutely positioned */
   justify-content: center;
   align-items: center;
-  margin-bottom: 20px;
-  gap: 10px;
+  margin-bottom: 1.25rem;
+  gap: 0.625rem;
 }
 
 /* You may already have these input/button styles in a shared form CSS.
    If so, remove duplicates here. */
 
 .flash-text {
-  font-size: 16px;
-  color: green;
+  font-size: 1rem;
+  font-family: Inter, sans-serif;
+  color: hsl(160 60% 45%);
   position: absolute; /* so it appears above or near the input */
-  top: 50px; /* adjust as needed for your layout */
+  top: 3.125rem; /* adjust as needed for your layout */
   animation: flashAnimation 0.7s ease-in-out;
   white-space: nowrap;
 }
@@ -153,4 +180,20 @@
 .draft-id-container .modern-button {
   padding: 8px 12px;
   height: 100%;
+}
+
+.view-toggle-group {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.view-toggle-btn {
+  opacity: 0.6;
+}
+
+.view-toggle-btn.active {
+  opacity: 1;
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 1px;
 }

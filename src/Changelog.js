@@ -41,6 +41,61 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2026-03-28",
+      title: "Draft Helper Grid View",
+      items: [
+        {
+          text: "New grid board view in Draft Helper:",
+          subitems: [
+            "Toggle between the standard position list view and a 12-wide draft board showing all picks round by round",
+            "Each row shows one complete round — the same layout you'd see at a live draft table",
+            "Drafted players appear greyed out on the board instead of disappearing, so you can see which slots are filled",
+            "Click a greyed-out player to undraft them",
+          ],
+        },
+        "Grid view supports both Snake and 3RR (Third Round Reversal) draft formats, with a toggle to switch between them",
+        "3RR pick order correctly follows the format: round 1 forward, round 2 reversed, round 3 stays reversed, then snakes normally from round 4",
+      ],
+    },
+    {
+      date: "2026-02-02",
+      title: "Create Rankings from Drafts, League Filters & Year Update",
+      items: [
+        {
+          text: "Create Rankings from Drafts (Create Rankings Setup):",
+          subitems: [
+            "New section: enter one or more draft IDs (comma-separated), Add Drafts, then Compile Rankings to build rankings from average ADP across drafts",
+            "Draft names from Sleeper draft metadata (no separate league API call)",
+            "'My Leagues' dropdown: fetch your leagues for the current year (from Sleeper state endpoint, fallback 2026), then add a draft from the dropdown",
+            "When compiling: position tiers use 5 players per tier; overall list tiers unchanged (12 per tier)",
+          ]
+        },
+        "Draft Modal: draft ID and copy-to-clipboard icon shown next to the league title",
+        {
+          text: "League list:",
+          subitems: [
+            "'Dynasty only' checkbox (default on) filters leagues by Sleeper settings.type === 2",
+          ]
+        },
+        {
+          text: "Trade Helper:",
+          subitems: [
+            "Panel titles swapped: left box titled 'User gets', right box 'Trade Partner gets'; logic and league-info column unchanged",
+          ]
+        },
+        "Year 2025 → 2026 across Trade Analyzer, Drafts List, League List, Bestball, and Create Rankings Setup (DEFAULT_LEAGUE_YEAR constant)",
+        "Draft/Rankings Setup: preset options no longer show a selected state; clicking a preset navigates immediately",
+        {
+          text: "UI updates:",
+          subitems: [
+            "Create Rankings: player buttons use a single glassmorphism style (gradient, backdrop blur, colored border) for all positions at medium opacity",
+            "League list: injured-player indicator is custom cross.png (medical cross) at 1.1rem, aligned with surrounding text",
+            "Setup pages: preset choices no longer display a highlighted/selected style",
+          ]
+        },
+      ],
+    },
+    {
       date: "2025-12-18",
       title: "Bestball & Tournament Enhancements",
       items: [

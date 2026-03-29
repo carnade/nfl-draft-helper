@@ -2,85 +2,126 @@
 
 /* The back button */
 .back-button {
-  /* If you want it absolutely positioned in the header: 
-     position: absolute; 
-     left: 20px; 
-     top: 20px; 
-     BUT note that .header-container might need position: relative. 
-     Adjust as desired. */
-
-  /* Or if you prefer it just to be styled like a button: */
-  padding: 10px 20px;
-  font-size: 16px;
-  color: white;
-  background-color: #007bff;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: hsl(var(--primary-foreground));
+  background-color: hsl(var(--primary));
   border: none;
-  border-radius: 25px;
+  border-radius: var(--radius);
   cursor: pointer;
-  transition: background-color 0.3s, box-shadow 0.3s;
-  outline: none;
+  transition: background-color 0.2s;
+  font-family: Inter, sans-serif;
   display: inline-flex;
   align-items: center;
-
-  /* needed for FontAwesome icon alignment */
 }
 
 .back-button:hover {
-  background-color: #0056b3;
-  box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
+  background-color: hsl(var(--primary) / 0.9);
 }
 
-.back-button:active {
-  background-color: #003f7f;
-  box-shadow: 0 0 8px rgba(0, 63, 127, 0.3);
+/* Header: title + year toggle */
+.dashboard-container .header-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
-/* The grid containing league items */
+.bestball-year-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.bestball-year-toggle button {
+  padding: 0.5rem 1rem;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  border: none;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  font-family: Inter, sans-serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.bestball-year-toggle button:hover {
+  background: hsl(var(--muted) / 0.5);
+}
+
+.bestball-year-toggle button.active {
+  background-color: hsl(174 50% 45%);
+  color: hsl(var(--primary-foreground));
+}
+
+body.dark .bestball-year-toggle button.active {
+  background-color: hsl(174 45% 42%);
+}
+
+.bestball-year-toggle .year-sep {
+  padding: 0 0.25rem;
+  color: hsl(var(--muted-foreground));
+  font-weight: 500;
+}
+
+/* The grid containing league items (7 columns: Draft date, Name, Draft Position, Position, Behind 1st, Record, Links) */
 .bestball-grid {
   width: 90%;
   display: grid;
-  grid-template-columns: 6fr 1fr 1fr 1fr 1fr 2fr; /* Draft Position, Position, Behind 1st, Record all same size */
+  grid-template-columns: 1.5fr 4fr 1fr 1fr 1fr 1fr 2fr;
   gap: 10px;
   margin-left: auto;
   margin-right: auto;
 }
 
 .bestball-grid-item {
-  padding: 10px;
-  border-bottom: 1px solid #ddd;
+  padding: 0.625rem;
+  border-bottom: 1px solid hsl(var(--border));
   text-align: left;
+  color: hsl(var(--foreground));
 }
 
-/* Style for the draft position column (2nd column) */
-.bestball-grid-item:nth-child(6n+2) {
-  text-align: center; /* Draft position column */
-  font-weight: bold; /* Make the draft position stand out */
-}
-
-/* Style for the Position column (3rd column) */
-.bestball-grid-item:nth-child(6n+3) {
-  text-align: center; /* Position column */
-}
-
-/* Style for the Behind 1st column (4th column) */
-.bestball-grid-item:nth-child(6n+4) {
-  text-align: center; /* Behind 1st column */
+.bestball-grid-item-draft-date {
+  white-space: nowrap;
   font-size: 0.9rem;
 }
 
-/* Style for the Record column (5th column) */
-.bestball-grid-item:nth-child(6n+5) {
-  text-align: center; /* Record column */
+/* Style for the League Name column (2nd) - toggle is here */
+/* Draft position column (3rd) */
+.bestball-grid-item:nth-child(7n+3) {
+  text-align: center;
+  font-weight: bold;
+}
+
+/* Position column (4th) */
+.bestball-grid-item:nth-child(7n+4) {
+  text-align: center;
+}
+
+/* Behind 1st column (5th) */
+.bestball-grid-item:nth-child(7n+5) {
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+/* Record column (6th) */
+.bestball-grid-item:nth-child(7n+6) {
+  text-align: center;
 }
 
 /* Style for links in the bestball grid */
 .bestball-grid-item a {
-  color: #66b2ff;
-  text-decoration: none; /* Optional: Remove underline */
+  color: hsl(var(--primary));
+  text-decoration: none;
 }
 
 .bestball-grid-item a:hover {
-  text-decoration: underline; /* Optional: Add underline on hover */
+  text-decoration: underline;
 }
 
 /* Expand/collapse arrow for league details */
@@ -105,85 +146,89 @@
 }
 
 .team-grid-header {
-  font-weight: bold;
+  font-weight: 600;
+  font-size: 0.875rem;
   text-align: center;
-  padding: 10px;
-  background-color: #f0f0f0;
-  border-bottom: 1px solid #ccc;
+  padding: 0.75rem;
+  background-color: hsl(222 47% 8%);
+  color: hsl(var(--foreground));
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+body.light .team-grid-header {
+  background-color: hsl(220 14% 97%);
+}
+
+body.dark .team-grid-header {
+  background-color: hsl(222 47% 10%);
 }
 
 .team-grid-item {
-  padding: 10px;
-  border-bottom: 1px solid #e0e0e0;
+  padding: 0.625rem;
+  border-bottom: 1px solid hsl(var(--border));
   text-align: center;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
 }
 
 /* Highlight the current user's row */
 .user-position {
-  background-color: #0480063e; /* a semi-transparent green? */
-  font-weight: bold;
-  color: #0b0c0b;
-  padding: 2px;
-  border-radius: 5px;
+  background-color: hsl(160 60% 85% / 0.3);
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  padding: 0.125rem 0.25rem;
+  border-radius: calc(var(--radius) - 2px);
+}
+
+body.dark .user-position {
+  background-color: hsl(160 50% 40% / 0.4);
 }
 
 /* Tab container */
 .tab-container {
   display: flex;
-  justify-content: flex-start; /* Align tabs to the left */
-  margin-bottom: 20px;
-  border-bottom: 2px solid #ddd; /* Add a bottom border for separation */
-  width: 100%; /* Ensure it spans the full width */
+  justify-content: flex-start;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid hsl(var(--border));
+  width: 100%;
 }
 
 /* Individual tab button */
 .tab-button {
-  padding: 10px 20px;
+  padding: 0.625rem 1.25rem;
   border: none;
-  background-color: #f0f0f0;
+  background-color: transparent;
+  color: hsl(var(--foreground) / 0.7);
   cursor: pointer;
-  font-size: 16px;
-  margin-right: 5px;
-  border-radius: 5px 5px 0 0; /* Rounded corners at the top */
-  transition: background-color 0.3s, color 0.3s; /* Smooth hover effect */
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: Inter, sans-serif;
+  border-radius: var(--radius) var(--radius) 0 0;
+  transition: background-color 0.2s, color 0.2s;
+  border-bottom: 2px solid transparent;
+}
+
+.tab-button:hover {
+  background-color: hsl(var(--muted) / 0.5);
+  color: hsl(var(--foreground));
 }
 
 /* Active tab button */
 .tab-button.active {
-  background-color: #007bff;
-  color: white;
-  font-weight: bold;
-  border-bottom: 2px solid white; /* Seamless transition into the content */
+  background-color: transparent;
+  color: hsl(var(--foreground));
+  border-bottom-color: hsl(var(--primary));
+  font-weight: 600;
 }
 
-/* Hover effect for inactive tabs */
-.tab-button:hover {
-  background-color: #00b7ff;
-  color: #35353b;
-}
-
-/* Optional: Add spacing between the tabs and the content */
+/* Tab content */
 .tab-content {
   width: 100%;
-  padding: 20px;
-  background-color: #fff;
-  border: 1px solid #ddd;
-  border-radius: 0 5px 5px 5px; /* Rounded corners at the bottom */
-}
-
-/* Light mode styles for tab-content */
-body.light .tab-content {
-  background-color: #fff;
-  border: 1px solid #ddd;
-  color: #000;
-}
-
-/* Dark mode styles for tab-content */
-body.dark .tab-content {
-  background-color: #25252b;
-  border: 1px solid #555;
-  border-radius: 5px; /* Rounded corners at the bottom */
-  color: #e2e2e2;
+  padding: 1.25rem;
+  background-color: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0 var(--radius) var(--radius) var(--radius);
+  color: hsl(var(--foreground));
 }
 
 /* Portfolio grid container */
@@ -197,60 +242,56 @@ body.dark .tab-content {
 
 /* Portfolio grid headers */
 .portfolio-grid-header {
-  font-weight: bold;
+  font-weight: 600;
+  font-size: 0.875rem;
   text-align: left;
-  padding: 10px;
-  background-color: #f1f1f1;
-  border-bottom: 2px solid #ddd;
+  padding: 0.75rem;
+  background-color: hsl(222 47% 8%);
+  color: hsl(var(--foreground));
+  border-bottom: 1px solid hsl(var(--border));
   cursor: pointer;
   position: relative;
-  padding-right: 20px; /* Space for the sorting icon */
+  padding-right: 1.25rem;
 }
 
-/* Light mode styles for portfolio-grid-header */
 body.light .portfolio-grid-header {
-  background-color: #f1f1f1;
-  color: #000;
+  background-color: hsl(220 14% 97%);
 }
 
-/* Dark mode styles for portfolio-grid-header */
 body.dark .portfolio-grid-header {
-  background-color: #35353b;
-  color: #fff;
+  background-color: hsl(222 47% 10%);
 }
 
-/* Portfolio grid items */
-.portfolio-grid-item {
-  padding: 10px;
-  border-bottom: 1px solid #ddd;
+.bestball-grid-header {
+  font-weight: 600;
+  font-size: 0.875rem;
+  background-color: hsl(222 47% 8%);
+  color: hsl(var(--foreground));
+  padding: 0.75rem;
+  border-bottom: 1px solid hsl(var(--border));
   text-align: left;
+  border-radius: var(--radius) var(--radius) 0 0;
 }
 
-/* Dark mode styles for .bestball-grid-header */
+body.light .bestball-grid-header {
+  background-color: hsl(220 14% 97%);
+}
+
 body.dark .bestball-grid-header {
-  font-weight: bold;
-  background-color: #35353b; /* Dark background */
-  color: #fff; /* Light text */
-  padding: 10px;
-  border-bottom: 1px solid #555;
-  text-align: left;
+  background-color: hsl(222 47% 10%);
 }
 
-/* Light mode styles for portfolio-grid-item */
-body.light .portfolio-grid-item {
-  background-color: #fff;
-  color: #000;
+.bestball-grid-header-sortable {
+  cursor: pointer;
+  user-select: none;
 }
 
-/* Dark mode styles for portfolio-grid-item */
-body.dark .portfolio-grid-item {
-  background-color: #25252b;
-  color: #e2e2e2;
+.bestball-grid-header-sortable:hover {
+  background-color: hsl(var(--muted) / 0.5);
 }
 
-/* Optional: Add hover effect for rows */
-.portfolio-grid-item:hover {
-  background-color: #f9f9f9;
+.bestball-grid-header-sortable.active {
+  color: hsl(var(--primary));
 }
 
 /* Adjust text alignment for numeric columns */
@@ -271,11 +312,7 @@ body.dark .portfolio-grid-item {
 
 /* Make the percentage grey */
 .portfolio-grid-item .percentage {
-  color: #888; /* Grey for light mode */
-}
-
-body.dark .portfolio-grid-item .percentage {
-  color: #bbb; /* Lighter grey for dark mode */
+  color: hsl(var(--foreground) / 0.6);
 }
 
 /* Filter container */
@@ -287,14 +324,10 @@ body.dark .portfolio-grid-item .percentage {
 
 /* Filter label */
 .filter-label {
-  font-weight: bold;
-  font-size: 18px;
-  color: #35353b;
-  white-space: nowrap; /* Prevent the label from wrapping */
-}
-
-body.dark .filter-label {
-  color: #f0f0f0;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: hsl(var(--foreground));
+  white-space: nowrap;
 }
 
 /* Filter buttons container */
@@ -305,97 +338,72 @@ body.dark .filter-label {
 
 /* Default button style */
 .filter-button {
-  padding: 5px 10px;
-  background-color: #ccc;
-  border: none;
-  border-radius: 5px;
+  padding: 0.5rem 1rem;
+  border: 1px solid hsl(var(--border));
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground) / 0.7);
+  border-radius: calc(var(--radius) - 2px);
   cursor: pointer;
-  font-size: 14px;
-  color: #000;
-  transition: background-color 0.3s ease, box-shadow 0.3s ease,
-    transform 0.2s ease;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Add shadow for 3D effect */
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: Inter, sans-serif;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
 }
 
-/* Light mode styles for filter-button */
-body.light .filter-button {
-  background-color: #ccc;
-  color: #000;
-}
-
-/* Dark mode styles for filter-button */
-body.dark .filter-button {
-  background-color: #45454b;
-  color: #e2e2e2;
-}
-
-/* Hover effect for filter-button in dark mode */
-body.dark .filter-button:hover {
-  background-color: #666;
-  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.4);
+.filter-button:hover {
+  background-color: hsl(var(--muted) / 0.5);
+  color: hsl(var(--foreground));
 }
 
 /* Active button styles */
 .filter-button.qb-active {
-  background-color: red !important;
-  color: white;
-  box-shadow: 0 4px 6px rgba(255, 0, 0, 0.4); /* Red shadow for QB */
+  background-color: hsl(339 44% 59%);
+  border-color: hsl(339 44% 54%);
+  color: hsl(339 50% 20%);
+}
+
+body.dark .filter-button.qb-active {
+  background-color: hsl(339 44% 59%);
+  border-color: hsl(339 44% 54%);
+  color: hsl(339 30% 90%);
 }
 
 .filter-button.rb-active {
-  background-color: green !important;
-  color: white;
-  box-shadow: 0 4px 6px rgba(0, 128, 0, 0.4); /* Green shadow for RB */
+  background-color: hsl(155 43% 64%);
+  border-color: hsl(155 43% 59%);
+  color: hsl(155 50% 20%);
+}
+
+body.dark .filter-button.rb-active {
+  background-color: hsl(155 43% 64%);
+  border-color: hsl(155 43% 59%);
+  color: hsl(155 30% 90%);
 }
 
 .filter-button.wr-active {
-  background-color: blue !important;
-  color: white;
-  box-shadow: 0 4px 6px rgba(0, 0, 255, 0.4); /* Blue shadow for WR */
+  background-color: hsl(201 54% 56%);
+  border-color: hsl(201 54% 51%);
+  color: hsl(201 50% 20%);
+}
+
+body.dark .filter-button.wr-active {
+  background-color: hsl(201 54% 56%);
+  border-color: hsl(201 54% 51%);
+  color: hsl(201 30% 90%);
 }
 
 .filter-button.te-active {
-  background-color: yellow !important;
-  color: black !important;
-  box-shadow: 0 4px 6px rgba(255, 255, 0, 0.4); /* Yellow shadow for TE */
+  background-color: hsl(30 61% 57%);
+  border-color: hsl(30 61% 52%);
+  color: hsl(30 50% 20%);
 }
 
-/* Hover effect */
-.filter-button:hover {
-  opacity: 0.9;
-  transform: translateY(-2px); /* Slight lift on hover */
-  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2); /* Stronger shadow on hover */
+body.dark .filter-button.te-active {
+  background-color: hsl(30 61% 57%);
+  border-color: hsl(30 61% 52%);
+  color: hsl(30 30% 90%);
 }
 
-/* Active/pressed effect */
-.filter-button:active {
-  transform: translateY(1px); /* Slight press effect */
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Reduced shadow on press */
-}
-
-/* Light mode styles for team-grid-header */
-body.light .team-grid-header {
-  background-color: #f0f0f0;
-  color: #000;
-}
-
-/* Dark mode styles for team-grid-header */
-body.dark .team-grid-header {
-  background-color: #25252b;
-  color: #fff;
-}
-
-/* Light mode styles for user-position */
-body.light .user-position {
-  background-color: rgba(4, 128, 6, 0.24); /* Semi-transparent green */
-  color: #0b0c0b;
-}
-
-/* Dark mode styles for user-position */
-body.dark .user-position {
-  background-color: rgba(4, 128, 6, 0.5); /* Slightly darker green */
-  color: #e2e2e2;
-}
 
 /* Flex container for the portfolio layout */
 .portfolio-container {
@@ -420,42 +428,30 @@ body.dark .user-position {
   width: 100%; /* Ensure it scales for smaller screens */
 }
 
-/* Light mode styles for summary grid header */
+.portfolio-summary-header {
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-align: center;
+  background-color: hsl(222 47% 8%);
+  color: hsl(var(--foreground));
+  padding: 0.75rem;
+  border: 1px solid hsl(var(--border));
+}
+
 body.light .portfolio-summary-header {
-  font-weight: bold;
-  text-align: center;
-  background-color: #f1f1f1; /* Light background */
-  color: #000; /* Dark text */
-  padding: 10px;
-  border: 1px solid #ccc;
+  background-color: hsl(220 14% 97%);
 }
 
-/* Dark mode styles for summary grid header */
 body.dark .portfolio-summary-header {
-  font-weight: bold;
-  text-align: center;
-  background-color: #35353b; /* Dark background */
-  color: #fff; /* Light text */
-  padding: 10px;
-  border: 1px solid #555;
+  background-color: hsl(222 47% 10%);
 }
 
-/* Light mode styles for summary grid items */
-body.light .portfolio-summary-item {
+.portfolio-summary-item {
   text-align: center;
-  background-color: #fff; /* Light background */
-  color: #000; /* Dark text */
-  padding: 10px;
-  border: 1px solid #ccc;
-}
-
-/* Dark mode styles for summary grid items */
-body.dark .portfolio-summary-item {
-  text-align: center;
-  background-color: #25252b; /* Dark background */
-  color: #e2e2e2; /* Light text */
-  padding: 10px;
-  border: 1px solid #555;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  padding: 0.625rem;
+  border: 1px solid hsl(var(--border));
 }
 
 /* Conditional styling for column 9 in the portfolio grid */
@@ -484,33 +480,27 @@ body.dark .portfolio-summary-item {
   color: #856404 !important; /* Dark yellow */
 }
 
-/* Add hover and active sorted styles for headers */
-.portfolio-grid-header {
-  cursor: pointer;
-  position: relative;
-  padding-right: 20px; /* Space for the sorting icon */
-}
-
+/* Hover and active sorted styles for headers */
 .portfolio-grid-header:hover {
-  background-color: #f0f0f0; /* Light gray hover effect */
+  background-color: hsl(var(--muted) / 0.5);
 }
 
 .portfolio-grid-header.active {
-  background-color: #d9edf7; /* Light blue for active sorted column */
+  background-color: hsl(var(--primary) / 0.1);
 }
 
 /* Add styles for sorting icons */
 .portfolio-grid-header .sort-icon {
   position: absolute;
-  right: 5px;
+  right: 0.3125rem;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 1.2em; /* Increase the size of the sorting icons */
-  color: #888; /* Default icon color */
+  font-size: 1.2em;
+  color: hsl(var(--foreground) / 0.6);
 }
 
 .portfolio-grid-header.active .sort-icon {
-  color: #ddd; /* Darker color for active sorted column */
+  color: hsl(var(--foreground));
 }
 
 /* Styles for the Stats tab */
@@ -521,28 +511,17 @@ body.dark .portfolio-summary-item {
 }
 
 .stats-filters label {
-  font-size: 16px;
+  font-size: 0.875rem;
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 0.3125rem;
+  color: hsl(var(--foreground));
+  font-weight: 500;
 }
 
-/* Dark mode styles for stats filters */
-body.dark .stats-filters label {
-  color: #ffffff;
-}
-
-body.dark .stats-filters input[type="checkbox"] {
-  accent-color: #007bff;
-}
-
-/* Light mode styles for stats filters */
-body.light .stats-filters label {
-  color: #000000;
-}
-
+body.dark .stats-filters input[type="checkbox"],
 body.light .stats-filters input[type="checkbox"] {
-  accent-color: #007bff;
+  accent-color: hsl(var(--primary));
 }
 
 .stats-tables {
@@ -571,14 +550,11 @@ body.light .stats-filters input[type="checkbox"] {
   width: 100%;
 }
 
-/* Dark mode styles for stats section headers */
-body.dark .stats-tables h3 {
-  color: #ffffff;
-}
-
-/* Light mode styles for stats section headers */
-body.light .stats-tables h3 {
-  color: #000000;
+.stats-tables h3 {
+  color: hsl(var(--foreground));
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
 }
 
 .stats-tables table {
@@ -588,72 +564,35 @@ body.light .stats-tables h3 {
 
 .stats-tables th,
 .stats-tables td {
-  border: 1px solid #ddd;
-  padding: 8px;
+  border: 1px solid hsl(var(--border));
+  padding: 0.625rem;
   text-align: center;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
 }
 
 .stats-tables th {
-  font-weight: bold;
-  background-color: #f4f4f4;
+  font-weight: 600;
+  font-size: 0.875rem;
+  background-color: hsl(222 47% 8%);
 }
 
-/* Use same light/dark mode behavior as portfolio headers */
 body.light .stats-tables th {
-  background-color: #f1f1f1;
-  color: #000;
+  background-color: hsl(220 14% 97%);
 }
 
 body.dark .stats-tables th {
-  background-color: #35353b;
-  color: #fff;
-}
-
-/* Dark mode styles for stats table headers */
-body.dark .stats-tables th {
-  background-color: #3a3a3a;
-  color: #ffffff;
-}
-
-/* Dark mode styles for stats table borders and cells */
-body.dark .stats-tables th,
-body.dark .stats-tables td {
-  border: 1px solid #555;
-}
-
-body.dark .stats-tables td {
-  background-color: #2a2a2a;
-  color: #ffffff;
-}
-
-/* Light mode styles for stats table borders and cells */
-body.light .stats-tables th,
-body.light .stats-tables td {
-  border: 1px solid #ddd;
-}
-
-body.light .stats-tables td {
-  background-color: #ffffff;
-  color: #000000;
+  background-color: hsl(222 47% 10%);
 }
 
 /* Stats summary row styling */
 .stats-summary-row {
-  font-weight: bold;
+  font-weight: 600;
 }
 
-/* Light mode summary row styling */
-body.light .stats-summary-row td {
-  background-color: #e8e8e8;
-  color: #000000;
-  border-top: 2px solid #ccc;
-}
-
-/* Dark mode summary row styling */
-body.dark .stats-summary-row td {
-  background-color: #1a1a1a;
-  color: #ffffff;
-  border-top: 2px solid #444;
+.stats-summary-row td {
+  background-color: hsl(var(--border) / 0.5);
+  border-top: 2px solid hsl(var(--border));
 }
 
 /* Highlight class for leagues when an owner is clicked and shares a league with the current user */
