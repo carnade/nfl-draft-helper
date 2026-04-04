@@ -525,15 +525,30 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
     setIsCompiling(true);
 
     try {
-      // Calculate average ADP for each player
-      const playerAdpMap = {}; // { player_id: { adps: [], count: number } }
+      // Pre-fetch player data so we can detect kickers before building the ADP map
+      const allPlayerIds = [
+        ...new Set(
+          drafts.flatMap((d) =>
+            d.picks.map((p) => p.player_id).filter(Boolean),
+          ),
+        ),
+      ];
+      const playerDataResponse = await fetch(`${BASE_URL}/getplayers/data`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ playerlist: allPlayerIds }),
+      });
+      const playerData = await playerDataResponse.json();
+
+      // Build ADP map — kickers are grouped by pick slot (round.pick) instead of player_id
+      const playerAdpMap = {}; // { key: { adps: [], count, isPickSlot, round?, pickWithinRound? } }
 
       drafts.forEach((draft) => {
-        // Sort picks by round and pick_no to ensure correct order
+        const teamsCount =
+          draft.picks.filter((p) => p.round === 1).length || 12;
+
         const sortedPicks = [...draft.picks].sort((a, b) => {
-          if (a.round !== b.round) {
-            return a.round - b.round;
-          }
+          if (a.round !== b.round) return a.round - b.round;
           return (a.pick_no || 0) - (b.pick_no || 0);
         });
 
@@ -541,26 +556,46 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
           const playerId = pick.player_id;
           if (!playerId) return;
 
-          if (!playerAdpMap[playerId]) {
-            playerAdpMap[playerId] = { adps: [], count: 0 };
+          const position = playerData[playerId]?.position || "";
+          let key;
+          let isPickSlot = false;
+          let round, pickWithinRound;
+
+          if (position === "K") {
+            // Group all kickers at the same pick slot together
+            round = pick.round;
+            pickWithinRound = pick.pick_no - (round - 1) * teamsCount;
+            key = `PICK_${round}_${pickWithinRound}`;
+            isPickSlot = true;
+          } else {
+            key = playerId;
           }
-          // Use pick_no if available, otherwise use index + 1
-          // ADP is 1-indexed (pick 1 = ADP 1)
+
+          if (!playerAdpMap[key]) {
+            playerAdpMap[key] = { adps: [], count: 0, isPickSlot };
+            if (isPickSlot) {
+              playerAdpMap[key].round = round;
+              playerAdpMap[key].pickWithinRound = pickWithinRound;
+            }
+          }
           const adp = pick.pick_no || index + 1;
-          playerAdpMap[playerId].adps.push(adp);
-          playerAdpMap[playerId].count++;
+          playerAdpMap[key].adps.push(adp);
+          playerAdpMap[key].count++;
         });
       });
 
-      // Calculate average ADP for each player
+      // Calculate average ADP for each entry
       const playerAverages = Object.entries(playerAdpMap).map(
-        ([playerId, data]) => {
+        ([key, data]) => {
           const avgAdp =
             data.adps.reduce((sum, adp) => sum + adp, 0) / data.adps.length;
           return {
-            playerId,
+            playerId: key,
             avgAdp,
             draftCount: data.count,
+            isPickSlot: data.isPickSlot,
+            round: data.round,
+            pickWithinRound: data.pickWithinRound,
           };
         },
       );
@@ -568,28 +603,36 @@ function DraftSetup({ setCsvData, setCsvFileName, isRankingsPage, userName }) {
       // Sort by average ADP
       playerAverages.sort((a, b) => a.avgAdp - b.avgAdp);
 
-      // Fetch player data for all players
-      const playerIds = playerAverages.map((p) => p.playerId);
-      const playerDataResponse = await fetch(`${BASE_URL}/getplayers/data`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ playerlist: playerIds }),
+      // Assign sequential pick slot names by rank order: 1.01, 1.02, ..., 1.12, 2.01, ...
+      let pickSlotCounter = 0;
+      playerAverages.forEach((playerAvg) => {
+        if (playerAvg.isPickSlot) {
+          pickSlotCounter++;
+          const major = Math.ceil(pickSlotCounter / 12);
+          const minor = ((pickSlotCounter - 1) % 12) + 1;
+          playerAvg.pickSlotName = `Pick ${major}.${String(minor).padStart(2, "0")}`;
+        }
       });
-
-      const playerData = await playerDataResponse.json();
 
       // Build rankings array
       const rankings = playerAverages.map((playerAvg, index) => {
-        const playerInfo = playerData[playerAvg.playerId] || {};
-        const name =
-          playerInfo.name ||
-          `${playerInfo.first_name || ""} ${playerInfo.last_name || ""}`.trim() ||
-          `Player ${playerAvg.playerId}`;
-        const position = playerInfo.position || "UNK";
-        const team = playerInfo.team || playerInfo.team_abbr || "";
-        const bye = playerInfo.bye || "";
+        let name, position, team, bye;
+
+        if (playerAvg.isPickSlot) {
+          name = playerAvg.pickSlotName;
+          position = "K";
+          team = "";
+          bye = "";
+        } else {
+          const playerInfo = playerData[playerAvg.playerId] || {};
+          name =
+            playerInfo.name ||
+            `${playerInfo.first_name || ""} ${playerInfo.last_name || ""}`.trim() ||
+            `Player ${playerAvg.playerId}`;
+          position = playerInfo.position || "UNK";
+          team = playerInfo.team || playerInfo.team_abbr || "";
+          bye = playerInfo.bye || "";
+        }
 
         return {
           SleeperId: playerAvg.playerId,
