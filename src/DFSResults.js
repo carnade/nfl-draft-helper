@@ -121,6 +121,7 @@ function DFSResults() {
   const [emptyTinyUrlError, setEmptyTinyUrlError] = useState('');
   const [emptyTinyUrlType, setEmptyTinyUrlType] = useState('single'); // 'single' or 'multiweek_dfs'
   const [emptyTinyUrlWeeks, setEmptyTinyUrlWeeks] = useState(4); // Number of weeks for multiweek_dfs
+  const [emptyTinyUrlStartWeek, setEmptyTinyUrlStartWeek] = useState(1); // Start week for multiweek_dfs
   const [showUpdatingIndicator, setShowUpdatingIndicator] = useState(false);
   const [lastUpdateTime, setLastUpdateTime] = useState(null);
   const [revealTime, setRevealTime] = useState(null);
@@ -661,9 +662,17 @@ function DFSResults() {
       return;
     }
 
-    if (!selectedWeek) {
+    if (emptyTinyUrlType === 'single' && !selectedWeek) {
       setEmptyTinyUrlError('Please select a week');
       return;
+    }
+
+    if (emptyTinyUrlType === 'multiweek_dfs') {
+      const sw = parseInt(emptyTinyUrlStartWeek);
+      if (!sw || sw < 1 || sw > 18) {
+        setEmptyTinyUrlError('Please enter a valid start week (1-18)');
+        return;
+      }
     }
 
     // Combine date and time into ISO 8601 format if both are provided
@@ -695,8 +704,9 @@ function DFSResults() {
       const requestBody = {
         name: emptyTinyUrlName.trim(),
         names: usernames,
-        week: selectedWeek,
-        type: emptyTinyUrlType
+        week: emptyTinyUrlType === 'multiweek_dfs' ? parseInt(emptyTinyUrlStartWeek) : selectedWeek,
+        type: emptyTinyUrlType,
+        ...(emptyTinyUrlType === 'multiweek_dfs' && { num_weeks: emptyTinyUrlWeeks })
       };
 
       // Add reveal if provided
@@ -727,6 +737,7 @@ function DFSResults() {
         setEmptyTinyUrlRevealTime(''); // Clear the time
         setEmptyTinyUrlType('single'); // Reset to single
         setEmptyTinyUrlWeeks(4); // Reset weeks
+        setEmptyTinyUrlStartWeek(1); // Reset start week
         
         // Refresh the count after successful creation
         fetchTinyUrlCount();
@@ -2612,7 +2623,7 @@ function DFSResults() {
                 )}
               </div>
             )}
-            {currentWeek && (
+            {currentWeek !== null && (
               <div className="week-toggle-section">
                 <label>Select Week:</label>
                 <div className="week-toggle">
@@ -2620,13 +2631,13 @@ function DFSResults() {
                     className={`week-btn ${selectedWeek === currentWeek - 1 ? 'active' : ''}`}
                     onClick={() => setSelectedWeek(currentWeek - 1)}
                   >
-                    {currentWeek - 1}
+                    Week {currentWeek - 1}
                   </button>
                   <button
                     className={`week-btn ${selectedWeek === currentWeek ? 'active' : ''}`}
                     onClick={() => setSelectedWeek(currentWeek)}
                   >
-                    {currentWeek}
+                    Week {currentWeek}
                   </button>
                 </div>
               </div>
@@ -2699,25 +2710,47 @@ function DFSResults() {
                 </div>
               </div>
               {emptyTinyUrlType === 'multiweek_dfs' && (
-                <div className="tinyurl-input-container" style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <label style={{ fontSize: '0.9rem', color: 'inherit', whiteSpace: 'nowrap' }}>
-                    Number of weeks:
-                  </label>
-                  <input
-                    type="number"
-                    min="2"
-                    max="18"
-                    value={emptyTinyUrlWeeks}
-                    onChange={(e) => {
-                      const value = parseInt(e.target.value) || 4;
-                      const clampedValue = Math.min(Math.max(2, value), 18);
-                      setEmptyTinyUrlWeeks(clampedValue);
-                      setEmptyTinyUrlError('');
-                    }}
-                    className="tinyurl-input"
-                    style={{ maxWidth: '100px' }}
-                    disabled={creatingEmptyTinyUrl}
-                  />
+                <div className="tinyurl-input-container" style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <label style={{ fontSize: '0.9rem', color: 'inherit', whiteSpace: 'nowrap' }}>
+                      Start week:
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="18"
+                      value={emptyTinyUrlStartWeek}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value) || 1;
+                        const clampedValue = Math.min(Math.max(1, value), 18);
+                        setEmptyTinyUrlStartWeek(clampedValue);
+                        setEmptyTinyUrlError('');
+                      }}
+                      className="tinyurl-input"
+                      style={{ maxWidth: '80px' }}
+                      disabled={creatingEmptyTinyUrl}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <label style={{ fontSize: '0.9rem', color: 'inherit', whiteSpace: 'nowrap' }}>
+                      Number of weeks:
+                    </label>
+                    <input
+                      type="number"
+                      min="2"
+                      max="18"
+                      value={emptyTinyUrlWeeks}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value) || 4;
+                        const clampedValue = Math.min(Math.max(2, value), 18);
+                        setEmptyTinyUrlWeeks(clampedValue);
+                        setEmptyTinyUrlError('');
+                      }}
+                      className="tinyurl-input"
+                      style={{ maxWidth: '80px' }}
+                      disabled={creatingEmptyTinyUrl}
+                    />
+                  </div>
                 </div>
               )}
               <div className="tinyurl-input-container" style={{ marginTop: '12px' }}>
@@ -2791,7 +2824,7 @@ function DFSResults() {
                 <button 
                   className="proceed-button" 
                   onClick={handleCreateEmptyTinyUrl}
-                  disabled={creatingEmptyTinyUrl || !emptyTinyUrlName.trim() || !emptyTinyUrlUsernames.trim() || hasDuplicateUsernames(emptyTinyUrlUsernames) || !selectedWeek}
+                  disabled={creatingEmptyTinyUrl || !emptyTinyUrlName.trim() || !emptyTinyUrlUsernames.trim() || hasDuplicateUsernames(emptyTinyUrlUsernames) || (emptyTinyUrlType === 'single' ? !selectedWeek : !emptyTinyUrlStartWeek)}
                 >
                   {creatingEmptyTinyUrl ? 'Creating...' : 'Proceed'}
                 </button>
