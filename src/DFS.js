@@ -704,19 +704,6 @@ function DFS({ userName }) {
         return;
       }
       
-      // Fetch entry details to check if it's multiweek_dfs
-      let entryType = 'single';
-      try {
-        const detailsResponse = await fetch(`${BASE_URL}/tinyurl/${entry.name}/details`);
-        if (detailsResponse.ok) {
-          const detailsData = await detailsResponse.json();
-          entryType = detailsData.type || 'single';
-        }
-      } catch (error) {
-        console.error('Error fetching entry details:', error);
-        // Default to 'single' if fetch fails
-      }
-      
       // Generate lineup code (format: username:encodedLineup)
       const lineupCode = generateLineupCode();
       
@@ -730,7 +717,6 @@ function DFS({ userName }) {
       // Compress the data using LZ-String
       const compressed = LZString.compressToEncodedURIComponent(formattedData);
       
-      // For multiweek_dfs, ALWAYS use current week. For single, use current week as well.
       // Format as week|compressedData (same format as DFSResults hash)
       const data = `${currentWeek}|${compressed}`;
       
