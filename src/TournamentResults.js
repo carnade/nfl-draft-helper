@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import './TournamentResults.css';
 
 // Add a mock flag
-const mock = true; // Set to true for localhost, false for production
+const mock = process.env.REACT_APP_MOCK === 'true';
 
 // Define the base URL based on the mock flag
 const BASE_URL = mock

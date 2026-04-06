@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "./DraftSetup.css";
 
 // Define the base URL
-const mock = false;
+const mock = process.env.REACT_APP_MOCK === 'true';
 const BASE_URL = mock
   ? "http://localhost:5000"
   : "https://shaggy-latashia-carnade-2ea2054a.koyeb.app";
