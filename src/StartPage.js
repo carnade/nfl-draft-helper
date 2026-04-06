@@ -15,7 +15,7 @@ function StartPage({ userName, setUserName }) {
         }
       }
     }
-  }, [userName, setUserName]); // <-- empty dependency array so it runs only on mount
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- runs only on mount
 
   return (
     <div className="start-page">

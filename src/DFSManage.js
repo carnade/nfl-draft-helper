@@ -4,7 +4,7 @@ import LZString from 'lz-string';
 import './DFSManage.css';
 
 // Add a mock flag
-const mock = false; // Set to true for mock data, false for production
+const mock = process.env.REACT_APP_MOCK === 'true';
 
 // Define the base URL based on the mock flag
 const BASE_URL = mock
