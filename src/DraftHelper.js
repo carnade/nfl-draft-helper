@@ -238,10 +238,9 @@ function DraftHelper({ csvData, csvFileName }) {
       return;
     }
     console.log("Manual fetch draft data for:", draftId);
-    const currentPlayers = players;
-    const filteredArr = await removePickedPlayers(draftId, currentPlayers);
+    const filteredArr = await removePickedPlayers(draftId, initialPlayers);
     setPlayers(filteredArr);
-  }, [draftId, players, removePickedPlayers]);
+  }, [draftId, initialPlayers, removePickedPlayers]);
 
   // autoReload effect
   useEffect(() => {
