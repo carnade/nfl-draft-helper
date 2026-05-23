@@ -911,3 +911,29 @@ body.dark .league-action-icon {
 body.dark .league-action-icon:hover {
   color: #3399ff; /* Slightly darker blueish on hover for dark mode */
 }
+
+/* Waiver colours */
+.waiver-pending { color: #4a9eff; }
+.waiver-won     { color: #4caf50; }
+.waiver-lost    { color: #f44336; }
+
+.league-waivers-container { padding: 8px 0; }
+.league-waivers-container h2 { margin-bottom: 12px; }
+
+.waiver-league-section { margin-bottom: 16px; }
+.waiver-league-section h3 { font-size: 0.9rem; font-weight: 600; margin-bottom: 6px; opacity: 0.8; }
+
+.waiver-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 0.82rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.4);
+}
+.waiver-row:last-child { border-bottom: none; }
+.waiver-date { opacity: 0.55; font-size: 0.78rem; }
+.waiver-drop { opacity: 0.65; }
+.waiver-bid  { font-weight: 600; }
+.waiver-offseason-note { font-size: 0.75rem; font-weight: 400; opacity: 0.55; margin-left: 6px; }

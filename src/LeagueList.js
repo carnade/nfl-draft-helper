@@ -48,6 +48,10 @@ function LeagueList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedLeague, setSelectedLeague] = useState(null);
   const [dynastyOnly, setDynastyOnly] = useState(true); // Filter for dynasty leagues only
+  const [waiverData, setWaiverData] = useState({});       // { league_id: Transaction[] }
+  const [waiverPlayerNames, setWaiverPlayerNames] = useState({}); // { player_id: name }
+  const [waiverLoading, setWaiverLoading] = useState(false);
+  const [currentWeek, setCurrentWeek] = useState(null);
 
   // Add state for sorting
   const [sortConfig, setSortConfig] = useState({
@@ -829,17 +833,83 @@ function LeagueList() {
     }
   }, []);
 
+  const fetchWaiverData = useCallback(async () => {
+    if (!userId || currentWeek === null || leagues.length === 0) return;
+    if (waiverLoading) return;
+    setWaiverLoading(true);
+    try {
+      // Preseason: state reports week 0 but Sleeper stores transactions under week 1
+      const weeks = currentWeek === 0
+        ? [1]
+        : [currentWeek, currentWeek - 1].filter(w => w > 0);
+      const allPlayerIds = new Set();
+      const newWaiverData = {};
+
+      await Promise.all(
+        leagues.map(async (league) => {
+          const txnArrays = await Promise.all(
+            weeks.map(w =>
+              fetch(`https://api.sleeper.app/v1/league/${league.league_id}/transactions/${w}`)
+                .then(r => r.json())
+                .catch(() => [])
+            )
+          );
+          const merged = txnArrays.flat();
+          const seen = new Set();
+          const deduped = merged.filter(t => {
+            if (seen.has(t.transaction_id)) return false;
+            seen.add(t.transaction_id);
+            return true;
+          });
+          const mine = deduped.filter(
+            t => (t.type === "waiver" || t.type === "free_agent") && t.creator === userId
+          );
+          newWaiverData[league.league_id] = mine;
+          mine.forEach(t => {
+            Object.keys(t.adds || {}).forEach(id => allPlayerIds.add(id));
+            Object.keys(t.drops || {}).forEach(id => allPlayerIds.add(id));
+          });
+        })
+      );
+
+      setWaiverData(newWaiverData);
+
+      // Resolve player names for adds/drops
+      if (allPlayerIds.size > 0) {
+        const response = await fetch(`${BASE_URL}/getplayers/data`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ playerlist: [...allPlayerIds] }),
+        });
+        const data = await response.json();
+        const nameMap = {};
+        Object.entries(data).forEach(([pid, info]) => {
+          nameMap[pid] = info.name ||
+            `${info.first_name || ""} ${info.last_name || ""}`.trim() ||
+            pid;
+        });
+        setWaiverPlayerNames(nameMap);
+      }
+    } catch (err) {
+      console.error("Error fetching waiver data:", err);
+    } finally {
+      setWaiverLoading(false);
+    }
+  }, [userId, currentWeek, leagues, waiverLoading]);
+
   useEffect(() => {
     // Fetch current week first
     const cachedWeek = sessionStorage.getItem('nfl_current_week');
     if (cachedWeek) {
       const week = parseInt(cachedWeek);
+      setCurrentWeek(week);
       fetchDfsProjections(week);
     } else {
       fetch('https://api.sleeper.app/v1/state/nfl')
         .then(res => res.json())
         .then(data => {
           sessionStorage.setItem('nfl_current_week', data.week.toString());
+          setCurrentWeek(data.week);
           fetchDfsProjections(data.week);
         })
         .catch(err => console.error('Error fetching week:', err));
@@ -1164,7 +1234,7 @@ function LeagueList() {
           <div className="league-grid">
             <div className="league-grid-header">League Name</div>
             <div className="league-grid-header">Record</div>
-            <div className="league-grid-header">FPTS</div>
+            <div className="league-grid-header">Waivers</div>
             <div className="league-grid-header">Used Waiver Budget</div>
             <div className="league-grid-header">Injuries on starters</div>
             <div className="league-grid-header">Actions</div>
@@ -1209,7 +1279,13 @@ function LeagueList() {
                       {league.userRoster?.settings?.ties}
                     </div>
                     <div className="league-grid-item">
-                      {league.userRoster?.settings?.fpts}
+                      {waiverData[league.league_id] ? (() => {
+                        const txns = waiverData[league.league_id];
+                        const p = txns.filter(t => t.status === "pending").length;
+                        const w = txns.filter(t => t.status === "complete").length;
+                        const l = txns.filter(t => t.status === "failed").length;
+                        return <>P: <span className="waiver-pending">{p}</span>{" "}W: <span className="waiver-won">{w}</span>{" "}L: <span className="waiver-lost">{l}</span></>;
+                      })() : "—"}
                     </div>
                     <div className="league-grid-item">
                       {league.userRoster?.settings?.waiver_budget_used}/
@@ -1449,6 +1525,12 @@ function LeagueList() {
               onClick={() => setActiveTab("Portfolio")}
             >
               Portfolio
+            </button>
+            <button
+              className={`league-tab-button ${activeTab === "Waivers" ? "active" : ""}`}
+              onClick={() => { setActiveTab("Waivers"); fetchWaiverData(); }}
+            >
+              Waivers
             </button>
           </div>
 
@@ -1720,6 +1802,50 @@ function LeagueList() {
                     });
                   })()}
                 </div>
+              </div>
+            )}
+            {activeTab === "Waivers" && (
+              <div className="league-waivers-container">
+                <h2>Waivers {currentWeek === 0 && <span className="waiver-offseason-note">(preseason)</span>}</h2>
+                {waiverLoading ? (
+                  <p>Loading...</p>
+                ) : (
+                  leagues.map(league => {
+                    const txns = waiverData[league.league_id] || [];
+                    if (!txns.length) return null;
+                    return (
+                      <div key={league.league_id} className="waiver-league-section">
+                        <h3>{league.name}</h3>
+                        {txns
+                          .slice()
+                          .sort((a, b) => b.created - a.created)
+                          .map(t => {
+                            const date = new Date(t.created).toLocaleDateString();
+                            const adds = Object.keys(t.adds || {});
+                            const drops = Object.keys(t.drops || {});
+                            const bid = t.settings?.waiver_bid;
+                            const statusClass = t.status === "complete" ? "waiver-won"
+                              : t.status === "failed" ? "waiver-lost" : "waiver-pending";
+                            const statusLabel = t.status === "complete" ? "Won"
+                              : t.status === "failed" ? "Lost" : "Pending";
+                            return (
+                              <div key={t.transaction_id} className="waiver-row">
+                                <span className={statusClass}>{statusLabel}</span>
+                                <span className="waiver-date">{date}</span>
+                                {adds.length > 0 && (
+                                  <span>+ {adds.map(id => waiverPlayerNames[id] || id).join(", ")}</span>
+                                )}
+                                {drops.length > 0 && (
+                                  <span className="waiver-drop">− {drops.map(id => waiverPlayerNames[id] || id).join(", ")}</span>
+                                )}
+                                {bid != null && <span className="waiver-bid">${bid}</span>}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    );
+                  })
+                )}
               </div>
             )}
           </div>
