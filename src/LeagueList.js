@@ -839,9 +839,10 @@ function LeagueList() {
     setWaiverLoading(true);
     try {
       // Preseason: state reports week 0 but Sleeper stores transactions under week 1
+      // Also fetch currentWeek+1 to capture pending waivers not yet processed
       const weeks = currentWeek === 0
-        ? [1]
-        : [currentWeek, currentWeek - 1].filter(w => w > 0);
+        ? [1, 2]
+        : [currentWeek + 1, currentWeek, currentWeek - 1].filter(w => w > 0);
       const allPlayerIds = new Set();
       const newWaiverData = {};
 
@@ -933,6 +934,14 @@ function LeagueList() {
       fetchPortfolioData(leagues);
     }
   }, [activeTab, leagues, fetchPortfolioData]);
+
+  useEffect(() => {
+    // Auto-fetch waiver data once leagues and currentWeek are available
+    if (leagues.length > 0 && currentWeek !== null) {
+      fetchWaiverData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leagues, currentWeek]);
 
   const renderPlayerInfo = (playerId, leagueId) => {
     const player = playerData[leagueId]?.players[playerId];
@@ -1281,10 +1290,9 @@ function LeagueList() {
                     <div className="league-grid-item">
                       {waiverData[league.league_id] ? (() => {
                         const txns = waiverData[league.league_id];
-                        const p = txns.filter(t => t.status === "pending").length;
                         const w = txns.filter(t => t.status === "complete").length;
                         const l = txns.filter(t => t.status === "failed").length;
-                        return <>P: <span className="waiver-pending">{p}</span>{" "}W: <span className="waiver-won">{w}</span>{" "}L: <span className="waiver-lost">{l}</span></>;
+                        return <>W: <span className="waiver-won">{w}</span>{" "}L: <span className="waiver-lost">{l}</span></>;
                       })() : "—"}
                     </div>
                     <div className="league-grid-item">
@@ -1528,7 +1536,7 @@ function LeagueList() {
             </button>
             <button
               className={`league-tab-button ${activeTab === "Waivers" ? "active" : ""}`}
-              onClick={() => { setActiveTab("Waivers"); fetchWaiverData(); }}
+              onClick={() => setActiveTab("Waivers")}
             >
               Waivers
             </button>
@@ -1824,10 +1832,8 @@ function LeagueList() {
                             const adds = Object.keys(t.adds || {});
                             const drops = Object.keys(t.drops || {});
                             const bid = t.settings?.waiver_bid;
-                            const statusClass = t.status === "complete" ? "waiver-won"
-                              : t.status === "failed" ? "waiver-lost" : "waiver-pending";
-                            const statusLabel = t.status === "complete" ? "Won"
-                              : t.status === "failed" ? "Lost" : "Pending";
+                            const statusClass = t.status === "complete" ? "waiver-won" : "waiver-lost";
+                            const statusLabel = t.status === "complete" ? "Won" : "Lost";
                             return (
                               <div key={t.transaction_id} className="waiver-row">
                                 <span className={statusClass}>{statusLabel}</span>
