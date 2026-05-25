@@ -1,0 +1,255 @@
+.stats-page {
+  padding: 16px;
+  color: var(--text-color, #e0e0e0);
+  max-width: 1400px;
+}
+
+.stats-view-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.stats-view-toggle button {
+  padding: 8px 20px;
+  border: 1px solid #555;
+  border-radius: 6px;
+  background: #2a2a2a;
+  color: #ccc;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.stats-view-toggle button.active {
+  background: #4a9eff;
+  color: #fff;
+  border-color: #4a9eff;
+}
+
+.stats-view-toggle button:hover:not(.active) {
+  background: #3a3a3a;
+}
+
+/* Position filter tabs */
+.stats-pos-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.stats-pos-tabs button {
+  padding: 5px 14px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #2a2a2a;
+  color: #bbb;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.stats-pos-tabs button.active {
+  background: #4a9eff;
+  color: #fff;
+  border-color: #4a9eff;
+}
+
+.stats-pos-tabs button:hover:not(.active) {
+  background: #3a3a3a;
+}
+
+.stats-adv-toggle {
+  margin-left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #aaa;
+}
+
+.stats-adv-toggle button {
+  padding: 4px 12px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #2a2a2a;
+  color: #bbb;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.stats-adv-toggle button.active {
+  background: #6a4aff;
+  color: #fff;
+  border-color: #6a4aff;
+}
+
+/* Back button for team detail */
+.stats-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.stats-back-btn button {
+  padding: 6px 14px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #2a2a2a;
+  color: #ccc;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.stats-back-btn button:hover {
+  background: #3a3a3a;
+}
+
+.stats-back-btn h2 {
+  margin: 0;
+  font-size: 18px;
+  color: #e0e0e0;
+}
+
+/* Table */
+.stats-table-wrap {
+  overflow-x: auto;
+}
+
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.stats-table th {
+  position: sticky;
+  top: 0;
+  background: #1a1a2e;
+  z-index: 1;
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 2px solid #444;
+  color: #aaa;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.stats-table th.stats-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.stats-table th.stats-sortable:hover {
+  color: #fff;
+}
+
+.stats-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid #2a2a2a;
+  white-space: nowrap;
+}
+
+.stats-table tbody tr:hover {
+  background: #2a2a40;
+}
+
+.stats-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.stats-table td.num {
+  text-align: right;
+}
+
+.stats-table th.num {
+  text-align: right;
+}
+
+.stats-table td.team-link {
+  color: #4a9eff;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.stats-table td.team-link:hover {
+  text-decoration: underline;
+}
+
+.stats-table td .team-link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #4a9eff;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: inherit;
+  text-align: left;
+}
+
+.stats-table td .team-link-btn:hover {
+  text-decoration: underline;
+}
+
+/* Rank color coding */
+.stats-table td.rank-easy {
+  color: #4caf50;
+  font-weight: 600;
+}
+
+.stats-table td.rank-hard {
+  color: #f44336;
+  font-weight: 600;
+}
+
+/* Positive/negative diff */
+td.diff-pos {
+  color: #4caf50;
+}
+
+td.diff-neg {
+  color: #f44336;
+}
+
+/* Team badge */
+.team-badge {
+  display: inline-block;
+  width: 36px;
+  text-align: center;
+  padding: 2px 0;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+/* Per-game toggle */
+.stats-toggle-btn.pg-toggle {
+  margin-left: 12px;
+  border-color: #888;
+  color: #aaa;
+}
+
+.stats-toggle-btn.pg-toggle.active {
+  background: #2a7a2a;
+  border-color: #2a7a2a;
+  color: #fff;
+}
+
+/* Loading / empty states */
+.stats-loading {
+  padding: 40px;
+  text-align: center;
+  color: #888;
+  font-size: 15px;
+}
+
+.stats-adv-note {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 8px;
+}

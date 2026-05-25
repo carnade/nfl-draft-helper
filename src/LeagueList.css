@@ -913,9 +913,21 @@ body.dark .league-action-icon:hover {
 }
 
 /* Waiver colours */
-.waiver-pending { color: #4a9eff; }
-.waiver-won     { color: #4caf50; }
-.waiver-lost    { color: #f44336; }
+.waiver-pending  { color: #4a9eff; }
+.waiver-proposed { color: #888; }
+.waiver-won      { color: #4caf50; }
+.waiver-lost     { color: #f44336; }
+
+.waiver-summary {
+  display: flex;
+  gap: 4px;
+}
+
+.waiver-summary-item {
+  display: inline-flex;
+  gap: 2px;
+  min-width: 26px;
+}
 
 .league-waivers-container { padding: 8px 0; }
 .league-waivers-container h2 { margin-bottom: 12px; }
@@ -933,7 +945,7 @@ body.dark .league-action-icon:hover {
   border-bottom: 1px solid hsl(var(--border) / 0.4);
 }
 .waiver-row:last-child { border-bottom: none; }
-.waiver-date { opacity: 0.55; font-size: 0.78rem; }
+.waiver-date { opacity: 0.55; font-size: 0.78rem; min-width: 72px; flex-shrink: 0; }
 .waiver-drop { opacity: 0.65; }
 .waiver-bid  { font-weight: 600; }
 .waiver-offseason-note { font-size: 0.75rem; font-weight: 400; opacity: 0.55; margin-left: 6px; }

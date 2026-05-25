@@ -23,7 +23,7 @@ function LeagueList() {
   const [leagues, setLeagues] = useState([]);
   const [injuryReport, setInjuryReport] = useState({});
   const [portfolioData, setPortfolioData] = useState([]); // State for portfolio data
-  const [activeTab, setActiveTab] = useState("Injuries"); // State for active tab
+  const [activeTab, setActiveTab] = useState("Waivers"); // State for active tab
   const [expandedLeagueIds, setExpandedLeagueIds] = useState(new Set());
   const [playerData, setPlayerData] = useState({});
   const [expandedTeams, setExpandedTeams] = useState(new Set());
@@ -833,16 +833,38 @@ function LeagueList() {
     }
   }, []);
 
+  const waiverLoadingRef = React.useRef(false);
   const fetchWaiverData = useCallback(async () => {
     if (!userId || currentWeek === null || leagues.length === 0) return;
-    if (waiverLoading) return;
+    if (waiverLoadingRef.current) return;
+    waiverLoadingRef.current = true;
+
+    // Check 30-min cache
+    const cacheKey = `waiver_cache_${userName}`;
+    try {
+      const cached = JSON.parse(sessionStorage.getItem(cacheKey) || "null");
+      if (cached && Date.now() - cached.ts < 30 * 60 * 1000) {
+        setWaiverData(cached.waiverData);
+        setWaiverPlayerNames(cached.playerNames);
+        return;
+      }
+    } catch {}
+
     setWaiverLoading(true);
+    waiverLoadingRef.current = true;
+
+    // Check if the current userName matches a linked Sleeper account
+    let sleeperToken = null;
+    try {
+      const auth = JSON.parse(localStorage.getItem("sleeper_auth") || "null");
+      if (auth && auth.display_name?.toLowerCase() === userName?.toLowerCase()) {
+        sleeperToken = auth.token;
+      }
+    } catch {}
+
     try {
       // Preseason: state reports week 0 but Sleeper stores transactions under week 1
-      // Also fetch currentWeek+1 to capture pending waivers not yet processed
-      const weeks = currentWeek === 0
-        ? [1, 2]
-        : [currentWeek + 1, currentWeek, currentWeek - 1].filter(w => w > 0);
+      const weeks = currentWeek === 0 ? [1] : [currentWeek];
       const allPlayerIds = new Set();
       const newWaiverData = {};
 
@@ -865,17 +887,72 @@ function LeagueList() {
           const mine = deduped.filter(
             t => (t.type === "waiver" || t.type === "free_agent") && t.creator === userId
           );
-          newWaiverData[league.league_id] = mine;
-          mine.forEach(t => {
-            Object.keys(t.adds || {}).forEach(id => allPlayerIds.add(id));
-            Object.keys(t.drops || {}).forEach(id => allPlayerIds.add(id));
+
+          // If token is available, fetch all transactions via authenticated GraphQL
+          // This returns pending + complete + failed in one call with player_map included
+          let graphqlTxns = [];
+          const graphqlPlayerMap = {};
+          let graphqlSucceeded = false;
+          if (sleeperToken) {
+            try {
+              const rosterId = league.userRoster?.roster_id;
+              const res = await fetch("https://sleeper.com/graphql", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "x-platform": "web",
+                  "authorization": sleeperToken,
+                  "x-sleeper-graphql-op": "league_transactions_filtered",
+                },
+                body: JSON.stringify({
+                  operationName: "league_transactions_filtered",
+                  query: `query league_transactions_filtered { league_transactions_filtered(league_id: "${league.league_id}", roster_id_filters: ${rosterId != null ? `[${rosterId}]` : "[]"}, type_filters: ["waiver"], leg_filters: [], status_filters: []) { transaction_id type status adds drops leg settings waiver_budget creator created player_map } }`,
+                  variables: {},
+                }),
+              }).then(r => r.json());
+              if (res?.data?.league_transactions_filtered) {
+                graphqlTxns = res.data.league_transactions_filtered.filter(t => t.creator === userId);
+                graphqlTxns.forEach(t => {
+                  Object.entries(t.player_map || {}).forEach(([pid, info]) => {
+                    graphqlPlayerMap[pid] = `${info.first_name || ""} ${info.last_name || ""}`.trim() || pid;
+                  });
+                });
+                graphqlSucceeded = true;
+              }
+            } catch (e) {
+              console.error("GraphQL waiver fetch failed:", e);
+            }
+          }
+
+          // Use GraphQL results if request succeeded, else fall back to REST
+          const all = graphqlSucceeded ? graphqlTxns : mine;
+          newWaiverData[league.league_id] = all;
+          // For non-GraphQL transactions still collect player IDs for REST name resolution
+          all.forEach(t => {
+            if (!graphqlPlayerMap[Object.keys(t.adds || {})[0]]) {
+              Object.keys(t.adds || {}).forEach(id => allPlayerIds.add(id));
+              Object.keys(t.drops || {}).forEach(id => allPlayerIds.add(id));
+            }
           });
+          // Merge inline player names into shared map
+          Object.assign(graphqlPlayerMap, {}); // will be merged after loop
+          league._graphqlPlayerMap = graphqlPlayerMap;
         })
       );
 
       setWaiverData(newWaiverData);
 
-      // Resolve player names for adds/drops
+      // Collect inline player names from GraphQL player_map
+      const inlineNames = {};
+      leagues.forEach(league => {
+        if (league._graphqlPlayerMap) {
+          Object.assign(inlineNames, league._graphqlPlayerMap);
+          delete league._graphqlPlayerMap;
+        }
+      });
+
+      // Resolve remaining player IDs via REST for non-GraphQL transactions
+      const nameMap = { ...inlineNames };
       if (allPlayerIds.size > 0) {
         const response = await fetch(`${BASE_URL}/getplayers/data`, {
           method: "POST",
@@ -883,20 +960,25 @@ function LeagueList() {
           body: JSON.stringify({ playerlist: [...allPlayerIds] }),
         });
         const data = await response.json();
-        const nameMap = {};
         Object.entries(data).forEach(([pid, info]) => {
           nameMap[pid] = info.name ||
             `${info.first_name || ""} ${info.last_name || ""}`.trim() ||
             pid;
         });
-        setWaiverPlayerNames(nameMap);
       }
+      setWaiverPlayerNames(nameMap);
+
+      // Save to 30-min cache
+      try {
+        sessionStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), waiverData: newWaiverData, playerNames: nameMap }));
+      } catch {}
     } catch (err) {
       console.error("Error fetching waiver data:", err);
     } finally {
       setWaiverLoading(false);
+      waiverLoadingRef.current = false;
     }
-  }, [userId, currentWeek, leagues, waiverLoading]);
+  }, [userId, currentWeek, leagues, userName]);
 
   useEffect(() => {
     // Fetch current week first
@@ -936,7 +1018,6 @@ function LeagueList() {
   }, [activeTab, leagues, fetchPortfolioData]);
 
   useEffect(() => {
-    // Auto-fetch waiver data once leagues and currentWeek are available
     if (leagues.length > 0 && currentWeek !== null) {
       fetchWaiverData();
     }
@@ -1289,10 +1370,17 @@ function LeagueList() {
                     </div>
                     <div className="league-grid-item">
                       {waiverData[league.league_id] ? (() => {
+                        const auth = (() => { try { return JSON.parse(localStorage.getItem("sleeper_auth") || "null"); } catch { return null; } })();
+                        const isLinked = auth && auth.display_name?.toLowerCase() === userName?.toLowerCase();
                         const txns = waiverData[league.league_id];
+                        const p = txns.filter(t => t.status === "pending").length;
                         const w = txns.filter(t => t.status === "complete").length;
                         const l = txns.filter(t => t.status === "failed").length;
-                        return <>W: <span className="waiver-won">{w}</span>{" "}L: <span className="waiver-lost">{l}</span></>;
+                        return <span className="waiver-summary">
+                          {isLinked && <span className="waiver-summary-item">P:<span className="waiver-pending">{p}</span></span>}
+                          <span className="waiver-summary-item">W:<span className="waiver-won">{w}</span></span>
+                          <span className="waiver-summary-item">L:<span className="waiver-lost">{l}</span></span>
+                        </span>;
                       })() : "—"}
                     </div>
                     <div className="league-grid-item">
@@ -1519,6 +1607,12 @@ function LeagueList() {
           {/* Tab Navigation */}
           <div className="league-tab-container">
             <button
+              className={`league-tab-button ${activeTab === "Waivers" ? "active" : ""}`}
+              onClick={() => setActiveTab("Waivers")}
+            >
+              Waivers
+            </button>
+            <button
               className={`league-tab-button ${
                 activeTab === "Injuries" ? "active" : ""
               }`}
@@ -1533,12 +1627,6 @@ function LeagueList() {
               onClick={() => setActiveTab("Portfolio")}
             >
               Portfolio
-            </button>
-            <button
-              className={`league-tab-button ${activeTab === "Waivers" ? "active" : ""}`}
-              onClick={() => setActiveTab("Waivers")}
-            >
-              Waivers
             </button>
           </div>
 
@@ -1819,7 +1907,7 @@ function LeagueList() {
                   <p>Loading...</p>
                 ) : (
                   leagues.map(league => {
-                    const txns = waiverData[league.league_id] || [];
+                    const txns = (waiverData[league.league_id] || []).filter(t => t.status !== "cancelled");
                     if (!txns.length) return null;
                     return (
                       <div key={league.league_id} className="waiver-league-section">
@@ -1832,12 +1920,18 @@ function LeagueList() {
                             const adds = Object.keys(t.adds || {});
                             const drops = Object.keys(t.drops || {});
                             const bid = t.settings?.waiver_bid;
-                            const statusClass = t.status === "complete" ? "waiver-won" : "waiver-lost";
-                            const statusLabel = t.status === "complete" ? "Won" : "Lost";
+                            const statusClass = t.status === "complete" ? "waiver-won"
+                              : t.status === "failed" ? "waiver-lost"
+                              : t.status === "proposed" ? "waiver-proposed"
+                              : "waiver-pending";
+                            const statusLabel = t.status === "complete" ? "Won"
+                              : t.status === "failed" ? "Lost"
+                              : t.status === "proposed" ? "Proposed"
+                              : "Pending";
                             return (
                               <div key={t.transaction_id} className="waiver-row">
-                                <span className={statusClass}>{statusLabel}</span>
                                 <span className="waiver-date">{date}</span>
+                                <span className={statusClass}>{statusLabel}</span>
                                 {adds.length > 0 && (
                                   <span>+ {adds.map(id => waiverPlayerNames[id] || id).join(", ")}</span>
                                 )}

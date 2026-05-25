@@ -18,6 +18,7 @@ import TournamentCreate from "./TournamentCreate";
 import TournamentResults from "./TournamentResults";
 import Settings from "./Settings";
 import { ChangelogWithReadMark } from "./Changelog";
+import Stats from "./Stats";
 import "./Layout.css";
 import "./LeftMenu.css";
 import "./GenericStyles.css";
@@ -33,6 +34,7 @@ console.log({
   BestballList,
   TradeAnalyzer,
   Settings,
+  Stats,
 });
 
 function App() {
@@ -122,6 +124,7 @@ function App() {
                   />
                 }
               />
+              <Route path="/stats" element={<Stats />} />
               <Route path="/changelog" element={<ChangelogWithReadMark />} />
               <Route path="/settings" element={<Settings />} />
             </Routes>
