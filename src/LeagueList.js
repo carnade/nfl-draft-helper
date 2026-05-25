@@ -1373,7 +1373,6 @@ function LeagueList() {
                         const auth = (() => { try { return JSON.parse(localStorage.getItem("sleeper_auth") || "null"); } catch { return null; } })();
                         const isLinked = auth && auth.display_name?.toLowerCase() === userName?.toLowerCase();
                         const txns = waiverData[league.league_id];
-                        const p = txns.filter(t => t.status === "pending").length;
                         const w = txns.filter(t => t.status === "complete").length;
                         const l = txns.filter(t => t.status === "failed").length;
                         return <span className="waiver-summary">
