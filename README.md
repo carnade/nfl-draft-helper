@@ -22,7 +22,8 @@ The following pages are available in the application:
 3. **Draft List**
 4. **Leagues**
 5. **Bestball**
-6. **Settings**
+6. **Stats**
+7. **Settings**
 
 Each page is described in detail below.
 
@@ -256,6 +257,18 @@ The **Bestball** page provides an overview of your performance across all bestba
 
 ---
 
+## Stats
+
+The **Stats** page gives an overview of NFL player and team performance for the current season, pulling live data from the Sleeper stats API.
+
+### Key Features
+
+- **Player stats**: Browse all players filtered by position (QB, RB, WR, TE, K, DEF). Each row shows the player's team, games played, and the most relevant production stats for their position — both season totals and per-game averages (toggle with the Per Game button).
+- **Team stats**: A team-level view showing offensive and passing efficiency across the league, with color-coded team badges.
+- **Sorting**: Click any column header to sort ascending or descending.
+
+---
+
 ## Settings
 
 The **Settings** page allows users to customize their experience by managing default rankings, setting a standard username, toggling between light and dark themes, and saving or resetting their preferences.
@@ -296,5 +309,29 @@ All data stored is only stored locally. So switching computer or browser will no
   - Rankings are reset to "default."
   - Username is cleared.
   - Theme is reset to light mode.
+
+#### Sleeper Account:
+
+- Optionally connect a Sleeper account with your username and password (or SMS verification code).
+- When connected, additional features unlock — currently: pending waiver claims are shown in the Leagues page alongside completed and failed transactions.
+- The connection is tied to the username entered in the left menu, so only the matching account gets the extra features.
+- The login token lasts one year; disconnect at any time from Settings.
+
+---
+
+## Changelog
+
+### 2026-05-25
+
+**Stats page**
+- New Stats page with live NFL player and team statistics for the current season.
+- Browse players by position with per-game toggle and sortable columns.
+- Team view shows offensive efficiency across the league with color-coded team badges.
+
+**Sleeper account login**
+- Optional Sleeper login in Settings (password or SMS verification).
+- When logged in as the active username, pending waiver claims appear in the Leagues waivers view alongside completed and failed transactions.
+- Cancelled waiver claims are not shown.
+- The pending count (P:) in the league summary is only visible when logged in.
 
 ---

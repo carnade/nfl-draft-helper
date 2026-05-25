@@ -49,12 +49,12 @@ function rankClass(rank) {
   return "";
 }
 
-function SortHeader({ label, sortKey, sortConfig, onSort, className }) {
+function SortHeader({ label, sortKey, sortConfig, onSort, className, title }) {
   const active = sortConfig.key === sortKey;
   const arrow = active ? (sortConfig.dir === "asc" ? " ↑" : " ↓") : "";
   return (
-    <th className={`stats-sortable ${className || ""}`} onClick={() => onSort(sortKey)}>
-      {label}{arrow}
+    <th className={`stats-sortable ${className || ""}`} onClick={() => onSort(sortKey)} title={title}>
+      {label}{title ? " ⓘ" : ""}{arrow}
     </th>
   );
 }
@@ -186,6 +186,7 @@ function columnsForPosition(pos, perGame) {
         { label: `Tgt${pg}`,       key: "targets",            cls: "num" },
         { label: `Rec${pg}`,       key: "receptions",         cls: "num" },
         { label: `Rec Yds${pg}`,   key: "receiving_yards",    cls: "num" },
+        { label: "Tgt%",           key: "target_share",       cls: "num", fmt: v => fmtPct(v), title: "Target Share — % of team targets this player received" },
       ];
     case "WR":
     case "TE":
@@ -198,6 +199,10 @@ function columnsForPosition(pos, perGame) {
         { label: `Rec${pg}`,       key: "receptions",         cls: "num" },
         { label: `Rec Yds${pg}`,   key: "receiving_yards",    cls: "num" },
         { label: `Rec TDs${pg}`,   key: "receiving_tds",      cls: "num" },
+        { label: "Tgt%",           key: "target_share",       cls: "num", fmt: v => fmtPct(v), title: "Target Share — % of team targets this player received" },
+        { label: "AY%",            key: "air_yards_share",    cls: "num", fmt: v => fmtPct(v), title: "Air Yards Share — % of team air yards thrown to this player" },
+        { label: "WOPR",           key: "wopr",               cls: "num", fmt: v => fmt(v, 2), title: "Weighted Opportunity Rating — combines target share and air yards share into one opportunity metric" },
+        { label: "RACR",           key: "racr",               cls: "num", fmt: v => fmt(v, 2), title: "Receiver Air Conversion Ratio — receiving yards per air yard; measures how well a receiver converts deep targets" },
       ];
     default: // ALL
       return [
@@ -269,7 +274,7 @@ function PlayersTable({ players, advancedData, onTeamClick, position, perGame })
           <tr>
             {allCols.map(c => (
               <SortHeader key={c.key} label={c.label} sortKey={c.key}
-                sortConfig={sortConfig} onSort={onSort} className={c.cls} />
+                sortConfig={sortConfig} onSort={onSort} className={c.cls} title={c.title} />
             ))}
           </tr>
         </thead>
@@ -430,7 +435,6 @@ export default function Stats() {
   const fetchAdvanced = useCallback(async (players) => {
     const missing = players.filter(p => !advancedData[p.sleeper_id]);
     if (missing.length === 0) return;
-    setAdvLoading(true);
     try {
       const results = await Promise.all(
         missing.map(p =>
@@ -444,8 +448,6 @@ export default function Stats() {
       setAdvancedData(prev => ({ ...prev, ...update }));
     } catch (err) {
       console.error("Error fetching advanced stats:", err);
-    } finally {
-      setAdvLoading(false);
     }
   }, [advancedData]);
 

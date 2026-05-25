@@ -1,7 +1,5 @@
 # NFL Draft Helper Todo
 
-Add Changelog
-
 ## League page
 * owners box
 
