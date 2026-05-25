@@ -8,6 +8,26 @@ const BASE_URL = mock
 
 const POSITIONS = ["ALL", "QB", "RB", "WR", "TE"];
 
+const TEAM_COLORS = {
+  ARI: "#97233F", ATL: "#A71930", BAL: "#241773", BUF: "#00338D",
+  CAR: "#0085CA", CHI: "#0B162A", CIN: "#FB4F14", CLE: "#311D00",
+  DAL: "#003594", DEN: "#FB4F14", DET: "#0076B6", GB:  "#203731",
+  HOU: "#03202F", IND: "#002C5F", JAX: "#006778", KC:  "#E31837",
+  LAC: "#0080C6", LAR: "#003594", LV:  "#000000", MIA: "#008E97",
+  MIN: "#4F2683", NE:  "#002244", NO:  "#D3BC8D", NYG: "#0B2265",
+  NYJ: "#125740", PHI: "#004C54", PIT: "#FFB612", SEA: "#002244",
+  SF:  "#AA0000", TB:  "#D50A0A", TEN: "#4B92DB", WAS: "#5A1414",
+};
+
+function TeamBadge({ team }) {
+  const color = TEAM_COLORS[team] || "#555";
+  return (
+    <span className="team-badge" style={{ backgroundColor: color }}>
+      {team}
+    </span>
+  );
+}
+
 function fmt(val, decimals = 1) {
   if (val == null || val === "" || isNaN(val)) return "—";
   return Number(val).toFixed(decimals);
@@ -33,7 +53,7 @@ function SortHeader({ label, sortKey, sortConfig, onSort, className }) {
   const active = sortConfig.key === sortKey;
   const arrow = active ? (sortConfig.dir === "asc" ? " ↑" : " ↓") : "";
   return (
-    <th className={`sortable ${className || ""}`} onClick={() => onSort(sortKey)}>
+    <th className={`stats-sortable ${className || ""}`} onClick={() => onSort(sortKey)}>
       {label}{arrow}
     </th>
   );
@@ -81,25 +101,22 @@ function TeamsTable({ teams, onTeamClick }) {
         <thead>
           <tr>
             {sh("Team", "team")}
-            {sh("PPG", "points_per_game", "num")}
-            {sh("Pass%", "pass_rate", "num")}
-            {sh("Pass Yds/G", "pass_yards_per_game", "num")}
-            {sh("Rush Yds/G", "rush_yards_per_game", "num")}
-            <th className="group-header" colSpan={4}>Def Pts Allowed/G</th>
-            <th className="group-header" colSpan={4}>Def Rank (season)</th>
+            {sh("FPTS/G", "fpts_per_game", "num")}
+            {sh("Plays/G", "plays_per_game", "num")}
+            {sh("Pass Yds/G", "passing_yards_per_game", "num")}
+            {sh("Pass TDs/G", "passing_tds_per_game", "num")}
+            {sh("Pass EPA/G", "passing_epa_per_game", "num")}
+            {sh("Rush Yds/G", "rushing_yards_per_game", "num")}
+            {sh("Rush TDs/G", "rushing_tds_per_game", "num")}
+            {sh("Def QB/G", "def_fpts_allowed_qb_per_game", "num")}
+            {sh("Def RB/G", "def_fpts_allowed_rb_per_game", "num")}
+            {sh("Def WR/G", "def_fpts_allowed_wr_per_game", "num")}
+            {sh("Def TE/G", "def_fpts_allowed_te_per_game", "num")}
+            {sh("Rk QB", "def_rank_vs_position.season.qb", "num rank-col")}
+            {sh("Rk RB", "def_rank_vs_position.season.rb", "num rank-col")}
+            {sh("Rk WR", "def_rank_vs_position.season.wr", "num rank-col")}
+            {sh("Rk TE", "def_rank_vs_position.season.te", "num rank-col")}
             {sh("Next", "schedule.opponent")}
-          </tr>
-          <tr className="subheader">
-            <th /><th /><th /><th /><th />
-            {sh("QB", "def_fpts_allowed_qb_per_game", "num")}
-            {sh("RB", "def_fpts_allowed_rb_per_game", "num")}
-            {sh("WR", "def_fpts_allowed_wr_per_game", "num")}
-            {sh("TE", "def_fpts_allowed_te_per_game", "num")}
-            {sh("QB", "def_rank_vs_position.season.qb", "num rank-col")}
-            {sh("RB", "def_rank_vs_position.season.rb", "num rank-col")}
-            {sh("WR", "def_rank_vs_position.season.wr", "num rank-col")}
-            {sh("TE", "def_rank_vs_position.season.te", "num rank-col")}
-            <th />
           </tr>
         </thead>
         <tbody>
@@ -112,14 +129,17 @@ function TeamsTable({ teams, onTeamClick }) {
             return (
               <tr key={t.team}>
                 <td>
-                  <button className="team-link" onClick={() => onTeamClick(t.team)}>
-                    {t.team}
+                  <button className="team-link-btn" onClick={() => onTeamClick(t.team)}>
+                    <TeamBadge team={t.team} />
                   </button>
                 </td>
-                <td className="num">{fmt(t.points_per_game)}</td>
-                <td className="num">{fmtPct(t.pass_rate)}</td>
-                <td className="num">{fmt(t.pass_yards_per_game)}</td>
-                <td className="num">{fmt(t.rush_yards_per_game)}</td>
+                <td className="num">{fmt(t.fpts_per_game)}</td>
+                <td className="num">{fmt(t.plays_per_game, 0)}</td>
+                <td className="num">{fmt(t.passing_yards_per_game)}</td>
+                <td className="num">{fmt(t.passing_tds_per_game, 2)}</td>
+                <td className="num">{fmt(t.passing_epa_per_game, 2)}</td>
+                <td className="num">{fmt(t.rushing_yards_per_game)}</td>
+                <td className="num">{fmt(t.rushing_tds_per_game, 2)}</td>
                 <td className="num">{fmt(t.def_fpts_allowed_qb_per_game)}</td>
                 <td className="num">{fmt(t.def_fpts_allowed_rb_per_game)}</td>
                 <td className="num">{fmt(t.def_fpts_allowed_wr_per_game)}</td>
@@ -140,53 +160,74 @@ function TeamsTable({ teams, onTeamClick }) {
 
 // ─── Players Table ───────────────────────────────────────────────────────────
 
-function columnsForPosition(pos) {
+function columnsForPosition(pos, perGame) {
+  const pg = perGame ? "/G" : "";
   switch (pos) {
     case "QB":
       return [
-        { label: "#",        key: "_rank",            cls: "num narrow" },
-        { label: "Name",     key: "name" },
-        { label: "Team",     key: "team",             cls: "team-col" },
-        { label: "FPTS",     key: "fantasy_points_ppr", cls: "num" },
-        { label: "Pass Yds", key: "passing_yards",    cls: "num" },
-        { label: "Pass TDs", key: "passing_tds",      cls: "num" },
-        { label: "Rush Yds", key: "rushing_yards",    cls: "num" },
+        { label: "#",              key: "_rank",              cls: "num narrow" },
+        { label: "Name",           key: "name" },
+        { label: "Team",           key: "team",               cls: "team-col" },
+        { label: `FPTS${pg}`,      key: "fantasy_points_ppr", cls: "num" },
+        { label: `Pass Yds${pg}`,  key: "passing_yards",      cls: "num" },
+        { label: `Pass TDs${pg}`,  key: "passing_tds",        cls: "num" },
+        { label: `Int${pg}`,       key: "passing_interceptions", cls: "num" },
+        { label: `Rush Yds${pg}`,  key: "rushing_yards",      cls: "num" },
       ];
     case "RB":
       return [
-        { label: "#",       key: "_rank",            cls: "num narrow" },
-        { label: "Name",    key: "name" },
-        { label: "Team",    key: "team",             cls: "team-col" },
-        { label: "FPTS",    key: "fantasy_points_ppr", cls: "num" },
-        { label: "Car",     key: "carries",          cls: "num" },
-        { label: "Rush Yds",key: "rushing_yards",    cls: "num" },
-        { label: "Rush TDs",key: "rushing_tds",      cls: "num" },
-        { label: "Tgt",     key: "targets",          cls: "num" },
-        { label: "Rec",     key: "receptions",       cls: "num" },
-        { label: "Rec Yds", key: "receiving_yards",  cls: "num" },
+        { label: "#",              key: "_rank",              cls: "num narrow" },
+        { label: "Name",           key: "name" },
+        { label: "Team",           key: "team",               cls: "team-col" },
+        { label: `FPTS${pg}`,      key: "fantasy_points_ppr", cls: "num" },
+        { label: `Car${pg}`,       key: "carries",            cls: "num" },
+        { label: `Rush Yds${pg}`,  key: "rushing_yards",      cls: "num" },
+        { label: `Rush TDs${pg}`,  key: "rushing_tds",        cls: "num" },
+        { label: `Tgt${pg}`,       key: "targets",            cls: "num" },
+        { label: `Rec${pg}`,       key: "receptions",         cls: "num" },
+        { label: `Rec Yds${pg}`,   key: "receiving_yards",    cls: "num" },
       ];
     case "WR":
     case "TE":
       return [
-        { label: "#",       key: "_rank",            cls: "num narrow" },
-        { label: "Name",    key: "name" },
-        { label: "Team",    key: "team",             cls: "team-col" },
-        { label: "FPTS",    key: "fantasy_points_ppr", cls: "num" },
-        { label: "Tgt",     key: "targets",          cls: "num" },
-        { label: "Rec",     key: "receptions",       cls: "num" },
-        { label: "Rec Yds", key: "receiving_yards",  cls: "num" },
-        { label: "Rec TDs", key: "receiving_tds",    cls: "num" },
+        { label: "#",              key: "_rank",              cls: "num narrow" },
+        { label: "Name",           key: "name" },
+        { label: "Team",           key: "team",               cls: "team-col" },
+        { label: `FPTS${pg}`,      key: "fantasy_points_ppr", cls: "num" },
+        { label: `Tgt${pg}`,       key: "targets",            cls: "num" },
+        { label: `Rec${pg}`,       key: "receptions",         cls: "num" },
+        { label: `Rec Yds${pg}`,   key: "receiving_yards",    cls: "num" },
+        { label: `Rec TDs${pg}`,   key: "receiving_tds",      cls: "num" },
       ];
     default: // ALL
       return [
-        { label: "#",    key: "_rank",              cls: "num narrow" },
-        { label: "Name", key: "name" },
-        { label: "Team", key: "team",               cls: "team-col" },
-        { label: "Pos",  key: "position",           cls: "pos-col" },
-        { label: "FPTS PPR", key: "fantasy_points_ppr", cls: "num" },
-        { label: "FPTS Std", key: "fantasy_points", cls: "num" },
+        { label: "#",              key: "_rank",              cls: "num narrow" },
+        { label: "Name",           key: "name" },
+        { label: "Team",           key: "team",               cls: "team-col" },
+        { label: "Pos",            key: "position",           cls: "pos-col" },
+        { label: `FPTS PPR${pg}`,  key: "fantasy_points_ppr", cls: "num" },
+        { label: `FPTS Std${pg}`,  key: "fantasy_points",     cls: "num" },
       ];
   }
+}
+
+// Numeric stat keys that can be divided by games_played for per-game view
+const PER_GAME_KEYS = new Set([
+  "fantasy_points_ppr", "fantasy_points", "passing_yards", "passing_tds",
+  "passing_interceptions", "rushing_yards", "rushing_tds", "carries",
+  "targets", "receptions", "receiving_yards", "receiving_tds",
+]);
+
+function applyPerGame(players, perGame) {
+  if (!perGame) return players;
+  return players.map(p => {
+    const gp = p.games_played || 1;
+    const patched = { ...p };
+    PER_GAME_KEYS.forEach(k => {
+      if (patched[k] != null) patched[k] = patched[k] / gp;
+    });
+    return patched;
+  });
 }
 
 const ADV_COLS = [
@@ -195,14 +236,18 @@ const ADV_COLS = [
   { label: "+/-",   key: "fp_diff_avg",     cls: "num", fmt: v => fmtDiff(v) },
 ];
 
-function PlayersTable({ players, advancedData, showAdvanced, onTeamClick, position }) {
+function PlayersTable({ players, advancedData, onTeamClick, position, perGame }) {
   const [sortConfig, setSortConfig] = useState({ key: "fantasy_points_ppr", dir: "desc" });
 
-  const enriched = players.map((p, i) => ({
-    ...p,
-    _rank: i + 1,
-    ...(advancedData[p.sleeper_id] || {}),
-  }));
+  const enriched = applyPerGame(
+    players.map((p, i) => ({
+      ...p,
+      ...(p.season_totals || {}),
+      _rank: i + 1,
+      ...(advancedData[p.sleeper_id] || {}),
+    })),
+    perGame
+  );
 
   const sorted = useSortedData(enriched, sortConfig);
 
@@ -214,8 +259,8 @@ function PlayersTable({ players, advancedData, showAdvanced, onTeamClick, positi
     );
   }
 
-  const cols = columnsForPosition(position);
-  const allCols = showAdvanced ? [...cols, ...ADV_COLS] : cols;
+  const cols = columnsForPosition(position, perGame);
+  const allCols = position !== "ALL" ? [...cols, ...ADV_COLS] : cols;
 
   return (
     <div className="stats-table-wrap">
@@ -235,8 +280,8 @@ function PlayersTable({ players, advancedData, showAdvanced, onTeamClick, positi
                 if (c.key === "team") {
                   return (
                     <td key={c.key} className={c.cls}>
-                      <button className="team-link" onClick={() => onTeamClick(p.team)}>
-                        {p.team}
+                      <button className="team-link-btn" onClick={() => onTeamClick(p.team)}>
+                        <TeamBadge team={p.team} />
                       </button>
                     </td>
                   );
@@ -245,7 +290,8 @@ function PlayersTable({ players, advancedData, showAdvanced, onTeamClick, positi
                   return <td key={c.key} className={`${c.cls || ""} pos-${p.position?.toLowerCase()}`}>{p.position}</td>;
                 }
                 const raw = p[c.key];
-                const display = c.fmt ? c.fmt(raw) : (raw ?? "—");
+                const isNum = c.cls && c.cls.includes("num");
+                const display = c.fmt ? c.fmt(raw) : (isNum ? fmt(raw) : (raw ?? "—"));
                 const cls = c.key === "fp_diff_avg"
                   ? `${c.cls || ""} ${raw >= 0 ? "diff-pos" : "diff-neg"}`
                   : c.cls || "";
@@ -347,10 +393,9 @@ export default function Stats() {
   const [teamDetailPlayers, setTeamDetailPlayers] = useState([]);
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [positionFilter, setPositionFilter] = useState("ALL");
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [advancedData, setAdvancedData] = useState({}); // { sleeper_id: advObj }
+  const [perGame, setPerGame] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [advLoading, setAdvLoading] = useState(false);
 
   // Fetch teams on mount
   useEffect(() => {
@@ -411,12 +456,12 @@ export default function Stats() {
     }
   }, [view, positionFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load advanced when toggled on (players view, non-ALL position)
+  // Load advanced whenever players load for a specific position
   useEffect(() => {
-    if (view === "players" && showAdvanced && positionFilter !== "ALL" && playersData.length > 0) {
+    if (view === "players" && positionFilter !== "ALL" && playersData.length > 0) {
       fetchAdvanced(playersData);
     }
-  }, [showAdvanced, playersData]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [playersData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleTeamClick = useCallback(async (team) => {
     setSelectedTeam(team);
@@ -436,12 +481,10 @@ export default function Stats() {
 
   function handlePositionChange(pos) {
     setPositionFilter(pos);
-    setShowAdvanced(false);
   }
 
   function handleViewToggle(v) {
     setView(v);
-    if (v === "players") setShowAdvanced(false);
   }
 
   return (
@@ -461,6 +504,14 @@ export default function Stats() {
           >
             Players
           </button>
+          {view === "players" && (
+            <button
+              className={`stats-toggle-btn pg-toggle ${perGame ? "active" : ""}`}
+              onClick={() => setPerGame(v => !v)}
+            >
+              {perGame ? "Per Game" : "Totals"}
+            </button>
+          )}
         </div>
       )}
 
@@ -496,26 +547,15 @@ export default function Stats() {
                 </button>
               ))}
             </div>
-            {positionFilter !== "ALL" && (
-              <div className="stats-adv-toggle">
-                <button
-                  className={`stats-toggle-btn small ${showAdvanced ? "active" : ""}`}
-                  onClick={() => setShowAdvanced(v => !v)}
-                >
-                  {showAdvanced ? "Advanced ✓" : "Advanced"}
-                </button>
-                {advLoading && <span className="stats-adv-loading">loading…</span>}
-              </div>
-            )}
           </div>
           {loading
             ? <div className="stats-loading">Loading players…</div>
             : <PlayersTable
                 players={playersData}
                 advancedData={advancedData}
-                showAdvanced={showAdvanced && positionFilter !== "ALL"}
                 onTeamClick={handleTeamClick}
                 position={positionFilter}
+                perGame={perGame}
               />
           }
         </>
