@@ -41,6 +41,32 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2026-05-25",
+      title: "Stats Page & Sleeper Account Login",
+      items: [
+        {
+          text: "New Stats page:",
+          subitems: [
+            "Browse live NFL player stats for the current season, filterable by position",
+            "Receiver efficiency metrics (Target Share, Air Yards Share, WOPR, RACR) shown for WR, TE, and RB",
+            "Toggle between season totals and per-game averages",
+            "Team view with offensive efficiency across the league, with color-coded team badges",
+            "Click a team to drill down and see all players on that roster",
+          ],
+        },
+        {
+          text: "Optional Sleeper account login (Settings):",
+          subitems: [
+            "Connect your Sleeper account with username and password or SMS verification",
+            "When logged in as the active username, pending waiver claims appear in the Leagues page alongside completed and failed transactions",
+            "Cancelled waiver claims are filtered out and not shown",
+            "The pending count (P:) in the league summary is only visible when logged in",
+          ],
+        },
+        "Waiver rows now show the date on the left for easier scanning",
+      ],
+    },
+    {
       date: "2026-03-28",
       title: "Draft Helper Grid View",
       items: [
