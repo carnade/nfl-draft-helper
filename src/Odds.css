@@ -1,0 +1,240 @@
+.odds-page {
+  padding: 16px;
+  color: var(--text-color, #e0e0e0);
+  max-width: 1400px;
+}
+
+/* ── Header ── */
+.odds-header {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.odds-tab-toggle {
+  display: flex;
+  gap: 8px;
+}
+
+.odds-tab-btn {
+  padding: 8px 20px;
+  border: 1px solid #555;
+  border-radius: 6px;
+  background: #2a2a2a;
+  color: #ccc;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.15s, color 0.15s;
+}
+.odds-tab-btn.active {
+  background: #4a9eff;
+  color: #fff;
+  border-color: #4a9eff;
+}
+.odds-tab-btn:hover:not(.active) {
+  background: #3a3a3a;
+}
+
+.odds-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: #888;
+}
+.odds-credits {
+  background: #1e3a1e;
+  color: #6fba6f;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+}
+.odds-value-count {
+  background: #3a2a00;
+  color: #f0b429;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+}
+.odds-no-data {
+  color: #888;
+  font-style: italic;
+}
+
+/* ── Filters ── */
+.odds-filters {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.odds-pos-tabs,
+.odds-market-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.odds-pos-tab,
+.odds-market-tab {
+  padding: 5px 13px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #2a2a2a;
+  color: #bbb;
+  cursor: pointer;
+  font-size: 12px;
+}
+.odds-pos-tab.active,
+.odds-market-tab.active {
+  background: #4a9eff;
+  color: #fff;
+  border-color: #4a9eff;
+}
+.odds-pos-tab:hover:not(.active),
+.odds-market-tab:hover:not(.active) {
+  background: #3a3a3a;
+}
+
+.odds-value-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #aaa;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.odds-value-toggle input {
+  cursor: pointer;
+}
+
+/* ── Table ── */
+.odds-table-wrap {
+  overflow-x: auto;
+}
+
+.odds-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.odds-table th,
+.odds-table td {
+  padding: 7px 10px;
+  text-align: left;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.odds-table th {
+  background: #1e1e1e;
+  color: #999;
+  font-weight: 600;
+  font-size: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.odds-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+.odds-sortable:hover {
+  color: #ccc;
+}
+
+.odds-table tbody tr:hover {
+  background: #242424;
+}
+
+.num {
+  text-align: right;
+}
+
+/* Team badge */
+.odds-team-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.5px;
+}
+
+.odds-matchup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.odds-at {
+  color: #666;
+  font-size: 11px;
+}
+.odds-time {
+  font-size: 12px;
+  color: #aaa;
+}
+
+/* Position colors */
+.pos-col { font-size: 11px; font-weight: 600; }
+.pos-qb  { color: #61afef; }
+.pos-rb  { color: #98c379; }
+.pos-wr  { color: #e5c07b; }
+.pos-te  { color: #c678dd; }
+.pos-k   { color: #888; }
+
+.odds-market-label {
+  font-size: 12px;
+  color: #bbb;
+}
+.odds-player-name {
+  font-weight: 500;
+}
+.odds-price {
+  font-family: monospace;
+}
+
+/* Value flag rows and badges */
+.odds-table tbody tr.value-over {
+  background: rgba(40, 80, 40, 0.25);
+}
+.odds-table tbody tr.value-under {
+  background: rgba(80, 40, 40, 0.25);
+}
+
+.value-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.value-badge-over {
+  background: #1e4d1e;
+  color: #6fba6f;
+}
+.value-badge-under {
+  background: #4d1e1e;
+  color: #e07070;
+}
+
+/* State messages */
+.odds-loading,
+.odds-error,
+.odds-empty {
+  padding: 40px 16px;
+  text-align: center;
+  color: #888;
+  font-size: 14px;
+}
+.odds-error {
+  color: #e07070;
+}

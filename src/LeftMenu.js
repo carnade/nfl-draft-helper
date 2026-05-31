@@ -17,6 +17,7 @@ import {
   faDollarSign,
   faTrophy,
   faChartSimple,
+  faScaleBalanced,
 } from "@fortawesome/free-solid-svg-icons";
 import "./LeftMenu.css";
 
@@ -142,6 +143,12 @@ function LeftMenu({ userName, setUserName }) {
           <Link to="/stats" className="menu-link">
             <FontAwesomeIcon icon={faChartSimple} className="menu-icon" />
             <span>Stats</span>
+          </Link>
+        </li>
+        <li>
+          <Link to="/odds" className="menu-link">
+            <FontAwesomeIcon icon={faScaleBalanced} className="menu-icon" />
+            <span>Odds</span>
           </Link>
         </li>
         <li>
