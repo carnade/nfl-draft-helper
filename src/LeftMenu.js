@@ -17,6 +17,7 @@ import {
   faDollarSign,
   faTrophy,
   faChartSimple,
+  faScaleBalanced,
 } from "@fortawesome/free-solid-svg-icons";
 import "./LeftMenu.css";
 
@@ -26,7 +27,7 @@ function LeftMenu({ userName, setUserName }) {
 
   // Manually update this timestamp when you want the changelog to be considered "updated".
   // Edit this constant in the source and deploy/build to change the value.
-  const MANUAL_LAST_UPDATED = "2026-05-25T00:00:00.000Z";
+  const MANUAL_LAST_UPDATED = "2026-06-28T00:00:00.000Z";
 
   const checkUnread = () => {
     try {
@@ -142,6 +143,12 @@ function LeftMenu({ userName, setUserName }) {
           <Link to="/stats" className="menu-link">
             <FontAwesomeIcon icon={faChartSimple} className="menu-icon" />
             <span>Stats</span>
+          </Link>
+        </li>
+        <li>
+          <Link to="/odds" className="menu-link">
+            <FontAwesomeIcon icon={faScaleBalanced} className="menu-icon" />
+            <span>Odds</span>
           </Link>
         </li>
         <li>

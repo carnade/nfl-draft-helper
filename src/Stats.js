@@ -79,8 +79,11 @@ function useSortedData(data, sortConfig) {
 
 // ─── Teams Table ────────────────────────────────────────────────────────────
 
+const TEAM_TABS = ["scoring", "offense", "defense"];
+
 function TeamsTable({ teams, onTeamClick }) {
-  const [sortConfig, setSortConfig] = useState({ key: "team", dir: "asc" });
+  const [teamTab, setTeamTab] = useState("scoring");
+  const [sortConfig, setSortConfig] = useState({ key: "points_per_game", dir: "desc" });
   const sorted = useSortedData(teams, sortConfig);
 
   function onSort(key) {
@@ -91,31 +94,60 @@ function TeamsTable({ teams, onTeamClick }) {
     );
   }
 
+  function switchTab(t) {
+    setTeamTab(t);
+    const defaults = { scoring: "points_per_game", offense: "fpts_per_game", defense: "def_fpts_allowed_qb_per_game" };
+    setSortConfig({ key: defaults[t], dir: "desc" });
+  }
+
   const sh = (label, key, cls) => (
     <SortHeader label={label} sortKey={key} sortConfig={sortConfig} onSort={onSort} className={cls} />
   );
 
   return (
     <div className="stats-table-wrap">
+      <div className="stats-pos-tabs" style={{ marginBottom: 8 }}>
+        {TEAM_TABS.map(t => (
+          <button
+            key={t}
+            className={`stats-pos-tab ${teamTab === t ? "active" : ""}`}
+            onClick={() => switchTab(t)}
+          >
+            {t.charAt(0).toUpperCase() + t.slice(1)}
+          </button>
+        ))}
+      </div>
       <table className="stats-table">
         <thead>
           <tr>
             {sh("Team", "team")}
-            {sh("FPTS/G", "fpts_per_game", "num")}
-            {sh("Plays/G", "plays_per_game", "num")}
-            {sh("Pass Yds/G", "passing_yards_per_game", "num")}
-            {sh("Pass TDs/G", "passing_tds_per_game", "num")}
-            {sh("Pass EPA/G", "passing_epa_per_game", "num")}
-            {sh("Rush Yds/G", "rushing_yards_per_game", "num")}
-            {sh("Rush TDs/G", "rushing_tds_per_game", "num")}
-            {sh("Def QB/G", "def_fpts_allowed_qb_per_game", "num")}
-            {sh("Def RB/G", "def_fpts_allowed_rb_per_game", "num")}
-            {sh("Def WR/G", "def_fpts_allowed_wr_per_game", "num")}
-            {sh("Def TE/G", "def_fpts_allowed_te_per_game", "num")}
-            {sh("Rk QB", "def_rank_vs_position.season.qb", "num rank-col")}
-            {sh("Rk RB", "def_rank_vs_position.season.rb", "num rank-col")}
-            {sh("Rk WR", "def_rank_vs_position.season.wr", "num rank-col")}
-            {sh("Rk TE", "def_rank_vs_position.season.te", "num rank-col")}
+            {teamTab === "scoring" && <>
+              {sh("Pts/G", "points_per_game", "num")}
+              {sh("Pts All'd/G", "points_allowed_per_game", "num")}
+              {sh("Pts L3", "points_rolling3", "num")}
+              {sh("Pts L5", "points_rolling5", "num")}
+              {sh("All'd L3", "points_allowed_rolling3", "num")}
+              {sh("All'd L5", "points_allowed_rolling5", "num")}
+            </>}
+            {teamTab === "offense" && <>
+              {sh("FPTS/G", "fpts_per_game", "num")}
+              {sh("Plays/G", "plays_per_game", "num")}
+              {sh("Pass Yds/G", "passing_yards_per_game", "num")}
+              {sh("Pass TDs/G", "passing_tds_per_game", "num")}
+              {sh("Pass EPA/G", "passing_epa_per_game", "num")}
+              {sh("Rush Yds/G", "rushing_yards_per_game", "num")}
+              {sh("Rush TDs/G", "rushing_tds_per_game", "num")}
+            </>}
+            {teamTab === "defense" && <>
+              {sh("Def QB/G", "def_fpts_allowed_qb_per_game", "num")}
+              {sh("Def RB/G", "def_fpts_allowed_rb_per_game", "num")}
+              {sh("Def WR/G", "def_fpts_allowed_wr_per_game", "num")}
+              {sh("Def TE/G", "def_fpts_allowed_te_per_game", "num")}
+              {sh("Rk QB", "def_rank_vs_position.season.qb", "num rank-col")}
+              {sh("Rk RB", "def_rank_vs_position.season.rb", "num rank-col")}
+              {sh("Rk WR", "def_rank_vs_position.season.wr", "num rank-col")}
+              {sh("Rk TE", "def_rank_vs_position.season.te", "num rank-col")}
+            </>}
             {sh("Next", "schedule.opponent")}
           </tr>
         </thead>
@@ -133,21 +165,33 @@ function TeamsTable({ teams, onTeamClick }) {
                     <TeamBadge team={t.team} />
                   </button>
                 </td>
-                <td className="num">{fmt(t.fpts_per_game)}</td>
-                <td className="num">{fmt(t.plays_per_game, 0)}</td>
-                <td className="num">{fmt(t.passing_yards_per_game)}</td>
-                <td className="num">{fmt(t.passing_tds_per_game, 2)}</td>
-                <td className="num">{fmt(t.passing_epa_per_game, 2)}</td>
-                <td className="num">{fmt(t.rushing_yards_per_game)}</td>
-                <td className="num">{fmt(t.rushing_tds_per_game, 2)}</td>
-                <td className="num">{fmt(t.def_fpts_allowed_qb_per_game)}</td>
-                <td className="num">{fmt(t.def_fpts_allowed_rb_per_game)}</td>
-                <td className="num">{fmt(t.def_fpts_allowed_wr_per_game)}</td>
-                <td className="num">{fmt(t.def_fpts_allowed_te_per_game)}</td>
-                <td className={`num rank-col ${rankClass(rnk.qb)}`}>{rnk.qb ?? "—"}</td>
-                <td className={`num rank-col ${rankClass(rnk.rb)}`}>{rnk.rb ?? "—"}</td>
-                <td className={`num rank-col ${rankClass(rnk.wr)}`}>{rnk.wr ?? "—"}</td>
-                <td className={`num rank-col ${rankClass(rnk.te)}`}>{rnk.te ?? "—"}</td>
+                {teamTab === "scoring" && <>
+                  <td className="num">{fmt(t.points_per_game)}</td>
+                  <td className="num">{fmt(t.points_allowed_per_game)}</td>
+                  <td className="num">{fmt(t.points_rolling3)}</td>
+                  <td className="num">{fmt(t.points_rolling5)}</td>
+                  <td className="num">{fmt(t.points_allowed_rolling3)}</td>
+                  <td className="num">{fmt(t.points_allowed_rolling5)}</td>
+                </>}
+                {teamTab === "offense" && <>
+                  <td className="num">{fmt(t.fpts_per_game)}</td>
+                  <td className="num">{fmt(t.plays_per_game, 0)}</td>
+                  <td className="num">{fmt(t.passing_yards_per_game)}</td>
+                  <td className="num">{fmt(t.passing_tds_per_game, 2)}</td>
+                  <td className="num">{fmt(t.passing_epa_per_game, 2)}</td>
+                  <td className="num">{fmt(t.rushing_yards_per_game)}</td>
+                  <td className="num">{fmt(t.rushing_tds_per_game, 2)}</td>
+                </>}
+                {teamTab === "defense" && <>
+                  <td className="num">{fmt(t.def_fpts_allowed_qb_per_game)}</td>
+                  <td className="num">{fmt(t.def_fpts_allowed_rb_per_game)}</td>
+                  <td className="num">{fmt(t.def_fpts_allowed_wr_per_game)}</td>
+                  <td className="num">{fmt(t.def_fpts_allowed_te_per_game)}</td>
+                  <td className={`num rank-col ${rankClass(rnk.qb)}`}>{rnk.qb ?? "—"}</td>
+                  <td className={`num rank-col ${rankClass(rnk.rb)}`}>{rnk.rb ?? "—"}</td>
+                  <td className={`num rank-col ${rankClass(rnk.wr)}`}>{rnk.wr ?? "—"}</td>
+                  <td className={`num rank-col ${rankClass(rnk.te)}`}>{rnk.te ?? "—"}</td>
+                </>}
                 <td className="next-opp">{nextLabel}</td>
               </tr>
             );
@@ -210,15 +254,15 @@ function columnsForPosition(pos, perGame) {
         { label: "Name",           key: "name" },
         { label: "Team",           key: "team",               cls: "team-col" },
         { label: "Pos",            key: "position",           cls: "pos-col" },
-        { label: `FPTS PPR${pg}`,  key: "fantasy_points_ppr", cls: "num" },
-        { label: `FPTS Std${pg}`,  key: "fantasy_points",     cls: "num" },
+        { label: `FPTS PPR${pg}`,  key: "fantasy_points_ppr",      cls: "num" },
+        { label: `FPTS Half${pg}`, key: "fantasy_points_half_ppr", cls: "num" },
       ];
   }
 }
 
 // Numeric stat keys that can be divided by games_played for per-game view
 const PER_GAME_KEYS = new Set([
-  "fantasy_points_ppr", "fantasy_points", "passing_yards", "passing_tds",
+  "fantasy_points_ppr", "fantasy_points_half_ppr", "fantasy_points", "passing_yards", "passing_tds",
   "passing_interceptions", "rushing_yards", "rushing_tds", "carries",
   "targets", "receptions", "receiving_yards", "receiving_tds",
 ]);
@@ -400,6 +444,7 @@ export default function Stats() {
   const [positionFilter, setPositionFilter] = useState("ALL");
   const [advancedData, setAdvancedData] = useState({}); // { sleeper_id: advObj }
   const [perGame, setPerGame] = useState(false);
+  const [nameFilter, setNameFilter] = useState("");
   const [loading, setLoading] = useState(false);
 
   // Fetch teams on mount
@@ -483,6 +528,7 @@ export default function Stats() {
 
   function handlePositionChange(pos) {
     setPositionFilter(pos);
+    setNameFilter("");
   }
 
   function handleViewToggle(v) {
@@ -549,11 +595,20 @@ export default function Stats() {
                 </button>
               ))}
             </div>
+            <input
+              className="stats-name-filter"
+              type="text"
+              placeholder="Filter player…"
+              value={nameFilter}
+              onChange={e => setNameFilter(e.target.value)}
+            />
           </div>
           {loading
             ? <div className="stats-loading">Loading players…</div>
             : <PlayersTable
-                players={playersData}
+                players={playersData.filter(p =>
+                  !nameFilter || p.name?.toLowerCase().includes(nameFilter.toLowerCase())
+                )}
                 advancedData={advancedData}
                 onTeamClick={handleTeamClick}
                 position={positionFilter}

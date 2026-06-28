@@ -19,6 +19,7 @@ import TournamentResults from "./TournamentResults";
 import Settings from "./Settings";
 import { ChangelogWithReadMark } from "./Changelog";
 import Stats from "./Stats";
+import Odds from "./Odds";
 import "./Layout.css";
 import "./LeftMenu.css";
 import "./GenericStyles.css";
@@ -125,6 +126,7 @@ function App() {
                 }
               />
               <Route path="/stats" element={<Stats />} />
+              <Route path="/odds" element={<Odds />} />
               <Route path="/changelog" element={<ChangelogWithReadMark />} />
               <Route path="/settings" element={<Settings />} />
             </Routes>
