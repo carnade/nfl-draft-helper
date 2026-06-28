@@ -1,0 +1,321 @@
+.gameday-container {
+  padding: 24px;
+  max-width: 1200px;
+}
+
+.gameday-login-required {
+  margin-top: 40px;
+  color: hsl(var(--foreground));
+}
+
+.gameday-login-required h2 {
+  margin-bottom: 12px;
+}
+
+/* Header */
+.gameday-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.gameday-header-left {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.gameday-title {
+  margin: 0;
+  color: hsl(var(--foreground));
+  font-size: 1.5rem;
+}
+
+.gameday-summary {
+  font-size: 1rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.gameday-wins {
+  color: hsl(140 50% 45%);
+  font-weight: 600;
+}
+
+.gameday-losses {
+  color: hsl(0 65% 55%);
+  font-weight: 600;
+}
+
+/* View toggle pills */
+.gameday-view-toggle {
+  display: flex;
+  gap: 0;
+  border: 1px solid hsl(var(--border));
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.gameday-pill {
+  padding: 6px 18px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: hsl(var(--muted-foreground));
+  transition: background 0.15s, color 0.15s;
+}
+
+.gameday-pill.active {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.gameday-pill:hover:not(.active) {
+  background: hsl(var(--muted) / 0.5);
+  color: hsl(var(--foreground));
+}
+
+/* Loading / error */
+.gameday-loading,
+.gameday-error {
+  color: hsl(var(--muted-foreground));
+  margin-top: 16px;
+}
+
+.gameday-error {
+  color: hsl(0 65% 55%);
+}
+
+/* ── CARD VIEW ── */
+.gameday-leagues-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.gameday-card {
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  padding: 16px;
+  background: hsl(var(--background));
+}
+
+.gameday-card-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gameday-type-badge {
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  flex-shrink: 0;
+}
+
+.gameday-matchup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gameday-score {
+  flex: 1;
+  border-radius: 6px;
+  padding: 10px 12px;
+  text-align: center;
+  background: hsl(var(--muted) / 0.4);
+}
+
+.gameday-score.win {
+  background: hsl(140 50% 45% / 0.15);
+  border: 1px solid hsl(140 50% 45% / 0.4);
+}
+
+.gameday-score.loss {
+  background: hsl(0 65% 55% / 0.12);
+  border: 1px solid hsl(0 65% 55% / 0.35);
+}
+
+.gameday-score.opponent {
+  background: hsl(var(--muted) / 0.3);
+}
+
+.gameday-score-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+}
+
+.gameday-score.win .gameday-score-value {
+  color: hsl(140 50% 42%);
+}
+
+.gameday-score.loss .gameday-score-value {
+  color: hsl(0 65% 52%);
+}
+
+.gameday-score-label {
+  font-size: 0.72rem;
+  color: hsl(var(--muted-foreground));
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gameday-vs {
+  font-size: 0.8rem;
+  color: hsl(var(--muted-foreground));
+  flex-shrink: 0;
+}
+
+.gameday-no-matchup {
+  font-size: 0.85rem;
+  color: hsl(var(--muted-foreground));
+}
+
+/* ── LIST VIEW ── */
+.gameday-list {
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.gameday-section {
+  margin-bottom: 32px;
+}
+
+.gameday-section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  margin: 0 0 12px 0;
+}
+
+.gameday-list-grid {
+  display: grid;
+  grid-template-columns: 3fr 1fr 1fr 2fr 1fr;
+  gap: 0;
+}
+
+.gameday-list-header {
+  font-weight: 600;
+  font-size: 0.875rem;
+  padding: 0.75rem;
+  text-align: left;
+  background-color: hsl(222 47% 8%);
+  color: hsl(var(--foreground));
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+body.dark .gameday-list-header {
+  background-color: hsl(222 47% 10%);
+}
+
+.gameday-list-row:hover {
+  background: hsl(var(--muted) / 0.3);
+}
+
+.gameday-list-item {
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  border-bottom: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+  display: flex;
+  align-items: center;
+}
+
+.gameday-list-name {
+  font-weight: 500;
+}
+
+.gameday-league-link {
+  color: hsl(var(--foreground));
+  text-decoration: none;
+}
+
+.gameday-league-link:hover {
+  text-decoration: underline;
+  color: hsl(var(--primary));
+}
+
+.gameday-list-proj {
+  font-weight: 600;
+}
+
+.gameday-list-proj.win {
+  color: hsl(140 50% 42%);
+}
+
+.gameday-list-proj.loss {
+  color: hsl(0 65% 52%);
+}
+
+.gameday-win-label {
+  color: hsl(140 50% 42%);
+  font-weight: 600;
+}
+
+.gameday-loss-label {
+  color: hsl(0 65% 52%);
+  font-weight: 600;
+}
+
+/* Dark mode */
+body.dark .gameday-score.win {
+  background: hsl(140 45% 35% / 0.2);
+  border-color: hsl(140 45% 40% / 0.4);
+}
+
+body.dark .gameday-score.win .gameday-score-value {
+  color: hsl(140 55% 55%);
+}
+
+body.dark .gameday-score.loss {
+  background: hsl(0 60% 40% / 0.18);
+  border-color: hsl(0 60% 50% / 0.4);
+}
+
+body.dark .gameday-score.loss .gameday-score-value {
+  color: hsl(0 65% 62%);
+}
+
+body.dark .gameday-wins {
+  color: hsl(140 55% 55%);
+}
+
+body.dark .gameday-losses {
+  color: hsl(0 65% 62%);
+}
+
+body.dark .gameday-list-proj.win {
+  color: hsl(140 55% 55%);
+}
+
+body.dark .gameday-list-proj.loss {
+  color: hsl(0 65% 62%);
+}
+
+body.dark .gameday-win-label {
+  color: hsl(140 55% 55%);
+}
+
+body.dark .gameday-loss-label {
+  color: hsl(0 65% 62%);
+}

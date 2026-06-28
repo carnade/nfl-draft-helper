@@ -22,6 +22,7 @@ function LeagueList() {
   const [userId, setUserId] = useState(null);
   const [leagues, setLeagues] = useState([]);
   const [injuryReport, setInjuryReport] = useState({});
+  const [teamStatsMap, setTeamStatsMap] = useState({});
   const [portfolioData, setPortfolioData] = useState([]); // State for portfolio data
   const [activeTab, setActiveTab] = useState("Waivers"); // State for active tab
   const [expandedLeagueIds, setExpandedLeagueIds] = useState(new Set());
@@ -819,15 +820,20 @@ function LeagueList() {
 
   const fetchInjuryReport = useCallback(async () => {
     try {
-      const response = await fetch(`${BASE_URL}/teams`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      const [injuryRes, statsRes] = await Promise.all([
+        fetch(`${BASE_URL}/teams`, { method: "GET", headers: { "Content-Type": "application/json" } }),
+        fetch(`${BASE_URL}/stats/teams`, { method: "GET", headers: { "Content-Type": "application/json" } }),
+      ]);
 
-      const data = await response.json();
-      setInjuryReport(data);
+      const injuryData = await injuryRes.json();
+      setInjuryReport(injuryData);
+
+      const statsData = await statsRes.json();
+      if (Array.isArray(statsData)) {
+        const map = {};
+        for (const t of statsData) map[t.team] = t;
+        setTeamStatsMap(map);
+      }
     } catch (error) {
       console.error("Error fetching injury report:", error);
     }
@@ -1511,20 +1517,31 @@ function LeagueList() {
                                       <div className="roster-grid-item align_center">
                                         {dfsData?.projected_points?.toFixed(1) || 'N/A'}
                                       </div>
-                                      <div 
-                                        className="roster-grid-item align_center"
-                                        style={getDvpColor(dfsData?.opp_rank) ? { 
-                                          color: getDvpColor(dfsData.opp_rank), 
-                                          fontWeight: 600 
-                                        } : {}}
-                                      >
-                                        {dfsData?.opp_rank ? (
-                                          <>
-                                            {dfsData.opp_rank}
-                                            <sup className="ordinal-suffix">{getOrdinalSuffix(dfsData.opp_rank)}</sup>
-                                          </>
-                                        ) : 'N/A'}
-                                      </div>
+                                      {(() => {
+                                        const pos = (playerInfo?.position || '').toLowerCase();
+                                        const TEAM_ABBR_MAP = { LAR: 'LA', WSH: 'WAS' };
+                                        const teamKey = TEAM_ABBR_MAP[playerInfo?.team] || playerInfo?.team;
+                                        const opponent = teamStatsMap[teamKey]?.schedule?.opponent;
+                                        const oppKey = TEAM_ABBR_MAP[opponent] || opponent;
+                                        const teamStats = teamStatsMap[oppKey];
+                                        const seasonRank = teamStats?.def_rank_vs_position?.season?.[pos];
+                                        const r5Rank = teamStats?.def_rank_vs_position?.rolling5?.[pos];
+                                        const dvpColor = getDvpColor(seasonRank);
+                                        return (
+                                          <div
+                                            className={`roster-grid-item align_center${r5Rank ? ' dvp-has-tooltip' : ''}`}
+                                            style={dvpColor ? { color: dvpColor, fontWeight: 600 } : {}}
+                                            data-dvp-tooltip={r5Rank ? `L5: ${r5Rank}${getOrdinalSuffix(r5Rank)}` : undefined}
+                                          >
+                                            {seasonRank ? (
+                                              <>
+                                                {seasonRank}
+                                                <sup className="ordinal-suffix">{getOrdinalSuffix(seasonRank)}</sup>
+                                              </>
+                                            ) : 'N/A'}
+                                          </div>
+                                        );
+                                      })()}
                                       <div className="roster-grid-item align_center">
                                         {renderInjuryStatus(
                                           player,
