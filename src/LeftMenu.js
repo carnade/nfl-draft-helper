@@ -18,6 +18,7 @@ import {
   faTrophy,
   faChartSimple,
   faScaleBalanced,
+  faListOl,
 } from "@fortawesome/free-solid-svg-icons";
 import "./LeftMenu.css";
 
@@ -114,8 +115,14 @@ function LeftMenu({ userName, setUserName }) {
             to={userName ? `/leagues/${userName}` : "/"}
             className="menu-link"
           >
-            <FontAwesomeIcon icon={faFootball} className="menu-icon" />
+            <FontAwesomeIcon icon={faListOl} className="menu-icon" />
             <span>Leagues</span>
+          </Link>
+        </li>
+        <li>
+          <Link to="/gameday" className="menu-link">
+            <FontAwesomeIcon icon={faFootball} className="menu-icon" />
+            <span>Gameday</span>
           </Link>
         </li>
         <li>

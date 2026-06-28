@@ -42,6 +42,30 @@ export default function Changelog() {
   const entries = [
     {
       date: "2026-06-28",
+      title: "Gameday Page & Improved DvP",
+      items: [
+        {
+          text: "New Gameday page (football icon in the menu):",
+          subitems: [
+            "Shows your weekly matchup projections across all your dynasty and redraft leagues",
+            "Summary header shows your predicted record for the week (e.g. 7W / 3L)",
+            "Your projected score is always on the left, highlighted green if predicted to win or red if predicted to lose",
+            "Leagues are grouped into Dynasty and Redraft sections",
+            "Toggle between a card view and a list view",
+            "Requires logging in via Settings with your Sleeper account",
+          ],
+        },
+        {
+          text: "Defense vs Position (DvP) on the Leagues page now uses stats-based data:",
+          subitems: [
+            "Ranks are now position-specific (separate rankings for QB, RB, WR, TE) based on fantasy points allowed this season",
+            "Hover over any DvP value to see the last-5-game rolling rank",
+          ],
+        },
+      ],
+    },
+    {
+      date: "2026-06-28",
       title: "Odds Page",
       items: [
         {

@@ -949,3 +949,31 @@ body.dark .league-action-icon:hover {
 .waiver-drop { opacity: 0.65; }
 .waiver-bid  { font-weight: 600; }
 .waiver-offseason-note { font-size: 0.75rem; font-weight: 400; opacity: 0.55; margin-left: 6px; }
+
+/* DvP tooltip showing rolling-5 rank on hover */
+.dvp-has-tooltip {
+  position: relative;
+  cursor: default;
+}
+.dvp-has-tooltip::after {
+  content: attr(data-dvp-tooltip);
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: hsl(222 47% 12%);
+  color: hsl(var(--foreground));
+  font-size: 0.72rem;
+  font-weight: 500;
+  white-space: nowrap;
+  padding: 3px 7px;
+  border-radius: 4px;
+  border: 1px solid hsl(var(--border));
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 10;
+}
+.dvp-has-tooltip:hover::after {
+  opacity: 1;
+}
