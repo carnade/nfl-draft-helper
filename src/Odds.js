@@ -98,12 +98,13 @@ function GameLinesTable({ games }) {
 
   const flat = games.map(g => ({
     ...g,
-    spread_line:  g.spread?.home_spread,
-    total_line:   g.total?.line,
-    over_price:   g.total?.over_price,
-    under_price:  g.total?.under_price,
-    home_ml:      g.h2h?.home_price,
-    away_ml:      g.h2h?.away_price,
+    spread_line:    g.spread?.home_spread,
+    total_line:     g.total?.line,
+    home_ml:        g.h2h?.home_price,
+    away_ml:        g.h2h?.away_price,
+    ou_implied:     g.ou_eval?.implied,
+    ou_edge_pct:    g.ou_eval?.edge_pct,
+    ou_signal:      g.ou_eval?.signal,
   }));
 
   const sorted = useSortedData(flat, sortConfig);
@@ -120,10 +121,10 @@ function GameLinesTable({ games }) {
             {sh("Date", "commence_time", "num")}
             {sh("Spread", "spread_line", "num")}
             {sh("Total", "total_line", "num")}
-            {sh("Over", "over_price", "num")}
-            {sh("Under", "under_price", "num")}
-            {sh("Home", "home_ml", "num")}
-            {sh("Away", "away_ml", "num")}
+            {sh("Our Total", "ou_implied", "num")}
+            {sh("Edge", "ou_edge_pct", "num")}
+            {sh("Home ML", "home_ml", "num")}
+            {sh("Away ML", "away_ml", "num")}
           </tr>
         </thead>
         <tbody>
@@ -137,8 +138,14 @@ function GameLinesTable({ games }) {
               <td className="num odds-time">{fmtTime(g.commence_time)}</td>
               <td className="num">{g.spread_line != null ? (g.spread_line > 0 ? `+${g.spread_line}` : g.spread_line) : "—"}</td>
               <td className="num">{fmt(g.total_line)}</td>
-              <td className="num">{fmtPrice(g.over_price)}</td>
-              <td className="num">{fmtPrice(g.under_price)}</td>
+              <td className="num">{g.ou_implied != null ? fmt(g.ou_implied) : "—"}</td>
+              <td className="num">
+                {g.ou_signal ? (
+                  <span className={`value-badge value-badge-${g.ou_signal}`}>
+                    {g.ou_signal === "over" ? "▲" : "▼"} {Math.abs((g.ou_edge_pct || 0) * 100).toFixed(1)}%
+                  </span>
+                ) : "—"}
+              </td>
               <td className="num">{fmtPrice(g.home_ml)}</td>
               <td className="num">{fmtPrice(g.away_ml)}</td>
             </tr>

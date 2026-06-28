@@ -444,6 +444,7 @@ export default function Stats() {
   const [positionFilter, setPositionFilter] = useState("ALL");
   const [advancedData, setAdvancedData] = useState({}); // { sleeper_id: advObj }
   const [perGame, setPerGame] = useState(false);
+  const [nameFilter, setNameFilter] = useState("");
   const [loading, setLoading] = useState(false);
 
   // Fetch teams on mount
@@ -527,6 +528,7 @@ export default function Stats() {
 
   function handlePositionChange(pos) {
     setPositionFilter(pos);
+    setNameFilter("");
   }
 
   function handleViewToggle(v) {
@@ -593,11 +595,20 @@ export default function Stats() {
                 </button>
               ))}
             </div>
+            <input
+              className="stats-name-filter"
+              type="text"
+              placeholder="Filter player…"
+              value={nameFilter}
+              onChange={e => setNameFilter(e.target.value)}
+            />
           </div>
           {loading
             ? <div className="stats-loading">Loading players…</div>
             : <PlayersTable
-                players={playersData}
+                players={playersData.filter(p =>
+                  !nameFilter || p.name?.toLowerCase().includes(nameFilter.toLowerCase())
+                )}
                 advancedData={advancedData}
                 onTeamClick={handleTeamClick}
                 position={positionFilter}
