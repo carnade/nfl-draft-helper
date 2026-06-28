@@ -41,6 +41,22 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2026-06-28",
+      title: "Odds Page",
+      items: [
+        {
+          text: "New Odds page for tracking weekly betting opportunities:",
+          subitems: [
+            "Game Lines tab: view spread, total, and moneyline for each matchup, with an edge indicator comparing the book total to our own implied total",
+            "Player Props tab: browse player prop lines (passing yards, rushing yards, receiving yards, anytime TD) alongside the best available over/under price across books",
+            "Props include a 5-game rolling average per stat, with a value flag highlighting lines that deviate meaningfully from recent performance",
+            "Filter props by position (QB/RB/WR/TE) and market type, or show value-flagged props only",
+          ],
+        },
+        "Betting rules and recommendations are not yet active (off-season) but will be introduced when the season begins",
+      ],
+    },
+    {
       date: "2026-05-25",
       title: "Stats Page & Sleeper Account Login",
       items: [
