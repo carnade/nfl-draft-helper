@@ -57,6 +57,33 @@ function fmtTime(iso) {
 
 // ─── Sort hook ───────────────────────────────────────────────────────────────
 
+function getWeekBucket(commence_time) {
+  if (!commence_time) return null;
+  const d = new Date(commence_time);
+  // Use Tuesday as the NFL week boundary (games run Thu–Mon)
+  const day = d.getDay(); // 0=Sun,1=Mon,2=Tue,...
+  const daysToTue = (day - 2 + 7) % 7;
+  const tue = new Date(d);
+  tue.setDate(d.getDate() - daysToTue);
+  tue.setHours(0, 0, 0, 0);
+  return tue.getTime();
+}
+
+function groupByWeek(rows) {
+  const map = new Map();
+  for (const r of rows) {
+    const bucket = getWeekBucket(r.commence_time);
+    const key = bucket ?? -1;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(r);
+  }
+  const sorted = [...map.entries()].sort(([a], [b]) => a - b);
+  return sorted.map(([ts, weekRows], i) => {
+    const label = ts === -1 ? "Unknown Week" : `Week ${i + 1}`;
+    return [label, weekRows];
+  });
+}
+
 function useSortedData(data, sortConfig) {
   if (!sortConfig.key) return data;
   return [...data].sort((a, b) => {
@@ -85,73 +112,85 @@ function SortHeader({ label, sortKey, sortConfig, onSort, className, title }) {
 
 // ─── Game Lines Table ────────────────────────────────────────────────────────
 
-function GameLinesTable({ games }) {
-  const [sortConfig, setSortConfig] = useState({ key: "commence_time", dir: "asc" });
-
-  function onSort(key) {
-    setSortConfig(prev =>
-      prev.key === key
-        ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
-        : { key, dir: "asc" }
-    );
-  }
-
-  const flat = games.map(g => ({
-    ...g,
-    spread_line:    g.spread?.home_spread,
-    total_line:     g.total?.line,
-    home_ml:        g.h2h?.home_price,
-    away_ml:        g.h2h?.away_price,
-    ou_implied:     g.ou_eval?.implied,
-    ou_edge_pct:    g.ou_eval?.edge_pct,
-    ou_signal:      g.ou_eval?.signal,
-  }));
-
-  const sorted = useSortedData(flat, sortConfig);
+function GameLinesRows({ games, sortConfig, onSort }) {
   const sh = (label, key, cls) => (
     <SortHeader label={label} sortKey={key} sortConfig={sortConfig} onSort={onSort} className={cls} />
   );
-
+  const flat = games.map(g => ({
+    ...g,
+    spread_line: g.spread?.home_spread,
+    total_line:  g.total?.line,
+    home_ml:     g.h2h?.home_price,
+    away_ml:     g.h2h?.away_price,
+    ou_implied:  g.ou_eval?.implied,
+    ou_edge_pct: g.ou_eval?.edge_pct,
+    ou_signal:   g.ou_eval?.signal,
+  }));
+  const sorted = useSortedData(flat, sortConfig);
   return (
-    <div className="odds-table-wrap">
-      <table className="odds-table">
-        <thead>
-          <tr>
-            {sh("Matchup", "away_abbr")}
-            {sh("Date", "commence_time", "num")}
-            {sh("Spread", "spread_line", "num")}
-            {sh("Total", "total_line", "num")}
-            {sh("Our Total", "ou_implied", "num")}
-            {sh("Edge", "ou_edge_pct", "num")}
-            {sh("Home ML", "home_ml", "num")}
-            {sh("Away ML", "away_ml", "num")}
+    <table className="odds-table">
+      <thead>
+        <tr>
+          {sh("Matchup", "away_abbr")}
+          {sh("Date", "commence_time", "num")}
+          {sh("Spread", "spread_line", "num")}
+          {sh("Total", "total_line", "num")}
+          {sh("Our Total", "ou_implied", "num")}
+          {sh("Edge", "ou_edge_pct", "num")}
+          {sh("Home ML", "home_ml", "num")}
+          {sh("Away ML", "away_ml", "num")}
+        </tr>
+      </thead>
+      <tbody>
+        {sorted.map(g => (
+          <tr key={g.event_id}>
+            <td className="odds-matchup">
+              <TeamBadge team={g.away_abbr} />
+              <span className="odds-at"> @ </span>
+              <TeamBadge team={g.home_abbr} />
+            </td>
+            <td className="num odds-time">{fmtTime(g.commence_time)}</td>
+            <td className="num">{g.spread_line != null ? (g.spread_line > 0 ? `+${g.spread_line}` : g.spread_line) : "—"}</td>
+            <td className="num">{fmt(g.total_line)}</td>
+            <td className="num">{g.ou_implied != null ? fmt(g.ou_implied) : "—"}</td>
+            <td className="num">
+              {g.ou_signal ? (
+                <span className={`value-badge value-badge-${g.ou_signal}`}>
+                  {g.ou_signal === "over" ? "▲" : "▼"} {Math.abs((g.ou_edge_pct || 0) * 100).toFixed(1)}%
+                </span>
+              ) : "—"}
+            </td>
+            <td className="num">{fmtPrice(g.home_ml)}</td>
+            <td className="num">{fmtPrice(g.away_ml)}</td>
           </tr>
-        </thead>
-        <tbody>
-          {sorted.map(g => (
-            <tr key={g.event_id}>
-              <td className="odds-matchup">
-                <TeamBadge team={g.away_abbr} />
-                <span className="odds-at"> @ </span>
-                <TeamBadge team={g.home_abbr} />
-              </td>
-              <td className="num odds-time">{fmtTime(g.commence_time)}</td>
-              <td className="num">{g.spread_line != null ? (g.spread_line > 0 ? `+${g.spread_line}` : g.spread_line) : "—"}</td>
-              <td className="num">{fmt(g.total_line)}</td>
-              <td className="num">{g.ou_implied != null ? fmt(g.ou_implied) : "—"}</td>
-              <td className="num">
-                {g.ou_signal ? (
-                  <span className={`value-badge value-badge-${g.ou_signal}`}>
-                    {g.ou_signal === "over" ? "▲" : "▼"} {Math.abs((g.ou_edge_pct || 0) * 100).toFixed(1)}%
-                  </span>
-                ) : "—"}
-              </td>
-              <td className="num">{fmtPrice(g.home_ml)}</td>
-              <td className="num">{fmtPrice(g.away_ml)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function GameLinesTable({ games, weeklyView }) {
+  const [sortConfig, setSortConfig] = useState({ key: "commence_time", dir: "asc" });
+  function onSort(key) {
+    setSortConfig(prev => prev.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" });
+  }
+
+  if (!weeklyView) {
+    return (
+      <div className="odds-table-wrap">
+        <GameLinesRows games={games} sortConfig={sortConfig} onSort={onSort} />
+      </div>
+    );
+  }
+
+  const groups = groupByWeek(games);
+  return (
+    <div className="odds-weeks">
+      {groups.map(([weekLabel, weekGames]) => (
+        <WeekSection key={weekLabel} label={weekLabel}>
+          <GameLinesRows games={weekGames} sortConfig={sortConfig} onSort={onSort} />
+        </WeekSection>
+      ))}
     </div>
   );
 }
@@ -187,9 +226,62 @@ function flattenProps(players, marketFilter) {
   return rows;
 }
 
-function PropsTable({ players, marketFilter }) {
-  const [sortConfig, setSortConfig] = useState({ key: "value_pct", dir: "desc" });
+function WeekSection({ label, children }) {
+  return (
+    <div className="odds-week-section">
+      <h3 className="odds-week-header">{label}</h3>
+      <div className="odds-table-wrap">{children}</div>
+    </div>
+  );
+}
 
+function PropsRows({ rows, sortConfig, onSort }) {
+  const sh = (label, key, cls, title) => (
+    <SortHeader label={label} sortKey={key} sortConfig={sortConfig} onSort={onSort} className={cls} title={title} />
+  );
+  const sorted = useSortedData(rows, sortConfig);
+  return (
+    <table className="odds-table">
+      <thead>
+        <tr>
+          {sh("Player", "name")}
+          {sh("Pos", "position", "pos-col")}
+          {sh("Team", "team")}
+          {sh("Market", "market_label")}
+          {sh("Line", "line", "num")}
+          {sh("Best Over", "best_over", "num")}
+          {sh("Best Under", "best_under", "num")}
+          {sh("Rolling Avg", "rolling_avg", "num", "5-game rolling average for this stat")}
+          {sh("Value", "value_pct", "num", "% difference between rolling avg and line")}
+        </tr>
+      </thead>
+      <tbody>
+        {sorted.map((r, i) => (
+          <tr key={`${r.sleeper_id}-${r.market}-${i}`} className={r.value_flag ? `value-${r.value_flag}` : ""}>
+            <td className="odds-player-name">{r.name}</td>
+            <td className={`pos-col pos-${r.position?.toLowerCase()}`}>{r.position}</td>
+            <td><TeamBadge team={r.team} /></td>
+            <td className="odds-market-label">{r.market_label}</td>
+            <td className="num">{fmt(r.line)}</td>
+            <td className="num odds-price">{fmtPrice(r.best_over)}</td>
+            <td className="num odds-price">{fmtPrice(r.best_under)}</td>
+            <td className="num">{fmt(r.rolling_avg)}</td>
+            <td className="num odds-value">
+              {r.value_flag ? (
+                <span className={`value-badge value-badge-${r.value_flag}`}>
+                  {r.value_flag === "over" ? "▲" : "▼"} {Math.abs((r.value_pct || 0) * 100).toFixed(1)}%
+                </span>
+              ) : "—"}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function PropsTable({ players, marketFilter, weeklyView }) {
+  const [sortConfig, setSortConfig] = useState({ key: "value_pct", dir: "desc" });
   function onSort(key) {
     setSortConfig(prev =>
       prev.key === key
@@ -199,49 +291,118 @@ function PropsTable({ players, marketFilter }) {
   }
 
   const rows = flattenProps(players, marketFilter);
-  const sorted = useSortedData(rows, sortConfig);
-  const sh = (label, key, cls, title) => (
-    <SortHeader label={label} sortKey={key} sortConfig={sortConfig} onSort={onSort} className={cls} title={title} />
-  );
 
+  if (!weeklyView) {
+    return (
+      <div className="odds-table-wrap">
+        <PropsRows rows={rows} sortConfig={sortConfig} onSort={onSort} />
+      </div>
+    );
+  }
+
+  const groups = groupByWeek(rows);
   return (
-    <div className="odds-table-wrap">
-      <table className="odds-table">
-        <thead>
-          <tr>
-            {sh("Player", "name")}
-            {sh("Pos", "position", "pos-col")}
-            {sh("Team", "team")}
-            {sh("Market", "market_label")}
-            {sh("Line", "line", "num")}
-            {sh("Best Over", "best_over", "num")}
-            {sh("Best Under", "best_under", "num")}
-            {sh("Rolling Avg", "rolling_avg", "num", "5-game rolling average for this stat")}
-            {sh("Value", "value_pct", "num", "% difference between rolling avg and line")}
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((r, i) => (
-            <tr key={`${r.sleeper_id}-${r.market}-${i}`} className={r.value_flag ? `value-${r.value_flag}` : ""}>
-              <td className="odds-player-name">{r.name}</td>
-              <td className={`pos-col pos-${r.position?.toLowerCase()}`}>{r.position}</td>
-              <td><TeamBadge team={r.team} /></td>
-              <td className="odds-market-label">{r.market_label}</td>
-              <td className="num">{fmt(r.line)}</td>
-              <td className="num odds-price">{fmtPrice(r.best_over)}</td>
-              <td className="num odds-price">{fmtPrice(r.best_under)}</td>
-              <td className="num">{fmt(r.rolling_avg)}</td>
-              <td className="num odds-value">
-                {r.value_flag ? (
-                  <span className={`value-badge value-badge-${r.value_flag}`}>
-                    {r.value_flag === "over" ? "▲" : "▼"} {Math.abs((r.value_pct || 0) * 100).toFixed(1)}%
-                  </span>
+    <div className="odds-weeks">
+      {groups.map(([weekLabel, weekRows]) => (
+        <WeekSection key={weekLabel} label={weekLabel}>
+          <PropsRows rows={weekRows} sortConfig={sortConfig} onSort={onSort} />
+        </WeekSection>
+      ))}
+    </div>
+  );
+}
+
+// ─── Results Table ───────────────────────────────────────────────────────────
+
+function ResultsRows({ games, sortConfig, onSort }) {
+  const sh = (label, key, cls) => (
+    <SortHeader label={label} sortKey={key} sortConfig={sortConfig} onSort={onSort} className={cls} />
+  );
+  const flat = games.map(g => ({
+    ...g,
+    total_line:   g.total?.line,
+    ou_signal:    g.ou_eval?.signal,
+    home_score:   g.result?.home_score,
+    away_score:   g.result?.away_score,
+    actual_total: g.result?.actual_total,
+    ml_winner:    g.result?.ml_winner,
+    ou_result:    g.result?.ou_result,
+    edge_correct: g.result?.edge_correct,
+  }));
+  const sorted = useSortedData(flat, sortConfig);
+  return (
+    <table className="odds-table">
+      <thead>
+        <tr>
+          {sh("Matchup", "away_abbr")}
+          {sh("Date", "commence_time", "num")}
+          {sh("Score", "home_score", "num")}
+          {sh("Total Line", "total_line", "num")}
+          {sh("Actual Total", "actual_total", "num")}
+          {sh("ML Winner", "ml_winner")}
+          {sh("Our Edge", "ou_signal")}
+        </tr>
+      </thead>
+      <tbody>
+        {sorted.map(g => {
+          const played = g.result !== null;
+          const rowCls = played && g.edge_correct === true
+            ? "value-over"
+            : played && g.edge_correct === false
+            ? "value-under"
+            : "";
+          return (
+            <tr key={g.event_id} className={rowCls}>
+              <td className="odds-matchup">
+                <TeamBadge team={g.away_abbr} />
+                <span className="odds-at"> @ </span>
+                <TeamBadge team={g.home_abbr} />
+              </td>
+              <td className="num odds-time">{fmtTime(g.commence_time)}</td>
+              <td className="num">
+                {played ? `${g.away_score}–${g.home_score}` : "—"}
+              </td>
+              <td className="num">{fmt(g.total_line)}</td>
+              <td className="num">{played ? fmt(g.actual_total, 0) : "—"}</td>
+              <td>
+                {played ? (
+                  <TeamBadge team={g.ml_winner === "home" ? g.home_abbr : g.away_abbr} />
                 ) : "—"}
               </td>
+              <td>
+                {g.ou_signal ? (
+                  <span className={`value-badge value-badge-${played && g.ou_result !== "push" ? (g.edge_correct ? g.ou_signal : (g.ou_signal === "over" ? "under" : "over")) : g.ou_signal}`}>
+                    {g.ou_signal === "over" ? "▲" : "▼"} {g.ou_signal.toUpperCase()}
+                  </span>
+                ) : "—"}
+                {played && g.ou_result === "push" && (
+                  <span className="value-badge value-badge-push"> PUSH</span>
+                )}
+                {played && g.ou_result !== "push" && g.edge_correct !== null && (
+                  <span className={`value-badge value-badge-${g.edge_correct ? "over" : "under"}`} style={{ marginLeft: 4 }}>
+                    {g.edge_correct ? "✓" : "✗"}
+                  </span>
+                )}
+              </td>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+function ResultsTable({ games }) {
+  const [sortConfig, setSortConfig] = useState({ key: "commence_time", dir: "desc" });
+  function onSort(key) {
+    setSortConfig(prev => prev.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "desc" });
+  }
+  if (!games.length) {
+    return <div className="odds-empty">No results yet — lines will appear here after games are snapshotted and played.</div>;
+  }
+  return (
+    <div className="odds-table-wrap">
+      <ResultsRows games={games} sortConfig={sortConfig} onSort={onSort} />
     </div>
   );
 }
@@ -252,10 +413,12 @@ export default function Odds() {
   const [tab, setTab] = useState("games");
   const [gamesData, setGamesData] = useState([]);
   const [propsData, setPropsData] = useState([]);
+  const [resultsData, setResultsData] = useState(null);
   const [status, setStatus] = useState(null);
   const [posFilter, setPosFilter] = useState("ALL");
   const [marketFilter, setMarketFilter] = useState("ALL");
   const [valueOnly, setValueOnly] = useState(false);
+  const [weeklyView, setWeeklyView] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -288,6 +451,15 @@ export default function Odds() {
       .catch(err => { setError("Failed to load player props."); setLoading(false); });
   }, [posFilter, marketFilter, valueOnly]);
 
+  const fetchResults = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    fetch(`${BASE_URL}/odds/results`)
+      .then(r => r.json())
+      .then(data => { setResultsData(data); setLoading(false); })
+      .catch(() => { setError("Failed to load results."); setLoading(false); });
+  }, []);
+
   useEffect(() => {
     fetchStatus();
     fetchGames();
@@ -297,7 +469,15 @@ export default function Odds() {
     if (tab === "props") fetchProps();
   }, [tab, posFilter, marketFilter, valueOnly]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const noData = tab === "games" ? gamesData.length === 0 : propsData.length === 0;
+  useEffect(() => {
+    if (tab === "results" && resultsData === null) fetchResults();
+  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const noData = tab === "games"
+    ? gamesData.length === 0
+    : tab === "props"
+    ? propsData.length === 0
+    : false;
 
   return (
     <div className="odds-page">
@@ -305,13 +485,29 @@ export default function Odds() {
       {/* Header with status */}
       <div className="odds-header">
         <div className="odds-tab-toggle">
-          <button className={`odds-tab-btn ${tab === "games" ? "active" : ""}`} onClick={() => setTab("games")}>
+          <button className={`odds-tab-btn ${tab === "games" ? "active" : ""}`} onClick={() => { setTab("games"); setError(null); setLoading(false); }}>
             Game Lines
           </button>
-          <button className={`odds-tab-btn ${tab === "props" ? "active" : ""}`} onClick={() => setTab("props")}>
+          <button className={`odds-tab-btn ${tab === "props" ? "active" : ""}`} onClick={() => { setTab("props"); setError(null); setLoading(false); }}>
             Player Props
           </button>
+          <button className={`odds-tab-btn ${tab === "results" ? "active" : ""}`} onClick={() => { setTab("results"); setError(null); setLoading(false); }}>
+            Results
+          </button>
         </div>
+        {tab !== "results" && (
+          <div className="odds-view-toggle">
+            <button
+              className={`odds-view-btn${!weeklyView ? " active" : ""}`}
+              onClick={() => setWeeklyView(false)}
+            >All</button>
+            <button
+              className={`odds-view-btn${weeklyView ? " active" : ""}`}
+              onClick={() => setWeeklyView(true)}
+            >Weekly</button>
+          </div>
+        )}
+
         {status && (
           <div className="odds-status">
             {status.last_updated
@@ -376,8 +572,9 @@ export default function Odds() {
 
       {!loading && !error && !noData && (
         <>
-          {tab === "games" && <GameLinesTable games={gamesData} />}
-          {tab === "props" && <PropsTable players={propsData} marketFilter={marketFilter === "ALL" ? null : marketFilter} />}
+          {tab === "games" && <GameLinesTable games={gamesData} weeklyView={weeklyView} />}
+          {tab === "props" && <PropsTable players={propsData} marketFilter={marketFilter === "ALL" ? null : marketFilter} weeklyView={weeklyView} />}
+          {tab === "results" && <ResultsTable games={resultsData || []} />}
         </>
       )}
     </div>

@@ -41,6 +41,21 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2026-07-01",
+      title: "Odds Results Tab",
+      items: [
+        {
+          text: "New Results tab on the Odds page:",
+          subitems: [
+            "Shows historical games with the betting lines that were available before kickoff",
+            "Displays the final score, moneyline winner, and the actual over/under total",
+            "Highlights whether our implied-total edge prediction was correct (green) or incorrect (red)",
+            "Push outcomes are shown neutrally",
+          ],
+        },
+      ],
+    },
+    {
       date: "2026-06-28",
       title: "Gameday Page & Improved DvP",
       items: [

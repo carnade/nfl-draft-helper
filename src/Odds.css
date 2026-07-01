@@ -225,6 +225,10 @@
   background: #4d1e1e;
   color: #e07070;
 }
+.value-badge-push {
+  background: #2a2a2a;
+  color: #888;
+}
 
 /* State messages */
 .odds-loading,
@@ -237,4 +241,46 @@
 }
 .odds-error {
   color: #e07070;
+}
+
+/* Weekly/All toggle */
+.odds-view-toggle {
+  display: flex;
+  border: 1px solid hsl(var(--border));
+  border-radius: 999px;
+  overflow: hidden;
+}
+.odds-view-btn {
+  padding: 5px 16px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: hsl(var(--muted-foreground));
+  transition: background 0.15s, color 0.15s;
+}
+.odds-view-btn.active {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+.odds-view-btn:hover:not(.active) {
+  background: hsl(var(--muted) / 0.5);
+  color: hsl(var(--foreground));
+}
+
+/* Week sections */
+.odds-weeks {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.odds-week-section {}
+.odds-week-header {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  margin: 0 0 10px 2px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid hsl(var(--border));
 }
