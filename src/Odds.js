@@ -485,13 +485,13 @@ export default function Odds() {
       {/* Header with status */}
       <div className="odds-header">
         <div className="odds-tab-toggle">
-          <button className={`odds-tab-btn ${tab === "games" ? "active" : ""}`} onClick={() => setTab("games")}>
+          <button className={`odds-tab-btn ${tab === "games" ? "active" : ""}`} onClick={() => { setTab("games"); setError(null); setLoading(false); }}>
             Game Lines
           </button>
-          <button className={`odds-tab-btn ${tab === "props" ? "active" : ""}`} onClick={() => setTab("props")}>
+          <button className={`odds-tab-btn ${tab === "props" ? "active" : ""}`} onClick={() => { setTab("props"); setError(null); setLoading(false); }}>
             Player Props
           </button>
-          <button className={`odds-tab-btn ${tab === "results" ? "active" : ""}`} onClick={() => setTab("results")}>
+          <button className={`odds-tab-btn ${tab === "results" ? "active" : ""}`} onClick={() => { setTab("results"); setError(null); setLoading(false); }}>
             Results
           </button>
         </div>
