@@ -225,6 +225,10 @@
   background: #4d1e1e;
   color: #e07070;
 }
+.value-badge-push {
+  background: #2a2a2a;
+  color: #888;
+}
 
 /* State messages */
 .odds-loading,

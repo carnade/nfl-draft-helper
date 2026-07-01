@@ -312,12 +312,108 @@ function PropsTable({ players, marketFilter, weeklyView }) {
   );
 }
 
+// ─── Results Table ───────────────────────────────────────────────────────────
+
+function ResultsRows({ games, sortConfig, onSort }) {
+  const sh = (label, key, cls) => (
+    <SortHeader label={label} sortKey={key} sortConfig={sortConfig} onSort={onSort} className={cls} />
+  );
+  const flat = games.map(g => ({
+    ...g,
+    total_line:   g.total?.line,
+    ou_signal:    g.ou_eval?.signal,
+    home_score:   g.result?.home_score,
+    away_score:   g.result?.away_score,
+    actual_total: g.result?.actual_total,
+    ml_winner:    g.result?.ml_winner,
+    ou_result:    g.result?.ou_result,
+    edge_correct: g.result?.edge_correct,
+  }));
+  const sorted = useSortedData(flat, sortConfig);
+  return (
+    <table className="odds-table">
+      <thead>
+        <tr>
+          {sh("Matchup", "away_abbr")}
+          {sh("Date", "commence_time", "num")}
+          {sh("Score", "home_score", "num")}
+          {sh("Total Line", "total_line", "num")}
+          {sh("Actual Total", "actual_total", "num")}
+          {sh("ML Winner", "ml_winner")}
+          {sh("Our Edge", "ou_signal")}
+        </tr>
+      </thead>
+      <tbody>
+        {sorted.map(g => {
+          const played = g.result !== null;
+          const rowCls = played && g.edge_correct === true
+            ? "value-over"
+            : played && g.edge_correct === false
+            ? "value-under"
+            : "";
+          return (
+            <tr key={g.event_id} className={rowCls}>
+              <td className="odds-matchup">
+                <TeamBadge team={g.away_abbr} />
+                <span className="odds-at"> @ </span>
+                <TeamBadge team={g.home_abbr} />
+              </td>
+              <td className="num odds-time">{fmtTime(g.commence_time)}</td>
+              <td className="num">
+                {played ? `${g.away_score}–${g.home_score}` : "—"}
+              </td>
+              <td className="num">{fmt(g.total_line)}</td>
+              <td className="num">{played ? fmt(g.actual_total, 0) : "—"}</td>
+              <td>
+                {played ? (
+                  <TeamBadge team={g.ml_winner === "home" ? g.home_abbr : g.away_abbr} />
+                ) : "—"}
+              </td>
+              <td>
+                {g.ou_signal ? (
+                  <span className={`value-badge value-badge-${played && g.ou_result !== "push" ? (g.edge_correct ? g.ou_signal : (g.ou_signal === "over" ? "under" : "over")) : g.ou_signal}`}>
+                    {g.ou_signal === "over" ? "▲" : "▼"} {g.ou_signal.toUpperCase()}
+                  </span>
+                ) : "—"}
+                {played && g.ou_result === "push" && (
+                  <span className="value-badge value-badge-push"> PUSH</span>
+                )}
+                {played && g.ou_result !== "push" && g.edge_correct !== null && (
+                  <span className={`value-badge value-badge-${g.edge_correct ? "over" : "under"}`} style={{ marginLeft: 4 }}>
+                    {g.edge_correct ? "✓" : "✗"}
+                  </span>
+                )}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+function ResultsTable({ games }) {
+  const [sortConfig, setSortConfig] = useState({ key: "commence_time", dir: "desc" });
+  function onSort(key) {
+    setSortConfig(prev => prev.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "desc" });
+  }
+  if (!games.length) {
+    return <div className="odds-empty">No results yet — lines will appear here after games are snapshotted and played.</div>;
+  }
+  return (
+    <div className="odds-table-wrap">
+      <ResultsRows games={games} sortConfig={sortConfig} onSort={onSort} />
+    </div>
+  );
+}
+
 // ─── Main Odds Component ─────────────────────────────────────────────────────
 
 export default function Odds() {
   const [tab, setTab] = useState("games");
   const [gamesData, setGamesData] = useState([]);
   const [propsData, setPropsData] = useState([]);
+  const [resultsData, setResultsData] = useState(null);
   const [status, setStatus] = useState(null);
   const [posFilter, setPosFilter] = useState("ALL");
   const [marketFilter, setMarketFilter] = useState("ALL");
@@ -355,6 +451,15 @@ export default function Odds() {
       .catch(err => { setError("Failed to load player props."); setLoading(false); });
   }, [posFilter, marketFilter, valueOnly]);
 
+  const fetchResults = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    fetch(`${BASE_URL}/odds/results`)
+      .then(r => r.json())
+      .then(data => { setResultsData(data); setLoading(false); })
+      .catch(() => { setError("Failed to load results."); setLoading(false); });
+  }, []);
+
   useEffect(() => {
     fetchStatus();
     fetchGames();
@@ -364,7 +469,15 @@ export default function Odds() {
     if (tab === "props") fetchProps();
   }, [tab, posFilter, marketFilter, valueOnly]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const noData = tab === "games" ? gamesData.length === 0 : propsData.length === 0;
+  useEffect(() => {
+    if (tab === "results" && resultsData === null) fetchResults();
+  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const noData = tab === "games"
+    ? gamesData.length === 0
+    : tab === "props"
+    ? propsData.length === 0
+    : false;
 
   return (
     <div className="odds-page">
@@ -378,17 +491,22 @@ export default function Odds() {
           <button className={`odds-tab-btn ${tab === "props" ? "active" : ""}`} onClick={() => setTab("props")}>
             Player Props
           </button>
+          <button className={`odds-tab-btn ${tab === "results" ? "active" : ""}`} onClick={() => setTab("results")}>
+            Results
+          </button>
         </div>
-        <div className="odds-view-toggle">
-          <button
-            className={`odds-view-btn${!weeklyView ? " active" : ""}`}
-            onClick={() => setWeeklyView(false)}
-          >All</button>
-          <button
-            className={`odds-view-btn${weeklyView ? " active" : ""}`}
-            onClick={() => setWeeklyView(true)}
-          >Weekly</button>
-        </div>
+        {tab !== "results" && (
+          <div className="odds-view-toggle">
+            <button
+              className={`odds-view-btn${!weeklyView ? " active" : ""}`}
+              onClick={() => setWeeklyView(false)}
+            >All</button>
+            <button
+              className={`odds-view-btn${weeklyView ? " active" : ""}`}
+              onClick={() => setWeeklyView(true)}
+            >Weekly</button>
+          </div>
+        )}
 
         {status && (
           <div className="odds-status">
@@ -456,6 +574,7 @@ export default function Odds() {
         <>
           {tab === "games" && <GameLinesTable games={gamesData} weeklyView={weeklyView} />}
           {tab === "props" && <PropsTable players={propsData} marketFilter={marketFilter === "ALL" ? null : marketFilter} weeklyView={weeklyView} />}
+          {tab === "results" && <ResultsTable games={resultsData || []} />}
         </>
       )}
     </div>
