@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import "./Stats.css";
+import { getDvpColor } from "./dvpColor";
 
 const mock = process.env.REACT_APP_MOCK === "true";
 const BASE_URL = mock
@@ -42,12 +43,6 @@ function fmtDiff(val) {
   return val >= 0 ? `+${n}` : `${n}`;
 }
 
-function rankClass(rank) {
-  if (rank == null) return "";
-  if (rank <= 10) return "rank-easy";
-  if (rank >= 23) return "rank-hard";
-  return "";
-}
 
 function SortHeader({ label, sortKey, sortConfig, onSort, className, title }) {
   const active = sortConfig.key === sortKey;
@@ -187,10 +182,10 @@ function TeamsTable({ teams, onTeamClick }) {
                   <td className="num">{fmt(t.def_fpts_allowed_rb_per_game)}</td>
                   <td className="num">{fmt(t.def_fpts_allowed_wr_per_game)}</td>
                   <td className="num">{fmt(t.def_fpts_allowed_te_per_game)}</td>
-                  <td className={`num rank-col ${rankClass(rnk.qb)}`}>{rnk.qb ?? "—"}</td>
-                  <td className={`num rank-col ${rankClass(rnk.rb)}`}>{rnk.rb ?? "—"}</td>
-                  <td className={`num rank-col ${rankClass(rnk.wr)}`}>{rnk.wr ?? "—"}</td>
-                  <td className={`num rank-col ${rankClass(rnk.te)}`}>{rnk.te ?? "—"}</td>
+                  <td className="num rank-col" style={rnk.qb ? { color: getDvpColor(rnk.qb), fontWeight: 600 } : undefined}>{rnk.qb ?? "—"}</td>
+                  <td className="num rank-col" style={rnk.rb ? { color: getDvpColor(rnk.rb), fontWeight: 600 } : undefined}>{rnk.rb ?? "—"}</td>
+                  <td className="num rank-col" style={rnk.wr ? { color: getDvpColor(rnk.wr), fontWeight: 600 } : undefined}>{rnk.wr ?? "—"}</td>
+                  <td className="num rank-col" style={rnk.te ? { color: getDvpColor(rnk.te), fontWeight: 600 } : undefined}>{rnk.te ?? "—"}</td>
                 </>}
                 <td className="next-opp">{nextLabel}</td>
               </tr>

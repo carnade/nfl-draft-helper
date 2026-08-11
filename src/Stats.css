@@ -208,17 +208,6 @@
   text-decoration: underline;
 }
 
-/* Rank color coding */
-.stats-table td.rank-easy {
-  color: #4caf50;
-  font-weight: 600;
-}
-
-.stats-table td.rank-hard {
-  color: #f44336;
-  font-weight: 600;
-}
-
 /* Positive/negative diff */
 td.diff-pos {
   color: #4caf50;

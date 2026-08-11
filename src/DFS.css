@@ -1159,6 +1159,40 @@ body.dark .load-lineup-button:hover {
   box-shadow: 0 2px 10px hsl(174 50% 45% / 0.3);
 }
 
+.manage-dfs-button {
+  padding: 0.75rem 1.5rem;
+  background-color: hsl(280 40% 45%);
+  color: hsl(var(--primary-foreground));
+  border: none;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: Inter, sans-serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+body.dark .manage-dfs-button {
+  background-color: hsl(280 35% 40%);
+}
+
+.manage-dfs-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px hsl(280 40% 45% / 0.4);
+  background-color: hsl(280 40% 40%);
+}
+
+body.dark .manage-dfs-button:hover {
+  background-color: hsl(280 35% 36%);
+}
+
+.manage-dfs-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px hsl(280 40% 45% / 0.3);
+}
+
 /* Load Lineup Modal */
 .load-lineup-container {
   padding: 1.25rem;
