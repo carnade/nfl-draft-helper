@@ -41,6 +41,28 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2026-08-11",
+      title: "Betting Page Upgrades",
+      items: [
+        "Renamed the Odds page to Betting.",
+        {
+          text: "Player Props got a big upgrade:",
+          subitems: [
+            "Search for a player by name",
+            "Filter to a single team using the new Teams button",
+            "New Last 5 column showing a player's last 5 games for that stat, colored against the current line",
+            "New Opp Def column showing how tough or easy the opponent's defense is for that position and stat, color-coded from red (tough matchup) to green (easy matchup)",
+            "New Date column showing kickoff time",
+            "Simplified pricing — for Anytime Touchdown props, the price now shows directly in the Line column instead of separate Over/Under columns",
+            "Player props now become available earlier in the offseason instead of waiting until two weeks before kickoff",
+          ],
+        },
+        "Defense rank colors (Stats and Betting pages) now use a smooth red-to-green gradient instead of flat colors, making it easier to spot the toughest and easiest matchups at a glance.",
+        "All game and kickoff times now display in 24-hour format.",
+        "Player teams and matchups now stay accurate through offseason trades.",
+      ],
+    },
+    {
       date: "2026-07-01",
       title: "Odds Results Tab",
       items: [

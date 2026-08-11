@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSort, faSortUp, faSortDown } from '@fortawesome/free-solid-svg-icons';
 import LZString from 'lz-string';
+import { PrivilegedOnly } from './auth';
 import './DFS.css';
 
 // Add a mock flag
@@ -1321,6 +1322,11 @@ function DFS({ userName }) {
             <button className="check-results-button" onClick={() => navigate('/dfs/results')}>
               Setup week
             </button>
+            <PrivilegedOnly>
+              <button className="manage-dfs-button" onClick={() => navigate('/dfs/manage')}>
+                Manage
+              </button>
+            </PrivilegedOnly>
           </div>
         </div>
       </div>

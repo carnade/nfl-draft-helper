@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
 import { ThemeContext } from "./ThemeContext";
+import { loadSleeperAuth, notifySleeperAuthChanged } from "./auth";
 import "./Settings.css";
 
 const HCAPTCHA_SITE_KEY = "3bb6d565-5eb0-425f-acf8-64374f8bbc7b";
@@ -17,14 +18,6 @@ function sleeperPost(body) {
 function decodeToken(token) {
   try {
     return JSON.parse(atob(token.split(".")[1]));
-  } catch {
-    return null;
-  }
-}
-
-function loadSleeperAuth() {
-  try {
-    return JSON.parse(localStorage.getItem("sleeper_auth") || "null");
   } catch {
     return null;
   }
@@ -156,6 +149,7 @@ function Settings() {
     const payload = decodeToken(token);
     const auth = { token, display_name: payload?.display_name || loginContext.display_name, user_id: payload?.user_id, exp: payload?.exp };
     localStorage.setItem("sleeper_auth", JSON.stringify(auth));
+    notifySleeperAuthChanged();
     setSleeperAuth(auth);
     setLoginStep("idle");
     setLoginInput("");
@@ -167,6 +161,7 @@ function Settings() {
 
   function handleSleeperDisconnect() {
     localStorage.removeItem("sleeper_auth");
+    notifySleeperAuthChanged();
     setSleeperAuth(null);
     setLoginStep("idle");
     setLoginInput("");

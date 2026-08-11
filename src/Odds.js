@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import "./Odds.css";
+import { getDvpColor } from "./dvpColor";
+import { PrivilegedOnly } from "./auth";
 
 const mock = process.env.REACT_APP_MOCK === "true";
 const BASE_URL = mock
@@ -49,7 +51,7 @@ function fmtTime(iso) {
   if (!iso) return "—";
   try {
     const d = new Date(iso);
-    return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
   } catch {
     return iso;
   }
@@ -212,18 +214,53 @@ function flattenProps(players, marketFilter) {
         commence_time: p.commence_time,
         market:        mkey,
         market_label:  MARKET_LABELS[mkey] || mkey,
-        line:          m.line,
-        best_over:     m.best_over_price,
-        best_over_book: m.best_over_book,
-        best_under:    m.best_under_price,
-        best_under_book: m.best_under_book,
+        // Anytime TD has no real yardage line — show the Yes price there instead.
+        line:          mkey === "player_anytime_td" ? m.best_over_price : m.line,
         rolling_avg:   m.rolling_avg,
         value_flag:    m.value_flag,
         value_pct:     m.value_pct,
+        last5:         m.last5,
+        opp_defense:   m.opp_defense,
+        opp_defense_rank: m.opp_defense?.rank,
+        opponent:      p.team === p.home_abbr ? p.away_abbr : p.team === p.away_abbr ? p.home_abbr : null,
       });
     }
   }
   return rows;
+}
+
+function Last5Chips({ values, line, market }) {
+  if (!values || !values.length) return <span className="odds-last5-empty">—</span>;
+  return (
+    <span className="odds-last5">
+      {values.map((v, i) => {
+        let cls = "odds-last5-chip";
+        if (market === "player_anytime_td") {
+          cls += v.value >= 1 ? " hit" : " miss";
+        } else if (line != null) {
+          cls += v.value > line ? " hit" : v.value < line ? " miss" : " push";
+        }
+        return (
+          <span key={i} className={cls} title={`Week ${v.week}: ${v.value}`}>
+            {v.value}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+function OppDefenseCell({ opp, opponent }) {
+  if (!opp) return <span className="num">—</span>;
+  const basisLabel = opp.basis === "rolling5" ? "Last 5 games" : "Season";
+  return (
+    <span className="odds-opp-def-wrap" title={`${basisLabel} — ${opp.value} allowed/gm`}>
+      {opponent && <TeamBadge team={opponent} />}
+      <span className="odds-opp-def" style={{ color: getDvpColor(opp.rank) || undefined }}>
+        #{opp.rank}
+      </span>
+    </span>
+  );
 }
 
 function WeekSection({ label, children }) {
@@ -244,28 +281,30 @@ function PropsRows({ rows, sortConfig, onSort }) {
     <table className="odds-table">
       <thead>
         <tr>
+          {sh("Date", "commence_time", "num")}
           {sh("Player", "name")}
           {sh("Pos", "position", "pos-col")}
           {sh("Team", "team")}
           {sh("Market", "market_label")}
-          {sh("Line", "line", "num")}
-          {sh("Best Over", "best_over", "num")}
-          {sh("Best Under", "best_under", "num")}
+          {sh("Line", "line", "num", "Yardage line, or the Yes price for Anytime TD")}
           {sh("Rolling Avg", "rolling_avg", "num", "5-game rolling average for this stat")}
+          <th className="odds-last5-col" title="Last 5 individual games for this stat, colored vs. the current line">Last 5</th>
+          {sh("Opp Def", "opp_defense_rank", "num", "Opponent's rank (1=stingiest) vs. this position for this stat")}
           {sh("Value", "value_pct", "num", "% difference between rolling avg and line")}
         </tr>
       </thead>
       <tbody>
         {sorted.map((r, i) => (
           <tr key={`${r.sleeper_id}-${r.market}-${i}`} className={r.value_flag ? `value-${r.value_flag}` : ""}>
+            <td className="num odds-time">{fmtTime(r.commence_time)}</td>
             <td className="odds-player-name">{r.name}</td>
             <td className={`pos-col pos-${r.position?.toLowerCase()}`}>{r.position}</td>
             <td><TeamBadge team={r.team} /></td>
             <td className="odds-market-label">{r.market_label}</td>
-            <td className="num">{fmt(r.line)}</td>
-            <td className="num odds-price">{fmtPrice(r.best_over)}</td>
-            <td className="num odds-price">{fmtPrice(r.best_under)}</td>
+            <td className="num">{r.market === "player_anytime_td" ? fmtPrice(r.line) : fmt(r.line)}</td>
             <td className="num">{fmt(r.rolling_avg)}</td>
+            <td><Last5Chips values={r.last5} line={r.line} market={r.market} /></td>
+            <td className="num"><OppDefenseCell opp={r.opp_defense} opponent={r.opponent} /></td>
             <td className="num odds-value">
               {r.value_flag ? (
                 <span className={`value-badge value-badge-${r.value_flag}`}>
@@ -421,6 +460,9 @@ export default function Odds() {
   const [weeklyView, setWeeklyView] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [nameFilter, setNameFilter] = useState("");
+  const [teamFilter, setTeamFilter] = useState(null);
+  const [teamsOpen, setTeamsOpen] = useState(false);
 
   const fetchStatus = useCallback(() => {
     fetch(`${BASE_URL}/odds/status`)
@@ -473,10 +515,17 @@ export default function Odds() {
     if (tab === "results" && resultsData === null) fetchResults();
   }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const filteredPropsData = useMemo(() => {
+    return propsData.filter(p =>
+      (!nameFilter || p.name?.toLowerCase().includes(nameFilter.toLowerCase())) &&
+      (!teamFilter || p.team === teamFilter)
+    );
+  }, [propsData, nameFilter, teamFilter]);
+
   const noData = tab === "games"
     ? gamesData.length === 0
     : tab === "props"
-    ? propsData.length === 0
+    ? filteredPropsData.length === 0
     : false;
 
   return (
@@ -515,7 +564,9 @@ export default function Odds() {
               : <span className="odds-no-data">No data yet — trigger a refresh via admin</span>
             }
             {status.credits_remaining != null && (
-              <span className="odds-credits">{status.credits_remaining} credits left</span>
+              <PrivilegedOnly>
+                <span className="odds-credits">{status.credits_remaining} credits left</span>
+              </PrivilegedOnly>
             )}
             {status.value_flag_count > 0 && (
               <span className="odds-value-count">{status.value_flag_count} value flags</span>
@@ -557,6 +608,43 @@ export default function Odds() {
             />
             Value flags only
           </label>
+          <input
+            className="odds-name-filter"
+            type="text"
+            placeholder="Search player…"
+            value={nameFilter}
+            onChange={e => setNameFilter(e.target.value)}
+          />
+          <div className="odds-team-filter">
+            <button
+              className={`odds-teams-toggle ${teamFilter ? "active" : ""}`}
+              onClick={() => setTeamsOpen(o => !o)}
+            >
+              Teams{teamFilter ? `: ${teamFilter}` : ""}
+              {teamFilter && (
+                <span
+                  className="odds-teams-clear"
+                  onClick={e => { e.stopPropagation(); setTeamFilter(null); }}
+                > ×</span>
+              )}
+            </button>
+            {teamsOpen && (
+              <div className="odds-team-icon-bar">
+                {Object.keys(TEAM_COLORS).sort().map(team => (
+                  <button
+                    key={team}
+                    className="odds-team-icon-btn"
+                    onClick={() => {
+                      setTeamFilter(f => f === team ? null : team);
+                      setTeamsOpen(false);
+                    }}
+                  >
+                    <TeamBadge team={team} />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -573,7 +661,7 @@ export default function Odds() {
       {!loading && !error && !noData && (
         <>
           {tab === "games" && <GameLinesTable games={gamesData} weeklyView={weeklyView} />}
-          {tab === "props" && <PropsTable players={propsData} marketFilter={marketFilter === "ALL" ? null : marketFilter} weeklyView={weeklyView} />}
+          {tab === "props" && <PropsTable players={filteredPropsData} marketFilter={marketFilter === "ALL" ? null : marketFilter} weeklyView={weeklyView} />}
           {tab === "results" && <ResultsTable games={resultsData || []} />}
         </>
       )}
