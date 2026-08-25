@@ -10,9 +10,13 @@ const BASE_URL = mock
 
 const POSITIONS = ["ALL", "QB", "RB", "WR", "TE"];
 
+// Order here drives the market filter tab order: volume stat before the
+// yardage it produces, TD last.
 const MARKET_LABELS = {
   player_pass_yds:      "Pass Yds",
+  player_rush_attempts: "Rush Att",
   player_rush_yds:      "Rush Yds",
+  player_receptions:    "Receptions",
   player_reception_yds: "Rec Yds",
   player_anytime_td:    "Anytime TD",
 };
@@ -45,6 +49,15 @@ function fmt(val, decimals = 1) {
 function fmtPrice(price) {
   if (price == null) return "—";
   return Number(price).toFixed(2);
+}
+
+// Yes/no markets (Anytime TD) carry a scoring *rate*, not a yardage total —
+// show those as a percentage so 0.6 doesn't read as "0.6 touchdowns".
+const BINARY_MARKETS = new Set(["player_anytime_td"]);
+function fmtStat(val, market) {
+  if (val == null || val === "" || isNaN(val)) return "—";
+  if (BINARY_MARKETS.has(market)) return `${(Number(val) * 100).toFixed(0)}%`;
+  return Number(val).toFixed(1);
 }
 
 function fmtTime(iso) {
@@ -217,6 +230,7 @@ function flattenProps(players, marketFilter) {
         // Anytime TD has no real yardage line — show the Yes price there instead.
         line:          mkey === "player_anytime_td" ? m.best_over_price : m.line,
         rolling_avg:   m.rolling_avg,
+        projection:    m.projection,
         value_flag:    m.value_flag,
         value_pct:     m.value_pct,
         last5:         m.last5,
@@ -234,15 +248,21 @@ function Last5Chips({ values, line, market }) {
   return (
     <span className="odds-last5">
       {values.map((v, i) => {
+        const binary = BINARY_MARKETS.has(market);
         let cls = "odds-last5-chip";
-        if (market === "player_anytime_td") {
+        if (binary) {
           cls += v.value >= 1 ? " hit" : " miss";
         } else if (line != null) {
           cls += v.value > line ? " hit" : v.value < line ? " miss" : " push";
         }
+        // Binary markets are 1/0 — a tick/dash reads faster than a number
+        const label = binary ? (v.value >= 1 ? "✓" : "–") : v.value;
+        const tip = binary
+          ? `Week ${v.week}: ${v.value >= 1 ? "scored" : "no TD"}`
+          : `Week ${v.week}: ${v.value}`;
         return (
-          <span key={i} className={cls} title={`Week ${v.week}: ${v.value}`}>
-            {v.value}
+          <span key={i} className={cls} title={tip}>
+            {label}
           </span>
         );
       })}
@@ -288,6 +308,7 @@ function PropsRows({ rows, sortConfig, onSort }) {
           {sh("Market", "market_label")}
           {sh("Line", "line", "num", "Yardage line, or the Yes price for Anytime TD")}
           {sh("Rolling Avg", "rolling_avg", "num", "5-game rolling average for this stat")}
+          {sh("Proj", "projection", "num", "Rolling average adjusted for the opponent's defence — this is what the Value % is measured from")}
           <th className="odds-last5-col" title="Last 5 individual games for this stat, colored vs. the current line">Last 5</th>
           {sh("Opp Def", "opp_defense_rank", "num", "Opponent's rank (1=stingiest) vs. this position for this stat")}
           {sh("Value", "value_pct", "num", "% difference between rolling avg and line")}
@@ -302,7 +323,8 @@ function PropsRows({ rows, sortConfig, onSort }) {
             <td><TeamBadge team={r.team} /></td>
             <td className="odds-market-label">{r.market_label}</td>
             <td className="num">{r.market === "player_anytime_td" ? fmtPrice(r.line) : fmt(r.line)}</td>
-            <td className="num">{fmt(r.rolling_avg)}</td>
+            <td className="num">{fmtStat(r.rolling_avg, r.market)}</td>
+            <td className="num">{fmtStat(r.projection, r.market)}</td>
             <td><Last5Chips values={r.last5} line={r.line} market={r.market} /></td>
             <td className="num"><OppDefenseCell opp={r.opp_defense} opponent={r.opponent} /></td>
             <td className="num odds-value">
@@ -446,6 +468,151 @@ function ResultsTable({ games }) {
   );
 }
 
+// ─── Prop Results (model scorecard) ──────────────────────────────────────────
+
+function pct(v) {
+  return v == null ? "—" : `${(v * 100).toFixed(1)}%`;
+}
+
+// Hit rates are only meaningful once there is a real sample behind them.
+const MIN_SAMPLE = 20;
+
+function HitRate({ value, n }) {
+  if (value == null) return <span className="odds-hit-none">—</span>;
+  const thin = n < MIN_SAMPLE;
+  // >50% is the only bar that matters: better than a coin flip against the line
+  const cls = thin ? "odds-hit-thin" : value > 0.5 ? "odds-hit-good" : "odds-hit-bad";
+  return (
+    <span className={cls} title={thin ? `Only ${n} graded — too few to read into` : `${n} graded`}>
+      {pct(value)}{thin && " *"}
+    </span>
+  );
+}
+
+function PropResultsTable({ data }) {
+  const [sortConfig, setSortConfig] = useState({ key: "commence_time", dir: "desc" });
+  function onSort(key) {
+    setSortConfig(prev => prev.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "desc" });
+  }
+  const sh = (label, key, cls, title) => (
+    <SortHeader label={label} sortKey={key} sortConfig={sortConfig} onSort={onSort} className={cls} title={title} />
+  );
+
+  const rows = (data?.results || []).map(r => ({
+    ...r,
+    outcome: r.result?.outcome,
+    call_correct: r.result?.call_correct,
+    line_moved: r.first_line != null && r.line != null ? r.line - r.first_line : null,
+  }));
+  const sorted = useSortedData(rows, sortConfig);
+  const s = data?.summary;
+
+  return (
+    <>
+      <div className="odds-scorecard">
+        <div className="odds-score-card">
+          <div className="odds-score-label">Snapshots</div>
+          <div className="odds-score-val">{s?.snapshots ?? 0}</div>
+          <div className="odds-score-sub">{s?.graded ?? 0} graded</div>
+        </div>
+        <div className="odds-score-card">
+          <div className="odds-score-label" title="Of the props we flagged as value, how often the call was right">
+            Flagged hit rate
+          </div>
+          <div className="odds-score-val"><HitRate value={s?.flagged_hit_rate} n={s?.flagged_calls ?? 0} /></div>
+          <div className="odds-score-sub">{s?.flagged_calls ?? 0} calls</div>
+        </div>
+        <div className="odds-score-card">
+          <div className="odds-score-label" title="Across every prop, how often the projection landed on the correct side of the line">
+            All-sides hit rate
+          </div>
+          <div className="odds-score-val"><HitRate value={s?.side_hit_rate} n={s?.all_sides ?? 0} /></div>
+          <div className="odds-score-sub">{s?.all_sides ?? 0} sides</div>
+        </div>
+      </div>
+
+      {s?.graded === 0 && (
+        <div className="odds-note">
+          Lines are being captured, but no games have been played yet — hit rates appear once results land.
+        </div>
+      )}
+
+      {data?.by_market && Object.keys(data.by_market).length > 0 && (
+        <div className="odds-table-wrap">
+          <table className="odds-table">
+            <thead>
+              <tr>
+                <th>Market</th><th className="num">Snapshots</th><th className="num">Graded</th>
+                <th className="num">Flagged hit</th><th className="num">All-sides hit</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(data.by_market).map(([m, v]) => (
+                <tr key={m}>
+                  <td className="odds-market-label">{MARKET_LABELS[m] || m}</td>
+                  <td className="num">{v.snapshots}</td>
+                  <td className="num">{v.graded}</td>
+                  <td className="num"><HitRate value={v.flagged_hit_rate} n={v.flagged_calls} /></td>
+                  <td className="num"><HitRate value={v.side_hit_rate} n={v.all_sides} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <h3 className="odds-week-header">Captured props</h3>
+      <div className="odds-table-wrap">
+        <table className="odds-table">
+          <thead>
+            <tr>
+              {sh("Date", "commence_time", "num")}
+              {sh("Player", "name")}
+              {sh("Pos", "position", "pos-col")}
+              {sh("Market", "market")}
+              {sh("Line", "line", "num", "Last line seen before kickoff")}
+              {sh("Move", "line_moved", "num", "How far the line moved after we first saw it")}
+              {sh("Proj", "projection", "num", "Our matchup-adjusted projection")}
+              {sh("Call", "value_flag")}
+              {sh("Actual", "actual", "num")}
+              {sh("Result", "outcome")}
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((r, i) => (
+              <tr key={`${r.event_id}-${r.sleeper_id}-${r.market}-${i}`}
+                  className={r.call_correct === true ? "value-over" : r.call_correct === false ? "value-under" : ""}>
+                <td className="num odds-time">{fmtTime(r.commence_time)}</td>
+                <td className="odds-player-name">{r.name}</td>
+                <td className={`pos-col pos-${r.position?.toLowerCase()}`}>{r.position}</td>
+                <td className="odds-market-label">{MARKET_LABELS[r.market] || r.market}</td>
+                <td className="num">{fmt(r.line)}</td>
+                <td className="num">{r.line_moved == null || r.line_moved === 0 ? "—" : (r.line_moved > 0 ? `+${fmt(r.line_moved)}` : fmt(r.line_moved))}</td>
+                <td className="num">{fmt(r.projection)}</td>
+                <td className="num">
+                  {r.value_flag ? (
+                    <span className={`value-badge value-badge-${r.value_flag}`}>
+                      {r.value_flag === "over" ? "▲" : "▼"}
+                    </span>
+                  ) : "—"}
+                </td>
+                <td className="num">{fmt(r.actual)}</td>
+                <td className="num">
+                  {r.outcome ? (
+                    <span className={`value-badge value-badge-${r.outcome === "push" ? "push" : r.outcome}`}>
+                      {r.outcome.toUpperCase()}
+                    </span>
+                  ) : <span className="odds-hit-none">pending</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
 // ─── Main Odds Component ─────────────────────────────────────────────────────
 
 export default function Odds() {
@@ -463,6 +630,7 @@ export default function Odds() {
   const [nameFilter, setNameFilter] = useState("");
   const [teamFilter, setTeamFilter] = useState(null);
   const [teamsOpen, setTeamsOpen] = useState(false);
+  const [propResults, setPropResults] = useState(null);
 
   const fetchStatus = useCallback(() => {
     fetch(`${BASE_URL}/odds/status`)
@@ -515,6 +683,19 @@ export default function Odds() {
     if (tab === "results" && resultsData === null) fetchResults();
   }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const fetchPropResults = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    fetch(`${BASE_URL}/odds/prop-results`)
+      .then(r => r.json())
+      .then(data => { setPropResults(data); setLoading(false); })
+      .catch(() => { setError("Failed to load prop results."); setLoading(false); });
+  }, []);
+
+  useEffect(() => {
+    if (tab === "propresults" && propResults === null) fetchPropResults();
+  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const filteredPropsData = useMemo(() => {
     return propsData.filter(p =>
       (!nameFilter || p.name?.toLowerCase().includes(nameFilter.toLowerCase())) &&
@@ -543,8 +724,11 @@ export default function Odds() {
           <button className={`odds-tab-btn ${tab === "results" ? "active" : ""}`} onClick={() => { setTab("results"); setError(null); setLoading(false); }}>
             Results
           </button>
+          <button className={`odds-tab-btn ${tab === "propresults" ? "active" : ""}`} onClick={() => { setTab("propresults"); setError(null); setLoading(false); }}>
+            Prop Results
+          </button>
         </div>
-        {tab !== "results" && (
+        {tab !== "results" && tab !== "propresults" && (
           <div className="odds-view-toggle">
             <button
               className={`odds-view-btn${!weeklyView ? " active" : ""}`}
@@ -663,6 +847,7 @@ export default function Odds() {
           {tab === "games" && <GameLinesTable games={gamesData} weeklyView={weeklyView} />}
           {tab === "props" && <PropsTable players={filteredPropsData} marketFilter={marketFilter === "ALL" ? null : marketFilter} weeklyView={weeklyView} />}
           {tab === "results" && <ResultsTable games={resultsData || []} />}
+          {tab === "propresults" && <PropResultsTable data={propResults} />}
         </>
       )}
     </div>

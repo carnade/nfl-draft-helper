@@ -1350,10 +1350,12 @@ function LeagueList() {
                         const p = txns.filter(t => t.status === "pending").length;
                         const w = txns.filter(t => t.status === "complete").length;
                         const l = txns.filter(t => t.status === "failed").length;
+                        // Zero counts keep their colour but read as inactive
+                        const zc = (n) => (n === 0 ? " waiver-zero" : "");
                         return <span className="waiver-summary">
-                          {isLinked && <span className="waiver-summary-item">P:<span className="waiver-pending">{p}</span></span>}
-                          <span className="waiver-summary-item">W:<span className="waiver-won">{w}</span></span>
-                          <span className="waiver-summary-item">L:<span className="waiver-lost">{l}</span></span>
+                          {isLinked && <span className="waiver-summary-item">P:<span className={`waiver-pending${zc(p)}`}>{p}</span></span>}
+                          <span className="waiver-summary-item">W:<span className={`waiver-won${zc(w)}`}>{w}</span></span>
+                          <span className="waiver-summary-item">L:<span className={`waiver-lost${zc(l)}`}>{l}</span></span>
                         </span>;
                       })() : "—"}
                     </div>
