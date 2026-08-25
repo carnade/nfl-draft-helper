@@ -927,6 +927,14 @@ body.dark .league-action-icon:hover {
   display: inline-flex;
   gap: 2px;
   min-width: 26px;
+  /* Dim the P/W/L labels so the counts carry the emphasis. The count spans set
+     their own colour, so this only affects the letter. */
+  color: #888;
+}
+
+/* A count of 0 keeps its blue/green/red hue but reads as inactive */
+.waiver-zero {
+  opacity: 0.45;
 }
 
 .league-waivers-container { padding: 8px 0; }
