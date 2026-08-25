@@ -41,6 +41,40 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2026-08-25",
+      title: "More Prop Markets & Prediction Tracking",
+      items: [
+        {
+          text: "Two new player prop markets:",
+          subitems: [
+            "Receptions — how many catches a player is expected to make",
+            "Rush Attempts — how many carries a player is expected to get",
+          ],
+        },
+        "Market tabs are now ordered so the volume stat comes before the yardage it produces: Pass Yds, Rush Att, Rush Yds, Receptions, Rec Yds, Anytime TD.",
+        {
+          text: "New Prop Results tab, which tracks how well the predictions actually do:",
+          subitems: [
+            "Captures the betting line before each game, then compares it against what the player actually did",
+            "Shows how often the flagged value picks were right, both overall and per market",
+            "Tracks how far a line moved after it was first seen",
+            "Hit rates are greyed out until enough games have been graded to mean anything",
+          ],
+        },
+        {
+          text: "Anytime Touchdown props now read properly:",
+          subitems: [
+            "Shown as a percentage chance to score rather than a touchdown count",
+            "Last 5 shows a simple scored / didn't score marker for each game",
+            "Compared against the odds on offer, so a player only stands out when recent scoring beats what the price suggests",
+          ],
+        },
+        "New Proj column on Player Props showing the projection the value percentage is based on — previously only the raw recent average was visible, which made the value figure look wrong.",
+        "Player projections now account for how tough or easy the opposing defence has been against that position.",
+        "On the Leagues page, the waiver P/W/L labels are dimmed and zero counts faded, so the numbers that matter stand out.",
+      ],
+    },
+    {
       date: "2026-08-11",
       title: "Betting Page Upgrades",
       items: [
