@@ -70,6 +70,72 @@ function fmtTime(iso) {
   }
 }
 
+// Compact duration, e.g. 3.2 -> "3h", 50 -> "2d 2h"
+function fmtAge(hours) {
+  if (hours == null || isNaN(hours)) return "—";
+  const h = Math.max(0, Math.round(Number(hours)));
+  if (h < 1) return "<1h";
+  if (h < 24) return `${h}h`;
+  const d = Math.floor(h / 24);
+  const rem = h % 24;
+  return rem ? `${d}d ${rem}h` : `${d}d`;
+}
+
+function fmtCountdown(iso) {
+  if (!iso) return "—";
+  const ms = new Date(iso) - new Date();
+  return ms <= 0 ? "due now" : `in ${fmtAge(ms / 3600000)}`;
+}
+
+// Admin-only manual refresh. Confirms first because a refresh spends API
+// credits from a limited monthly budget.
+function RefreshButton({ onDone }) {
+  const [state, setState] = useState("idle"); // idle | confirm | working
+  const [result, setResult] = useState(null);
+
+  async function run() {
+    setState("working");
+    setResult(null);
+    try {
+      const r = await fetch(`${BASE_URL}/admin/trigger-odds-fetch`, { method: "POST" });
+      const d = await r.json().catch(() => ({}));
+      setResult(d.ok === false || !r.ok
+        ? { ok: false, msg: d.error || d.message || `HTTP ${r.status}` }
+        : { ok: true, msg: `${d.games ?? 0} games, ${d.players ?? 0} players` });
+      onDone?.();
+    } catch (e) {
+      setResult({ ok: false, msg: "Request failed" });
+    } finally {
+      setState("idle");
+    }
+  }
+
+  if (state === "working") return <span className="odds-refresh-working">Refreshing…</span>;
+
+  if (state === "confirm") {
+    return (
+      <span className="odds-refresh-confirm">
+        Refresh now? Uses ~50 credits.
+        <button className="odds-refresh-yes" onClick={run}>Yes</button>
+        <button className="odds-refresh-no" onClick={() => setState("idle")}>Cancel</button>
+      </span>
+    );
+  }
+
+  return (
+    <>
+      <button className="odds-refresh-btn" onClick={() => { setResult(null); setState("confirm"); }}>
+        Refresh
+      </button>
+      {result && (
+        <span className={result.ok ? "odds-refresh-ok" : "odds-refresh-err"} title={result.msg}>
+          {result.ok ? `✓ ${result.msg}` : `✗ ${result.msg}`}
+        </span>
+      )}
+    </>
+  );
+}
+
 // ─── Sort hook ───────────────────────────────────────────────────────────────
 
 function getWeekBucket(commence_time) {
@@ -703,6 +769,14 @@ export default function Odds() {
     );
   }, [propsData, nameFilter, teamFilter]);
 
+  // After a manual refresh, reload whichever table is on screen
+  const refetchActiveTab = useCallback(() => {
+    if (tab === "games") fetchGames();
+    else if (tab === "props") fetchProps();
+    else if (tab === "results") fetchResults();
+    else if (tab === "propresults") fetchPropResults();
+  }, [tab, fetchGames, fetchProps, fetchResults, fetchPropResults]);
+
   const noData = tab === "games"
     ? gamesData.length === 0
     : tab === "props"
@@ -747,14 +821,36 @@ export default function Odds() {
               ? <span>Updated {fmtTime(status.last_updated)}</span>
               : <span className="odds-no-data">No data yet — trigger a refresh via admin</span>
             }
-            {status.credits_remaining != null && (
-              <PrivilegedOnly>
-                <span className="odds-credits">{status.credits_remaining} credits left</span>
-              </PrivilegedOnly>
+            {status.data_age_hours != null && (
+              <span className="odds-age" title="How old the odds currently being shown are">
+                {fmtAge(status.data_age_hours)} old
+              </span>
+            )}
+            {status.overdue_hours != null && (
+              <span className="odds-overdue" title="A scheduled refresh did not run">
+                ⚠ refresh overdue by {fmtAge(status.overdue_hours)}
+              </span>
+            )}
+            {status.refresh_paused ? (
+              <span className="odds-paused" title={status.refresh_note || ""}>
+                auto-refresh paused
+              </span>
+            ) : status.next_refresh && (
+              <span className="odds-next" title={fmtTime(status.next_refresh)}>
+                next {fmtCountdown(status.next_refresh)}
+              </span>
             )}
             {status.value_flag_count > 0 && (
               <span className="odds-value-count">{status.value_flag_count} value flags</span>
             )}
+            <PrivilegedOnly>
+              <>
+                {status.credits_remaining != null && (
+                  <span className="odds-credits">{status.credits_remaining} credits left</span>
+                )}
+                <RefreshButton onDone={() => { fetchStatus(); refetchActiveTab(); }} />
+              </>
+            </PrivilegedOnly>
           </div>
         )}
       </div>
