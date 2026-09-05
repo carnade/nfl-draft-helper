@@ -2,11 +2,19 @@ import React, { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffe
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import LZString from 'lz-string';
 import './DFSResults.css';
+import { loadSleeperAuth } from './auth';
 
 // Add a mock flag
 const mock = process.env.REACT_APP_MOCK === 'true';
 
 // Define the base URL based on the mock flag
+// Open tournaments are listed only for a verified Sleeper login, so pass the
+// token along when we have one.
+function sleeperAuthHeaders() {
+  const token = loadSleeperAuth()?.token;
+  return token ? { Authorization: token } : {};
+}
+
 const BASE_URL = mock
   ? "http://localhost:5000"
   : "https://shaggy-latashia-carnade-2ea2054a.koyeb.app";
@@ -114,6 +122,12 @@ function DFSResults() {
   const [tinyUrlCount, setTinyUrlCount] = useState(null);
   const [emptyTinyUrlName, setEmptyTinyUrlName] = useState('');
   const [emptyTinyUrlUsernames, setEmptyTinyUrlUsernames] = useState('');
+  // Sleeper-gated mode: no username allowlist, entrants are whoever can prove a
+  // Sleeper login. A deadline matters here because there is no fixed roster to
+  // chase, so submissions need a cutoff of their own.
+  const [emptyTinyUrlSleeperOnly, setEmptyTinyUrlSleeperOnly] = useState(false);
+  const [emptyTinyUrlDeadlineDate, setEmptyTinyUrlDeadlineDate] = useState('');
+  const [emptyTinyUrlDeadlineTime, setEmptyTinyUrlDeadlineTime] = useState('');
   const [emptyTinyUrlRevealDate, setEmptyTinyUrlRevealDate] = useState('');
   const [emptyTinyUrlRevealTime, setEmptyTinyUrlRevealTime] = useState('');
   const [emptyTinyUrl, setEmptyTinyUrl] = useState('');
@@ -453,7 +467,9 @@ function DFSResults() {
     console.log('fetchUserLeagues: Fetching leagues for username:', username);
     setLoadingUserLeagues(true);
     try {
-      const response = await fetch(`${BASE_URL}/tinyurl/${username}/available`);
+      const response = await fetch(`${BASE_URL}/tinyurl/${username}/available`, {
+        headers: sleeperAuthHeaders(),
+      });
       if (response.ok) {
         const data = await response.json();
         const entryNames = Array.isArray(data.entries) 
@@ -468,7 +484,9 @@ function DFSResults() {
               const detailData = await detailResponse.json();
               return {
                 name: entryName,
-                week: detailData.week || null
+                week: detailData.week || null,
+                tournamentWeek: detailData.tournament_week || null,
+                numWeeks: detailData.num_weeks || null
               };
             }
             return { name: entryName, week: null };
@@ -634,13 +652,14 @@ function DFSResults() {
       return;
     }
 
-    if (!emptyTinyUrlUsernames || emptyTinyUrlUsernames.trim() === '') {
+    if (!emptyTinyUrlSleeperOnly && (!emptyTinyUrlUsernames || emptyTinyUrlUsernames.trim() === '')) {
       setEmptyTinyUrlError('Please enter at least one username');
       return;
     }
 
-    // Parse usernames from newline-separated input
-    const usernames = emptyTinyUrlUsernames
+    // Parse usernames from newline-separated input. Empty in Sleeper-only mode:
+    // there is no allowlist, entry is gated on a verified login instead.
+    const usernames = emptyTinyUrlSleeperOnly ? [] : emptyTinyUrlUsernames
       .split('\n')
       .map(name => name.trim())
       .filter(name => name.length > 0);
@@ -697,6 +716,22 @@ function DFSResults() {
       return;
     }
 
+    // Combine the deadline date and time the same way reveal is handled
+    let deadline = null;
+    if (emptyTinyUrlSleeperOnly) {
+      if (emptyTinyUrlDeadlineDate && emptyTinyUrlDeadlineTime) {
+        const deadlineDateTime = new Date(`${emptyTinyUrlDeadlineDate}T${emptyTinyUrlDeadlineTime}:00`);
+        if (isNaN(deadlineDateTime.getTime())) {
+          setEmptyTinyUrlError('Invalid submission deadline');
+          return;
+        }
+        deadline = deadlineDateTime.toISOString();
+      } else if (emptyTinyUrlDeadlineDate || emptyTinyUrlDeadlineTime) {
+        setEmptyTinyUrlError('Please provide both deadline date and time, or leave both empty');
+        return;
+      }
+    }
+
     setCreatingEmptyTinyUrl(true);
     setEmptyTinyUrlError('');
 
@@ -704,10 +739,15 @@ function DFSResults() {
       const requestBody = {
         name: emptyTinyUrlName.trim(),
         names: usernames,
+        access_mode: emptyTinyUrlSleeperOnly ? 'sleeper' : 'allowlist',
         week: emptyTinyUrlType === 'multiweek_dfs' ? parseInt(emptyTinyUrlStartWeek) : selectedWeek,
         type: emptyTinyUrlType,
         ...(emptyTinyUrlType === 'multiweek_dfs' && { num_weeks: emptyTinyUrlWeeks })
       };
+
+      if (deadline) {
+        requestBody.deadline = deadline;
+      }
 
       // Add reveal if provided
       if (reveal) {
@@ -735,6 +775,9 @@ function DFSResults() {
         setEmptyTinyUrlUsernames(''); // Clear the usernames
         setEmptyTinyUrlRevealDate(''); // Clear the date
         setEmptyTinyUrlRevealTime(''); // Clear the time
+        setEmptyTinyUrlSleeperOnly(false); // Back to allowlist mode
+        setEmptyTinyUrlDeadlineDate('');
+        setEmptyTinyUrlDeadlineTime('');
         setEmptyTinyUrlType('single'); // Reset to single
         setEmptyTinyUrlWeeks(4); // Reset weeks
         setEmptyTinyUrlStartWeek(1); // Reset start week
@@ -2616,7 +2659,10 @@ function DFSResults() {
                         onClick={() => navigate(`/dfs/results/tinyurl/${league.name}`)}
                         className="user-league-btn"
                       >
-                        {league.name} {league.week && `(Week ${league.week})`}
+                        {league.name}{' '}
+                        {league.tournamentWeek
+                          ? `(Week ${league.tournamentWeek} of ${league.numWeeks})`
+                          : league.week && `(Week ${league.week})`}
                       </button>
                     ))}
                   </div>
@@ -2753,6 +2799,61 @@ function DFSResults() {
                   </div>
                 </div>
               )}
+              <div style={{ marginTop: '12px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input
+                  type="checkbox"
+                  id="sleeper-only-toggle"
+                  checked={emptyTinyUrlSleeperOnly}
+                  onChange={(e) => {
+                    setEmptyTinyUrlSleeperOnly(e.target.checked);
+                    setEmptyTinyUrlError('');
+                  }}
+                  disabled={creatingEmptyTinyUrl}
+                />
+                <label htmlFor="sleeper-only-toggle" style={{ fontSize: '0.9rem', color: 'inherit' }}>
+                  Open to anyone signed in with Sleeper
+                </label>
+              </div>
+              {emptyTinyUrlSleeperOnly ? (
+                <>
+                  <div style={{ marginTop: '8px', fontSize: '0.85rem', opacity: 0.75 }}>
+                    No username list needed — anyone with a verified Sleeper login can
+                    enter, and their lineup is filed under their Sleeper name.
+                  </div>
+                  <div style={{ marginTop: '12px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <label style={{ fontSize: '0.9rem', color: 'inherit', whiteSpace: 'nowrap' }}>
+                      Submit by (optional):
+                    </label>
+                    <input
+                      type="date"
+                      value={emptyTinyUrlDeadlineDate}
+                      onChange={(e) => {
+                        setEmptyTinyUrlDeadlineDate(e.target.value);
+                        setEmptyTinyUrlError('');
+                      }}
+                      className="tinyurl-input"
+                      style={{ flex: '1', maxWidth: '200px' }}
+                      disabled={creatingEmptyTinyUrl}
+                    />
+                    <input
+                      type="time"
+                      value={emptyTinyUrlDeadlineTime}
+                      onChange={(e) => {
+                        setEmptyTinyUrlDeadlineTime(e.target.value);
+                        setEmptyTinyUrlError('');
+                      }}
+                      className="tinyurl-input"
+                      style={{ flex: '1', maxWidth: '150px' }}
+                      disabled={creatingEmptyTinyUrl}
+                    />
+                  </div>
+                  {emptyTinyUrlType === 'multiweek_dfs' && (
+                    <div style={{ marginTop: '6px', fontSize: '0.8rem', opacity: 0.7 }}>
+                      Rolls forward a week at a time, so each week gets the same cutoff.
+                    </div>
+                  )}
+                </>
+              ) : (
               <div className="tinyurl-input-container" style={{ marginTop: '12px' }}>
                 <textarea
                   value={emptyTinyUrlUsernames}
@@ -2780,6 +2881,7 @@ function DFSResults() {
                   disabled={creatingEmptyTinyUrl}
                 />
               </div>
+              )}
               <div style={{ marginTop: '12px', display: 'flex', gap: '12px', alignItems: 'center' }}>
                 <label style={{ fontSize: '0.9rem', color: 'inherit', whiteSpace: 'nowrap' }}>
                   Reveal (optional):

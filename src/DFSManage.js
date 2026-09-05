@@ -17,6 +17,8 @@ function DFSManage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [entryDetails, setEntryDetails] = useState({});
+  const [removingEntrant, setRemovingEntrant] = useState(null);
+  const [purgePointsOnRemove, setPurgePointsOnRemove] = useState(false);
   const [loadingDetails, setLoadingDetails] = useState(new Set());
   const [expandedEntries, setExpandedEntries] = useState(new Set());
 
@@ -62,6 +64,37 @@ function DFSManage() {
         next.delete(entryName);
         return next;
       });
+    }
+  };
+
+  // Removing an entrant serves two different situations. A guillotine elimination
+  // should leave the weeks already played on the board, while someone who regrets
+  // entering should leave no trace — hence the opt-in purge rather than a default.
+  const removeEntrant = async (entryName, username) => {
+    const suffix = purgePointsOnRemove
+      ? 'Their accumulated points will also be deleted.'
+      : 'Points from weeks already played will be kept.';
+    if (!window.confirm(`Remove ${username} from ${entryName}?\n\n${suffix}`)) {
+      return;
+    }
+
+    setRemovingEntrant(`${entryName}:${username}`);
+    try {
+      const query = purgePointsOnRemove ? '?purge_standings=true' : '';
+      const response = await fetch(
+        `${BASE_URL}/tinyurl/${encodeURIComponent(entryName)}/entrants/${encodeURIComponent(username)}${query}`,
+        { method: 'DELETE' }
+      );
+      if (response.ok) {
+        await fetchEntryDetails(entryName);
+      } else {
+        const error = await response.json().catch(() => ({}));
+        window.alert(`Could not remove ${username}: ${error.error || response.statusText}`);
+      }
+    } catch (error) {
+      window.alert(`Could not remove ${username}: ${error.message}`);
+    } finally {
+      setRemovingEntrant(null);
     }
   };
 
@@ -342,15 +375,39 @@ function DFSManage() {
                     {details.week && (
                       <div className="dfs-manage-detail-row">
                         <span className="dfs-manage-detail-label">Week:</span>
-                        <span className="dfs-manage-detail-value">{details.week}</span>
+                        <span className="dfs-manage-detail-value">
+                          {details.week}
+                          {details.tournament_week
+                            ? ` (week ${details.tournament_week} of ${details.num_weeks})`
+                            : ''}
+                        </span>
                       </div>
                     )}
 
-                    {details.allowed_names && details.allowed_names.length > 0 && (
+                    {(() => {
+                      // An open tournament has no allowlist in its first week: the
+                      // entrants are whoever has actually submitted.
+                      const entrants = details.allowed_names && details.allowed_names.length > 0
+                        ? details.allowed_names
+                        : Object.keys(details.submissions || {});
+                      if (entrants.length === 0) return null;
+                      return (
                       <div className="dfs-manage-detail-section">
-                        <h3 className="dfs-manage-section-title">Allowed Users</h3>
+                        <h3 className="dfs-manage-section-title">
+                          {details.access_mode === 'sleeper' ? 'Entrants (open to Sleeper logins)' : 'Allowed Users'}
+                        </h3>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px',
+                                        fontSize: '0.8rem', opacity: 0.8, marginBottom: '8px' }}>
+                          <input
+                            type="checkbox"
+                            checked={purgePointsOnRemove}
+                            onChange={(e) => setPurgePointsOnRemove(e.target.checked)}
+                          />
+                          Also delete accumulated points when removing (leave off to eliminate
+                          a player but keep their played weeks)
+                        </label>
                         <div className="dfs-manage-submissions">
-                          {details.allowed_names.map((username) => {
+                          {entrants.map((username) => {
                             const submission = details.submissions?.[username];
                             const hasSubmitted = submission?.has_submitted || false;
                             const updateCount = submission?.update_count || 0;
@@ -381,13 +438,22 @@ function DFSManage() {
                                       )}
                                     </div>
                                   )}
+                                  <button
+                                    className="dfs-manage-remove-entrant"
+                                    onClick={() => removeEntrant(entry.name, username)}
+                                    disabled={removingEntrant === `${entry.name}:${username}`}
+                                    title={`Remove ${username} from this tournament`}
+                                  >
+                                    {removingEntrant === `${entry.name}:${username}` ? '…' : 'Remove'}
+                                  </button>
                                 </div>
                               </div>
                             );
                           })}
                         </div>
                       </div>
-                    )}
+                      );
+                    })()}
 
                     {details.updated_at && (
                       <div className="dfs-manage-detail-row">
