@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSort, faSortUp, faSortDown } from '@fortawesome/free-solid-svg-icons';
 import LZString from 'lz-string';
-import { PrivilegedOnly } from './auth';
+import { PrivilegedOnly, loadSleeperAuth } from './auth';
 import './DFS.css';
 
 // Add a mock flag
@@ -13,6 +13,14 @@ const mock = process.env.REACT_APP_MOCK === 'true';
 const BASE_URL = mock
   ? "http://localhost:5000"
   : "https://shaggy-latashia-carnade-2ea2054a.koyeb.app";
+
+// Tournaments opened to "anyone signed in with Sleeper" are gated on the token
+// the backend verifies with Sleeper, so send it whenever we have one. Harmless
+// for allowlist tournaments, which ignore it.
+function sleeperAuthHeaders() {
+  const token = loadSleeperAuth()?.token;
+  return token ? { Authorization: token } : {};
+}
 
 // Name translation table for manual entries (nicknames/common names -> official names)
 // Update this table as needed to map common names to official player names
@@ -475,39 +483,52 @@ function DFS({ userName }) {
 
     setLoadingTinyUrls(true);
     try {
-      const response = await fetch(`${BASE_URL}/tinyurl/${username}/available`);
+      const response = await fetch(`${BASE_URL}/tinyurl/${username}/available`, { headers: sleeperAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
-        // Handle both cases: entries as strings or as objects
-        const entryNames = Array.isArray(data.entries) 
-          ? data.entries.map(entry => typeof entry === 'string' ? entry : entry.name || entry)
+        // Handle both cases: entries as strings or as objects. Keep submit_as:
+        // a Sleeper-gated tournament files lineups under the Sleeper display name,
+        // which need not match the username typed into settings.
+        const entryRefs = Array.isArray(data.entries)
+          ? data.entries.map(entry => typeof entry === 'string'
+              ? { name: entry, submitAs: username, tournamentWeek: null, numWeeks: null }
+              : {
+                  name: entry.name || entry,
+                  submitAs: entry.submit_as || username,
+                  tournamentWeek: entry.tournament_week || null,
+                  numWeeks: entry.num_weeks || null
+                })
           : [];
         
         // Fetch full details for each entry to get has_data and week
         const entriesWithDetails = await Promise.all(
-          entryNames.map(async (entryName) => {
+          entryRefs.map(async ({ name: entryName, submitAs, ...entryProgress }) => {
             try {
-              const detailResponse = await fetch(`${BASE_URL}/tinyurl/${entryName}/${username}/check`);
+              const detailResponse = await fetch(`${BASE_URL}/tinyurl/${entryName}/${submitAs}/check`);
               if (detailResponse.ok) {
                 const detailData = await detailResponse.json();
                 return {
                   name: entryName,
                   has_data: detailData.has_data || false,
-                  week: detailData.week || null
+                  week: detailData.week || null,
+                  tournamentWeek: entryProgress.tournamentWeek,
+                  numWeeks: entryProgress.numWeeks
                 };
               }
               // If detail fetch fails, return basic entry
               return {
                 name: entryName,
                 has_data: false,
-                week: null
+                week: null,
+                ...entryProgress
               };
             } catch (error) {
               console.error(`Error fetching details for ${entryName}:`, error);
               return {
                 name: entryName,
                 has_data: false,
-                week: null
+                week: null,
+                ...entryProgress
               };
             }
           })
@@ -534,7 +555,7 @@ function DFS({ userName }) {
     setLoadingLoadableLineups(true);
     try {
       // Fetch available entries
-      const availableResponse = await fetch(`${BASE_URL}/tinyurl/${username}/available`);
+      const availableResponse = await fetch(`${BASE_URL}/tinyurl/${username}/available`, { headers: sleeperAuthHeaders() });
       if (!availableResponse.ok) {
         setLoadableLineups([]);
         return;
@@ -550,7 +571,8 @@ function DFS({ userName }) {
             entryName: entry,
               week: null,
               hasData: false,
-            hasPin: false
+            hasPin: false,
+            submitAs: username
           };
         }
         
@@ -558,7 +580,8 @@ function DFS({ userName }) {
           entryName: entry.name || entry,
           week: entry.week || null,
           hasData: entry.has_data || false,
-          hasPin: entry.has_pin || false
+          hasPin: entry.has_pin || false,
+          submitAs: entry.submit_as || username
         };
       });
       
@@ -580,19 +603,21 @@ function DFS({ userName }) {
     setLoadingMyLineups(true);
     try {
       // Fetch available entries
-      const availableResponse = await fetch(`${BASE_URL}/tinyurl/${username}/available`);
+      const availableResponse = await fetch(`${BASE_URL}/tinyurl/${username}/available`, { headers: sleeperAuthHeaders() });
       if (!availableResponse.ok) {
         setMyLineups([]);
         return;
       }
 
       const availableData = await availableResponse.json();
-      const entryNames = Array.isArray(availableData.entries) 
-        ? availableData.entries.map(entry => typeof entry === 'string' ? entry : entry.name || entry)
+      const entryRefs = Array.isArray(availableData.entries)
+        ? availableData.entries.map(entry => typeof entry === 'string'
+            ? { name: entry, submitAs: username }
+            : { name: entry.name || entry, submitAs: entry.submit_as || username })
         : [];
 
       // For each entry, fetch details to get submission status
-      const lineupPromises = entryNames.map(async (entryName) => {
+      const lineupPromises = entryRefs.map(async ({ name: entryName, submitAs }) => {
         try {
           const detailsResponse = await fetch(`${BASE_URL}/tinyurl/${entryName}/details`);
           if (!detailsResponse.ok) {
@@ -608,7 +633,7 @@ function DFS({ userName }) {
           // Case-insensitive lookup for submissions
           const submissions = details.submissions || {};
           const submissionKey = Object.keys(submissions).find(
-            key => key.toLowerCase() === username.toLowerCase()
+            key => key.toLowerCase() === submitAs.toLowerCase()
           );
           const userSubmission = submissionKey ? submissions[submissionKey] : null;
           
@@ -758,6 +783,7 @@ function DFS({ userName }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...sleeperAuthHeaders(),
         },
         body: JSON.stringify(requestBody)
       });
@@ -881,7 +907,7 @@ function DFS({ userName }) {
       }
 
       // Fetch data using data endpoint with username and pin query params
-      const response = await fetch(`${BASE_URL}/tinyurl/${selectedLineupForPin.entryName}/data?username=${encodeURIComponent(username)}&pin=${encodeURIComponent(pinInput.trim())}`);
+      const response = await fetch(`${BASE_URL}/tinyurl/${selectedLineupForPin.entryName}/data?username=${encodeURIComponent(selectedLineupForPin.submitAs || username)}&pin=${encodeURIComponent(pinInput.trim())}`);
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Failed to load lineup' }));
@@ -1720,7 +1746,13 @@ function DFS({ userName }) {
                         disabled={isSubmitted}
                         className={`add-to-league-btn ${entry.has_data ? 'has-data' : 'no-data'} ${isSubmitted ? 'submitted' : ''}`}
                       >
-                        {isSubmitted ? 'Lineup submitted' : `${entry.name} ${entry.week ? `(Week ${entry.week})` : ''}`}
+                        {isSubmitted
+                          ? 'Lineup submitted'
+                          : `${entry.name} ${
+                              entry.tournamentWeek
+                                ? `(Week ${entry.tournamentWeek} of ${entry.numWeeks})`
+                                : entry.week ? `(Week ${entry.week})` : ''
+                            }`}
                       </button>
                     );
                   })}
