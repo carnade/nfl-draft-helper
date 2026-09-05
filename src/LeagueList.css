@@ -985,3 +985,22 @@ body.dark .league-action-icon:hover {
 .dvp-has-tooltip:hover::after {
   opacity: 1;
 }
+
+/* Format heading ("Dynasty" / "Redraft") shown when both formats are listed.
+   Spans the whole row so it reads as a divider rather than a first-column cell. */
+.league-group-header {
+  grid-column: 1 / -1;
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground, var(--foreground)));
+  padding: 1rem 0.25rem 0.25rem;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+/* The first heading sits directly under the column headers, so it needs no
+   extra space above it. */
+.league-grid-header + .league-group-header {
+  padding-top: 0.5rem;
+}

@@ -50,6 +50,9 @@ function LeagueList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedLeague, setSelectedLeague] = useState(null);
   const [dynastyOnly, setDynastyOnly] = useState(true); // Filter for dynasty leagues only
+
+  // Sleeper encodes format on the league: type 2 is dynasty, 0 is redraft.
+  const isDynastyLeague = (league) => league.settings?.type === 2;
   const [waiverData, setWaiverData] = useState({});       // { league_id: Transaction[] }
   const [waiverPlayerNames, setWaiverPlayerNames] = useState({}); // { player_id: name }
   const [waiverLoading, setWaiverLoading] = useState(false);
@@ -1304,23 +1307,31 @@ function LeagueList() {
             <div className="league-grid-header">Actions</div>
 
             {leagues.length > 0 ? (
-              leagues
-                .filter((league) => {
-                  // Filter by dynasty if checkbox is checked
-                  if (dynastyOnly) {
-                    // Check if league is dynasty - Sleeper uses settings.type === 2 for dynasty
-                    // type: 0 = redraft, 2 = dynasty
-                    return league.settings?.type === 2;
-                  }
-                  return true; // Show all leagues if checkbox is unchecked
-                })
-                .map((league, index) => {
+              // Dynasty only: a plain filtered list. Showing both: group them under a
+              // heading each, so the two formats do not interleave in league order.
+              (dynastyOnly
+                ? leagues.filter(isDynastyLeague)
+                : [...leagues].sort(
+                    (a, b) => Number(isDynastyLeague(b)) - Number(isDynastyLeague(a))
+                  )
+              ).map((league, index, visibleLeagues) => {
+                const groupHeading =
+                  !dynastyOnly &&
+                  (index === 0 ||
+                    isDynastyLeague(visibleLeagues[index - 1]) !== isDynastyLeague(league))
+                    ? isDynastyLeague(league)
+                      ? "Dynasty"
+                      : "Redraft"
+                    : null;
                 const { redCount, orangeCount } = countInjuries(
                   league.userRoster?.starters || [],
                   league.league_id
                 );
                 return (
                   <React.Fragment key={index}>
+                    {groupHeading && (
+                      <div className="league-group-header">{groupHeading}</div>
+                    )}
                     <div
                       className={`league-grid-item league-name ${
                         highlightedLeagues.has(league.league_id)
