@@ -54,6 +54,12 @@ function fmtPrice(price) {
 // Yes/no markets (Anytime TD) carry a scoring *rate*, not a yardage total —
 // show those as a percentage so 0.6 doesn't read as "0.6 touchdowns".
 const BINARY_MARKETS = new Set(["player_anytime_td"]);
+
+// Anytime TD is a different kind of bet from the yardage markets: a rate rather
+// than a line, on its own scale. Mixing it into "All" buries the yardage rows it
+// is not comparable with, so "All" means every yardage market and Anytime TD is
+// picked on its own.
+const ANYTIME_TD = "player_anytime_td";
 function fmtStat(val, market) {
   if (val == null || val === "" || isNaN(val)) return "—";
   if (BINARY_MARKETS.has(market)) return `${(Number(val) * 100).toFixed(0)}%`;
@@ -280,9 +286,11 @@ function GameLinesTable({ games, weeklyView }) {
 
 function flattenProps(players, marketFilter) {
   const rows = [];
+  // A null filter is how the page spells "All".
+  const showingAll = !marketFilter || marketFilter === "ALL";
   for (const p of players) {
     for (const [mkey, m] of Object.entries(p.props || {})) {
-      if (marketFilter && marketFilter !== "ALL" && mkey !== marketFilter) continue;
+      if (showingAll ? mkey === ANYTIME_TD : mkey !== marketFilter) continue;
       rows.push({
         sleeper_id:    p.sleeper_id,
         name:          p.name,
@@ -690,7 +698,7 @@ export default function Odds() {
   const [posFilter, setPosFilter] = useState("ALL");
   const [marketFilter, setMarketFilter] = useState("ALL");
   const [valueOnly, setValueOnly] = useState(false);
-  const [weeklyView, setWeeklyView] = useState(false);
+  const [weeklyView, setWeeklyView] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [nameFilter, setNameFilter] = useState("");
@@ -871,13 +879,15 @@ export default function Odds() {
           </div>
           <div className="odds-market-tabs">
             {["ALL", ...Object.keys(MARKET_LABELS)].map(m => (
-              <button
-                key={m}
-                className={`odds-market-tab ${marketFilter === m ? "active" : ""}`}
-                onClick={() => setMarketFilter(m)}
-              >
-                {MARKET_LABELS[m] || m}
-              </button>
+              <React.Fragment key={m}>
+                {m === ANYTIME_TD && <span className="odds-market-sep" aria-hidden="true" />}
+                <button
+                  className={`odds-market-tab ${marketFilter === m ? "active" : ""}`}
+                  onClick={() => setMarketFilter(m)}
+                >
+                  {MARKET_LABELS[m] || m}
+                </button>
+              </React.Fragment>
             ))}
           </div>
           <label className="odds-value-toggle">
