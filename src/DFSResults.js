@@ -664,7 +664,7 @@ function DFSResults() {
       .map(name => name.trim())
       .filter(name => name.length > 0);
 
-    if (usernames.length === 0) {
+    if (!emptyTinyUrlSleeperOnly && usernames.length === 0) {
       setEmptyTinyUrlError('Please enter at least one valid username');
       return;
     }
@@ -2926,12 +2926,24 @@ function DFSResults() {
                 <button 
                   className="proceed-button" 
                   onClick={handleCreateEmptyTinyUrl}
-                  disabled={creatingEmptyTinyUrl || !emptyTinyUrlName.trim() || !emptyTinyUrlUsernames.trim() || hasDuplicateUsernames(emptyTinyUrlUsernames) || (emptyTinyUrlType === 'single' ? !selectedWeek : !emptyTinyUrlStartWeek)}
+                  disabled={
+                    creatingEmptyTinyUrl ||
+                    !emptyTinyUrlName.trim() ||
+                    // Sleeper-gated tournaments have no username list to fill in, so
+                    // the username conditions must not gate the button there.
+                    (!emptyTinyUrlSleeperOnly &&
+                      (!emptyTinyUrlUsernames.trim() || hasDuplicateUsernames(emptyTinyUrlUsernames))) ||
+                    (emptyTinyUrlType === 'single' ? !selectedWeek : !emptyTinyUrlStartWeek)
+                  }
                 >
                   {creatingEmptyTinyUrl ? 'Creating...' : 'Proceed'}
                 </button>
                 <span className="username-count-text">
-                  {countUsernames(emptyTinyUrlUsernames)} {countUsernames(emptyTinyUrlUsernames) === 1 ? 'username' : 'usernames'} added
+                  {emptyTinyUrlSleeperOnly
+                    ? 'Open to any Sleeper login'
+                    : `${countUsernames(emptyTinyUrlUsernames)} ${
+                        countUsernames(emptyTinyUrlUsernames) === 1 ? 'username' : 'usernames'
+                      } added`}
                 </span>
               </div>
               {emptyTinyUrlError && (
