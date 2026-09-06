@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LZString from 'lz-string';
 import './DFSManage.css';
+import { useIsPrivilegedUser } from './auth';
 
 // Add a mock flag
 const mock = process.env.REACT_APP_MOCK === 'true';
@@ -13,6 +14,9 @@ const BASE_URL = mock
 
 function DFSManage() {
   const navigate = useNavigate();
+  // The button that reaches this page is already behind a privileged check, but the
+  // route is reachable by URL, and this page can delete entrants. Gate the page too.
+  const isPrivilegedUser = useIsPrivilegedUser();
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -100,8 +104,10 @@ function DFSManage() {
 
   // Fetch details for all entries
   useEffect(() => {
-    fetchEntries();
-  }, []);
+    if (isPrivilegedUser) {
+      fetchEntries();
+    }
+  }, [isPrivilegedUser]);
 
   useEffect(() => {
     if (entries.length > 0) {
@@ -245,6 +251,21 @@ function DFSManage() {
       alert('Failed to copy league data');
     }
   };
+
+  if (!isPrivilegedUser) {
+    return (
+      <div className="dfs-manage-container">
+        <h1 className="dfs-manage-title">DFS TinyURL Management</h1>
+        <div className="dfs-manage-error">
+          This page is only available when signed in with an authorised Sleeper
+          account. Connect yours from Settings.
+        </div>
+        <button onClick={() => navigate('/settings')} className="dfs-manage-retry-btn">
+          Go to Settings
+        </button>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
