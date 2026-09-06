@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffe
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import LZString from 'lz-string';
 import './DFSResults.css';
-import { loadSleeperAuth } from './auth';
+import { loadSleeperAuth, useIsPrivilegedUser } from './auth';
 
 // Add a mock flag
 const mock = process.env.REACT_APP_MOCK === 'true';
@@ -99,9 +99,12 @@ function DFSResults() {
   const location = useLocation();
   const { name: tinyUrlNameParam } = useParams();
   
-  // Check for admin query parameter to bypass PIN
+  // Admin mode reveals lineups that are otherwise hidden until their reveal time,
+  // so asking for it in the URL is not enough — it also requires being signed in as
+  // a privileged Sleeper account. Anyone else gets the ordinary view.
   const searchParams = new URLSearchParams(location.search);
-  const isAdminMode = searchParams.get('admin') === 'true';
+  const isPrivilegedUser = useIsPrivilegedUser();
+  const isAdminMode = searchParams.get('admin') === 'true' && isPrivilegedUser;
   const [inputData, setInputData] = useState('');
   const [compressedData, setCompressedData] = useState('');
   const [shareableUrl, setShareableUrl] = useState('');
