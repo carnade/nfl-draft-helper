@@ -910,9 +910,15 @@ function DFSResults() {
             }
             
             // Get allowed_names and user_submissions from the response
-            const allowedNames = result.allowed_names || [];
             const userSubmissions = result.user_submissions || {};
-            
+
+            // A tournament open to Sleeper logins has no allowlist, so its field is
+            // whoever actually submitted. Fall back to that, keeping the display name
+            // the submission was filed under rather than the normalized key.
+            const allowedNames = result.allowed_names && result.allowed_names.length > 0
+              ? result.allowed_names
+              : Object.entries(userSubmissions).map(([key, sub]) => sub?.username || key);
+
             // Set allowed names
             if (allowedNames.length > 0) {
               setAllowedNames(allowedNames);
