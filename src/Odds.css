@@ -515,3 +515,14 @@
   font-weight: 600;
   color: #ccc;
 }
+
+/* Divider between the yardage markets and Anytime TD, which is a different kind
+   of bet rather than one more market in the same series. Self-aligning so it
+   spans the tab height, and it collapses on a wrapped row rather than leaving a
+   stray rule at the start of the next line. */
+.odds-market-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 0 4px;
+  background-color: hsl(var(--border));
+}
