@@ -19,8 +19,13 @@ const BASE_URL = mock
   ? "http://localhost:5000"
   : "https://shaggy-latashia-carnade-2ea2054a.koyeb.app";
 
-const PRIMARY_SLEEPER_LEAGUE_ID = '1180214473415516160';
-const DST_SLEEPER_LEAGUE_ID = '1293242375618957312';
+// Sleeper leagues used only as a source of scored player points. They must be
+// leagues for the CURRENT season: a completed prior-season league still answers
+// /matchups/<week> with that season's points, so a stale id here shows last
+// year's scores for this year's lineups without erroring.
+// The backend keeps its own copy in DFS_SCORING_LEAGUE_IDS — change both together.
+const PRIMARY_SLEEPER_LEAGUE_ID = '1312016340290113536';
+const DST_SLEEPER_LEAGUE_ID = '1312016308207906816';
 const DEFENSE_POSITIONS = new Set(['DST', 'DEF', 'D/ST', 'D', 'TEAM', 'TM']);
 
 const isDefensePosition = (position) => {
