@@ -534,3 +534,47 @@
   margin: 0 4px;
   background-color: hsl(var(--border));
 }
+
+/* Filter bar above a results table. Sits on one line and wraps on narrow
+   screens rather than pushing the table off the page. */
+.odds-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.odds-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+  white-space: nowrap;
+}
+
+.odds-filter select,
+.odds-filter input[type="text"] {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: 4px;
+  padding: 4px 7px;
+  font-size: 12px;
+}
+
+.odds-filter input[type="text"] {
+  width: 130px;
+}
+
+.odds-filter-check {
+  gap: 5px;
+  cursor: pointer;
+}
+
+.odds-filter-count {
+  font-size: 11px;
+  color: hsl(var(--muted-foreground));
+  margin-left: auto;
+}
