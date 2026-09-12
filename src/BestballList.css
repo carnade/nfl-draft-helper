@@ -718,7 +718,7 @@ body.dark .owner-clicked {
 .stat-info {
   margin-left: 6px;
   font-size: 12px;
-  color: #888;
+  color: hsl(var(--muted-foreground));
   cursor: help;
   vertical-align: middle;
 }

@@ -1,6 +1,11 @@
+/* Same story as Odds.css: written against a dark background with its greys and
+   panel colours hardcoded, which leaves the table pale-on-pale in light mode.
+   Neutrals come from the design tokens; the accent colours (blue, violet, green,
+   red) and the white text sitting on them read fine in either theme. */
+
 .stats-page {
   padding: 16px;
-  color: var(--text-color, #e0e0e0);
+  color: hsl(var(--foreground));
   max-width: 1400px;
 }
 
@@ -12,10 +17,10 @@
 
 .stats-view-toggle button {
   padding: 8px 20px;
-  border: 1px solid #555;
+  border: 1px solid hsl(var(--border));
   border-radius: 6px;
-  background: #2a2a2a;
-  color: #ccc;
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
   cursor: pointer;
   font-size: 14px;
   transition: background 0.15s, color 0.15s;
@@ -28,22 +33,22 @@
 }
 
 .stats-view-toggle button:hover:not(.active) {
-  background: #3a3a3a;
+  background: hsl(var(--sidebar-accent));
 }
 
 .stats-name-filter {
   padding: 5px 10px;
-  border: 1px solid #555;
+  border: 1px solid hsl(var(--border));
   border-radius: 4px;
-  background: #2a2a2a;
-  color: #ddd;
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
   font-size: 13px;
   width: 180px;
   margin-bottom: 12px;
 }
 
 .stats-name-filter::placeholder {
-  color: #666;
+  color: hsl(var(--muted-foreground));
 }
 
 /* Position filter tabs */
@@ -57,10 +62,10 @@
 
 .stats-pos-tabs button {
   padding: 5px 14px;
-  border: 1px solid #555;
+  border: 1px solid hsl(var(--border));
   border-radius: 4px;
-  background: #2a2a2a;
-  color: #bbb;
+  background: hsl(var(--card));
+  color: hsl(var(--muted-foreground));
   cursor: pointer;
   font-size: 13px;
 }
@@ -72,7 +77,7 @@
 }
 
 .stats-pos-tabs button:hover:not(.active) {
-  background: #3a3a3a;
+  background: hsl(var(--sidebar-accent));
 }
 
 .stats-adv-toggle {
@@ -81,15 +86,15 @@
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: #aaa;
+  color: hsl(var(--muted-foreground));
 }
 
 .stats-adv-toggle button {
   padding: 4px 12px;
-  border: 1px solid #555;
+  border: 1px solid hsl(var(--border));
   border-radius: 4px;
-  background: #2a2a2a;
-  color: #bbb;
+  background: hsl(var(--card));
+  color: hsl(var(--muted-foreground));
   cursor: pointer;
   font-size: 12px;
 }
@@ -110,22 +115,22 @@
 
 .stats-back-btn button {
   padding: 6px 14px;
-  border: 1px solid #555;
+  border: 1px solid hsl(var(--border));
   border-radius: 4px;
-  background: #2a2a2a;
-  color: #ccc;
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
   cursor: pointer;
   font-size: 13px;
 }
 
 .stats-back-btn button:hover {
-  background: #3a3a3a;
+  background: hsl(var(--sidebar-accent));
 }
 
 .stats-back-btn h2 {
   margin: 0;
   font-size: 18px;
-  color: #e0e0e0;
+  color: hsl(var(--foreground));
 }
 
 /* Table */
@@ -142,12 +147,12 @@
 .stats-table th {
   position: sticky;
   top: 0;
-  background: #1a1a2e;
+  background: hsl(var(--sidebar-accent));
   z-index: 1;
   padding: 8px 10px;
   text-align: left;
-  border-bottom: 2px solid #444;
-  color: #aaa;
+  border-bottom: 2px solid hsl(var(--border));
+  color: hsl(var(--muted-foreground));
   white-space: nowrap;
   font-weight: 600;
 }
@@ -158,17 +163,17 @@
 }
 
 .stats-table th.stats-sortable:hover {
-  color: #fff;
+  color: hsl(var(--foreground));
 }
 
 .stats-table td {
   padding: 6px 10px;
-  border-bottom: 1px solid #2a2a2a;
+  border-bottom: 1px solid hsl(var(--border));
   white-space: nowrap;
 }
 
 .stats-table tbody tr:hover {
-  background: #2a2a40;
+  background: hsl(var(--sidebar-accent));
 }
 
 .stats-table tbody tr:nth-child(even) {
@@ -234,8 +239,8 @@ td.diff-neg {
 /* Per-game toggle */
 .stats-toggle-btn.pg-toggle {
   margin-left: 12px;
-  border-color: #888;
-  color: #aaa;
+  border-color: hsl(var(--muted-foreground));
+  color: hsl(var(--muted-foreground));
 }
 
 .stats-toggle-btn.pg-toggle.active {
@@ -248,12 +253,12 @@ td.diff-neg {
 .stats-loading {
   padding: 40px;
   text-align: center;
-  color: #888;
+  color: hsl(var(--muted-foreground));
   font-size: 15px;
 }
 
 .stats-adv-note {
   font-size: 12px;
-  color: #888;
+  color: hsl(var(--muted-foreground));
   margin-bottom: 8px;
 }
