@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import "./Odds.css";
 import { getDvpColor } from "./dvpColor";
 import { PrivilegedOnly } from "./auth";
@@ -469,6 +469,7 @@ function ResultsRows({ games, sortConfig, onSort }) {
     <table className="odds-table">
       <thead>
         <tr>
+          {sh("Wk", "nfl_week", "num")}
           {sh("Matchup", "away_abbr")}
           {sh("Date", "commence_time", "num")}
           {sh("Score", "home_score", "num")}
@@ -488,6 +489,7 @@ function ResultsRows({ games, sortConfig, onSort }) {
             : "";
           return (
             <tr key={g.event_id} className={rowCls}>
+              <td className="num">{g.nfl_week ?? "—"}</td>
               <td className="odds-matchup">
                 <TeamBadge team={g.away_abbr} />
                 <span className="odds-at"> @ </span>
@@ -527,18 +529,97 @@ function ResultsRows({ games, sortConfig, onSort }) {
   );
 }
 
+// Weeks present in a set of rows, newest first, so a filter can offer only the
+// weeks that exist rather than a fixed 1-18.
+function weeksIn(rows) {
+  const weeks = new Set();
+  for (const r of rows) if (r.nfl_week != null) weeks.add(r.nfl_week);
+  return [...weeks].sort((a, b) => b - a);
+}
+
+// The week a results view should open on: the most recent one that has something
+// graded, since that is the week you have just watched. Falls back to the newest
+// week present, then to everything.
+function latestGradedWeek(rows, isGraded) {
+  const graded = rows.filter((r) => r.nfl_week != null && isGraded(r));
+  if (graded.length > 0) return Math.max(...graded.map((r) => r.nfl_week));
+  const weeks = weeksIn(rows);
+  return weeks.length > 0 ? weeks[0] : "all";
+}
+
+function WeekSelect({ value, onChange, weeks, label = "Week" }) {
+  return (
+    <label className="odds-filter">
+      {label}
+      <select value={value} onChange={(e) => onChange(e.target.value === "all" ? "all" : Number(e.target.value))}>
+        <option value="all">All</option>
+        {weeks.map((w) => (
+          <option key={w} value={w}>{w}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 function ResultsTable({ games }) {
   const [sortConfig, setSortConfig] = useState({ key: "commence_time", dir: "desc" });
+  const weeks = useMemo(() => weeksIn(games), [games]);
+  const [week, setWeek] = useState(() => latestGradedWeek(games, (g) => g.result));
+  const [team, setTeam] = useState("");
+
+  // The default is derived from data that arrives after the first render, so
+  // settle on it once the rows are in rather than leaving the view on "all".
+  const settledRef = useRef(false);
+  useEffect(() => {
+    if (!settledRef.current && games.length > 0) {
+      settledRef.current = true;
+      setWeek(latestGradedWeek(games, (g) => g.result));
+    }
+  }, [games]);
+
   function onSort(key) {
     setSortConfig(prev => prev.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "desc" });
   }
+
+  const teams = useMemo(() => {
+    const set = new Set();
+    for (const g of games) {
+      if (g.home_abbr) set.add(g.home_abbr);
+      if (g.away_abbr) set.add(g.away_abbr);
+    }
+    return [...set].sort();
+  }, [games]);
+
+  const shown = useMemo(() => games.filter(
+    (g) => (week === "all" || g.nfl_week === week) &&
+           (!team || g.home_abbr === team || g.away_abbr === team)
+  ), [games, week, team]);
+
   if (!games.length) {
     return <div className="odds-empty">No results yet — lines will appear here after games are snapshotted and played.</div>;
   }
+
   return (
-    <div className="odds-table-wrap">
-      <ResultsRows games={games} sortConfig={sortConfig} onSort={onSort} />
-    </div>
+    <>
+      <div className="odds-filter-bar">
+        <WeekSelect value={week} onChange={setWeek} weeks={weeks} />
+        <label className="odds-filter">
+          Team
+          <select value={team} onChange={(e) => setTeam(e.target.value)}>
+            <option value="">All</option>
+            {teams.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </label>
+        <span className="odds-filter-count">{shown.length} of {games.length}</span>
+      </div>
+      {shown.length === 0 ? (
+        <div className="odds-empty">No games match these filters.</div>
+      ) : (
+        <div className="odds-table-wrap">
+          <ResultsRows games={shown} sortConfig={sortConfig} onSort={onSort} />
+        </div>
+      )}
+    </>
   );
 }
 
@@ -572,17 +653,105 @@ function PropResultsTable({ data }) {
     <SortHeader label={label} sortKey={key} sortConfig={sortConfig} onSort={onSort} className={cls} title={title} />
   );
 
-  const rows = (data?.results || []).map(r => ({
+  const rows = useMemo(() => (data?.results || []).map(r => ({
     ...r,
+    market_label: MARKET_LABELS[r.market] || r.market,
     outcome: r.result?.outcome,
     call_correct: r.result?.call_correct,
     line_moved: r.first_line != null && r.line != null ? r.line - r.first_line : null,
-  }));
-  const sorted = useSortedData(rows, sortConfig);
-  const s = data?.summary;
+  })), [data]);
+
+  const weeks = useMemo(() => weeksIn(rows), [rows]);
+  const [week, setWeek] = useState("all");
+  const [player, setPlayer] = useState("");
+  const [market, setMarket] = useState("");
+  const [team, setTeam] = useState("");
+  const [gradedOnly, setGradedOnly] = useState(false);
+
+  const settledRef = useRef(false);
+  useEffect(() => {
+    if (!settledRef.current && rows.length > 0) {
+      settledRef.current = true;
+      setWeek(latestGradedWeek(rows, (r) => r.result));
+    }
+  }, [rows]);
+
+  const teams = useMemo(
+    () => [...new Set(rows.map((r) => r.team).filter(Boolean))].sort(),
+    [rows]
+  );
+  const markets = useMemo(
+    () => [...new Set(rows.map((r) => r.market).filter(Boolean))]
+      .sort((a, b) => Object.keys(MARKET_LABELS).indexOf(a) - Object.keys(MARKET_LABELS).indexOf(b)),
+    [rows]
+  );
+
+  const shown = useMemo(() => rows.filter(
+    (r) => (week === "all" || r.nfl_week === week) &&
+           (!player || r.name?.toLowerCase().includes(player.toLowerCase())) &&
+           (!market || r.market === market) &&
+           (!team || r.team === team) &&
+           (!gradedOnly || r.result)
+  ), [rows, week, player, market, team, gradedOnly]);
+
+  const sorted = useSortedData(shown, sortConfig);
+
+  // Hit rates describe what is on screen, so filtering to a market or a week
+  // answers "how good are we at this" rather than always restating the season.
+  const s = useMemo(() => {
+    const calls = shown.filter((r) => r.result?.call_correct != null);
+    const sides = shown.filter((r) => r.result?.projection_side_correct != null);
+    const rate = (subset, key) =>
+      subset.length ? Math.round((subset.filter((r) => r.result[key]).length / subset.length) * 1000) / 1000 : null;
+    return {
+      snapshots: shown.length,
+      graded: shown.filter((r) => r.result).length,
+      flagged_calls: calls.length,
+      flagged_hit_rate: rate(calls, "call_correct"),
+      all_sides: sides.length,
+      side_hit_rate: rate(sides, "projection_side_correct"),
+    };
+  }, [shown]);
 
   return (
     <>
+      <div className="odds-filter-bar">
+        <WeekSelect value={week} onChange={setWeek} weeks={weeks} />
+        <label className="odds-filter">
+          Player
+          <input
+            type="text"
+            value={player}
+            onChange={(e) => setPlayer(e.target.value)}
+            placeholder="name"
+          />
+        </label>
+        <label className="odds-filter">
+          Market
+          <select value={market} onChange={(e) => setMarket(e.target.value)}>
+            <option value="">All</option>
+            {markets.map((m) => (
+              <option key={m} value={m}>{MARKET_LABELS[m] || m}</option>
+            ))}
+          </select>
+        </label>
+        <label className="odds-filter">
+          Team
+          <select value={team} onChange={(e) => setTeam(e.target.value)}>
+            <option value="">All</option>
+            {teams.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </label>
+        <label className="odds-filter odds-filter-check">
+          <input
+            type="checkbox"
+            checked={gradedOnly}
+            onChange={(e) => setGradedOnly(e.target.checked)}
+          />
+          Graded only
+        </label>
+        <span className="odds-filter-count">{shown.length} of {rows.length}</span>
+      </div>
       <div className="odds-scorecard">
         <div className="odds-score-card">
           <div className="odds-score-label">Snapshots</div>
@@ -640,10 +809,12 @@ function PropResultsTable({ data }) {
         <table className="odds-table">
           <thead>
             <tr>
+              {sh("Wk", "nfl_week", "num")}
               {sh("Date", "commence_time", "num")}
               {sh("Player", "name")}
               {sh("Pos", "position", "pos-col")}
-              {sh("Market", "market")}
+              {sh("Team", "team")}
+              {sh("Market", "market_label")}
               {sh("Line", "line", "num", "Last line seen before kickoff")}
               {sh("Move", "line_moved", "num", "How far the line moved after we first saw it")}
               {sh("Proj", "projection", "num", "Our matchup-adjusted projection")}
@@ -656,9 +827,11 @@ function PropResultsTable({ data }) {
             {sorted.map((r, i) => (
               <tr key={`${r.event_id}-${r.sleeper_id}-${r.market}-${i}`}
                   className={r.call_correct === true ? "value-over" : r.call_correct === false ? "value-under" : ""}>
+                <td className="num">{r.nfl_week ?? "—"}</td>
                 <td className="num odds-time">{fmtTime(r.commence_time)}</td>
                 <td className="odds-player-name">{r.name}</td>
                 <td className={`pos-col pos-${r.position?.toLowerCase()}`}>{r.position}</td>
+                <td><TeamBadge team={r.team} /></td>
                 <td className="odds-market-label">{MARKET_LABELS[r.market] || r.market}</td>
                 <td className="num">{fmt(r.line)}</td>
                 <td className="num">{r.line_moved == null || r.line_moved === 0 ? "—" : (r.line_moved > 0 ? `+${fmt(r.line_moved)}` : fmt(r.line_moved))}</td>
