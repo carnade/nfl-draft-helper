@@ -41,6 +41,31 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2026-09-12",
+      title: "Live Gameday Projections",
+      items: [
+        {
+          text: "Gameday now shows a live projection instead of the pre-kickoff one:",
+          subitems: [
+            "Starters who have played count for what they actually scored; everyone else still counts for their projection",
+            "This matches the number Sleeper's own app shows, including in leagues with TEP or other custom scoring",
+            "The pre-kickoff projection is kept underneath, so you can see which way the week is going",
+            "Each side is counted separately — a team with nobody played still shows its plain projection",
+            "Win/loss colours and the weekly W/L summary now follow the live number",
+          ],
+        },
+        "Each matchup shows how many of your starters have played, as 3/10, alongside the same for your opponent.",
+        {
+          text: "New Auto-refresh toggle, off by default:",
+          subitems: [
+            "Refreshes every minute while games are being played",
+            "Pauses whenever the tab is in the background, and catches up the moment you return to it",
+            "Stays idle when no game is in progress, so it costs nothing outside gameday",
+          ],
+        },
+      ],
+    },
+    {
       date: "2026-08-25",
       title: "More Prop Markets & Prediction Tracking",
       items: [
