@@ -210,7 +210,7 @@
 
 .gameday-list-grid {
   display: grid;
-  grid-template-columns: 3fr 1fr 1fr 2fr 1fr;
+  grid-template-columns: 3fr 1fr 1fr 0.8fr 2fr 1fr;
   gap: 0;
 }
 
@@ -318,4 +318,41 @@ body.dark .gameday-win-label {
 
 body.dark .gameday-loss-label {
   color: hsl(0 65% 62%);
+}
+
+/* The pre-kickoff projection, kept alongside the live one so a swing is legible
+   without having to remember what the week started at. */
+.gameday-score-initial {
+  font-size: 0.68rem;
+  color: hsl(var(--muted-foreground));
+  opacity: 0.85;
+  margin-top: 1px;
+  white-space: nowrap;
+}
+
+.gameday-list-played {
+  font-variant-numeric: tabular-nums;
+  color: hsl(var(--muted-foreground));
+}
+
+/* The page refreshes itself while games are on; say when it last did so. */
+.gameday-updated {
+  color: hsl(var(--muted-foreground));
+  opacity: 0.8;
+}
+
+/* Opt-in live refresh. Sits with the view pills rather than competing with them. */
+.gameday-live-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 10px;
+  font-size: 0.78rem;
+  color: hsl(var(--muted-foreground));
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.gameday-live-toggle input {
+  cursor: pointer;
 }
