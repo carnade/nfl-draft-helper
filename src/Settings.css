@@ -93,7 +93,7 @@
   display: flex;
   align-items: center;
   font-style: italic;
-  color: #666;
+  color: hsl(var(--muted-foreground));
 }
 
 /* The container for your two bottom buttons */
@@ -221,7 +221,7 @@
 .settings-field-hint {
   display: block;
   font-size: 12px;
-  color: #888;
+  color: hsl(var(--muted-foreground));
   margin-top: 2px;
 }
 
@@ -240,8 +240,8 @@
   padding: 8px 10px;
   border: 1px solid #555;
   border-radius: 4px;
-  background: #2a2a2a;
-  color: #e0e0e0;
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
   font-size: 14px;
 }
 
@@ -257,15 +257,15 @@
 }
 
 .sleeper-connect-btn:disabled {
-  background: #444;
-  color: #888;
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
   cursor: not-allowed;
 }
 
 .sleeper-back-btn {
   padding: 8px 14px;
-  background: #333;
-  color: #ccc;
+  background: hsl(var(--sidebar-accent));
+  color: hsl(var(--foreground));
   border: 1px solid #555;
   border-radius: 4px;
   cursor: pointer;
@@ -280,11 +280,11 @@
 
 .sleeper-auth-user {
   font-size: 14px;
-  color: #ccc;
+  color: hsl(var(--foreground));
 }
 
 .sleeper-masked {
-  color: #888;
+  color: hsl(var(--muted-foreground));
   font-size: 13px;
 }
 
@@ -306,12 +306,12 @@
 
 .sleeper-auth-expiry {
   font-size: 12px;
-  color: #888;
+  color: hsl(var(--muted-foreground));
 }
 
 .sleeper-disconnect-btn {
   padding: 5px 12px;
-  background: #333;
+  background: hsl(var(--sidebar-accent));
   color: #f44336;
   border: 1px solid #f44336;
   border-radius: 4px;
@@ -325,7 +325,7 @@
 }
 
 .sleeper-auth-loading {
-  color: #888;
+  color: hsl(var(--muted-foreground));
   font-size: 14px;
   padding: 8px 0;
 }

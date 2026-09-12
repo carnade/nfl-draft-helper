@@ -255,7 +255,7 @@
 .file-name {
   margin-left: 10px;
   font-size: 16px;
-  color: #333;
+  color: hsl(var(--foreground));
 }
 
 .action-buttons button {
@@ -324,7 +324,7 @@
 /* Styling for labels */
 .reload-container label {
   font-size: 16px;
-  color: #333;
+  color: hsl(var(--foreground));
 }
 
 .flash-text {
@@ -405,7 +405,7 @@ h1 em {
 
 .draftname span {
   font-size: 15px;
-  color: #444;
+  color: hsl(var(--foreground));
   word-spacing: 1px;
   font-weight: normal;
   letter-spacing: 2px;
@@ -491,7 +491,7 @@ h1 em {
 }
 
 .modern-input::placeholder {
-  color: #aaa;
+  color: hsl(var(--muted-foreground));
   font-style: italic;
 }
 
@@ -861,7 +861,7 @@ h1 em {
 .header-username {
   display: block;
   font-size: 14px;
-  color: #666;
+  color: hsl(var(--muted-foreground));
   margin-top: 5px;
 }
 
@@ -980,7 +980,7 @@ h1 em {
 
 .header-username {
   font-size: 16px;
-  color: #555;
+  color: hsl(var(--muted-foreground));
 }
 
 .back-button {

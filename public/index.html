@@ -27,6 +27,18 @@
     <title>NFL Draft Helper</title>
   </head>
   <body>
+    <script>
+      // Apply the theme before the app renders. React sets this too, but not until
+      // after first paint, which would show a white flash on every load now that
+      // dark is the default.
+      (function () {
+        try {
+          document.body.className = localStorage.getItem("FantasyHelperTheme") || "dark";
+        } catch (e) {
+          document.body.className = "dark";
+        }
+      })();
+    </script>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
     <!--

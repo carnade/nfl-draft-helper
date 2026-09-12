@@ -5,14 +5,16 @@ export const ThemeContext = createContext();
 
 // Create the ThemeProvider component
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState("light");
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("FantasyHelperTheme");
-    if (savedTheme) {
-      setTheme(savedTheme);
+  // Dark unless the user has chosen otherwise. Read during initialisation rather
+  // than in an effect, so the first paint is already the right theme instead of
+  // flashing light and correcting itself.
+  const [theme, setTheme] = useState(() => {
+    try {
+      return localStorage.getItem("FantasyHelperTheme") || "dark";
+    } catch {
+      return "dark";
     }
-  }, []);
+  });
 
   useEffect(() => {
     localStorage.setItem("FantasyHelperTheme", theme);

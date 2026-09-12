@@ -450,7 +450,7 @@ body.dark .league-portfolio-grid-header {
 
 /* Scoped styling for percentage inside league-portfolio-grid-item */
 .league-portfolio-grid-item .percentage {
-  color: #888; /* Light grey for light mode */
+  color: hsl(var(--muted-foreground));
 }
 
 body.dark .league-portfolio-grid-item .percentage {
@@ -914,7 +914,7 @@ body.dark .league-action-icon:hover {
 
 /* Waiver colours */
 .waiver-pending  { color: #4a9eff; }
-.waiver-proposed { color: #888; }
+.waiver-proposed { color: hsl(var(--muted-foreground)); }
 .waiver-won      { color: #4caf50; }
 .waiver-lost     { color: #f44336; }
 
@@ -929,7 +929,7 @@ body.dark .league-action-icon:hover {
   min-width: 26px;
   /* Dim the P/W/L labels so the counts carry the emphasis. The count spans set
      their own colour, so this only affects the letter. */
-  color: #888;
+  color: hsl(var(--muted-foreground));
 }
 
 /* A count of 0 keeps its blue/green/red hue but reads as inactive */

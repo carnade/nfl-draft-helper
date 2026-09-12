@@ -1,6 +1,12 @@
+/* This page was written against a dark background, with its greys and panel
+   colours hardcoded. That left the table unreadable in light mode: the rows take
+   their background from the theme but the text stayed a pale grey. The neutrals
+   below now come from the design tokens so both themes work; the accent colours
+   (blue, green, amber, position colours) read fine either way and are left alone. */
+
 .odds-page {
   padding: 16px;
-  color: var(--text-color, #e0e0e0);
+  color: hsl(var(--foreground));
   max-width: 1400px;
 }
 
@@ -20,10 +26,10 @@
 
 .odds-tab-btn {
   padding: 8px 20px;
-  border: 1px solid #555;
+  border: 1px solid hsl(var(--border));
   border-radius: 6px;
-  background: #2a2a2a;
-  color: #ccc;
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
   cursor: pointer;
   font-size: 14px;
   transition: background 0.15s, color 0.15s;
@@ -34,7 +40,7 @@
   border-color: #4a9eff;
 }
 .odds-tab-btn:hover:not(.active) {
-  background: #3a3a3a;
+  background: hsl(var(--sidebar-accent));
 }
 
 .odds-status {
@@ -42,7 +48,7 @@
   align-items: center;
   gap: 12px;
   font-size: 12px;
-  color: #888;
+  color: hsl(var(--muted-foreground));
 }
 .odds-credits {
   background: #1e3a1e;
@@ -59,13 +65,13 @@
   font-size: 11px;
 }
 .odds-no-data {
-  color: #888;
+  color: hsl(var(--muted-foreground));
   font-style: italic;
 }
 
 /* Freshness indicators in the status row */
 .odds-age {
-  color: #888;
+  color: hsl(var(--muted-foreground));
   font-size: 11px;
 }
 .odds-next {
@@ -73,7 +79,7 @@
   font-size: 11px;
 }
 .odds-paused {
-  color: #999;
+  color: hsl(var(--muted-foreground));
   font-size: 11px;
   font-style: italic;
   cursor: help;
@@ -92,16 +98,16 @@
 .odds-refresh-yes,
 .odds-refresh-no {
   padding: 3px 10px;
-  border: 1px solid #555;
+  border: 1px solid hsl(var(--border));
   border-radius: 4px;
-  background: #2a2a2a;
-  color: #bbb;
+  background: hsl(var(--card));
+  color: hsl(var(--muted-foreground));
   cursor: pointer;
   font-size: 11px;
 }
 .odds-refresh-btn:hover,
 .odds-refresh-no:hover {
-  background: #3a3a3a;
+  background: hsl(var(--sidebar-accent));
 }
 .odds-refresh-yes {
   background: #4a9eff;
@@ -144,10 +150,10 @@
 .odds-pos-tab,
 .odds-market-tab {
   padding: 5px 13px;
-  border: 1px solid #555;
+  border: 1px solid hsl(var(--border));
   border-radius: 4px;
-  background: #2a2a2a;
-  color: #bbb;
+  background: hsl(var(--card));
+  color: hsl(var(--muted-foreground));
   cursor: pointer;
   font-size: 12px;
 }
@@ -159,7 +165,7 @@
 }
 .odds-pos-tab:hover:not(.active),
 .odds-market-tab:hover:not(.active) {
-  background: #3a3a3a;
+  background: hsl(var(--sidebar-accent));
 }
 
 .odds-value-toggle {
@@ -167,7 +173,7 @@
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: #aaa;
+  color: hsl(var(--muted-foreground));
   cursor: pointer;
   white-space: nowrap;
 }
@@ -191,12 +197,14 @@
 .odds-table td {
   padding: 7px 10px;
   text-align: left;
-  border-bottom: 1px solid #2a2a2a;
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 .odds-table th {
-  background: #1e1e1e;
-  color: #999;
+  /* A sticky header needs to be opaque and distinct from the rows it scrolls
+     under; --card is white in light mode and would vanish into the page. */
+  background: hsl(var(--sidebar-accent));
+  color: hsl(var(--muted-foreground));
   font-weight: 600;
   font-size: 12px;
   position: sticky;
@@ -209,11 +217,11 @@
   user-select: none;
 }
 .odds-sortable:hover {
-  color: #ccc;
+  color: hsl(var(--foreground));
 }
 
 .odds-table tbody tr:hover {
-  background: #242424;
+  background: hsl(var(--sidebar-accent));
 }
 
 .num {
@@ -237,12 +245,12 @@
   gap: 6px;
 }
 .odds-at {
-  color: #666;
+  color: hsl(var(--muted-foreground));
   font-size: 11px;
 }
 .odds-time {
   font-size: 12px;
-  color: #aaa;
+  color: hsl(var(--muted-foreground));
 }
 
 /* Position colors */
@@ -251,11 +259,11 @@
 .pos-rb  { color: #98c379; }
 .pos-wr  { color: #e5c07b; }
 .pos-te  { color: #c678dd; }
-.pos-k   { color: #888; }
+.pos-k   { color: hsl(var(--muted-foreground)); }
 
 .odds-market-label {
   font-size: 12px;
-  color: #bbb;
+  color: hsl(var(--muted-foreground));
 }
 .odds-player-name {
   font-weight: 500;
@@ -288,8 +296,8 @@
   color: #e07070;
 }
 .value-badge-push {
-  background: #2a2a2a;
-  color: #888;
+  background: hsl(var(--card));
+  color: hsl(var(--muted-foreground));
 }
 
 /* State messages */
@@ -298,7 +306,7 @@
 .odds-empty {
   padding: 40px 16px;
   text-align: center;
-  color: #888;
+  color: hsl(var(--muted-foreground));
   font-size: 14px;
 }
 .odds-error {
@@ -350,15 +358,15 @@
 /* ── Name search ── */
 .odds-name-filter {
   padding: 5px 10px;
-  border: 1px solid #555;
+  border: 1px solid hsl(var(--border));
   border-radius: 4px;
-  background: #2a2a2a;
-  color: #ddd;
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
   font-size: 13px;
   width: 180px;
 }
 .odds-name-filter::placeholder {
-  color: #666;
+  color: hsl(var(--muted-foreground));
 }
 
 /* ── Team filter ── */
@@ -367,10 +375,10 @@
 }
 .odds-teams-toggle {
   padding: 5px 13px;
-  border: 1px solid #555;
+  border: 1px solid hsl(var(--border));
   border-radius: 4px;
-  background: #2a2a2a;
-  color: #bbb;
+  background: hsl(var(--card));
+  color: hsl(var(--muted-foreground));
   cursor: pointer;
   font-size: 12px;
   white-space: nowrap;
@@ -381,11 +389,11 @@
   border-color: #4a9eff;
 }
 .odds-teams-toggle:hover:not(.active) {
-  background: #3a3a3a;
+  background: hsl(var(--sidebar-accent));
 }
 .odds-teams-clear {
   margin-left: 4px;
-  color: #ccc;
+  color: hsl(var(--foreground));
   opacity: 0.75;
 }
 .odds-teams-clear:hover {
@@ -402,7 +410,7 @@
   gap: 6px;
   max-width: 420px;
   padding: 10px;
-  background: #1e1e1e;
+  background: hsl(var(--card));
   border: 1px solid #444;
   border-radius: 6px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
@@ -437,8 +445,8 @@
   font-size: 11px;
   font-family: monospace;
   text-align: center;
-  background: #2a2a2a;
-  color: #999;
+  background: hsl(var(--card));
+  color: hsl(var(--muted-foreground));
 }
 .odds-last5-chip.hit {
   background: #1e4d1e;
@@ -449,11 +457,11 @@
   color: #e07070;
 }
 .odds-last5-chip.push {
-  background: #2a2a2a;
-  color: #999;
+  background: hsl(var(--card));
+  color: hsl(var(--muted-foreground));
 }
 .odds-last5-empty {
-  color: #666;
+  color: hsl(var(--muted-foreground));
 }
 
 /* ── Prop results scorecard ── */
@@ -466,13 +474,13 @@
 .odds-score-card {
   min-width: 140px;
   padding: 12px 16px;
-  background: #1e1e1e;
+  background: hsl(var(--card));
   border: 1px solid #333;
   border-radius: 6px;
 }
 .odds-score-label {
   font-size: 11px;
-  color: #888;
+  color: hsl(var(--muted-foreground));
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -480,18 +488,18 @@
   font-size: 22px;
   font-weight: 700;
   margin: 4px 0 2px;
-  color: #e0e0e0;
+  color: hsl(var(--foreground));
 }
 .odds-score-sub {
   font-size: 11px;
-  color: #666;
+  color: hsl(var(--muted-foreground));
 }
 
 /* Above/below the coin-flip line that actually matters */
 .odds-hit-good { color: #6fba6f; }
 .odds-hit-bad  { color: #e07070; }
 .odds-hit-thin { color: #b0902f; }  /* sample too small to trust yet */
-.odds-hit-none { color: #666; }
+.odds-hit-none { color: hsl(var(--muted-foreground)); }
 
 .odds-note {
   padding: 10px 14px;
@@ -513,7 +521,7 @@
   font-family: monospace;
   font-size: 12px;
   font-weight: 600;
-  color: #ccc;
+  color: hsl(var(--foreground));
 }
 
 /* Divider between the yardage markets and Anytime TD, which is a different kind
