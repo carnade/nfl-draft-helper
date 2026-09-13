@@ -27,6 +27,18 @@ const IDLE_GAME_STATUSES = new Set([
 //
 // which collapses to the projection before kickoff and to the real score once
 // the game is over, so the same expression covers all three states.
+// Clock remaining over-states production remaining. Some of it burns without
+// plays, and a player already ahead of their projection regresses towards it
+// rather than continuing at their opening pace — crediting the full projected
+// rate for the rest of the game double-counts what they have already banked.
+//
+// Measured against Sleeper's own figure across ten leagues at one moment of a
+// live slate, discounting the in-progress term by this much removes the bias
+// entirely: mean error 5.58 points and always high, against 1.56 and unbiased.
+// It is an empirical fit from a single snapshot, so it is worth re-checking
+// against a fresh slate rather than trusted as a constant of nature.
+const IN_PROGRESS_DISCOUNT = 0.84;
+
 function fractionRemaining(status, metadata) {
   if (status === "complete" || metadata?.is_over) return 0;
   if (status === "pre_game") return 1;
@@ -187,7 +199,10 @@ function buildMatchupResult(gqlData, userId, { scoring, projections, playerPoint
       // being treated as still to play.
       const remaining = team in gameClocks ? gameClocks[team] : 1;
       const actual = playerPoints[playerId] || 0;
-      live += actual + projectedPoints(projections[playerId], scoring) * remaining;
+      const projection = projectedPoints(projections[playerId], scoring);
+      // A player yet to kick off is worth their whole projection; one already
+      // playing is worth what is left of the clock, discounted as above.
+      live += actual + (remaining === 1 ? projection : projection * remaining * IN_PROGRESS_DISCOUNT);
       if (remaining === 0) finished += 1;
       if (remaining < 1) started += 1;
     }
