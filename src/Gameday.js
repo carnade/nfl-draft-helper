@@ -18,6 +18,46 @@ const IDLE_GAME_STATUSES = new Set([
   "pre_game", "complete", "post_game", "canceled", "postponed", "suspended",
 ]);
 
+// Sleeper's live projection does not simply swap a played starter's projection
+// for their points so far — that would write off the rest of a game still being
+// played, and it left us 15 to 47 points light across leagues mid-slate. It
+// keeps the share of the projection that the remaining clock still covers:
+//
+//   live = points so far + projection × (game time remaining / 60 minutes)
+//
+// which collapses to the projection before kickoff and to the real score once
+// the game is over, so the same expression covers all three states.
+function fractionRemaining(status, metadata) {
+  if (status === "complete" || metadata?.is_over) return 0;
+  if (status === "pre_game") return 1;
+  const quarter = metadata?.quarter_num || 1;
+  const [minutes, seconds] = String(metadata?.time_remaining || "15:00").split(":");
+  const secondsLeft = (4 - quarter) * 900 + Number(minutes) * 60 + Number(seconds);
+  if (!Number.isFinite(secondsLeft)) return 1;
+  return Math.max(0, Math.min(1, secondsLeft / 3600));
+}
+
+// team → how much of its game is left, for every game this week.
+async function fetchGameClocks(week, token, signal) {
+  const query = `{scores(sport:"nfl",season:"${SEASON}",season_type:"regular",week:${week}){status metadata}}`;
+  const res = await fetch("https://sleeper.com/graphql", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-platform": "web", authorization: token },
+    body: JSON.stringify({ query }),
+    signal,
+  });
+  const json = await res.json();
+  const byTeam = {};
+  for (const game of json?.data?.scores || []) {
+    const remaining = fractionRemaining(game.status, game.metadata);
+    for (const side of ["home_team", "away_team"]) {
+      const team = game.metadata?.[side];
+      if (team) byTeam[team] = remaining;
+    }
+  }
+  return byTeam;
+}
+
 // Whether any game in this week has actually kicked off and not yet finished.
 // 27 KB for the season, so it is a cheap thing to ask before deciding to refresh
 // a dozen leagues.
@@ -76,10 +116,10 @@ async function fetchLeagueMatchup(leagueId, token, signal) {
       user_id display_name
     }
     matchup_legs_1:matchup_legs(league_id: "${leagueId}", round: 1){
-      matchup_id roster_id points proj_points starters
+      matchup_id roster_id points proj_points starters player_map
     }
     matchup_legs_0:matchup_legs(league_id: "${leagueId}", round: 0){
-      matchup_id roster_id points proj_points starters
+      matchup_id roster_id points proj_points starters player_map
     }
   }`;
 
@@ -98,7 +138,7 @@ async function fetchLeagueMatchup(leagueId, token, signal) {
   return json.data;
 }
 
-function buildMatchupResult(gqlData, userId, { scoring, projections, playerPoints }) {
+function buildMatchupResult(gqlData, userId, { scoring, projections, playerPoints, gameClocks }) {
   const rosters = gqlData.league_rosters || [];
   const users = gqlData.league_users || [];
   const legs1 = gqlData.matchup_legs_1 || [];
@@ -126,31 +166,32 @@ function buildMatchupResult(gqlData, userId, { scoring, projections, playerPoint
   const oppOwnerId = oppLeg ? rosterIdToOwner[oppLeg.roster_id] : null;
   const oppName = oppOwnerId ? (ownerToName[oppOwnerId] ?? "Opponent") : "Bye";
 
-  // A starter with points on the board has played; everyone else is still worth
-  // their projection.
+  // Rebuild the side from its starters: points already banked, plus whatever
+  // share of each projection the remaining clock still covers. A starter whose
+  // game has not kicked off contributes their whole projection, one whose game is
+  // over contributes only what they scored, and one mid-game contributes both.
   //
-  // Rebuild the side from its starters: real points where they exist, projection
-  // everywhere else. This reproduces Sleeper's own live figure exactly in the
-  // leagues we could check it against.
-  //
-  // A side with nobody played is left on Sleeper's proj_points rather than this
-  // sum. The two agree to within a couple of hundredths — our pricing of
-  // projected stats is a hair off in some scoring formats — and showing a number
-  // that differs from Sleeper's before a ball has been kicked is not worth it.
+  // A side with nobody started is left on Sleeper's proj_points rather than this
+  // sum. The two agree to within a couple of hundredths — our pricing of projected
+  // stats is a hair off in some scoring formats — and showing a number that
+  // differs from Sleeper's before a ball has been kicked is not worth it.
   function legTotals(leg) {
     const starters = leg?.starters || [];
+    const playerMap = leg?.player_map || {};
     let live = 0;
-    let played = 0;
+    let finished = 0;
+    let started = 0;
     for (const playerId of starters) {
-      const actual = playerPoints[playerId];
-      if (typeof actual === "number" && actual !== 0) {
-        live += actual;
-        played += 1;
-      } else {
-        live += projectedPoints(projections[playerId], scoring);
-      }
+      const team = playerMap[playerId]?.team;
+      // A player with no game this week keeps their (zero) projection rather than
+      // being treated as still to play.
+      const remaining = team in gameClocks ? gameClocks[team] : 1;
+      const actual = playerPoints[playerId] || 0;
+      live += actual + projectedPoints(projections[playerId], scoring) * remaining;
+      if (remaining === 0) finished += 1;
+      if (remaining < 1) started += 1;
     }
-    return { live, played, starters: starters.length };
+    return { live, played: finished, started, starters: starters.length };
   }
 
   const mine = legTotals(myLeg);
@@ -161,17 +202,17 @@ function buildMatchupResult(gqlData, userId, { scoring, projections, playerPoint
     oppProj,
     // Each side stands on its own: a side with nobody played is still just its
     // projection, whatever the other side has done.
-    myLive: mine.played > 0 ? mine.live : myProj,
-    oppLive: opp.played > 0 ? opp.live : oppProj,
+    myLive: mine.started > 0 ? mine.live : myProj,
+    oppLive: opp.started > 0 ? opp.live : oppProj,
     myPlayed: mine.played,
     myStarters: mine.starters,
     oppPlayed: opp.played,
     oppStarters: opp.starters,
-    myStarted: mine.played > 0,
-    oppStarted: opp.played > 0,
+    myStarted: mine.started > 0,
+    oppStarted: opp.started > 0,
     oppName,
     predictedWin: oppLeg
-      ? (mine.played > 0 ? mine.live : myProj) > (opp.played > 0 ? opp.live : oppProj)
+      ? (mine.started > 0 ? mine.live : myProj) > (opp.started > 0 ? opp.live : oppProj)
       : null,
   };
 }
@@ -218,6 +259,9 @@ export default function Gameday() {
         return;
       }
 
+      // One request for the whole week, shared by every league.
+      const gameClocks = await fetchGameClocks(week, auth.token, signal);
+
       if (!projectionsRef.current) {
         const rows = await fetch(
           `https://api.sleeper.com/projections/nfl/${SEASON}/${week}?season_type=regular&${PROJECTION_POSITIONS}`,
@@ -250,6 +294,7 @@ export default function Gameday() {
               scoring: league.scoring_settings,
               projections: projectionsRef.current,
               playerPoints,
+              gameClocks,
             });
             return { ...base, matchup };
           } catch {
