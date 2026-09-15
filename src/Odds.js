@@ -463,6 +463,8 @@ function ResultsRows({ games, sortConfig, onSort }) {
     ml_winner:    g.result?.ml_winner,
     ou_result:    g.result?.ou_result,
     edge_correct: g.result?.edge_correct,
+    // Sortable form of the Hit column: hits, then misses, then no call
+    hit_rank:     g.result?.edge_correct === true ? 1 : g.result?.edge_correct === false ? 0 : null,
   }));
   const sorted = useSortedData(flat, sortConfig);
   return (
@@ -477,6 +479,7 @@ function ResultsRows({ games, sortConfig, onSort }) {
           {sh("Actual Total", "actual_total", "num")}
           {sh("ML Winner", "ml_winner")}
           {sh("Our Edge", "ou_signal")}
+          {sh("Hit", "hit_rank", "num")}
         </tr>
       </thead>
       <tbody>
@@ -508,18 +511,13 @@ function ResultsRows({ games, sortConfig, onSort }) {
               </td>
               <td>
                 {g.ou_signal ? (
-                  <span className={`value-badge value-badge-${played && g.ou_result !== "push" ? (g.edge_correct ? g.ou_signal : (g.ou_signal === "over" ? "under" : "over")) : g.ou_signal}`}>
+                  <span className={`value-badge value-badge-${g.ou_signal}`}>
                     {g.ou_signal === "over" ? "▲" : "▼"} {g.ou_signal.toUpperCase()}
                   </span>
                 ) : "—"}
-                {played && g.ou_result === "push" && (
-                  <span className="value-badge value-badge-push"> PUSH</span>
-                )}
-                {played && g.ou_result !== "push" && g.edge_correct !== null && (
-                  <span className={`value-badge value-badge-${g.edge_correct ? "over" : "under"}`} style={{ marginLeft: 4 }}>
-                    {g.edge_correct ? "✓" : "✗"}
-                  </span>
-                )}
+              </td>
+              <td className="num">
+                <HitCell correct={g.edge_correct} push={played && !!g.ou_signal && g.ou_result === "push"} />
               </td>
             </tr>
           );
@@ -561,6 +559,32 @@ function WeekSelect({ value, onChange, weeks, label = "Week" }) {
   );
 }
 
+// Whether a call we made came in. A push counts neither way; "—" means there was no
+// call to judge, or the game has not been played yet.
+function HitCell({ correct, push }) {
+  if (push) return <span className="value-badge value-badge-push">Push</span>;
+  if (correct === true) return <span className="value-badge value-badge-over">Hit</span>;
+  if (correct === false) return <span className="value-badge value-badge-under">Miss</span>;
+  return <span className="odds-hit-none">—</span>;
+}
+
+// Our over/under record on a set of games. A call is a game we made an edge call on
+// that did not push, and the hit rate is over those calls alone.
+function summariseGames(rows) {
+  const graded = rows.filter((g) => g.result);
+  const calls = graded.filter((g) => g.result.edge_correct != null);
+  const hits = calls.filter((g) => g.result.edge_correct).length;
+  const pushes = graded.filter((g) => g.ou_eval?.signal && g.result.ou_result === "push").length;
+  return {
+    games: rows.length,
+    graded: graded.length,
+    calls: calls.length,
+    hits,
+    pushes,
+    hit_rate: calls.length ? hits / calls.length : null,
+  };
+}
+
 function ResultsTable({ games }) {
   const [sortConfig, setSortConfig] = useState({ key: "commence_time", dir: "desc" });
   const weeks = useMemo(() => weeksIn(games), [games]);
@@ -590,10 +614,30 @@ function ResultsTable({ games }) {
     return [...set].sort();
   }, [games]);
 
+  const onTeam = useCallback(
+    (g) => !team || g.home_abbr === team || g.away_abbr === team,
+    [team]
+  );
+
   const shown = useMemo(() => games.filter(
-    (g) => (week === "all" || g.nfl_week === week) &&
-           (!team || g.home_abbr === team || g.away_abbr === team)
-  ), [games, week, team]);
+    (g) => (week === "all" || g.nfl_week === week) && onTeam(g)
+  ), [games, week, onTeam]);
+
+  // The cards describe what is on screen. The weekly breakdown ignores the week
+  // filter — otherwise it could only ever have one row — but follows the team one.
+  const summary = useMemo(() => summariseGames(shown), [shown]);
+  const byWeek = useMemo(() => {
+    const groups = new Map();
+    for (const g of games) {
+      if (g.nfl_week == null || !onTeam(g)) continue;
+      if (!groups.has(g.nfl_week)) groups.set(g.nfl_week, []);
+      groups.get(g.nfl_week).push(g);
+    }
+    return [...groups.entries()]
+      .map(([w, weekGames]) => ({ week: w, ...summariseGames(weekGames) }))
+      .filter((row) => row.graded > 0)
+      .sort((a, b) => b.week - a.week);
+  }, [games, onTeam]);
 
   if (!games.length) {
     return <div className="odds-empty">No results yet — lines will appear here after games are snapshotted and played.</div>;
@@ -612,6 +656,59 @@ function ResultsTable({ games }) {
         </label>
         <span className="odds-filter-count">{shown.length} of {games.length}</span>
       </div>
+
+      <div className="odds-scorecard">
+        <div className="odds-score-card">
+          <div className="odds-score-label">Games</div>
+          <div className="odds-score-val">{summary.games}</div>
+          <div className="odds-score-sub">{summary.graded} graded</div>
+        </div>
+        <div className="odds-score-card">
+          <div className="odds-score-label" title="Of the over/under calls we made, how many came in. Pushes count neither way.">
+            Edge hit rate
+          </div>
+          <div className="odds-score-val"><HitRate value={summary.hit_rate} n={summary.calls} /></div>
+          <div className="odds-score-sub">
+            {summary.hits} of {summary.calls} calls{summary.pushes ? ` · ${summary.pushes} push` : ""}
+          </div>
+        </div>
+      </div>
+
+      {byWeek.length > 0 && (
+        <>
+          <h3 className="odds-week-header">By week</h3>
+          <div className="odds-table-wrap">
+            <table className="odds-table">
+              <thead>
+                <tr>
+                  <th className="num">Wk</th>
+                  <th className="num">Graded</th>
+                  <th className="num">Calls</th>
+                  <th className="num">Hits</th>
+                  <th className="num">Misses</th>
+                  <th className="num">Pushes</th>
+                  <th className="num">Hit rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                {byWeek.map((w) => (
+                  <tr key={w.week}>
+                    <td className="num">{w.week}</td>
+                    <td className="num">{w.graded}</td>
+                    <td className="num">{w.calls}</td>
+                    <td className="num">{w.hits}</td>
+                    <td className="num">{w.calls - w.hits}</td>
+                    <td className="num">{w.pushes}</td>
+                    <td className="num"><HitRate value={w.hit_rate} n={w.calls} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      <h3 className="odds-week-header">Games</h3>
       {shown.length === 0 ? (
         <div className="odds-empty">No games match these filters.</div>
       ) : (
@@ -658,6 +755,8 @@ function PropResultsTable({ data }) {
     market_label: MARKET_LABELS[r.market] || r.market,
     outcome: r.result?.outcome,
     call_correct: r.result?.call_correct,
+    // Sortable form of the Hit column: hits, then misses, then no flagged call
+    hit_rank: r.result?.call_correct === true ? 1 : r.result?.call_correct === false ? 0 : null,
     line_moved: r.first_line != null && r.line != null ? r.line - r.first_line : null,
   })), [data]);
 
@@ -821,6 +920,7 @@ function PropResultsTable({ data }) {
               {sh("Call", "value_flag")}
               {sh("Actual", "actual", "num")}
               {sh("Result", "outcome")}
+              {sh("Hit", "hit_rank", "num", "Whether our flagged value call came in")}
             </tr>
           </thead>
           <tbody>
@@ -850,6 +950,9 @@ function PropResultsTable({ data }) {
                       {r.outcome.toUpperCase()}
                     </span>
                   ) : <span className="odds-hit-none">pending</span>}
+                </td>
+                <td className="num">
+                  <HitCell correct={r.call_correct} push={!!r.value_flag && r.outcome === "push"} />
                 </td>
               </tr>
             ))}
