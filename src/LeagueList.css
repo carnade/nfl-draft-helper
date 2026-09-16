@@ -1027,10 +1027,3 @@ body.dark .league-action-icon:hover {
 }
 
 .waiver-archive-toggle:hover { opacity: 0.75; }
-
-.waiver-week {
-  opacity: 0.55;
-  font-size: 0.75rem;
-  min-width: 28px;
-  flex-shrink: 0;
-}

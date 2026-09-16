@@ -44,8 +44,9 @@ export default function Changelog() {
       date: "2026-09-16",
       title: "Waivers by week",
       items: [
-        "The league page's Waivers tab now shows only the current week's claims.",
-        "Earlier weeks moved into an Archive you can expand, with the week marked on each row.",
+        "The league page's Waivers tab now shows only the current week's claims, counted from Tuesday's week rollover.",
+        "Claims still waiting to process stay in the list however long ago they were entered.",
+        "Earlier weeks moved into an Archive you can expand.",
       ],
     },
     {
