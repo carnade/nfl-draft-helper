@@ -41,6 +41,14 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2026-09-16",
+      title: "Waivers by week",
+      items: [
+        "The league page's Waivers tab now shows only the current week's claims.",
+        "Earlier weeks moved into an Archive you can expand, with the week marked on each row.",
+      ],
+    },
+    {
       date: "2026-09-12",
       title: "Live Gameday Projections",
       items: [

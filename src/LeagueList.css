@@ -1004,3 +1004,33 @@ body.dark .league-action-icon:hover {
 .league-grid-header + .league-group-header {
   padding-top: 0.5rem;
 }
+
+/* Waiver archive: previous weeks, folded away under this week's claims. */
+.waiver-empty { opacity: 0.7; font-size: 0.85rem; }
+.waiver-week-note { font-size: 0.8rem; font-weight: 400; opacity: 0.55; }
+
+.waiver-archive {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid hsl(var(--border));
+}
+
+.waiver-archive-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.waiver-archive-toggle:hover { opacity: 0.75; }
+
+.waiver-week {
+  opacity: 0.55;
+  font-size: 0.75rem;
+  min-width: 28px;
+  flex-shrink: 0;
+}
