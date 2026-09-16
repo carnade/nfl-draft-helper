@@ -110,6 +110,7 @@ function DFSResults() {
   const searchParams = new URLSearchParams(location.search);
   const isPrivilegedUser = useIsPrivilegedUser();
   const isAdminMode = searchParams.get('admin') === 'true' && isPrivilegedUser;
+  const requestedView = searchParams.get('view');
   const [inputData, setInputData] = useState('');
   const [compressedData, setCompressedData] = useState('');
   const [shareableUrl, setShareableUrl] = useState('');
@@ -2571,6 +2572,16 @@ function DFSResults() {
       }
     };
   }, [liveUpdate, selectedWeek, dfsSalaryData, playerMetadata, parseLineups, buildDstSleeperIdSet]);
+
+  // A link can ask for the tournament standings straight away (from My Lineups, say).
+  // Whether that is possible depends on the entry's type, which only arrives with its
+  // details, so apply the request once that has landed. It runs once per link: clicking
+  // back to the weekly view afterwards sticks.
+  useEffect(() => {
+    if (requestedView === 'tournament' && entryType === 'multiweek_dfs') {
+      setViewMode('tournament');
+    }
+  }, [requestedView, entryType]);
 
   // Reset viewMode when not viewing a tinyURL
   useEffect(() => {

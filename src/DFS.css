@@ -1265,3 +1265,44 @@ body.dark .manage-dfs-button:hover {
   background-color: hsl(var(--muted) / 0.8);
 }
 
+
+/* Tournament shape of a "my lineup" row: what kind of entry it is, and the link
+   to its standings. */
+.my-lineup-tag {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: Inter, sans-serif;
+  white-space: nowrap;
+}
+
+.my-lineup-tag.multiweek {
+  background-color: hsl(265 60% 55% / 0.18);
+  color: hsl(265 60% 65%);
+  border: 1px solid hsl(265 60% 55% / 0.4);
+}
+
+.my-lineup-tag.single {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  border: 1px solid hsl(var(--border));
+}
+
+.my-lineup-sub {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.my-lineup-btn.standings {
+  background-color: hsl(265 60% 55%);
+  min-width: 100px;
+}
+
+.my-lineup-btn.standings:hover {
+  background-color: hsl(265 60% 48%);
+  opacity: 0.9;
+  transform: translateY(-1px);
+}

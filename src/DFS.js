@@ -110,6 +110,22 @@ const getDayAfterGameAt3AmCET = (gameDate) => {
   return new Date(Date.UTC(year, monthIndex, day + 1, 2, 0));
 };
 
+// What a "my lineup" row is entered into: a one-week slate, or a tournament and how
+// far into it we are. Falls back to a single entry when the details fetch fails.
+const UNKNOWN_TOURNAMENT = { entryType: 'single', week: null, tournamentWeek: null, numWeeks: null };
+
+function tournamentLabel(lineup) {
+  if (lineup.entryType === 'multiweek_dfs') {
+    return {
+      type: 'Multiweek',
+      detail: lineup.tournamentWeek && lineup.numWeeks
+        ? `Week ${lineup.tournamentWeek} of ${lineup.numWeeks}`
+        : null
+    };
+  }
+  return { type: 'Weekly', detail: lineup.week ? `Week ${lineup.week}` : null };
+}
+
 function DFS({ userName }) {
   const navigate = useNavigate();
   const [players, setPlayers] = useState([]);
@@ -623,6 +639,7 @@ function DFS({ userName }) {
           if (!detailsResponse.ok) {
             return {
               entryName,
+              ...UNKNOWN_TOURNAMENT,
               hasSubmitted: false,
               updateCount: 0,
               lastSubmitted: null
@@ -639,6 +656,12 @@ function DFS({ userName }) {
           
           return {
             entryName,
+            // A multiweek tournament reports where it has got to; a single entry
+            // only has the NFL week it was created for.
+            entryType: details.type || 'single',
+            week: details.week ?? null,
+            tournamentWeek: details.tournament_week ?? null,
+            numWeeks: details.num_weeks ?? null,
             hasSubmitted: userSubmission?.has_submitted || false,
             updateCount: userSubmission?.update_count || 0,
             lastSubmitted: userSubmission?.updated_at || userSubmission?.created_at || null
@@ -647,6 +670,7 @@ function DFS({ userName }) {
           console.error(`Error fetching details for ${entryName}:`, error);
           return {
             entryName,
+            ...UNKNOWN_TOURNAMENT,
             hasSubmitted: false,
             updateCount: 0,
             lastSubmitted: null
@@ -1613,12 +1637,17 @@ function DFS({ userName }) {
                   <thead>
                     <tr>
                       <th>League Name</th>
+                      <th>Type</th>
                       <th>Updated</th>
                       <th>Last Submitted</th>
+                      <th>Results</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {myLineups.map((lineup) => (
+                    {myLineups.map((lineup) => {
+                      const label = tournamentLabel(lineup);
+                      const isMultiweek = lineup.entryType === 'multiweek_dfs';
+                      return (
                       <tr key={lineup.entryName}>
                         <td>
                           <button
@@ -1633,6 +1662,12 @@ function DFS({ userName }) {
                             {lineup.entryName}
                           </button>
                         </td>
+                        <td>
+                          <span className={`my-lineup-tag ${isMultiweek ? 'multiweek' : 'single'}`}>
+                            {label.type}
+                          </span>
+                          {label.detail && <div className="my-lineup-sub">{label.detail}</div>}
+                        </td>
                         <td>{lineup.updateCount}</td>
                         <td>
                           {lineup.lastSubmitted
@@ -1645,8 +1680,23 @@ function DFS({ userName }) {
                               })
                             : 'Not submitted'}
                         </td>
+                        <td>
+                          {/* A tournament's standings are worth reaching whether or not this
+                              week's lineup is in, so this link is never gated on submitting. */}
+                          {isMultiweek ? (
+                            <button
+                              className="my-lineup-btn standings"
+                              onClick={() => navigate(`/dfs/results/tinyurl/${lineup.entryName}?view=tournament`)}
+                            >
+                              Standings
+                            </button>
+                          ) : (
+                            <span className="my-lineup-sub">—</span>
+                          )}
+                        </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
