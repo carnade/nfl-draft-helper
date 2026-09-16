@@ -18,6 +18,47 @@ const BASE_URL = mock
   ? "http://localhost:5000"
   : "https://shaggy-latashia-carnade-2ea2054a.koyeb.app";
 
+// Which week a waiver claim belongs to. Sleeper's GraphQL carries the leg; the REST
+// fallback only ever fetches the current week, so a claim without one is this week's.
+function waiverWeek(t, fallbackWeek) {
+  const leg = t.leg ?? t.settings?.leg;
+  return leg == null ? fallbackWeek : leg;
+}
+
+function WaiverRows({ txns, names, showWeek, week }) {
+  return txns
+    .slice()
+    .sort((a, b) => b.created - a.created)
+    .map(t => {
+      const date = new Date(t.created).toLocaleDateString();
+      const adds = Object.keys(t.adds || {});
+      const drops = Object.keys(t.drops || {});
+      const bid = t.settings?.waiver_bid;
+      const statusClass = t.status === "complete" ? "waiver-won"
+        : t.status === "failed" ? "waiver-lost"
+        : t.status === "proposed" ? "waiver-proposed"
+        : "waiver-pending";
+      const statusLabel = t.status === "complete" ? "Won"
+        : t.status === "failed" ? "Lost"
+        : t.status === "proposed" ? "Proposed"
+        : "Pending";
+      return (
+        <div key={t.transaction_id} className="waiver-row">
+          {showWeek && <span className="waiver-week">W{waiverWeek(t, week)}</span>}
+          <span className="waiver-date">{date}</span>
+          <span className={statusClass}>{statusLabel}</span>
+          {adds.length > 0 && (
+            <span>+ {adds.map(id => names[id] || id).join(", ")}</span>
+          )}
+          {drops.length > 0 && (
+            <span className="waiver-drop">− {drops.map(id => names[id] || id).join(", ")}</span>
+          )}
+          {bid != null && <span className="waiver-bid">${bid}</span>}
+        </div>
+      );
+    });
+}
+
 function LeagueList() {
   const { userName } = useParams();
   const [userId, setUserId] = useState(null);
@@ -56,6 +97,7 @@ function LeagueList() {
   const [waiverData, setWaiverData] = useState({});       // { league_id: Transaction[] }
   const [waiverPlayerNames, setWaiverPlayerNames] = useState({}); // { player_id: name }
   const [waiverLoading, setWaiverLoading] = useState(false);
+  const [waiverArchiveOpen, setWaiverArchiveOpen] = useState(false);
   const [currentWeek, setCurrentWeek] = useState(null);
 
   // Add state for sorting
@@ -1898,54 +1940,63 @@ function LeagueList() {
                 </div>
               </div>
             )}
-            {activeTab === "Waivers" && (
-              <div className="league-waivers-container">
-                <h2>Waivers {currentWeek === 0 && <span className="waiver-offseason-note">(preseason)</span>}</h2>
-                {waiverLoading ? (
-                  <p>Loading...</p>
-                ) : (
-                  leagues.map(league => {
-                    const txns = (waiverData[league.league_id] || []).filter(t => t.status !== "cancelled");
-                    if (!txns.length) return null;
-                    return (
-                      <div key={league.league_id} className="waiver-league-section">
-                        <h3>{league.name}</h3>
-                        {txns
-                          .slice()
-                          .sort((a, b) => b.created - a.created)
-                          .map(t => {
-                            const date = new Date(t.created).toLocaleDateString();
-                            const adds = Object.keys(t.adds || {});
-                            const drops = Object.keys(t.drops || {});
-                            const bid = t.settings?.waiver_bid;
-                            const statusClass = t.status === "complete" ? "waiver-won"
-                              : t.status === "failed" ? "waiver-lost"
-                              : t.status === "proposed" ? "waiver-proposed"
-                              : "waiver-pending";
-                            const statusLabel = t.status === "complete" ? "Won"
-                              : t.status === "failed" ? "Lost"
-                              : t.status === "proposed" ? "Proposed"
-                              : "Pending";
-                            return (
-                              <div key={t.transaction_id} className="waiver-row">
-                                <span className="waiver-date">{date}</span>
-                                <span className={statusClass}>{statusLabel}</span>
-                                {adds.length > 0 && (
-                                  <span>+ {adds.map(id => waiverPlayerNames[id] || id).join(", ")}</span>
-                                )}
-                                {drops.length > 0 && (
-                                  <span className="waiver-drop">− {drops.map(id => waiverPlayerNames[id] || id).join(", ")}</span>
-                                )}
-                                {bid != null && <span className="waiver-bid">${bid}</span>}
-                              </div>
-                            );
-                          })}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            )}
+            {activeTab === "Waivers" && (() => {
+              // Preseason reports week 0, but Sleeper files those claims under week 1.
+              const effectiveWeek = currentWeek === 0 ? 1 : currentWeek;
+              // Only this week's claims are worth scanning on arrival; older ones are
+              // kept behind the Archive rather than dropped, since the GraphQL fetch
+              // returns every leg.
+              const sections = leagues.map(league => {
+                const txns = (waiverData[league.league_id] || []).filter(t => t.status !== "cancelled");
+                return {
+                  league,
+                  current: txns.filter(t => waiverWeek(t, effectiveWeek) === effectiveWeek),
+                  past: txns.filter(t => waiverWeek(t, effectiveWeek) !== effectiveWeek),
+                };
+              });
+              const currentCount = sections.reduce((n, sec) => n + sec.current.length, 0);
+              const archivedCount = sections.reduce((n, sec) => n + sec.past.length, 0);
+              return (
+                <div className="league-waivers-container">
+                  <h2>
+                    Waivers{currentWeek > 0 && <span className="waiver-week-note"> — week {currentWeek}</span>}
+                    {currentWeek === 0 && <span className="waiver-offseason-note">(preseason)</span>}
+                  </h2>
+                  {waiverLoading ? (
+                    <p>Loading...</p>
+                  ) : (
+                    <>
+                      {currentCount === 0 && (
+                        <p className="waiver-empty">No waiver claims this week.</p>
+                      )}
+                      {sections.map(({ league, current }) => current.length > 0 && (
+                        <div key={league.league_id} className="waiver-league-section">
+                          <h3>{league.name}</h3>
+                          <WaiverRows txns={current} names={waiverPlayerNames} week={effectiveWeek} />
+                        </div>
+                      ))}
+                      {archivedCount > 0 && (
+                        <div className="waiver-archive">
+                          <button
+                            className="waiver-archive-toggle"
+                            onClick={() => setWaiverArchiveOpen(open => !open)}
+                            aria-expanded={waiverArchiveOpen}
+                          >
+                            {waiverArchiveOpen ? "▼" : "►"} Archive ({archivedCount})
+                          </button>
+                          {waiverArchiveOpen && sections.map(({ league, past }) => past.length > 0 && (
+                            <div key={league.league_id} className="waiver-league-section">
+                              <h3>{league.name}</h3>
+                              <WaiverRows txns={past} names={waiverPlayerNames} week={effectiveWeek} showWeek />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
