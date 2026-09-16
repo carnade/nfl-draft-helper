@@ -18,14 +18,29 @@ const BASE_URL = mock
   ? "http://localhost:5000"
   : "https://shaggy-latashia-carnade-2ea2054a.koyeb.app";
 
-// Which week a waiver claim belongs to. Sleeper's GraphQL carries the leg; the REST
-// fallback only ever fetches the current week, so a claim without one is this week's.
-function waiverWeek(t, fallbackWeek) {
-  const leg = t.leg ?? t.settings?.leg;
-  return leg == null ? fallbackWeek : leg;
+// Sleeper's per-league `leg` cannot decide what "this week" means: the flip is not
+// synchronised across leagues (on 16 Sep some still stamped leg 1 on claims entered
+// that morning while others had moved to leg 2), and a dynasty league's offseason
+// claims all sit at leg 1 too. The NFL week turns over on Tuesday, so that is the
+// cutoff — and a claim that has not been processed yet is current whenever it was
+// entered, since it is still waiting to run.
+function currentWaiverPeriodStart(now = new Date()) {
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+  const daysSinceTuesday = (start.getDay() - 2 + 7) % 7; // 0 = Sunday, 2 = Tuesday
+  start.setDate(start.getDate() - daysSinceTuesday);
+  return start.getTime();
 }
 
-function WaiverRows({ txns, names, showWeek, week }) {
+function waiverIsProcessed(t) {
+  return t.status === "complete" || t.status === "failed";
+}
+
+function waiverIsCurrent(t, periodStart) {
+  return !waiverIsProcessed(t) || (t.created ?? 0) >= periodStart;
+}
+
+function WaiverRows({ txns, names }) {
   return txns
     .slice()
     .sort((a, b) => b.created - a.created)
@@ -44,7 +59,6 @@ function WaiverRows({ txns, names, showWeek, week }) {
         : "Pending";
       return (
         <div key={t.transaction_id} className="waiver-row">
-          {showWeek && <span className="waiver-week">W{waiverWeek(t, week)}</span>}
           <span className="waiver-date">{date}</span>
           <span className={statusClass}>{statusLabel}</span>
           {adds.length > 0 && (
@@ -1941,17 +1955,16 @@ function LeagueList() {
               </div>
             )}
             {activeTab === "Waivers" && (() => {
-              // Preseason reports week 0, but Sleeper files those claims under week 1.
-              const effectiveWeek = currentWeek === 0 ? 1 : currentWeek;
               // Only this week's claims are worth scanning on arrival; older ones are
               // kept behind the Archive rather than dropped, since the GraphQL fetch
               // returns every leg.
+              const periodStart = currentWaiverPeriodStart();
               const sections = leagues.map(league => {
                 const txns = (waiverData[league.league_id] || []).filter(t => t.status !== "cancelled");
                 return {
                   league,
-                  current: txns.filter(t => waiverWeek(t, effectiveWeek) === effectiveWeek),
-                  past: txns.filter(t => waiverWeek(t, effectiveWeek) !== effectiveWeek),
+                  current: txns.filter(t => waiverIsCurrent(t, periodStart)),
+                  past: txns.filter(t => !waiverIsCurrent(t, periodStart)),
                 };
               });
               const currentCount = sections.reduce((n, sec) => n + sec.current.length, 0);
@@ -1972,7 +1985,7 @@ function LeagueList() {
                       {sections.map(({ league, current }) => current.length > 0 && (
                         <div key={league.league_id} className="waiver-league-section">
                           <h3>{league.name}</h3>
-                          <WaiverRows txns={current} names={waiverPlayerNames} week={effectiveWeek} />
+                          <WaiverRows txns={current} names={waiverPlayerNames} />
                         </div>
                       ))}
                       {archivedCount > 0 && (
@@ -1987,7 +2000,7 @@ function LeagueList() {
                           {waiverArchiveOpen && sections.map(({ league, past }) => past.length > 0 && (
                             <div key={league.league_id} className="waiver-league-section">
                               <h3>{league.name}</h3>
-                              <WaiverRows txns={past} names={waiverPlayerNames} week={effectiveWeek} showWeek />
+                              <WaiverRows txns={past} names={waiverPlayerNames} />
                             </div>
                           ))}
                         </div>
