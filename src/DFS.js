@@ -166,6 +166,7 @@ function DFS({ userName }) {
   const [entryToOverwrite, setEntryToOverwrite] = useState(null);
   const [submittedEntries, setSubmittedEntries] = useState(new Set());
   const [loadableLineups, setLoadableLineups] = useState([]);
+  const hasSleeperLogin = !!loadSleeperAuth()?.token;
   const [loadingLoadableLineups, setLoadingLoadableLineups] = useState(false);
   const [myLineups, setMyLineups] = useState([]);
   const [loadingMyLineups, setLoadingMyLineups] = useState(false);
@@ -588,6 +589,7 @@ function DFS({ userName }) {
               week: null,
               hasData: false,
             hasPin: false,
+            accessMode: 'allowlist',
             submitAs: username
           };
         }
@@ -597,6 +599,7 @@ function DFS({ userName }) {
           week: entry.week || null,
           hasData: entry.has_data || false,
           hasPin: entry.has_pin || false,
+          accessMode: entry.access_mode || 'allowlist',
           submitAs: entry.submit_as || username
         };
       });
@@ -921,6 +924,13 @@ function DFS({ userName }) {
       return;
     }
 
+    return loadSavedLineup(selectedLineupForPin, pinInput.trim());
+  };
+
+  // Loading someone's stored lineup needs proof it is theirs. A PIN is one proof;
+  // on a Sleeper-gated tournament the token is another, and the backend checks it
+  // against the name the lineup was filed under, so no PIN is asked for there.
+  const loadSavedLineup = async (lineup, pin) => {
     try {
       const settings = JSON.parse(localStorage.getItem('FantasyHelperSettings') || '{}');
       const username = userName || settings.userName || 'Anonymous';
@@ -930,8 +940,15 @@ function DFS({ userName }) {
         return;
       }
 
-      // Fetch data using data endpoint with username and pin query params
-      const response = await fetch(`${BASE_URL}/tinyurl/${selectedLineupForPin.entryName}/data?username=${encodeURIComponent(selectedLineupForPin.submitAs || username)}&pin=${encodeURIComponent(pinInput.trim())}`);
+      // Fetch data using data endpoint with username and (when set) pin query params
+      const query = new URLSearchParams({ username: lineup.submitAs || username });
+      if (pin) {
+        query.set('pin', pin);
+      }
+      const response = await fetch(
+        `${BASE_URL}/tinyurl/${lineup.entryName}/data?${query.toString()}`,
+        { headers: sleeperAuthHeaders() }
+      );
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Failed to load lineup' }));
@@ -943,7 +960,7 @@ function DFS({ userName }) {
       
       // Check if PIN was required but incorrect
       if (dataResult.pin_required || (!dataResult.data && !dataResult.user_submissions)) {
-        alert('Invalid PIN code or lineup not found');
+        alert(pin ? 'Invalid PIN code or lineup not found' : 'Could not open this lineup — try entering its PIN.');
         return;
       }
 
@@ -1826,16 +1843,23 @@ function DFS({ userName }) {
                   <h3 className="add-to-league-title">Load from your leagues</h3>
                   <div className="add-to-league-buttons">
                     {loadableLineups.map((lineup) => {
-                      // Determine button style: Green (has_data && has_pin), Red (has_data && !has_pin), Grey (!has_data)
-                      const isGreen = lineup.hasData && lineup.hasPin;
-                      const isRed = lineup.hasData && !lineup.hasPin;
+                      // A Sleeper-gated tournament files the lineup under the verified
+                      // account, so being signed in is proof enough to open it and no
+                      // PIN is asked for. Elsewhere a PIN is the only proof there is:
+                      // without one the lineup stays shut, since a name alone is not
+                      // something we can check.
+                      const viaSleeper = lineup.hasData && lineup.accessMode === 'sleeper' && hasSleeperLogin;
+                      const isGreen = lineup.hasData && (lineup.hasPin || viaSleeper);
+                      const isRed = lineup.hasData && !isGreen;
                       const isGrey = !lineup.hasData;
-                      
+
                       return (
                       <button
                         key={lineup.entryName}
                           onClick={() => {
-                            if (isGreen) {
+                            if (viaSleeper) {
+                              loadSavedLineup(lineup);
+                            } else if (isGreen) {
                               setSelectedLineupForPin(lineup);
                               setShowPinModal(true);
                             }
