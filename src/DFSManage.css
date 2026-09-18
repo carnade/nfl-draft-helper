@@ -501,3 +501,29 @@ body.dark .dfs-manage-submission-value {
   cursor: default;
   opacity: 0.4;
 }
+
+/* Clear: wipes one lineup so its owner can submit again. Sits beside Remove but
+   reads as the lesser action, since the entrant stays in the tournament. */
+.dfs-manage-clear-lineup {
+  margin-left: 12px;
+  padding: 2px 10px;
+  font-size: 0.75rem;
+  color: #b0902f;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0.65;
+  transition: opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.dfs-manage-clear-lineup:hover:not(:disabled) {
+  opacity: 1;
+  background-color: #b0902f;
+  color: #fff;
+}
+
+.dfs-manage-clear-lineup:disabled {
+  cursor: default;
+  opacity: 0.4;
+}

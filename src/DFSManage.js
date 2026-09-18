@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LZString from 'lz-string';
 import './DFSManage.css';
-import { useIsPrivilegedUser } from './auth';
+import { useIsPrivilegedUser, loadSleeperAuth } from './auth';
 
 // Add a mock flag
 const mock = process.env.REACT_APP_MOCK === 'true';
@@ -11,6 +11,13 @@ const mock = process.env.REACT_APP_MOCK === 'true';
 const BASE_URL = mock
   ? "http://localhost:5000"
   : "https://shaggy-latashia-carnade-2ea2054a.koyeb.app";
+
+// Clearing a lineup is organiser-only and the backend checks the Sleeper token,
+// not just that the page rendered — so the request has to carry it.
+function sleeperAuthHeaders() {
+  const token = loadSleeperAuth()?.token;
+  return token ? { Authorization: token } : {};
+}
 
 function DFSManage() {
   const navigate = useNavigate();
@@ -23,6 +30,7 @@ function DFSManage() {
   const [entryDetails, setEntryDetails] = useState({});
   const [removingEntrant, setRemovingEntrant] = useState(null);
   const [purgePointsOnRemove, setPurgePointsOnRemove] = useState(false);
+  const [clearingLineup, setClearingLineup] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(new Set());
   const [expandedEntries, setExpandedEntries] = useState(new Set());
 
@@ -99,6 +107,39 @@ function DFSManage() {
       window.alert(`Could not remove ${username}: ${error.message}`);
     } finally {
       setRemovingEntrant(null);
+    }
+  };
+
+  // Clearing exists for the lineup its owner can no longer fix: once one of its
+  // players has kicked off, submitting over it is refused. This wipes only the
+  // current week's lineup — they stay an entrant and keep points from earlier
+  // weeks — so they can enter a fresh one.
+  const clearLineup = async (entryName, username) => {
+    if (!window.confirm(
+      `Clear ${username}'s lineup in ${entryName}?\n\n` +
+      'Only this week\'s lineup goes. They stay in the tournament and keep points ' +
+      'from earlier weeks, but the week scores as nothing until they submit again — ' +
+      'which they can do even if games have already started.'
+    )) {
+      return;
+    }
+
+    setClearingLineup(`${entryName}:${username}`);
+    try {
+      const response = await fetch(
+        `${BASE_URL}/tinyurl/${encodeURIComponent(entryName)}/entrants/${encodeURIComponent(username)}/lineup`,
+        { method: 'DELETE', headers: sleeperAuthHeaders() }
+      );
+      if (response.ok) {
+        await fetchEntryDetails(entryName);
+      } else {
+        const error = await response.json().catch(() => ({}));
+        window.alert(`Could not clear ${username}'s lineup: ${error.error || response.statusText}`);
+      }
+    } catch (error) {
+      window.alert(`Could not clear ${username}'s lineup: ${error.message}`);
+    } finally {
+      setClearingLineup(null);
     }
   };
 
@@ -458,6 +499,16 @@ function DFSManage() {
                                         </span>
                                       )}
                                     </div>
+                                  )}
+                                  {hasSubmitted && (
+                                    <button
+                                      className="dfs-manage-clear-lineup"
+                                      onClick={() => clearLineup(entry.name, username)}
+                                      disabled={clearingLineup === `${entry.name}:${username}`}
+                                      title={`Clear ${username}'s lineup so they can submit a new one`}
+                                    >
+                                      {clearingLineup === `${entry.name}:${username}` ? '…' : 'Clear'}
+                                    </button>
                                   )}
                                   <button
                                     className="dfs-manage-remove-entrant"
