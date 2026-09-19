@@ -304,6 +304,8 @@ function StartSit({ userName }) {
   const [onlyActionable, setOnlyActionable] = useState(false);
   const [openBenches, setOpenBenches] = useState(() => new Set());
   const [busyRow, setBusyRow] = useState(null);
+  const [pendingSwap, setPendingSwap] = useState(null);
+  const [swapError, setSwapError] = useState(null);
   const [problems, setProblems] = useState([]);
   const projectionsRef = useRef(null);
 
@@ -565,22 +567,32 @@ function StartSit({ userName }) {
     [leagues, onlyActionable]
   );
 
-  const handleSwap = async (league, row) => {
+  // Clicking only opens the confirmation; nothing is sent until it is accepted.
+  const requestSwap = (league, row) => {
+    if (!canEdit || !row.suggestion) return;
+    setSwapError(
+      league.rosterId == null ? "Could not tell which roster is yours in this league." : null
+    );
+    setPendingSwap({ league, row });
+  };
+
+  const closeSwap = () => {
+    if (busyRow) return;
+    setPendingSwap(null);
+    setSwapError(null);
+  };
+
+  const confirmSwap = async () => {
+    if (!pendingSwap) return;
+    const { league, row } = pendingSwap;
     const outgoing = row.starter;
     const incoming = row.suggestion;
-    if (!canEdit || !incoming) return;
-    if (league.rosterId == null) {
-      window.alert("Could not tell which roster is yours in this league.");
-      return;
-    }
-    // The same checks the button already applies, repeated here because this is
-    // the thing that actually writes.
+    if (!canEdit || !incoming || league.rosterId == null) return;
+    // The same checks the button applies, repeated because this is what writes.
     if (row.locked || outgoing?.locked || incoming.locked) {
-      window.alert("That game has already started, so the lineup is locked.");
+      setSwapError("That game has already started, so the lineup is locked.");
       return;
     }
-    const outName = outgoing ? outgoing.name : "the empty slot";
-    if (!window.confirm(`In ${league.name}, start ${incoming.name} over ${outName}?`)) return;
 
     const rowKey = `${league.id}:${row.index}`;
     setBusyRow(rowKey);
@@ -625,12 +637,17 @@ function StartSit({ userName }) {
           };
         })
       );
+      setPendingSwap(null);
+      setSwapError(null);
     } catch (err) {
-      const detail = /illegal/i.test(err.message)
-        ? "Sleeper would not allow it — a game may have started since this page loaded, "
-          + "or the player is not eligible for that slot."
-        : err.message;
-      window.alert(`Could not change the lineup: ${detail}`);
+      // Kept in the dialog rather than thrown away in a second popup, so the
+      // change it refers to is still on screen.
+      setSwapError(
+        /illegal/i.test(err.message)
+          ? "Sleeper would not allow it — a game may have started since this page loaded, "
+            + "or the player is not eligible for that slot."
+          : err.message
+      );
     } finally {
       setBusyRow(null);
     }
@@ -726,7 +743,7 @@ function StartSit({ userName }) {
               league={league}
               onlyActionable={onlyActionable}
               canEdit={canEdit}
-              onSwap={handleSwap}
+              onSwap={requestSwap}
               busyRow={busyRow}
               benchOpen={openBenches.has(league.id)}
               onToggleBench={() =>
@@ -749,6 +766,51 @@ function StartSit({ userName }) {
           projection's own error, so treat them as a prompt to look, not an instruction.
           One player is only ever suggested for one slot.
         </p>
+      )}
+      {pendingSwap && (
+        <div className="ss-modal-overlay" onClick={closeSwap}>
+          <div className="ss-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Change this lineup?</h2>
+            <p className="ss-modal-league">{pendingSwap.league.name}</p>
+            <div className="ss-modal-swap">
+              <div className="ss-modal-side">
+                <span className="ss-modal-label">Out</span>
+                <span className="ss-modal-name">
+                  {pendingSwap.row.starter ? pendingSwap.row.starter.name : "empty slot"}
+                </span>
+                <span className="ss-modal-proj">
+                  {pendingSwap.row.starter?.hasProjection ? fmt(pendingSwap.row.starter.proj) : "—"}
+                </span>
+              </div>
+              <span className="ss-modal-arrow">→</span>
+              <div className="ss-modal-side">
+                <span className="ss-modal-label">In ({pendingSwap.row.slot})</span>
+                <span className="ss-modal-name">{pendingSwap.row.suggestion?.name}</span>
+                <span className="ss-modal-proj">
+                  {pendingSwap.row.suggestion?.hasProjection ? fmt(pendingSwap.row.suggestion.proj) : "—"}
+                </span>
+              </div>
+            </div>
+            <p className="ss-modal-note">
+              This changes your lineup on Sleeper
+              {pendingSwap.row.delta != null && ` — a projected gain of ${pendingSwap.row.delta.toFixed(1)}`}.
+            </p>
+            {swapError && <p className="ss-modal-error">{swapError}</p>}
+            <div className="ss-modal-buttons">
+              <button
+                type="button"
+                className="ss-modal-confirm"
+                onClick={confirmSwap}
+                disabled={!!busyRow}
+              >
+                {busyRow ? "Changing…" : "Make the change"}
+              </button>
+              <button type="button" className="ss-modal-cancel" onClick={closeSwap} disabled={!!busyRow}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
