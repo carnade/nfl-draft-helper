@@ -180,7 +180,7 @@ function PlayerRow({ row }) {
 }
 
 function BenchRow({ player, slots }) {
-  const fits = slots.filter((slot) => isEligible(slot, player));
+  const fits = [...new Set(slots.filter((slot) => isEligible(slot, player)))];
   return (
     <tr className="ss-row ss-row-bench">
       <td className="ss-slot ss-muted">{fits.length ? fits.join(", ") : "—"}</td>
@@ -245,6 +245,7 @@ function StartSit({ userName }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [onlyActionable, setOnlyActionable] = useState(false);
+  const [problems, setProblems] = useState([]);
   const projectionsRef = useRef(null);
 
   const displayName = auth?.display_name || userName;
@@ -278,6 +279,11 @@ function StartSit({ userName }) {
       const projKey = `sleeper_proj_week_${currentWeek}`;
       const dfsKey = `dfs_projections_week_${currentWeek}`;
 
+      // Everything below that comes from our own backend is optional: the page is
+      // still useful without it, but a silently blank column is indistinguishable
+      // from a player having no data, so failures are collected and shown.
+      const failed = [];
+
       const [projections, dfsRaw, teamStats, schedule, rosterLists] = await Promise.all([
         (async () => {
           if (projectionsRef.current?.week === currentWeek) return projectionsRef.current.data;
@@ -293,13 +299,28 @@ function StartSit({ userName }) {
           if (cached) return cached;
           // Only the current week is kept server-side; an older week 404s and the
           // page simply goes without recent-form numbers.
-          const res = await fetch(`${BASE_URL}/dfs-salaries/week/${currentWeek}`, { signal });
-          if (!res.ok) return {};
-          const data = await res.json();
-          writeCache(dfsKey, data);
-          return data;
+          try {
+            const res = await fetch(`${BASE_URL}/dfs-salaries/week/${currentWeek}`, { signal });
+            if (!res.ok) throw new Error(String(res.status));
+            const data = await res.json();
+            writeCache(dfsKey, data);
+            return data;
+          } catch (err) {
+            if (err.name !== "AbortError") failed.push("recent form");
+            return {};
+          }
         })(),
-        fetch(`${BASE_URL}/stats/teams`, { signal }).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+        fetch(`${BASE_URL}/stats/teams`, { signal })
+          .then((r) => {
+            if (!r.ok) throw new Error(String(r.status));
+            return r.json();
+          })
+          // Older backends wrap this in {teams: [...]}; accept either shape.
+          .then((d) => (Array.isArray(d) ? d : d?.teams || []))
+          .catch((err) => {
+            if (err.name !== "AbortError") failed.push("matchup ranks");
+            return [];
+          }),
         fetch(`https://api.sleeper.app/schedule/nfl/regular/${SEASON}`, { signal })
           .then((r) => (r.ok ? r.json() : [])).catch(() => []),
         Promise.all(
@@ -337,9 +358,15 @@ function StartSit({ userName }) {
           body: JSON.stringify({ playerlist: [...everyId] }),
           signal,
         })
-          .then((r) => (r.ok ? r.json() : {}))
+          .then((r) => {
+            if (!r.ok) throw new Error(String(r.status));
+            return r.json();
+          })
           .then((d) => d.players || d || {})
-          .catch(() => ({}));
+          .catch((err) => {
+            if (err.name !== "AbortError") failed.push("injury status");
+            return {};
+          });
       }
 
       const built = playable.map((league, i) => {
@@ -409,6 +436,7 @@ function StartSit({ userName }) {
 
       built.sort((a, b) => b.flagged - a.flagged || a.name.localeCompare(b.name));
       setLeagues(built);
+      setProblems(failed);
     } catch (err) {
       if (err.name !== "AbortError") setError(err.message || String(err));
     } finally {
@@ -460,6 +488,13 @@ function StartSit({ userName }) {
           </div>
         )}
       </header>
+
+      {!loading && problems.length > 0 && (
+        <p className="ss-warning" title={BASE_URL}>
+          Couldn't reach the stats backend for {problems.join(" and ")}, so those columns
+          show “—”. Everything else comes straight from Sleeper and is unaffected.
+        </p>
+      )}
 
       {loading && <p className="ss-empty">Reading your lineups…</p>}
       {error && <p className="ss-error">{error}</p>}
