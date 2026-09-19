@@ -48,6 +48,7 @@ export default function Changelog() {
         "Unticked leagues are left out of Leagues, Gameday and Start/Sit, so a page only shows the leagues you actually follow.",
         "The choice is remembered in this browser and saves as you tick, with Show all and Hide all for the whole list at once.",
         "Best ball is deliberately absent: those leagues have no lineup to set. A league joined later shows up by default rather than staying hidden.",
+        "Start/Sit can also be pointed at the name in the menu instead of the account you are signed in as, so another manager's lineups can be looked at without signing out.",
       ],
     },
     {
