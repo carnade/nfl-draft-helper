@@ -272,3 +272,13 @@
 .ss-group-header:first-of-type {
   margin-top: 4px;
 }
+
+/* A second header line keeps the qualifier out of the column width. */
+.ss-th-sub {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  opacity: 0.7;
+}

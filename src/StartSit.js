@@ -217,7 +217,13 @@ function LeagueCard({ league, onlyActionable }) {
           <thead>
             <tr>
               <th>Slot</th><th>Player</th><th>Matchup</th>
-              <th className="ss-num">Proj</th><th className="ss-num">DvP</th><th className="ss-num">L5</th>
+              <th className="ss-num" title="Sleeper's projection for this week, priced in this league's scoring — so TE premium and SuperFlex are included">
+                Proj
+              </th>
+              <th className="ss-num" title="Opponent's rank against this position, 1 = toughest">DvP</th>
+              <th className="ss-num" title="Average over the last 5 games in DraftKings scoring, which has no TE premium — so it is not on the same scale as Proj">
+                L5<span className="ss-th-sub">(no TEP)</span>
+              </th>
               <th>Status</th><th>Verdict</th><th>Suggestion</th>
             </tr>
           </thead>
