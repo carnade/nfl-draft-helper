@@ -18,6 +18,9 @@ const nflverseTeam = (team) => TEAM_ABBR_MAP[team] || team;
 // nflverse only ranks defences against these positions.
 const DVP_POSITIONS = new Set(["qb", "rb", "wr", "te"]);
 
+// Remembered so looking at someone else's leagues survives navigating away.
+const OVERRIDE_KEY = "startsit_use_menu_name";
+
 const PROJECTION_TTL_MS = 30 * 60 * 1000;
 const DFS_TTL_MS = 60 * 60 * 1000;
 
@@ -253,8 +256,30 @@ function StartSit({ userName }) {
   const [problems, setProblems] = useState([]);
   const projectionsRef = useRef(null);
 
-  const displayName = auth?.display_name || userName;
+  const [useMenuName, setUseMenuName] = useState(() => {
+    try {
+      return localStorage.getItem(OVERRIDE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  // Signing in normally decides whose lineups these are, but the menu name can
+  // take over — the page reads only public data, so any user works.
+  const loginName = auth?.display_name || null;
+  const menuName = (userName || "").trim();
+  const canOverride = !!loginName && !!menuName;
+  const displayName = canOverride && useMenuName ? menuName : loginName || menuName;
   const hiddenLeagues = useHiddenLeagues();
+
+  const toggleOverride = (checked) => {
+    setUseMenuName(checked);
+    try {
+      localStorage.setItem(OVERRIDE_KEY, checked ? "1" : "0");
+    } catch {
+      /* preference is not important enough to fail over */
+    }
+  };
 
   const load = useCallback(async (name, signal) => {
     setLoading(true);
@@ -499,6 +524,19 @@ function StartSit({ userName }) {
         <h1 className="ss-title">
           Start/Sit{week ? <span className="ss-week"> — week {week}</span> : null}
         </h1>
+        {canOverride && (
+          <div className="ss-whose">
+            <label className="ss-override">
+              <input
+                type="checkbox"
+                checked={useMenuName}
+                onChange={(e) => toggleOverride(e.target.checked)}
+              />
+              Use the menu name ({menuName}) instead of {loginName}
+            </label>
+            {useMenuName && <span className="ss-whose-note">showing {displayName}'s leagues</span>}
+          </div>
+        )}
         {!loading && leagues.length > 0 && (
           <div className="ss-summary">
             <span>{leagues.length} leagues</span>
