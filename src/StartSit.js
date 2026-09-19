@@ -203,8 +203,7 @@ function BenchRow({ player, slots }) {
   );
 }
 
-function LeagueCard({ league, onlyActionable }) {
-  const [showBench, setShowBench] = useState(false);
+function LeagueCard({ league, onlyActionable, benchOpen, onToggleBench }) {
   const { rows, bench, slots, flagged } = league;
   const shown = onlyActionable ? rows.filter((r) => r.verdict === "sit") : rows;
 
@@ -233,13 +232,13 @@ function LeagueCard({ league, onlyActionable }) {
           </thead>
           <tbody>
             {shown.map((row) => <PlayerRow key={`${row.slot}-${row.index}`} row={row} />)}
-            {showBench && bench.map((p) => <BenchRow key={p.id} player={p} slots={slots} />)}
+            {benchOpen && bench.map((p) => <BenchRow key={p.id} player={p} slots={slots} />)}
           </tbody>
         </table>
       </div>
       {bench.length > 0 && (
-        <button className="ss-bench-toggle" onClick={() => setShowBench((v) => !v)}>
-          {showBench ? "▼" : "►"} Bench ({bench.length})
+        <button className="ss-bench-toggle" onClick={onToggleBench} aria-expanded={benchOpen}>
+          {benchOpen ? "▼" : "►"} Bench ({bench.length})
         </button>
       )}
     </section>
@@ -253,6 +252,7 @@ function StartSit({ userName }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [onlyActionable, setOnlyActionable] = useState(false);
+  const [openBenches, setOpenBenches] = useState(() => new Set());
   const [problems, setProblems] = useState([]);
   const projectionsRef = useRef(null);
 
@@ -552,6 +552,14 @@ function StartSit({ userName }) {
               />
               Only show flagged
             </label>
+            <span className="ss-bulk">
+              <button type="button" onClick={() => setOpenBenches(new Set(visible.map((l) => l.id)))}>
+                Expand benches
+              </button>
+              <button type="button" onClick={() => setOpenBenches(new Set())}>
+                Collapse benches
+              </button>
+            </span>
           </div>
         )}
       </header>
@@ -577,7 +585,19 @@ function StartSit({ userName }) {
             {startsGroup && (
               <h2 className="ss-group-header">{league.isDynasty ? "Dynasty" : "Redraft"}</h2>
             )}
-            <LeagueCard league={league} onlyActionable={onlyActionable} />
+            <LeagueCard
+              league={league}
+              onlyActionable={onlyActionable}
+              benchOpen={openBenches.has(league.id)}
+              onToggleBench={() =>
+                setOpenBenches((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(league.id)) next.delete(league.id);
+                  else next.add(league.id);
+                  return next;
+                })
+              }
+            />
           </React.Fragment>
         );
       })}
