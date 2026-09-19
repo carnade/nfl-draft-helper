@@ -1,0 +1,284 @@
+.ss-page {
+  padding: 16px;
+  max-width: 1200px;
+}
+
+.ss-head {
+  margin-bottom: 16px;
+}
+
+.ss-title {
+  margin: 0 0 6px 0;
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.ss-week {
+  font-size: 1rem;
+  font-weight: 400;
+  opacity: 0.6;
+}
+
+.ss-summary {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.ss-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.ss-flag-on {
+  color: #d08a2f;
+  font-weight: 600;
+}
+
+.ss-card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius, 6px);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+
+.ss-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.ss-league-name {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.ss-flag-count {
+  font-size: 0.8rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.ss-table-wrap {
+  overflow-x: auto;
+}
+
+.ss-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  color: hsl(var(--foreground));
+}
+
+.ss-table th {
+  text-align: left;
+  padding: 6px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: hsl(var(--muted-foreground));
+  border-bottom: 1px solid hsl(var(--border));
+  white-space: nowrap;
+}
+
+.ss-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  white-space: nowrap;
+}
+
+.ss-num {
+  text-align: right;
+}
+
+.ss-table th.ss-num {
+  text-align: right;
+}
+
+.ss-slot {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+  text-transform: uppercase;
+}
+
+.ss-player {
+  font-weight: 500;
+}
+
+.ss-pos {
+  font-size: 0.72rem;
+  opacity: 0.6;
+  margin-left: 4px;
+}
+
+.ss-matchup {
+  font-size: 0.8rem;
+}
+
+.ss-vs {
+  opacity: 0.6;
+}
+
+.ss-bye {
+  color: #d08a2f;
+}
+
+.ss-muted {
+  opacity: 0.45;
+}
+
+.ss-row-sit {
+  background-color: hsl(38 70% 50% / 0.08);
+}
+
+.ss-row-locked {
+  opacity: 0.55;
+}
+
+.ss-row-bench td {
+  background-color: hsl(var(--muted) / 0.25);
+}
+
+.ss-verdict {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ss-verdict-start {
+  background-color: hsl(145 45% 42% / 0.18);
+  color: #5fae6d;
+}
+
+.ss-verdict-sit {
+  background-color: hsl(38 80% 50% / 0.2);
+  color: #d08a2f;
+}
+
+.ss-verdict-tossup {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+}
+
+.ss-verdict-locked {
+  background-color: transparent;
+  color: hsl(var(--muted-foreground));
+  font-weight: 400;
+}
+
+.ss-suggestion {
+  font-size: 0.8rem;
+}
+
+.ss-delta {
+  color: #5fae6d;
+  font-weight: 600;
+}
+
+.ss-status {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.ss-status-Out,
+.ss-status-IR,
+.ss-status-PUP,
+.ss-status-Sus,
+.ss-status-NA {
+  color: #e07070;
+}
+
+.ss-status-Questionable,
+.ss-status-Doubtful {
+  color: #d0a52f;
+}
+
+.ss-status-Bye {
+  color: #d08a2f;
+}
+
+.ss-bench-toggle {
+  margin-top: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+}
+
+.ss-bench-toggle:hover {
+  color: hsl(var(--foreground));
+}
+
+.ss-empty,
+.ss-error {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.9rem;
+}
+
+.ss-error {
+  color: #e07070;
+}
+
+.ss-footnote {
+  margin-top: 4px;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: hsl(var(--muted-foreground));
+  max-width: 68ch;
+}
+
+.ss-warning {
+  margin: 0 0 12px 0;
+  padding: 8px 12px;
+  border: 1px solid hsl(38 70% 50% / 0.4);
+  background-color: hsl(38 70% 50% / 0.1);
+  border-radius: var(--radius, 6px);
+  font-size: 0.82rem;
+  color: hsl(var(--foreground));
+}
+
+/* Dynasty first, redraft below — the same split the league page uses. */
+.ss-group-header {
+  margin: 18px 0 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+  padding-bottom: 4px;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.ss-group-header:first-of-type {
+  margin-top: 4px;
+}
+
+/* A second header line keeps the qualifier out of the column width. */
+.ss-th-sub {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  opacity: 0.7;
+}

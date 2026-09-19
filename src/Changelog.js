@@ -41,6 +41,19 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2026-09-19",
+      title: "Start/Sit",
+      items: [
+        "A new Start/Sit page reads every head-to-head league at once and flags the lineup slots worth a second look.",
+        "Projections are Sleeper's own, priced with each league's scoring — so TE premium and SuperFlex are counted properly rather than shown as plain PPR.",
+        "Each slot is compared against the bench players eligible for it; a gap of a point or more is flagged, and one player is only ever suggested for one slot.",
+        "Players on bye, ruled out, or missing a projection are flagged whatever the numbers say, and slots whose game has kicked off are shown as locked.",
+        "Each row carries the evidence behind the call: matchup difficulty, recent form and injury status, with the bench listed underneath showing which slots each player can fill.",
+        "Dynasty leagues sort above redraft ones under their own headers, and a filter narrows the page to just the leagues needing attention.",
+        "If the stats backend cannot be reached the page says which columns are affected, rather than leaving them blank with no explanation.",
+      ],
+    },
+    {
       date: "2026-09-16",
       title: "Waivers by week",
       items: [
