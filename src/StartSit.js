@@ -4,6 +4,7 @@ import { getDvpColor } from "./dvpColor";
 import { useSleeperAuth } from "./auth";
 import { projectedPoints, hasProjection, fetchWeekProjectionsUrl } from "./leagueScoring";
 import { evaluateLineup, countActionable, isEligible } from "./startSitModel";
+import { loadHiddenLeagues, visibleLeagues, useHiddenLeagues } from "./leagueVisibility";
 
 const SEASON = 2026;
 const BASE_URL = process.env.REACT_APP_MOCK
@@ -16,6 +17,9 @@ const nflverseTeam = (team) => TEAM_ABBR_MAP[team] || team;
 
 // nflverse only ranks defences against these positions.
 const DVP_POSITIONS = new Set(["qb", "rb", "wr", "te"]);
+
+// Remembered so looking at someone else's leagues survives navigating away.
+const OVERRIDE_KEY = "startsit_use_menu_name";
 
 const PROJECTION_TTL_MS = 30 * 60 * 1000;
 const DFS_TTL_MS = 60 * 60 * 1000;
@@ -199,8 +203,7 @@ function BenchRow({ player, slots }) {
   );
 }
 
-function LeagueCard({ league, onlyActionable }) {
-  const [showBench, setShowBench] = useState(false);
+function LeagueCard({ league, onlyActionable, benchOpen, onToggleBench }) {
   const { rows, bench, slots, flagged } = league;
   const shown = onlyActionable ? rows.filter((r) => r.verdict === "sit") : rows;
 
@@ -229,13 +232,13 @@ function LeagueCard({ league, onlyActionable }) {
           </thead>
           <tbody>
             {shown.map((row) => <PlayerRow key={`${row.slot}-${row.index}`} row={row} />)}
-            {showBench && bench.map((p) => <BenchRow key={p.id} player={p} slots={slots} />)}
+            {benchOpen && bench.map((p) => <BenchRow key={p.id} player={p} slots={slots} />)}
           </tbody>
         </table>
       </div>
       {bench.length > 0 && (
-        <button className="ss-bench-toggle" onClick={() => setShowBench((v) => !v)}>
-          {showBench ? "▼" : "►"} Bench ({bench.length})
+        <button className="ss-bench-toggle" onClick={onToggleBench} aria-expanded={benchOpen}>
+          {benchOpen ? "▼" : "►"} Bench ({bench.length})
         </button>
       )}
     </section>
@@ -249,10 +252,35 @@ function StartSit({ userName }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [onlyActionable, setOnlyActionable] = useState(false);
+  const [openBenches, setOpenBenches] = useState(() => new Set());
   const [problems, setProblems] = useState([]);
   const projectionsRef = useRef(null);
 
-  const displayName = auth?.display_name || userName;
+  const [useMenuName, setUseMenuName] = useState(() => {
+    try {
+      return localStorage.getItem(OVERRIDE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  // Signing in normally decides whose lineups these are, but the menu name can
+  // take over — the page reads only public data, so any user works.
+  const loginName = auth?.display_name || null;
+  const menuName = (userName || "").trim();
+  const canOverride =
+    !!loginName && !!menuName && menuName.toLowerCase() !== loginName.toLowerCase();
+  const displayName = canOverride && useMenuName ? menuName : loginName || menuName;
+  const hiddenLeagues = useHiddenLeagues();
+
+  const toggleOverride = (checked) => {
+    setUseMenuName(checked);
+    try {
+      localStorage.setItem(OVERRIDE_KEY, checked ? "1" : "0");
+    } catch {
+      /* preference is not important enough to fail over */
+    }
+  };
 
   const load = useCallback(async (name, signal) => {
     setLoading(true);
@@ -270,11 +298,15 @@ function StartSit({ userName }) {
         { signal }
       ).then((r) => r.json());
 
-      // Head-to-head only: best ball has no lineup to set.
-      const playable = (Array.isArray(allLeagues) ? allLeagues : []).filter((l) => {
-        const t = l.settings?.type;
-        return (t === 0 || t === 2) && l.settings?.best_ball !== 1;
-      });
+      // Head-to-head only: best ball has no lineup to set. Leagues switched off
+      // in Settings are dropped here too, so they never reach a request.
+      const playable = visibleLeagues(
+        (Array.isArray(allLeagues) ? allLeagues : []).filter((l) => {
+          const t = l.settings?.type;
+          return (t === 0 || t === 2) && l.settings?.best_ball !== 1;
+        }),
+        loadHiddenLeagues()
+      );
       if (playable.length === 0) {
         setLeagues([]);
         return;
@@ -460,7 +492,10 @@ function StartSit({ userName }) {
     const controller = new AbortController();
     load(displayName, controller.signal);
     return () => controller.abort();
-  }, [displayName, load]);
+    // hiddenLeagues is a dependency so hiding a league in Settings takes effect
+    // on return without a reload; load() reads the current set itself.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayName, load, hiddenLeagues]);
 
   const totalFlagged = useMemo(
     () => leagues.reduce((n, l) => n + l.flagged, 0),
@@ -471,6 +506,12 @@ function StartSit({ userName }) {
     () => leagues.filter((l) => !onlyActionable || l.flagged > 0),
     [leagues, onlyActionable]
   );
+
+  const allBenchesOpen =
+    visible.length > 0 && visible.every((l) => openBenches.has(l.id));
+
+  const toggleAllBenches = () =>
+    setOpenBenches(allBenchesOpen ? new Set() : new Set(visible.map((l) => l.id)));
 
   if (!displayName) {
     return (
@@ -490,6 +531,19 @@ function StartSit({ userName }) {
         <h1 className="ss-title">
           Start/Sit{week ? <span className="ss-week"> — week {week}</span> : null}
         </h1>
+        {canOverride && (
+          <div className="ss-whose">
+            <label className="ss-override">
+              <input
+                type="checkbox"
+                checked={useMenuName}
+                onChange={(e) => toggleOverride(e.target.checked)}
+              />
+              Use the menu name ({menuName}) instead of {loginName}
+            </label>
+            {useMenuName && <span className="ss-whose-note">showing {displayName}'s leagues</span>}
+          </div>
+        )}
         {!loading && leagues.length > 0 && (
           <div className="ss-summary">
             <span>{leagues.length} leagues</span>
@@ -504,6 +558,16 @@ function StartSit({ userName }) {
               />
               Only show flagged
             </label>
+            <button
+              type="button"
+              className="ss-bulk-btn"
+              onClick={toggleAllBenches}
+              aria-expanded={allBenchesOpen}
+            >
+              <span>{allBenchesOpen ? "Collapse benches" : "Expand benches"}</span>
+              {/* Sized for the longer label so the button never changes width. */}
+              <span className="ss-bulk-ghost" aria-hidden="true">Collapse benches</span>
+            </button>
           </div>
         )}
       </header>
@@ -529,7 +593,19 @@ function StartSit({ userName }) {
             {startsGroup && (
               <h2 className="ss-group-header">{league.isDynasty ? "Dynasty" : "Redraft"}</h2>
             )}
-            <LeagueCard league={league} onlyActionable={onlyActionable} />
+            <LeagueCard
+              league={league}
+              onlyActionable={onlyActionable}
+              benchOpen={openBenches.has(league.id)}
+              onToggleBench={() =>
+                setOpenBenches((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(league.id)) next.delete(league.id);
+                  else next.add(league.id);
+                  return next;
+                })
+              }
+            />
           </React.Fragment>
         );
       })}

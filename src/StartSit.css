@@ -282,3 +282,53 @@
   text-transform: none;
   opacity: 0.7;
 }
+
+/* Look at someone else's leagues without signing out. */
+.ss-whose {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 2px 0 8px;
+  font-size: 0.82rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.ss-override {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.ss-whose-note {
+  font-style: italic;
+  opacity: 0.8;
+}
+
+/* Both labels share one grid cell, so the button is always as wide as the longer
+   of the two and never jumps when the wording flips. */
+.ss-bulk-btn {
+  display: inline-grid;
+  justify-items: center;
+  font-size: 0.75rem;
+  padding: 2px 10px;
+  cursor: pointer;
+  background: none;
+  border: 1px solid hsl(var(--border));
+  border-radius: 4px;
+  color: inherit;
+  font-family: inherit;
+}
+
+.ss-bulk-btn > * {
+  grid-area: 1 / 1;
+}
+
+.ss-bulk-ghost {
+  visibility: hidden;
+}
+
+.ss-bulk-btn:hover {
+  background-color: hsl(var(--muted) / 0.4);
+}

@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useContext } from "react";
+import React, { useState, useEffect, useRef, useContext, useCallback } from "react";
+import { loadHiddenLeagues, saveHiddenLeagues } from "./leagueVisibility";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
 import { ThemeContext } from "./ThemeContext";
 import { loadSleeperAuth, notifySleeperAuthChanged } from "./auth";
@@ -48,6 +49,11 @@ function Settings() {
   const [smsCode, setSmsCode] = useState("");
   const [captchaToken, setCaptchaToken] = useState(null);
   const [loginError, setLoginError] = useState("");
+  const [showLeagues, setShowLeagues] = useState(false);
+  const [leagues, setLeagues] = useState([]);
+  const [leaguesLoading, setLeaguesLoading] = useState(false);
+  const [leaguesError, setLeaguesError] = useState("");
+  const [hiddenLeagues, setHiddenLeagues] = useState(() => loadHiddenLeagues());
   const captchaRef = useRef(null);
 
   async function handleSleeperLookup() {
@@ -220,6 +226,60 @@ function Settings() {
     });
     setUsername("");
     alert("Settings reset to defaults (REMEMBER to save).");
+  };
+
+  const fetchLeagues = useCallback(async () => {
+    const saved = JSON.parse(localStorage.getItem("FantasyHelperSettings") || "{}");
+    const name = (saved.username || username || "").trim();
+    if (!name) {
+      setLeaguesError("Set a user name above and save it first.");
+      return;
+    }
+    setLeaguesLoading(true);
+    setLeaguesError("");
+    try {
+      const user = await fetch(`https://api.sleeper.app/v1/user/${name}`).then((r) => r.json());
+      if (!user?.user_id) throw new Error(`No Sleeper user called "${name}"`);
+      const all = await fetch(
+        `https://api.sleeper.app/v1/user/${user.user_id}/leagues/nfl/2026`
+      ).then((r) => r.json());
+      const playable = (Array.isArray(all) ? all : []).filter(
+        (l) => l.settings?.best_ball !== 1
+      );
+      playable.sort(
+        (a, b) =>
+          Number(b.settings?.type === 2) - Number(a.settings?.type === 2) ||
+          a.name.localeCompare(b.name)
+      );
+      setLeagues(playable);
+    } catch (err) {
+      setLeaguesError(err.message || String(err));
+    } finally {
+      setLeaguesLoading(false);
+    }
+  }, [username]);
+
+  // Load the list the first time the section is opened.
+  useEffect(() => {
+    if (showLeagues && leagues.length === 0 && !leaguesLoading && !leaguesError) {
+      fetchLeagues();
+    }
+  }, [showLeagues, leagues.length, leaguesLoading, leaguesError, fetchLeagues]);
+
+  // Visibility saves immediately: it is a view preference, not part of the
+  // settings blob behind the Save button.
+  const toggleLeague = (leagueId, visible) => {
+    const next = new Set(hiddenLeagues);
+    if (visible) next.delete(String(leagueId));
+    else next.add(String(leagueId));
+    setHiddenLeagues(next);
+    saveHiddenLeagues(next);
+  };
+
+  const setAllLeagues = (visible) => {
+    const next = visible ? new Set() : new Set(leagues.map((l) => String(l.league_id)));
+    setHiddenLeagues(next);
+    saveHiddenLeagues(next);
   };
 
   const handleSave = () => {
@@ -526,6 +586,64 @@ function Settings() {
         </div>
 
         {/* Two buttons in one row: "Reset to Defaults" (red, left) & "Save" (right) */}
+        <div className="separator-field">
+          <hr className="separator" />
+        </div>
+
+        <div className="settings-field">
+          <button
+            type="button"
+            className="league-visibility-toggle"
+            onClick={() => setShowLeagues((v) => !v)}
+            aria-expanded={showLeagues}
+          >
+            {showLeagues ? "▼" : "►"} Show / hide leagues
+            {hiddenLeagues.size > 0 && (
+              <span className="league-visibility-count"> ({hiddenLeagues.size} hidden)</span>
+            )}
+          </button>
+        </div>
+
+        {showLeagues && (
+          <div className="league-visibility">
+            <p className="league-visibility-hint">
+              Unticked leagues are left out of Leagues, Gameday and Start/Sit. Best ball is
+              not listed — it has no lineup to set.
+            </p>
+            {leaguesLoading && <p className="league-visibility-hint">Loading leagues…</p>}
+            {leaguesError && <p className="league-visibility-error">{leaguesError}</p>}
+            {!leaguesLoading && !leaguesError && leagues.length > 0 && (
+              <>
+                <div className="league-visibility-actions">
+                  <button type="button" onClick={() => setAllLeagues(true)}>Show all</button>
+                  <button type="button" onClick={() => setAllLeagues(false)}>Hide all</button>
+                </div>
+                {["Dynasty", "Redraft"].map((group) => {
+                  const inGroup = leagues.filter(
+                    (l) => (l.settings?.type === 2) === (group === "Dynasty")
+                  );
+                  if (inGroup.length === 0) return null;
+                  return (
+                    <div key={group} className="league-visibility-group">
+                      <h3 className="league-visibility-group-title">{group}</h3>
+                      {inGroup.map((league) => (
+                        <label key={league.league_id} className="league-visibility-row">
+                          <input
+                            type="checkbox"
+                            checked={!hiddenLeagues.has(String(league.league_id))}
+                            onChange={(e) => toggleLeague(league.league_id, e.target.checked)}
+                          />
+                          <span>{league.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  );
+                })}
+              </>
+            )}
+          </div>
+        )}
+
         <div className="settings-actions">
           <button className="reset-button" onClick={handleResetDefaults}>
             Reset to Defaults
