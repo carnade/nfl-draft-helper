@@ -626,7 +626,11 @@ function StartSit({ userName }) {
         })
       );
     } catch (err) {
-      window.alert(`Could not change the lineup: ${err.message}`);
+      const detail = /illegal/i.test(err.message)
+        ? "Sleeper would not allow it — a game may have started since this page loaded, "
+          + "or the player is not eligible for that slot."
+        : err.message;
+      window.alert(`Could not change the lineup: ${detail}`);
     } finally {
       setBusyRow(null);
     }
