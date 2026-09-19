@@ -507,6 +507,12 @@ function StartSit({ userName }) {
     [leagues, onlyActionable]
   );
 
+  const allBenchesOpen =
+    visible.length > 0 && visible.every((l) => openBenches.has(l.id));
+
+  const toggleAllBenches = () =>
+    setOpenBenches(allBenchesOpen ? new Set() : new Set(visible.map((l) => l.id)));
+
   if (!displayName) {
     return (
       <div className="ss-page">
@@ -552,14 +558,16 @@ function StartSit({ userName }) {
               />
               Only show flagged
             </label>
-            <span className="ss-bulk">
-              <button type="button" onClick={() => setOpenBenches(new Set(visible.map((l) => l.id)))}>
-                Expand benches
-              </button>
-              <button type="button" onClick={() => setOpenBenches(new Set())}>
-                Collapse benches
-              </button>
-            </span>
+            <button
+              type="button"
+              className="ss-bulk-btn"
+              onClick={toggleAllBenches}
+              aria-expanded={allBenchesOpen}
+            >
+              <span>{allBenchesOpen ? "Collapse benches" : "Expand benches"}</span>
+              {/* Sized for the longer label so the button never changes width. */}
+              <span className="ss-bulk-ghost" aria-hidden="true">Collapse benches</span>
+            </button>
           </div>
         )}
       </header>

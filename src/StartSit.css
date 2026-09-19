@@ -306,12 +306,11 @@
   opacity: 0.8;
 }
 
-.ss-bulk {
-  display: inline-flex;
-  gap: 6px;
-}
-
-.ss-bulk button {
+/* Both labels share one grid cell, so the button is always as wide as the longer
+   of the two and never jumps when the wording flips. */
+.ss-bulk-btn {
+  display: inline-grid;
+  justify-items: center;
   font-size: 0.75rem;
   padding: 2px 10px;
   cursor: pointer;
@@ -322,6 +321,14 @@
   font-family: inherit;
 }
 
-.ss-bulk button:hover {
+.ss-bulk-btn > * {
+  grid-area: 1 / 1;
+}
+
+.ss-bulk-ghost {
+  visibility: hidden;
+}
+
+.ss-bulk-btn:hover {
   background-color: hsl(var(--muted) / 0.4);
 }
