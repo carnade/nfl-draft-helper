@@ -476,7 +476,10 @@ function StartSit({ userName }) {
     return (
       <div className="ss-page">
         <h1 className="ss-title">Start/Sit</h1>
-        <p className="ss-empty">Set a user name, or connect your Sleeper account in Settings, to see your lineups.</p>
+        <p className="ss-empty">
+          To see your lineups, enter a user name in the menu or sign in with Sleeper in
+          Settings — either one is enough.
+        </p>
       </div>
     );
   }
