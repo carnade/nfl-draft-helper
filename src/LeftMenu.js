@@ -6,6 +6,7 @@ import {
   faFlaskVial,
   faMedal,
   faFootball,
+  faClipboardCheck,
   faStopwatch,
   faLayerGroup,
   faHouse,
@@ -123,6 +124,12 @@ function LeftMenu({ userName, setUserName }) {
           <Link to="/gameday" className="menu-link">
             <FontAwesomeIcon icon={faFootball} className="menu-icon" />
             <span>Gameday</span>
+          </Link>
+        </li>
+        <li>
+          <Link to="/startsit" className="menu-link">
+            <FontAwesomeIcon icon={faClipboardCheck} className="menu-icon" />
+            <span>Start/Sit</span>
           </Link>
         </li>
         <li>

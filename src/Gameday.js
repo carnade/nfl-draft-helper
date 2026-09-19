@@ -1,12 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import "./Gameday.css";
 
+import { projectedPoints, PROJECTION_POSITIONS } from "./leagueScoring";
+
 const SEASON = 2026;
-// Projections for every player would be 5.4 MB; restricting to the positions that
-// can start brings it under 2 MB, and it is fetched once per visit.
-const PROJECTION_POSITIONS = ["QB", "RB", "WR", "TE", "K", "DEF"]
-  .map((p) => `position[]=${p}`)
-  .join("&");
 // How often to re-read scores while games are on. Projections are left alone —
 // they move with injury news, not with play — so a poll only costs two small
 // requests per league.
@@ -69,23 +66,6 @@ async function anyGameInProgress(week, signal) {
   return (Array.isArray(games) ? games : []).some(
     (g) => g.week === week && !IDLE_GAME_STATUSES.has(g.status)
   );
-}
-
-// Sleeper's proj_points is the pre-week projection and does not move once games
-// start, which is why it drifts from the number Sleeper's own app shows. That
-// number is the same sum with played starters swapped for what they actually
-// scored, so compute it the same way: projected stats priced by this league's
-// scoring settings, replaced by real points as they come in.
-function projectedPoints(stats, scoring) {
-  if (!stats || !scoring) return 0;
-  let total = 0;
-  for (const [stat, value] of Object.entries(stats)) {
-    const multiplier = scoring[stat];
-    if (typeof value === "number" && typeof multiplier === "number") {
-      total += value * multiplier;
-    }
-  }
-  return total;
 }
 
 function getAuth() {

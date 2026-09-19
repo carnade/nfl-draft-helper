@@ -21,6 +21,7 @@ import { ChangelogWithReadMark } from "./Changelog";
 import Stats from "./Stats";
 import Odds from "./Odds";
 import Gameday from "./Gameday";
+import StartSit from "./StartSit";
 import "./Layout.css";
 import "./LeftMenu.css";
 import "./GenericStyles.css";
@@ -127,6 +128,7 @@ function App() {
                 }
               />
               <Route path="/gameday" element={<Gameday />} />
+              <Route path="/startsit" element={<StartSit userName={userName} />} />
               <Route path="/stats" element={<Stats />} />
               <Route path="/odds" element={<Odds />} />
               <Route path="/changelog" element={<ChangelogWithReadMark />} />
