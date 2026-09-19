@@ -4,6 +4,7 @@ import { getDvpColor } from "./dvpColor";
 import { useSleeperAuth } from "./auth";
 import { projectedPoints, hasProjection, fetchWeekProjectionsUrl } from "./leagueScoring";
 import { evaluateLineup, countActionable, isEligible } from "./startSitModel";
+import { loadHiddenLeagues, visibleLeagues, useHiddenLeagues } from "./leagueVisibility";
 
 const SEASON = 2026;
 const BASE_URL = process.env.REACT_APP_MOCK
@@ -253,6 +254,7 @@ function StartSit({ userName }) {
   const projectionsRef = useRef(null);
 
   const displayName = auth?.display_name || userName;
+  const hiddenLeagues = useHiddenLeagues();
 
   const load = useCallback(async (name, signal) => {
     setLoading(true);
@@ -270,11 +272,15 @@ function StartSit({ userName }) {
         { signal }
       ).then((r) => r.json());
 
-      // Head-to-head only: best ball has no lineup to set.
-      const playable = (Array.isArray(allLeagues) ? allLeagues : []).filter((l) => {
-        const t = l.settings?.type;
-        return (t === 0 || t === 2) && l.settings?.best_ball !== 1;
-      });
+      // Head-to-head only: best ball has no lineup to set. Leagues switched off
+      // in Settings are dropped here too, so they never reach a request.
+      const playable = visibleLeagues(
+        (Array.isArray(allLeagues) ? allLeagues : []).filter((l) => {
+          const t = l.settings?.type;
+          return (t === 0 || t === 2) && l.settings?.best_ball !== 1;
+        }),
+        loadHiddenLeagues()
+      );
       if (playable.length === 0) {
         setLeagues([]);
         return;
@@ -460,7 +466,10 @@ function StartSit({ userName }) {
     const controller = new AbortController();
     load(displayName, controller.signal);
     return () => controller.abort();
-  }, [displayName, load]);
+    // hiddenLeagues is a dependency so hiding a league in Settings takes effect
+    // on return without a reload; load() reads the current set itself.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayName, load, hiddenLeagues]);
 
   const totalFlagged = useMemo(
     () => leagues.reduce((n, l) => n + l.flagged, 0),

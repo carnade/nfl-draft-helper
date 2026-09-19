@@ -41,6 +41,16 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2026-09-20",
+      title: "Show or hide leagues",
+      items: [
+        "Settings has a new Show / hide leagues section listing every dynasty and redraft league with a tick box each.",
+        "Unticked leagues are left out of Leagues, Gameday and Start/Sit, so a page only shows the leagues you actually follow.",
+        "The choice is remembered in this browser and saves as you tick, with Show all and Hide all for the whole list at once.",
+        "Best ball is deliberately absent: those leagues have no lineup to set. A league joined later shows up by default rather than staying hidden.",
+      ],
+    },
+    {
       date: "2026-09-19",
       title: "Start/Sit",
       items: [

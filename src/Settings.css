@@ -343,3 +343,86 @@
 .sleeper-sms-btn:hover {
   background: #3a8a3a;
 }
+
+/* Show / hide leagues — which leagues the other pages are allowed to show. */
+.league-visibility-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+}
+
+.league-visibility-toggle:hover {
+  opacity: 0.8;
+}
+
+.league-visibility-count {
+  font-weight: 400;
+  opacity: 0.6;
+}
+
+.league-visibility {
+  margin: 8px 0 4px;
+  padding: 10px 12px;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius, 6px);
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.league-visibility-hint {
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.league-visibility-error {
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+  color: #e07070;
+}
+
+.league-visibility-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.league-visibility-actions button {
+  font-size: 0.75rem;
+  padding: 2px 10px;
+  cursor: pointer;
+  background: none;
+  border: 1px solid hsl(var(--border));
+  border-radius: 4px;
+  color: inherit;
+}
+
+.league-visibility-actions button:hover {
+  background-color: hsl(var(--muted) / 0.4);
+}
+
+.league-visibility-group + .league-visibility-group {
+  margin-top: 10px;
+}
+
+.league-visibility-group-title {
+  margin: 0 0 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.league-visibility-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 0.85rem;
+  cursor: pointer;
+}

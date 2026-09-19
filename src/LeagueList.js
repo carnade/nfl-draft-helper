@@ -8,6 +8,7 @@ import {
 import { useParams } from "react-router-dom";
 import DraftModal from "./DraftModal";
 import { getDvpColor } from "./dvpColor";
+import { loadHiddenLeagues, visibleLeagues } from "./leagueVisibility";
 import "./LeagueList.css";
 
 // Add a mock flag
@@ -778,9 +779,13 @@ function LeagueList() {
       );
       const leaguesData = await leaguesResponse.json();
 
-      const filteredLeagues = leaguesData.filter(
-        (league) =>
-          league.settings.best_ball === 0 || league.settings.best_ball == null
+      const filteredLeagues = visibleLeagues(
+        leaguesData.filter(
+          (league) =>
+            league.settings.best_ball === 0 || league.settings.best_ball == null
+        ),
+        // Leagues switched off in Settings.
+        loadHiddenLeagues()
       );
 
       const leagueDetailsPromises = filteredLeagues.map(async (league) => {

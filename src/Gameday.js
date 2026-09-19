@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import "./Gameday.css";
 
 import { projectedPoints, PROJECTION_POSITIONS } from "./leagueScoring";
+import { loadHiddenLeagues, visibleLeagues } from "./leagueVisibility";
 
 const SEASON = 2026;
 // How often to re-read scores while games are on. Projections are left alone —
@@ -226,12 +227,14 @@ export default function Gameday() {
 
       const week = state?.week || 1;
       weekRef.current = week;
-      const filtered = Array.isArray(leagues)
+      const playable = Array.isArray(leagues)
         ? leagues.filter((l) => {
             const t = l.settings?.type;
             return (t === 0 || t === 2) && l.settings?.best_ball !== 1;
           })
         : [];
+      // Leagues the user has switched off in Settings.
+      const filtered = visibleLeagues(playable, loadHiddenLeagues());
 
       if (filtered.length === 0) {
         setMatchups([]);
