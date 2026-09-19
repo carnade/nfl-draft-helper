@@ -472,12 +472,7 @@ function StartSit({ userName }) {
         };
       });
 
-      built.sort(
-        (a, b) =>
-          Number(b.isDynasty) - Number(a.isDynasty) ||
-          b.flagged - a.flagged ||
-          a.name.localeCompare(b.name)
-      );
+      built.sort((a, b) => Number(b.isDynasty) - Number(a.isDynasty));
       setLeagues(built);
       setProblems(failed);
     } catch (err) {
