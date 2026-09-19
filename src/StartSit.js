@@ -204,12 +204,10 @@ function LeagueCard({ league, onlyActionable }) {
   const { rows, bench, slots, flagged } = league;
   const shown = onlyActionable ? rows.filter((r) => r.verdict === "sit") : rows;
 
-  if (onlyActionable && shown.length === 0) return null;
-
   return (
     <section className="ss-card">
       <header className="ss-card-head">
-        <h2 className="ss-league-name">{league.name}</h2>
+        <h3 className="ss-league-name">{league.name}</h3>
         <span className={`ss-flag-count ${flagged ? "ss-flag-on" : ""}`}>
           {flagged ? `${flagged} to look at` : "lineup looks right"}
         </span>
@@ -427,6 +425,8 @@ function StartSit({ userName }) {
         return {
           id: league.league_id,
           name: league.name,
+          // Same test the league page uses: type 2 is dynasty, 0 is redraft.
+          isDynasty: league.settings?.type === 2,
           slots: rows.map((r) => r.slot),
           rows,
           bench: bench.map((id) => playerById[id]).filter(Boolean).sort((a, b) => (b.proj ?? 0) - (a.proj ?? 0)),
@@ -434,7 +434,12 @@ function StartSit({ userName }) {
         };
       });
 
-      built.sort((a, b) => b.flagged - a.flagged || a.name.localeCompare(b.name));
+      built.sort(
+        (a, b) =>
+          Number(b.isDynasty) - Number(a.isDynasty) ||
+          b.flagged - a.flagged ||
+          a.name.localeCompare(b.name)
+      );
       setLeagues(built);
       setProblems(failed);
     } catch (err) {
@@ -454,6 +459,11 @@ function StartSit({ userName }) {
   const totalFlagged = useMemo(
     () => leagues.reduce((n, l) => n + l.flagged, 0),
     [leagues]
+  );
+
+  const visible = useMemo(
+    () => leagues.filter((l) => !onlyActionable || l.flagged > 0),
+    [leagues, onlyActionable]
   );
 
   if (!displayName) {
@@ -502,9 +512,18 @@ function StartSit({ userName }) {
         <p className="ss-empty">No head-to-head leagues found for {displayName}.</p>
       )}
 
-      {!loading && leagues.map((league) => (
-        <LeagueCard key={league.id} league={league} onlyActionable={onlyActionable} />
-      ))}
+      {!loading && visible.map((league, i) => {
+        const previous = visible[i - 1];
+        const startsGroup = !previous || previous.isDynasty !== league.isDynasty;
+        return (
+          <React.Fragment key={league.id}>
+            {startsGroup && (
+              <h2 className="ss-group-header">{league.isDynasty ? "Dynasty" : "Redraft"}</h2>
+            )}
+            <LeagueCard league={league} onlyActionable={onlyActionable} />
+          </React.Fragment>
+        );
+      })}
 
       {!loading && leagues.length > 0 && (
         <p className="ss-footnote">
