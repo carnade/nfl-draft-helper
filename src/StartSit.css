@@ -332,3 +332,173 @@
 .ss-bulk-btn:hover {
   background-color: hsl(var(--muted) / 0.4);
 }
+
+/* Applying a suggested change. Deliberately quiet — it writes to Sleeper. */
+.ss-swap {
+  margin-left: 8px;
+  padding: 1px 8px;
+  font-size: 0.72rem;
+  font-family: inherit;
+  cursor: pointer;
+  background: none;
+  border: 1px solid hsl(var(--border));
+  border-radius: 4px;
+  color: inherit;
+}
+
+.ss-swap:hover:not(:disabled) {
+  background-color: hsl(145 45% 42% / 0.2);
+  border-color: hsl(145 45% 42% / 0.6);
+}
+
+.ss-swap:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+/* Confirming a lineup change. Mirrors the DFS modal, but with its own classes —
+   those styles live in DFS.css, which only the DFS page imports. */
+.ss-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: hsl(222 30% 10% / 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+body.light .ss-modal-overlay {
+  background: hsl(222 30% 10% / 0.4);
+}
+
+.ss-modal {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius, 6px);
+  padding: 1.75rem;
+  max-width: 460px;
+  width: 100%;
+  box-shadow: 0 20px 60px hsl(var(--foreground) / 0.15);
+  animation: ssSlideUp 0.2s ease;
+}
+
+@keyframes ssSlideUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.ss-modal h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  text-align: center;
+  color: hsl(var(--foreground));
+}
+
+.ss-modal-league {
+  margin: 0 0 1.25rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.ss-modal-swap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 1rem;
+}
+
+.ss-modal-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ss-modal-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: hsl(var(--muted-foreground));
+}
+
+.ss-modal-name {
+  font-weight: 600;
+  text-align: center;
+  color: hsl(var(--foreground));
+}
+
+.ss-modal-proj {
+  font-size: 0.85rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.ss-modal-arrow {
+  font-size: 1.1rem;
+  color: hsl(var(--muted-foreground));
+  flex-shrink: 0;
+}
+
+.ss-modal-note {
+  margin: 0 0 1rem;
+  text-align: center;
+  font-size: 0.82rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.ss-modal-error {
+  margin: 0 0 1rem;
+  padding: 8px 10px;
+  border: 1px solid hsl(0 70% 55% / 0.4);
+  background-color: hsl(0 70% 55% / 0.1);
+  border-radius: var(--radius, 6px);
+  font-size: 0.82rem;
+  color: hsl(var(--foreground));
+}
+
+.ss-modal-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.ss-modal-confirm,
+.ss-modal-cancel {
+  padding: 0.5rem 1.1rem;
+  border-radius: var(--radius, 6px);
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  font-family: inherit;
+}
+
+.ss-modal-confirm {
+  background-color: hsl(145 45% 38%);
+  color: #fff;
+}
+
+.ss-modal-confirm:hover:not(:disabled) {
+  background-color: hsl(145 45% 33%);
+}
+
+.ss-modal-cancel {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+}
+
+.ss-modal-cancel:hover:not(:disabled) {
+  background-color: hsl(var(--muted) / 0.8);
+}
+
+.ss-modal-confirm:disabled,
+.ss-modal-cancel:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
