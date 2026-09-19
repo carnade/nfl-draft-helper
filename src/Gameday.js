@@ -107,7 +107,12 @@ async function resolveUserId(auth, signal) {
   return user.user_id;
 }
 
-async function fetchLeagueMatchup(leagueId, token, signal) {
+// `round` is the NFL week: round 2 returns week 2's pairing. It used to be pinned
+// to 1, which was right only while week 1 was current — after the rollover the
+// opponent stayed on week 1 while the scores, which come from the REST call, moved
+// on. Preseason reports week 0, where there are no legs, so ask for week 1 then.
+async function fetchLeagueMatchup(leagueId, token, signal, week) {
+  const round = week > 0 ? week : 1;
   const query = `query get_league_detail {
     league_rosters(league_id: "${leagueId}"){
       league_id owner_id roster_id
@@ -115,10 +120,7 @@ async function fetchLeagueMatchup(leagueId, token, signal) {
     league_users(league_id: "${leagueId}"){
       user_id display_name
     }
-    matchup_legs_1:matchup_legs(league_id: "${leagueId}", round: 1){
-      matchup_id roster_id points proj_points starters player_map
-    }
-    matchup_legs_0:matchup_legs(league_id: "${leagueId}", round: 0){
+    matchup_legs(league_id: "${leagueId}", round: ${round}){
       matchup_id roster_id points proj_points starters player_map
     }
   }`;
@@ -141,9 +143,7 @@ async function fetchLeagueMatchup(leagueId, token, signal) {
 function buildMatchupResult(gqlData, userId, { scoring, projections, playerPoints, gameClocks }) {
   const rosters = gqlData.league_rosters || [];
   const users = gqlData.league_users || [];
-  const legs1 = gqlData.matchup_legs_1 || [];
-  const legs0 = gqlData.matchup_legs_0 || [];
-  const legs = legs1.length > 0 ? legs1 : legs0;
+  const legs = gqlData.matchup_legs || [];
 
   const ownerToName = {};
   for (const u of users) ownerToName[u.user_id] = u.display_name;
@@ -280,7 +280,7 @@ export default function Gameday() {
           const base = { leagueName: league.name, leagueType, leagueId: league.league_id };
           try {
             const [gqlData, weekMatchups] = await Promise.all([
-              fetchLeagueMatchup(league.league_id, auth.token, signal),
+              fetchLeagueMatchup(league.league_id, auth.token, signal, week),
               fetch(`https://api.sleeper.app/v1/league/${league.league_id}/matchups/${week}`, { signal })
                 .then((r) => r.json()),
             ]);
