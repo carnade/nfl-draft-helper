@@ -268,7 +268,8 @@ function StartSit({ userName }) {
   // take over — the page reads only public data, so any user works.
   const loginName = auth?.display_name || null;
   const menuName = (userName || "").trim();
-  const canOverride = !!loginName && !!menuName;
+  const canOverride =
+    !!loginName && !!menuName && menuName.toLowerCase() !== loginName.toLowerCase();
   const displayName = canOverride && useMenuName ? menuName : loginName || menuName;
   const hiddenLeagues = useHiddenLeagues();
 
