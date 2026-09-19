@@ -332,3 +332,26 @@
 .ss-bulk-btn:hover {
   background-color: hsl(var(--muted) / 0.4);
 }
+
+/* Applying a suggested change. Deliberately quiet — it writes to Sleeper. */
+.ss-swap {
+  margin-left: 8px;
+  padding: 1px 8px;
+  font-size: 0.72rem;
+  font-family: inherit;
+  cursor: pointer;
+  background: none;
+  border: 1px solid hsl(var(--border));
+  border-radius: 4px;
+  color: inherit;
+}
+
+.ss-swap:hover:not(:disabled) {
+  background-color: hsl(145 45% 42% / 0.2);
+  border-color: hsl(145 45% 42% / 0.6);
+}
+
+.ss-swap:disabled {
+  cursor: default;
+  opacity: 0.5;
+}

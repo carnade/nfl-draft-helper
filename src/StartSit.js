@@ -95,6 +95,38 @@ function lockedTeamsFor(schedule, week) {
   return locked;
 }
 
+// Sleeper's own lineup change, captured from its web app. `starters` is the whole
+// slot-ordered array, so a swap is that array with one index replaced. leg and
+// round are both the NFL week in the regular season.
+async function submitLineup({ leagueId, rosterId, week, starters, token, signal }) {
+  const list = starters.map((id) => JSON.stringify(String(id))).join(",");
+  const query = `mutation update_matchup_leg($starters_games: Map) {
+    update_matchup_leg(league_id: ${JSON.stringify(String(leagueId))},roster_id: ${Number(rosterId)},leg: ${Number(week)},round: ${Number(week)},starters: [${list}],starters_games: $starters_games){
+      league_id leg matchup_id roster_id round starters players starters_games
+    }
+  }`;
+
+  const res = await fetch("https://sleeper.com/graphql", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-platform": "web",
+      authorization: token,
+      "x-sleeper-graphql-op": "update_matchup_leg",
+    },
+    body: JSON.stringify({ operationName: "update_matchup_leg", variables: {}, query }),
+    signal,
+  });
+
+  const json = await res.json().catch(() => null);
+  // Sleeper answers 200 with an errors array rather than an HTTP error code.
+  if (json?.errors?.length) throw new Error(json.errors[0]?.message || "Sleeper rejected the change");
+  if (!res.ok) throw new Error(`Sleeper returned ${res.status}`);
+  const updated = json?.data?.update_matchup_leg;
+  if (!updated?.starters) throw new Error("Sleeper returned no lineup");
+  return updated;
+}
+
 function fmt(value, decimals = 1) {
   if (value == null || value === "" || Number.isNaN(Number(value))) return "—";
   return Number(value).toFixed(decimals);
@@ -148,20 +180,28 @@ function VerdictCell({ row }) {
   );
 }
 
-function SuggestionCell({ row }) {
+function SuggestionCell({ row, canEdit, onSwap, busy }) {
   if (row.verdict === "locked") return <span className="ss-muted">—</span>;
   if (row.noReplacement) return <span className="ss-muted">no eligible replacement</span>;
   if (!row.suggestion) return <span className="ss-muted">—</span>;
   const delta = row.delta;
+  // Neither side may have kicked off: the outgoing player is leaving a lineup
+  // that has already counted, and the incoming one cannot be added late.
+  const swappable = canEdit && !row.locked && !row.starter?.locked && !row.suggestion.locked;
   return (
     <span className="ss-suggestion">
       → {row.suggestion.name}
       {delta != null && <span className="ss-delta"> (+{delta.toFixed(1)})</span>}
+      {swappable && (
+        <button type="button" className="ss-swap" onClick={onSwap} disabled={busy}>
+          {busy ? "…" : "Make the change"}
+        </button>
+      )}
     </span>
   );
 }
 
-function PlayerRow({ row }) {
+function PlayerRow({ row, canEdit, onSwap, busy }) {
   const p = row.starter;
   return (
     <tr className={`ss-row ss-row-${row.verdict}`}>
@@ -178,7 +218,9 @@ function PlayerRow({ row }) {
       <td className="ss-num">{fmt(p?.l5)}</td>
       <td><StatusCell player={p} /></td>
       <td><VerdictCell row={row} /></td>
-      <td className="ss-suggestion-cell"><SuggestionCell row={row} /></td>
+      <td className="ss-suggestion-cell">
+        <SuggestionCell row={row} canEdit={canEdit} onSwap={onSwap} busy={busy} />
+      </td>
     </tr>
   );
 }
@@ -203,7 +245,7 @@ function BenchRow({ player, slots }) {
   );
 }
 
-function LeagueCard({ league, onlyActionable, benchOpen, onToggleBench }) {
+function LeagueCard({ league, onlyActionable, benchOpen, onToggleBench, canEdit, onSwap, busyRow }) {
   const { rows, bench, slots, flagged } = league;
   const shown = onlyActionable ? rows.filter((r) => r.verdict === "sit") : rows;
 
@@ -231,7 +273,15 @@ function LeagueCard({ league, onlyActionable, benchOpen, onToggleBench }) {
             </tr>
           </thead>
           <tbody>
-            {shown.map((row) => <PlayerRow key={`${row.slot}-${row.index}`} row={row} />)}
+            {shown.map((row) => (
+              <PlayerRow
+                key={`${row.slot}-${row.index}`}
+                row={row}
+                canEdit={canEdit}
+                busy={busyRow === `${league.id}:${row.index}`}
+                onSwap={() => onSwap(league, row)}
+              />
+            ))}
             {benchOpen && bench.map((p) => <BenchRow key={p.id} player={p} slots={slots} />)}
           </tbody>
         </table>
@@ -253,6 +303,7 @@ function StartSit({ userName }) {
   const [error, setError] = useState(null);
   const [onlyActionable, setOnlyActionable] = useState(false);
   const [openBenches, setOpenBenches] = useState(() => new Set());
+  const [busyRow, setBusyRow] = useState(null);
   const [problems, setProblems] = useState([]);
   const projectionsRef = useRef(null);
 
@@ -272,6 +323,12 @@ function StartSit({ userName }) {
     !!loginName && !!menuName && menuName.toLowerCase() !== loginName.toLowerCase();
   const displayName = canOverride && useMenuName ? menuName : loginName || menuName;
   const hiddenLeagues = useHiddenLeagues();
+
+  // Writing a lineup acts as whoever the token belongs to, so it is offered only
+  // when the page is showing that same account. With the override on, the lineup
+  // on screen belongs to someone else and must stay read-only.
+  const canEdit =
+    !!auth?.token && !!loginName && displayName.toLowerCase() === loginName.toLowerCase();
 
   const toggleOverride = (checked) => {
     setUseMenuName(checked);
@@ -465,6 +522,12 @@ function StartSit({ userName }) {
           name: league.name,
           // Same test the league page uses: type 2 is dynasty, 0 is redraft.
           isDynasty: league.settings?.type === 2,
+          // Kept so a lineup change can be submitted and applied without refetching.
+          rosterId: roster?.roster_id ?? null,
+          rosterPositions: league.roster_positions || [],
+          starterIds: starters,
+          benchIds: bench,
+          playerById,
           slots: rows.map((r) => r.slot),
           rows,
           bench: bench.map((id) => playerById[id]).filter(Boolean).sort((a, b) => (b.proj ?? 0) - (a.proj ?? 0)),
@@ -501,6 +564,73 @@ function StartSit({ userName }) {
     () => leagues.filter((l) => !onlyActionable || l.flagged > 0),
     [leagues, onlyActionable]
   );
+
+  const handleSwap = async (league, row) => {
+    const outgoing = row.starter;
+    const incoming = row.suggestion;
+    if (!canEdit || !incoming) return;
+    if (league.rosterId == null) {
+      window.alert("Could not tell which roster is yours in this league.");
+      return;
+    }
+    // The same checks the button already applies, repeated here because this is
+    // the thing that actually writes.
+    if (row.locked || outgoing?.locked || incoming.locked) {
+      window.alert("That game has already started, so the lineup is locked.");
+      return;
+    }
+    const outName = outgoing ? outgoing.name : "the empty slot";
+    if (!window.confirm(`In ${league.name}, start ${incoming.name} over ${outName}?`)) return;
+
+    const rowKey = `${league.id}:${row.index}`;
+    setBusyRow(rowKey);
+    try {
+      const nextStarters = [...league.starterIds];
+      nextStarters[row.index] = incoming.id;
+
+      const updated = await submitLineup({
+        leagueId: league.id,
+        rosterId: league.rosterId,
+        week,
+        starters: nextStarters,
+        token: auth.token,
+      });
+
+      // Rebuild from what Sleeper says the lineup now is, not from what was sent.
+      const confirmedStarters = updated.starters.map(String);
+      const benchIds = (updated.players || league.benchIds)
+        .map(String)
+        .filter((id) => !confirmedStarters.includes(id));
+
+      setLeagues((prev) =>
+        prev.map((l) => {
+          if (l.id !== league.id) return l;
+          const rows = evaluateLineup({
+            rosterPositions: l.rosterPositions,
+            starters: confirmedStarters,
+            bench: benchIds,
+            playerById: l.playerById,
+          });
+          return {
+            ...l,
+            starterIds: confirmedStarters,
+            benchIds,
+            rows,
+            slots: rows.map((r) => r.slot),
+            bench: benchIds
+              .map((id) => l.playerById[id])
+              .filter(Boolean)
+              .sort((a, b) => (b.proj ?? 0) - (a.proj ?? 0)),
+            flagged: countActionable(rows),
+          };
+        })
+      );
+    } catch (err) {
+      window.alert(`Could not change the lineup: ${err.message}`);
+    } finally {
+      setBusyRow(null);
+    }
+  };
 
   const allBenchesOpen =
     visible.length > 0 && visible.every((l) => openBenches.has(l.id));
@@ -591,6 +721,9 @@ function StartSit({ userName }) {
             <LeagueCard
               league={league}
               onlyActionable={onlyActionable}
+              canEdit={canEdit}
+              onSwap={handleSwap}
+              busyRow={busyRow}
               benchOpen={openBenches.has(league.id)}
               onToggleBench={() =>
                 setOpenBenches((prev) => {
