@@ -817,7 +817,15 @@ function StartSit({ userName }) {
                       <span className="ss-pos"> {c.position}</span>
                     </span>
                     <span className="ss-modal-opt-proj">{fmt(c.proj)}</span>
-                    <span className={gain != null && gain > 0 ? "ss-delta" : "ss-modal-opt-gain"}>
+                    <span
+                      className={
+                        gain == null || gain === 0
+                          ? "ss-modal-opt-gain"
+                          : gain > 0
+                          ? "ss-delta"
+                          : "ss-modal-opt-loss"
+                      }
+                    >
                       {gain == null ? "" : `${gain >= 0 ? "+" : ""}${gain.toFixed(1)}`}
                     </span>
                   </button>
