@@ -598,3 +598,12 @@ body.light .ss-modal-overlay {
 .ss-player-btn:hover {
   border-bottom-color: hsl(var(--foreground));
 }
+
+/* A worse option is still worth showing, just not encouraging. Muted rather than
+   alarming — the error red would overstate it. */
+.ss-modal-opt-loss {
+  font-variant-numeric: tabular-nums;
+  min-width: 3ch;
+  text-align: right;
+  color: hsl(0 48% 66%);
+}
