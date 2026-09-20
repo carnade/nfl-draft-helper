@@ -203,11 +203,21 @@ function SuggestionCell({ row, canEdit, onSwap, busy }) {
 
 function PlayerRow({ row, canEdit, onSwap, busy }) {
   const p = row.starter;
+  // Every unlocked slot with somewhere to go can be changed, not only the flagged
+  // ones — otherwise a toss-up could never be acted on.
+  const changeable = canEdit && !row.locked && !p?.locked && (row.candidates?.length || 0) > 0;
+  const label = p ? p.name : "empty";
   return (
     <tr className={`ss-row ss-row-${row.verdict}`}>
       <td className="ss-slot">{row.slot}</td>
       <td className="ss-player">
-        {p ? p.name : <span className="ss-muted">empty</span>}
+        {changeable ? (
+          <button type="button" className="ss-player-btn" onClick={onSwap} title="Change this slot">
+            {label}
+          </button>
+        ) : (
+          <span className={p ? undefined : "ss-muted"}>{label}</span>
+        )}
         {p?.position && <span className="ss-pos"> {p.position}</span>}
       </td>
       <td><TeamCell team={p?.team} opponent={p?.opponent} /></td>
@@ -569,11 +579,14 @@ function StartSit({ userName }) {
 
   // Clicking only opens the confirmation; nothing is sent until it is accepted.
   const requestSwap = (league, row) => {
-    if (!canEdit || !row.suggestion) return;
+    if (!canEdit) return;
+    const options = row.candidates || [];
+    if (row.locked || row.starter?.locked || options.length === 0) return;
     setSwapError(
       league.rosterId == null ? "Could not tell which roster is yours in this league." : null
     );
-    setPendingSwap({ league, row });
+    // The recommendation is preselected, so the common case is still open-and-confirm.
+    setPendingSwap({ league, row, selectedId: (row.suggestion || options[0]).id });
   };
 
   const closeSwap = () => {
@@ -584,9 +597,10 @@ function StartSit({ userName }) {
 
   const confirmSwap = async () => {
     if (!pendingSwap) return;
-    const { league, row } = pendingSwap;
+    const { league, row, selectedId } = pendingSwap;
     const outgoing = row.starter;
-    const incoming = row.suggestion;
+    const incoming =
+      (row.candidates || []).find((c) => c.id === selectedId) || row.suggestion;
     if (!canEdit || !incoming || league.rosterId == null) return;
     // The same checks the button applies, repeated because this is what writes.
     if (row.locked || outgoing?.locked || incoming.locked) {
@@ -772,29 +786,53 @@ function StartSit({ userName }) {
           <div className="ss-modal" onClick={(e) => e.stopPropagation()}>
             <h2>Change this lineup?</h2>
             <p className="ss-modal-league">{pendingSwap.league.name}</p>
-            <div className="ss-modal-swap">
-              <div className="ss-modal-side">
-                <span className="ss-modal-label">Out</span>
-                <span className="ss-modal-name">
-                  {pendingSwap.row.starter ? pendingSwap.row.starter.name : "empty slot"}
-                </span>
-                <span className="ss-modal-proj">
-                  {pendingSwap.row.starter?.hasProjection ? fmt(pendingSwap.row.starter.proj) : "—"}
-                </span>
-              </div>
-              <span className="ss-modal-arrow">→</span>
-              <div className="ss-modal-side">
-                <span className="ss-modal-label">In ({pendingSwap.row.slot})</span>
-                <span className="ss-modal-name">{pendingSwap.row.suggestion?.name}</span>
-                <span className="ss-modal-proj">
-                  {pendingSwap.row.suggestion?.hasProjection ? fmt(pendingSwap.row.suggestion.proj) : "—"}
-                </span>
-              </div>
+            <div className="ss-modal-out">
+              <span className="ss-modal-label">Out of {pendingSwap.row.slot}</span>
+              <span className="ss-modal-name">
+                {pendingSwap.row.starter ? pendingSwap.row.starter.name : "empty slot"}
+              </span>
+              <span className="ss-modal-proj">
+                {pendingSwap.row.starter?.hasProjection ? fmt(pendingSwap.row.starter.proj) : "—"}
+              </span>
             </div>
-            <p className="ss-modal-note">
-              This changes your lineup on Sleeper
-              {pendingSwap.row.delta != null && ` — a projected gain of ${pendingSwap.row.delta.toFixed(1)}`}.
-            </p>
+
+            <span className="ss-modal-label ss-modal-inlabel">Bring in</span>
+            <div className="ss-modal-options">
+              {(pendingSwap.row.candidates || []).slice(0, 5).map((c) => {
+                const outProj = pendingSwap.row.starter?.hasProjection
+                  ? pendingSwap.row.starter.proj
+                  : null;
+                const gain = outProj == null ? null : c.proj - outProj;
+                const chosen = c.id === pendingSwap.selectedId;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className={`ss-modal-option${chosen ? " ss-modal-option-on" : ""}`}
+                    onClick={() => setPendingSwap((prev) => ({ ...prev, selectedId: c.id }))}
+                    disabled={!!busyRow}
+                  >
+                    <span className="ss-modal-opt-name">
+                      {c.name}
+                      <span className="ss-pos"> {c.position}</span>
+                    </span>
+                    <span className="ss-modal-opt-proj">{fmt(c.proj)}</span>
+                    <span
+                      className={
+                        gain == null || gain === 0
+                          ? "ss-modal-opt-gain"
+                          : gain > 0
+                          ? "ss-delta"
+                          : "ss-modal-opt-loss"
+                      }
+                    >
+                      {gain == null ? "" : `${gain >= 0 ? "+" : ""}${gain.toFixed(1)}`}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="ss-modal-note">This changes your lineup on Sleeper.</p>
             {swapError && <p className="ss-modal-error">{swapError}</p>}
             <div className="ss-modal-buttons">
               <button
