@@ -502,3 +502,99 @@ body.light .ss-modal-overlay {
   cursor: default;
   opacity: 0.6;
 }
+
+/* Choosing who comes in. The recommendation is preselected, so this is a
+   refinement rather than a step. */
+.ss-modal-out {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding-bottom: 0.9rem;
+  margin-bottom: 0.9rem;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.ss-modal-inlabel {
+  display: block;
+  margin-bottom: 0.4rem;
+}
+
+.ss-modal-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 1rem;
+}
+
+.ss-modal-option {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius, 6px);
+  background: none;
+  color: hsl(var(--foreground));
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ss-modal-option:hover:not(:disabled) {
+  background-color: hsl(var(--muted) / 0.4);
+}
+
+.ss-modal-option-on {
+  border-color: hsl(145 45% 42%);
+  background-color: hsl(145 45% 42% / 0.12);
+}
+
+.ss-modal-option:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.ss-modal-opt-name {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ss-modal-opt-proj {
+  font-variant-numeric: tabular-nums;
+  color: hsl(var(--muted-foreground));
+}
+
+.ss-modal-opt-gain {
+  font-variant-numeric: tabular-nums;
+  min-width: 3ch;
+  text-align: right;
+  color: hsl(var(--muted-foreground));
+}
+
+.ss-modal-option .ss-delta {
+  font-variant-numeric: tabular-nums;
+  min-width: 3ch;
+  text-align: right;
+}
+
+/* A starter's name doubles as the way into the dialog. */
+.ss-player-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 500;
+  color: inherit;
+  cursor: pointer;
+  border-bottom: 1px dotted hsl(var(--muted-foreground) / 0.6);
+}
+
+.ss-player-btn:hover {
+  border-bottom-color: hsl(var(--foreground));
+}
