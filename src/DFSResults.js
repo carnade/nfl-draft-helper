@@ -1657,20 +1657,20 @@ function DFSResults() {
     }
 
     // If we have fallback info, use it (only if game started or unknown).
-    // Marked with a * because it comes from FantasyData rather than the Sleeper
+    // Labelled manual because it comes from FantasyData rather than the Sleeper
     // matchup the rest of the column is read from.
     if (fallbackInfo) {
       const points = fallbackInfo.fantasy_points ?? 0;
       // If game has started, show points
       if (gameHasStarted) {
-        return `${points.toFixed(1)}*`;
+        return `${points.toFixed(1)} (manual)`;
       }
       // If we can't determine game start:
       // - If points are non-zero, assume game has started and show points
       // - If points are zero, show TBD (safer to assume game hasn't started)
       if (!canDetermineGameStart) {
         if (points > 0) {
-          return `${points.toFixed(1)}*`;
+          return `${points.toFixed(1)} (manual)`;
         } else {
           return 'TBD';
         }
@@ -1701,7 +1701,7 @@ function DFSResults() {
     // This handles cases where DSTs have points but no game_date in DFS salary data
     if (!canDetermineGameStart && (playerInfo || fallbackInfo)) {
       if (playerInfo) return (playerInfo.fantasy_points ?? 0).toFixed(1);
-      return `${(fallbackInfo.fantasy_points ?? 0).toFixed(1)}*`;
+      return `${(fallbackInfo.fantasy_points ?? 0).toFixed(1)} (manual)`;
     }
 
     // Default: show awaiting if game has started
@@ -1780,14 +1780,18 @@ function DFSResults() {
             return;
           }
 
-          // Never for a defence. Measured against a week of Sleeper's own numbers,
-          // the two sources agree on skill positions to within rounding but differ
-          // by 1-4 points on every DST, so a fallback there would quietly
-          // contradict the rest of the page.
+          // Only where the two sources agree. FantasyData scores an interception
+          // at -2 and these leagues at -1, so a quarterback comes out exactly one
+          // point light per interception — confirmed against week 2: Hurts and
+          // Rush (2 INTs) were -2, Williams, Maye and Jackson (1 INT) were -1,
+          // and every QB with none matched to the penny. Defences differ by 1-4
+          // for their own reasons. Both are left as TBD rather than shown wrong.
           const metadata = playerMetadata[sleeperId];
+          const position = dfsPlayer?.position || metadata?.position;
           if (isDefenseSleeperId(sleeperId) ||
               isDefensePosition(dfsPlayer?.position) ||
-              isDefensePosition(metadata?.position)) {
+              isDefensePosition(metadata?.position) ||
+              String(position || '').toUpperCase() === 'QB') {
             return;
           }
 
