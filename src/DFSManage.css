@@ -602,3 +602,13 @@ body.dark .dfs-manage-submission-value {
   border: 1px solid hsl(var(--border));
   border-radius: 4px;
 }
+
+/* One panel, because an override is global — it is not a property of the
+   tournament it happens to be entered from. */
+.dfs-manage-override-panel {
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius, 6px);
+}
