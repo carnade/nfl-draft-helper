@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LZString from 'lz-string';
 import './DFSManage.css';
@@ -33,6 +33,13 @@ function DFSManage() {
   const [clearingLineup, setClearingLineup] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(new Set());
   const [expandedEntries, setExpandedEntries] = useState(new Set());
+  // Per-player point overrides, keyed by week. They are global, not per
+  // tournament — the picker is shown per entry only because that is where the
+  // players who were actually used can be listed.
+  const [overrides, setOverrides] = useState({});
+  const [usedPlayers, setUsedPlayers] = useState({});
+  const [overrideDraft, setOverrideDraft] = useState({});
+  const [savingOverride, setSavingOverride] = useState(null);
 
   // Fetch list of all tinyURL entries
   const fetchEntries = async () => {
@@ -142,6 +149,101 @@ function DFSManage() {
       setClearingLineup(null);
     }
   };
+
+  // The players who appear in this tournament's submitted lineups, with names.
+  // Decoded the same way copyLeagueData does: "week|LZString(username:id-salary,…)".
+  const loadOverrideContext = useCallback(async (entryName, week) => {
+    if (!week) return;
+    try {
+      const [dataRes, overrideRes, salaryRes] = await Promise.all([
+        fetch(`${BASE_URL}/tinyurl/${entryName}/data?action=results`).then((r) => (r.ok ? r.json() : {})),
+        fetch(`${BASE_URL}/points-overrides/week/${week}`).then((r) => (r.ok ? r.json() : { overrides: {} })),
+        fetch(`${BASE_URL}/dfs-salaries/week/${week}`).then((r) => (r.ok ? r.json() : {})),
+      ]);
+
+      const ids = new Set();
+      Object.values(dataRes.user_submissions || {}).forEach((submission) => {
+        if (!submission?.data) return;
+        try {
+          const [, compressed] = String(submission.data).split('|');
+          const decompressed = LZString.decompressFromEncodedURIComponent(compressed);
+          if (!decompressed) return;
+          const colonIndex = decompressed.indexOf(':');
+          const body = colonIndex === -1 ? decompressed : decompressed.substring(colonIndex + 1);
+          body.split(',').forEach((pair) => {
+            const [id] = pair.split('-');
+            if (id) ids.add(id.trim());
+          });
+        } catch {
+          // A lineup we cannot decode simply contributes no players.
+        }
+      });
+
+      const named = [...ids].map((id) => {
+        const row = salaryRes[`${id}_W${week}`];
+        return { id, name: row?.name || id, position: row?.position || '', team: row?.team || '' };
+      }).sort((a, b) => a.name.localeCompare(b.name));
+
+      setUsedPlayers((prev) => ({ ...prev, [entryName]: named }));
+      setOverrides((prev) => ({ ...prev, [week]: overrideRes.overrides || {} }));
+    } catch {
+      setUsedPlayers((prev) => ({ ...prev, [entryName]: [] }));
+    }
+  }, []);
+
+  const saveOverride = async (entryName, week, sleeperId, rawValue) => {
+    const points = Number(rawValue);
+    if (rawValue === '' || Number.isNaN(points)) {
+      window.alert('Enter a number of points.');
+      return;
+    }
+    setSavingOverride(`${entryName}:${sleeperId}`);
+    try {
+      const res = await fetch(`${BASE_URL}/points-overrides`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...sleeperAuthHeaders() },
+        body: JSON.stringify({ sleeper_id: sleeperId, week, points }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        window.alert(`Could not set it: ${body.error || res.statusText}`);
+        return;
+      }
+      setOverrideDraft((prev) => ({ ...prev, [`${entryName}:${sleeperId}`]: '' }));
+      await loadOverrideContext(entryName, week);
+    } catch (err) {
+      window.alert(`Could not set it: ${err.message}`);
+    } finally {
+      setSavingOverride(null);
+    }
+  };
+
+  const removeOverride = async (entryName, week, sleeperId) => {
+    setSavingOverride(`${entryName}:${sleeperId}`);
+    try {
+      const res = await fetch(`${BASE_URL}/points-overrides/${sleeperId}/${week}`, {
+        method: 'DELETE',
+        headers: sleeperAuthHeaders(),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        window.alert(`Could not remove it: ${body.error || res.statusText}`);
+        return;
+      }
+      await loadOverrideContext(entryName, week);
+    } catch (err) {
+      window.alert(`Could not remove it: ${err.message}`);
+    } finally {
+      setSavingOverride(null);
+    }
+  };
+
+  useEffect(() => {
+    expandedEntries.forEach((entryName) => {
+      const week = entryDetails[entryName]?.week;
+      if (week && !usedPlayers[entryName]) loadOverrideContext(entryName, week);
+    });
+  }, [expandedEntries, entryDetails, usedPlayers, loadOverrideContext]);
 
   // Fetch details for all entries
   useEffect(() => {
@@ -524,6 +626,101 @@ function DFSManage() {
                           })}
                         </div>
                       </div>
+                      );
+                    })()}
+
+                    {details.week && (() => {
+                      const week = details.week;
+                      const players = usedPlayers[entry.name] || [];
+                      const set = overrides[week] || {};
+                      const filter = (overrideDraft[`${entry.name}:filter`] || '').toLowerCase();
+                      const shown = filter
+                        ? players.filter((p) => p.name.toLowerCase().includes(filter))
+                        : players.slice(0, 8);
+                      return (
+                        <div className="dfs-manage-detail-section">
+                          <h3 className="dfs-manage-section-title">Point overrides — week {week}</h3>
+                          <p className="dfs-manage-override-note">
+                            A player nobody rosters in the scoring leagues counts as zero. Setting a
+                            figure here counts instead, everywhere — every tournament and the results
+                            page. It must be set before the week is scored on Wednesday.
+                          </p>
+
+                          {Object.keys(set).length > 0 && (
+                            <div className="dfs-manage-override-current">
+                              {Object.entries(set).map(([id, pts]) => {
+                                const known = players.find((p) => p.id === id);
+                                return (
+                                  <div key={id} className="dfs-manage-override-row">
+                                    <span>{known ? known.name : id} — <strong>{pts}</strong></span>
+                                    <button
+                                      type="button"
+                                      className="dfs-manage-clear-lineup"
+                                      onClick={() => removeOverride(entry.name, week, id)}
+                                      disabled={savingOverride === `${entry.name}:${id}`}
+                                    >
+                                      Remove
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          <input
+                            type="text"
+                            className="dfs-manage-override-input"
+                            placeholder="Search a player in these lineups…"
+                            value={overrideDraft[`${entry.name}:filter`] || ''}
+                            onChange={(e) => setOverrideDraft((prev) => ({
+                              ...prev, [`${entry.name}:filter`]: e.target.value,
+                            }))}
+                          />
+
+                          {players.length === 0 ? (
+                            <p className="dfs-manage-override-note">No lineups submitted yet.</p>
+                          ) : (
+                            <div className="dfs-manage-override-list">
+                              {shown.map((p) => (
+                                <div key={p.id} className="dfs-manage-override-row">
+                                  <span>
+                                    {p.name}
+                                    {p.position && <span className="dfs-manage-override-pos"> {p.position}</span>}
+                                    {p.team && <span className="dfs-manage-override-pos"> {p.team}</span>}
+                                  </span>
+                                  <span className="dfs-manage-override-set">
+                                    <input
+                                      type="number"
+                                      step="0.1"
+                                      className="dfs-manage-override-points"
+                                      placeholder="pts"
+                                      value={overrideDraft[`${entry.name}:${p.id}`] || ''}
+                                      onChange={(e) => setOverrideDraft((prev) => ({
+                                        ...prev, [`${entry.name}:${p.id}`]: e.target.value,
+                                      }))}
+                                    />
+                                    <button
+                                      type="button"
+                                      className="dfs-manage-clear-lineup"
+                                      onClick={() => saveOverride(
+                                        entry.name, week, p.id,
+                                        overrideDraft[`${entry.name}:${p.id}`] ?? ''
+                                      )}
+                                      disabled={savingOverride === `${entry.name}:${p.id}`}
+                                    >
+                                      {savingOverride === `${entry.name}:${p.id}` ? '…' : 'Set'}
+                                    </button>
+                                  </span>
+                                </div>
+                              ))}
+                              {!filter && players.length > shown.length && (
+                                <p className="dfs-manage-override-note">
+                                  {players.length - shown.length} more — search to narrow.
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       );
                     })()}
 

@@ -527,3 +527,78 @@ body.dark .dfs-manage-submission-value {
   cursor: default;
   opacity: 0.4;
 }
+
+/* Point overrides — stating a player's score when the scoring leagues cannot. */
+.dfs-manage-override-note {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  opacity: 0.7;
+}
+
+.dfs-manage-override-input {
+  width: 100%;
+  max-width: 320px;
+  padding: 5px 9px;
+  margin-bottom: 8px;
+  font-size: 0.82rem;
+  font-family: inherit;
+  color: hsl(var(--foreground));
+  background-color: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 4px;
+}
+
+.dfs-manage-override-input:focus {
+  outline: none;
+  border-color: hsl(var(--muted-foreground));
+}
+
+.dfs-manage-override-current {
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border: 1px solid hsl(145 45% 42% / 0.4);
+  background-color: hsl(145 45% 42% / 0.08);
+  border-radius: 4px;
+}
+
+.dfs-manage-override-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.dfs-manage-override-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 3px 0;
+  font-size: 0.84rem;
+}
+
+.dfs-manage-override-pos {
+  font-size: 0.72rem;
+  opacity: 0.55;
+  margin-left: 5px;
+}
+
+.dfs-manage-override-set {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.dfs-manage-override-points {
+  width: 68px;
+  padding: 2px 6px;
+  font-size: 0.78rem;
+  font-family: inherit;
+  color: hsl(var(--foreground));
+  background-color: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 4px;
+}
