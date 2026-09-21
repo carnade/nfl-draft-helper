@@ -1,4 +1,4 @@
-ALWAYS ask the user for confirmation before making any git commit or push. No exceptions.
+Commits do not need confirmation. Before opening a pull request, say which PRs are already open and awaiting review — several should not accumulate unannounced. Prefer adding related work to an open PR over opening another; when separate repos force more than one, name them all together.
 
 When writing patch notes, always write about the functionality but never the technical.
 
