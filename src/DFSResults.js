@@ -1656,19 +1656,21 @@ function DFSResults() {
       }
     }
 
-    // If we have fallback info, use it (only if game started or unknown)
+    // If we have fallback info, use it (only if game started or unknown).
+    // Marked with a * because it comes from FantasyData rather than the Sleeper
+    // matchup the rest of the column is read from.
     if (fallbackInfo) {
       const points = fallbackInfo.fantasy_points ?? 0;
       // If game has started, show points
       if (gameHasStarted) {
-        return points.toFixed(1);
+        return `${points.toFixed(1)}*`;
       }
       // If we can't determine game start:
       // - If points are non-zero, assume game has started and show points
       // - If points are zero, show TBD (safer to assume game hasn't started)
       if (!canDetermineGameStart) {
         if (points > 0) {
-          return points.toFixed(1);
+          return `${points.toFixed(1)}*`;
         } else {
           return 'TBD';
         }
@@ -1698,7 +1700,8 @@ function DFSResults() {
     // If we can't determine game start but have points, show them (game might have started)
     // This handles cases where DSTs have points but no game_date in DFS salary data
     if (!canDetermineGameStart && (playerInfo || fallbackInfo)) {
-      return (playerInfo?.fantasy_points ?? fallbackInfo?.fantasy_points ?? 0).toFixed(1);
+      if (playerInfo) return (playerInfo.fantasy_points ?? 0).toFixed(1);
+      return `${(fallbackInfo.fantasy_points ?? 0).toFixed(1)}*`;
     }
 
     // Default: show awaiting if game has started
@@ -1777,24 +1780,37 @@ function DFSResults() {
             return;
           }
 
+          // Never for a defence. Measured against a week of Sleeper's own numbers,
+          // the two sources agree on skill positions to within rounding but differ
+          // by 1-4 points on every DST, so a fallback there would quietly
+          // contradict the rest of the page.
+          const metadata = playerMetadata[sleeperId];
+          if (isDefenseSleeperId(sleeperId) ||
+              isDefensePosition(dfsPlayer?.position) ||
+              isDefensePosition(metadata?.position)) {
+            return;
+          }
+
           const gameDate = dfsPlayer?.game_date;
           const gameStartTime = dfsPlayer?.game_start_time;
-          
+
+          // No usable kickoff means no DFS row for this player, or one without a
+          // game date — not a reason to give up. Ask for the points and let the
+          // display decide: it already withholds a zero it cannot vouch for.
+          let gameHasStarted = null;
           if (gameDate) {
             try {
               const kickoffUtc = parseGameStartToUtc(gameDate, gameStartTime);
               if (kickoffUtc) {
-                const now = new Date();
-                const gameHasStarted = now >= kickoffUtc;
-                
-                // Only add if game has started and we don't have data
-                if (gameHasStarted) {
-                  playersNeedingFallback.push(sleeperIdNum);
-                }
+                gameHasStarted = new Date() >= kickoffUtc;
               }
             } catch (error) {
-              // Skip if we can't parse the game time
+              // Leave it undetermined rather than skipping the player.
             }
+          }
+
+          if (gameHasStarted !== false) {
+            playersNeedingFallback.push(sleeperIdNum);
           }
         });
       });
