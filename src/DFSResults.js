@@ -154,6 +154,9 @@ function DFSResults() {
   const [userLeagues, setUserLeagues] = useState([]);
   const [loadingUserLeagues, setLoadingUserLeagues] = useState(false);
   const [fallbackFantasyPoints, setFallbackFantasyPoints] = useState({});
+  // Organiser-set figures for this week. They outrank every other source, so a
+  // player Sleeper scores as 0 because nobody rosters him can still be counted.
+  const [pointsOverrides, setPointsOverrides] = useState({});
   const [fetchingFallbackPoints, setFetchingFallbackPoints] = useState(new Set());
   const [viewMode, setViewMode] = useState('weekly'); // 'weekly' or 'tournament'
   const [standings, setStandings] = useState(null);
@@ -1465,6 +1468,22 @@ function DFSResults() {
   }, [selectedWeek]);
   
   // Fetch fallback fantasy points for all missing players at once
+  useEffect(() => {
+    if (!selectedWeek) return;
+    let cancelled = false;
+    fetch(`${BASE_URL}/points-overrides/week/${selectedWeek}`)
+      .then((r) => (r.ok ? r.json() : { overrides: {} }))
+      .then((d) => {
+        if (!cancelled) setPointsOverrides(d.overrides || {});
+      })
+      .catch(() => {
+        // Without them the page still works, it just shows the ordinary sources.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedWeek]);
+
   const fetchFallbackFantasyPoints = useCallback(async (sleeperIds) => {
     if (!selectedWeek || !sleeperIds || sleeperIds.length === 0) return;
     
@@ -1576,6 +1595,13 @@ function DFSResults() {
   }, [selectedWeek]);
 
   const getFantasyPointsDisplay = useCallback((sleeperId) => {
+    // An organiser has stated this player's score, which settles it — including
+    // over OUT and TBD, since the whole point is a figure the sources lack.
+    const override = pointsOverrides[String(sleeperId)];
+    if (override !== undefined && override !== null) {
+      return `${Number(override).toFixed(1)} (manual)`;
+    }
+
     // Check if sleeperId is a name (not numeric) - indicates manual entry
     const isNameNotId = sleeperId && typeof sleeperId === 'string' && !/^\d+$/.test(sleeperId);
     const dfsPlayerKey = `${sleeperId}_W${selectedWeek}`;
@@ -1706,7 +1732,7 @@ function DFSResults() {
 
     // Default: show awaiting if game has started
     return 'Awaiting Pts';
-  }, [dfsSalaryData, fantasyPoints, selectedWeek, fallbackFantasyPoints, fetchingFallbackPoints, playerMetadata]);
+  }, [dfsSalaryData, fantasyPoints, selectedWeek, fallbackFantasyPoints, fetchingFallbackPoints, playerMetadata, pointsOverrides]);
 
   // Reset check tracking when key inputs change
   useEffect(() => {
@@ -2038,14 +2064,19 @@ function DFSResults() {
     
     // Use fallback info if primary info is not available
     const pointsInfo = fantasyInfo || fallbackInfo;
-    
+    const override = pointsOverrides[String(sleeperId)];
+
     return {
       ...pointsInfo,
+      // Keep the totals and the ranking agreeing with the cells above them.
+      ...(override !== undefined && override !== null
+        ? { fantasy_points: Number(override) }
+        : {}),
       name: dfsPlayer?.name || playerMetadata[sleeperId]?.name || pointsInfo?.name || 'Unknown',
       position: dfsPlayer?.position || playerMetadata[sleeperId]?.position || pointsInfo?.position,
       team: dfsPlayer?.team || playerMetadata[sleeperId]?.team || pointsInfo?.team
     };
-  }, [dfsSalaryData, fantasyPoints, fallbackFantasyPoints, playerMetadata, selectedWeek]);
+  }, [dfsSalaryData, fantasyPoints, fallbackFantasyPoints, playerMetadata, selectedWeek, pointsOverrides]);
 
   const calculateTotalPoints = useCallback((players) => {
     return players.reduce((sum, player) => {
@@ -2246,7 +2277,10 @@ function DFSResults() {
         const name = dfsPlayer?.name || metadata?.name || fantasyInfo?.name || 'Unknown';
         const position = dfsPlayer?.position || metadata?.position || fantasyInfo?.position;
         const team = dfsPlayer?.team || metadata?.team || fantasyInfo?.team || '';
-        const fantasyPointsValue = fantasyInfo?.fantasy_points || 0;
+        const overrideValue = pointsOverrides[String(player.sleeperId)];
+        const fantasyPointsValue = overrideValue !== undefined && overrideValue !== null
+          ? Number(overrideValue)
+          : (fantasyInfo?.fantasy_points || 0);
         
         // Skip if we don't have at least a position
         if (!position || !chosenStats[position]) return;
@@ -2438,8 +2472,11 @@ function DFSResults() {
         fantasyInfo = fantasyPoints[Number(sleeperId)] || fantasyPoints[Number(keyBase)];
       }
       
-      const points = fantasyInfo?.fantasy_points ?? 
-                     (typeof fantasyInfo === 'number' ? fantasyInfo : 0);
+      const overrideValue = pointsOverrides[String(sleeperId)];
+      const points = overrideValue !== undefined && overrideValue !== null
+        ? Number(overrideValue)
+        : (fantasyInfo?.fantasy_points ??
+           (typeof fantasyInfo === 'number' ? fantasyInfo : 0));
       
       if (isDstPlayer && position === 'DST') {
         console.log('DST Player - Final result:', {
