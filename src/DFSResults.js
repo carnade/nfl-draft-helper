@@ -1656,19 +1656,21 @@ function DFSResults() {
       }
     }
 
-    // If we have fallback info, use it (only if game started or unknown)
+    // If we have fallback info, use it (only if game started or unknown).
+    // Labelled manual because it comes from FantasyData rather than the Sleeper
+    // matchup the rest of the column is read from.
     if (fallbackInfo) {
       const points = fallbackInfo.fantasy_points ?? 0;
       // If game has started, show points
       if (gameHasStarted) {
-        return points.toFixed(1);
+        return `${points.toFixed(1)} (manual)`;
       }
       // If we can't determine game start:
       // - If points are non-zero, assume game has started and show points
       // - If points are zero, show TBD (safer to assume game hasn't started)
       if (!canDetermineGameStart) {
         if (points > 0) {
-          return points.toFixed(1);
+          return `${points.toFixed(1)} (manual)`;
         } else {
           return 'TBD';
         }
@@ -1698,7 +1700,8 @@ function DFSResults() {
     // If we can't determine game start but have points, show them (game might have started)
     // This handles cases where DSTs have points but no game_date in DFS salary data
     if (!canDetermineGameStart && (playerInfo || fallbackInfo)) {
-      return (playerInfo?.fantasy_points ?? fallbackInfo?.fantasy_points ?? 0).toFixed(1);
+      if (playerInfo) return (playerInfo.fantasy_points ?? 0).toFixed(1);
+      return `${(fallbackInfo.fantasy_points ?? 0).toFixed(1)} (manual)`;
     }
 
     // Default: show awaiting if game has started
@@ -1777,24 +1780,41 @@ function DFSResults() {
             return;
           }
 
+          // Only where the two sources agree. FantasyData scores an interception
+          // at -2 and these leagues at -1, so a quarterback comes out exactly one
+          // point light per interception — confirmed against week 2: Hurts and
+          // Rush (2 INTs) were -2, Williams, Maye and Jackson (1 INT) were -1,
+          // and every QB with none matched to the penny. Defences differ by 1-4
+          // for their own reasons. Both are left as TBD rather than shown wrong.
+          const metadata = playerMetadata[sleeperId];
+          const position = dfsPlayer?.position || metadata?.position;
+          if (isDefenseSleeperId(sleeperId) ||
+              isDefensePosition(dfsPlayer?.position) ||
+              isDefensePosition(metadata?.position) ||
+              String(position || '').toUpperCase() === 'QB') {
+            return;
+          }
+
           const gameDate = dfsPlayer?.game_date;
           const gameStartTime = dfsPlayer?.game_start_time;
-          
+
+          // No usable kickoff means no DFS row for this player, or one without a
+          // game date — not a reason to give up. Ask for the points and let the
+          // display decide: it already withholds a zero it cannot vouch for.
+          let gameHasStarted = null;
           if (gameDate) {
             try {
               const kickoffUtc = parseGameStartToUtc(gameDate, gameStartTime);
               if (kickoffUtc) {
-                const now = new Date();
-                const gameHasStarted = now >= kickoffUtc;
-                
-                // Only add if game has started and we don't have data
-                if (gameHasStarted) {
-                  playersNeedingFallback.push(sleeperIdNum);
-                }
+                gameHasStarted = new Date() >= kickoffUtc;
               }
             } catch (error) {
-              // Skip if we can't parse the game time
+              // Leave it undetermined rather than skipping the player.
             }
+          }
+
+          if (gameHasStarted !== false) {
+            playersNeedingFallback.push(sleeperIdNum);
           }
         });
       });
