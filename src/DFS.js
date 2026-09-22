@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSort, faSortUp, faSortDown } from '@fortawesome/free-solid-svg-icons';
 import LZString from 'lz-string';
 import { PrivilegedOnly, loadSleeperAuth } from './auth';
+import { getCurrentWeek, peekCurrentWeek } from './currentWeekCache';
 import './DFS.css';
 
 // Add a mock flag
@@ -129,6 +130,7 @@ function tournamentLabel(lineup) {
 function DFS({ userName }) {
   const navigate = useNavigate();
   const [players, setPlayers] = useState([]);
+  const [currentWeek, setCurrentWeek] = useState(peekCurrentWeek());
   const [loading, setLoading] = useState(true);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [roster, setRoster] = useState({
@@ -181,15 +183,18 @@ function DFS({ userName }) {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // The week is cached with its own expiry, and refetched when stale.
+        const week = await getCurrentWeek();
+        setCurrentWeek(week);
+
         // Check cache first
-        const cachedWeek = sessionStorage.getItem('nfl_current_week');
         const cachedPlayers = sessionStorage.getItem('dfs_players');
         const cacheTimestamp = sessionStorage.getItem('dfs_cache_timestamp');
         
         const now = Date.now();
         const cacheExpiry = 60 * 60 * 1000; // 1 hour
         
-        if (cachedWeek && cachedPlayers && cacheTimestamp && (now - parseInt(cacheTimestamp)) < cacheExpiry) {
+        if (week != null && cachedPlayers && cacheTimestamp && (now - parseInt(cacheTimestamp)) < cacheExpiry) {
           const data = JSON.parse(cachedPlayers);
           
           // Only use cached data if it's not empty
@@ -209,13 +214,8 @@ function DFS({ userName }) {
           }
         }
         
-        // Fetch current NFL week
-        const weekResponse = await fetch('https://api.sleeper.app/v1/state/nfl');
-        const weekData = await weekResponse.json();
-        const currentWeek = weekData.week;
-
         // Fetch DFS salaries
-        const salariesResponse = await fetch(`${BASE_URL}/dfs-salaries/week/${currentWeek}`);
+        const salariesResponse = await fetch(`${BASE_URL}/dfs-salaries/week/${week}`);
         const salariesData = await salariesResponse.json();
         
         // Transform data to match our structure
@@ -242,8 +242,7 @@ function DFS({ userName }) {
           game_day: player.game_day || player.slate_day || ''
         }));
         
-        // Cache the data
-        sessionStorage.setItem('nfl_current_week', currentWeek.toString());
+        // Cache the data (getCurrentWeek already cached the week itself)
         sessionStorage.setItem('dfs_players', JSON.stringify(data));
         sessionStorage.setItem('dfs_cache_timestamp', now.toString());
         
@@ -750,9 +749,10 @@ function DFS({ userName }) {
         return;
       }
       
-      // Get current week from sessionStorage
-      const currentWeek = sessionStorage.getItem('nfl_current_week');
-      if (!currentWeek) {
+      // A stale week here files the lineup against the wrong one, so this
+      // refetches rather than trusting whatever the tab happens to be holding.
+      const week = await getCurrentWeek();
+      if (week == null) {
         alert('Unable to determine current week. Please refresh the page.');
         return;
       }
@@ -771,7 +771,7 @@ function DFS({ userName }) {
       const compressed = LZString.compressToEncodedURIComponent(formattedData);
       
       // Format as week|compressedData (same format as DFSResults hash)
-      const data = `${currentWeek}|${compressed}`;
+      const data = `${week}|${compressed}`;
       
       // Validate PIN: must be empty (0 digits) or 2-8 digits
       if (lineupPin && lineupPin.trim() !== '') {
@@ -1375,7 +1375,7 @@ function DFS({ userName }) {
           <div>
             <h1>DFS</h1>
             <p className="dfs-subtitle">
-              Daily Fantasy Sports • Week {sessionStorage.getItem('nfl_current_week') || '...'}
+              Daily Fantasy Sports • Week {currentWeek ?? '...'}
               <span className="dfs-info-divider">|</span>
               <span className="dfs-info">Salary Cap: $50,000</span>
               <span className="dfs-info-divider">|</span>
