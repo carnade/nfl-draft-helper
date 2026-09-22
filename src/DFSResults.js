@@ -3,6 +3,7 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import LZString from 'lz-string';
 import './DFSResults.css';
 import { loadSleeperAuth, useIsPrivilegedUser } from './auth';
+import { getCurrentWeek } from './currentWeekCache';
 
 // Add a mock flag
 const mock = process.env.REACT_APP_MOCK === 'true';
@@ -1186,45 +1187,15 @@ function DFSResults() {
       }
     }
     
-    // Get current week from cache or fetch it (only if not loading from URL or tinyURL)
-    // Only set default week if we haven't already set it from URL/tinyURL
-    if (!weekSetFromUrl) {
-      const cachedWeek = sessionStorage.getItem('nfl_current_week');
-      if (cachedWeek) {
-        const week = parseInt(cachedWeek);
-        setCurrentWeek(week);
-        // Only set selectedWeek if not loading from URL or tinyURL
-        if (!window.location.hash && !tinyUrlNameParam) {
-          setSelectedWeek(week); // Default to current week
-        }
-      } else {
-        // Fetch if not cached
-        fetch('https://api.sleeper.app/v1/state/nfl')
-          .then(res => res.json())
-          .then(data => {
-            setCurrentWeek(data.week);
-            // Only set selectedWeek if not loading from URL or tinyURL
-            if (!window.location.hash && !tinyUrlNameParam) {
-              setSelectedWeek(data.week); // Default to current week
-            }
-          })
-          .catch(err => console.error('Error fetching week:', err));
+    // Both branches want the current week; they differ only in whether it also
+    // becomes the selected one, which a URL or tinyURL has already decided.
+    getCurrentWeek().then(week => {
+      if (week == null) return;
+      setCurrentWeek(week);
+      if (!weekSetFromUrl && !window.location.hash && !tinyUrlNameParam) {
+        setSelectedWeek(week); // Default to current week
       }
-    } else {
-      // Still set currentWeek even if week was set from URL
-      const cachedWeek = sessionStorage.getItem('nfl_current_week');
-      if (cachedWeek) {
-        const week = parseInt(cachedWeek);
-        setCurrentWeek(week);
-      } else {
-        fetch('https://api.sleeper.app/v1/state/nfl')
-          .then(res => res.json())
-          .then(data => {
-            setCurrentWeek(data.week);
-          })
-          .catch(err => console.error('Error fetching week:', err));
-      }
-    }
+    });
   }, [tinyUrlNameParam, isAdminMode]);
 
   // Fetch user leagues on component mount

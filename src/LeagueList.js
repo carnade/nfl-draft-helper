@@ -8,6 +8,7 @@ import {
 import { useParams } from "react-router-dom";
 import DraftModal from "./DraftModal";
 import { getDvpColor } from "./dvpColor";
+import { getCurrentWeek } from "./currentWeekCache";
 import { loadHiddenLeagues, visibleLeagues } from "./leagueVisibility";
 import "./LeagueList.css";
 
@@ -1020,21 +1021,11 @@ function LeagueList() {
 
   useEffect(() => {
     // Fetch current week first
-    const cachedWeek = sessionStorage.getItem('nfl_current_week');
-    if (cachedWeek) {
-      const week = parseInt(cachedWeek);
+    getCurrentWeek().then(week => {
+      if (week == null) return;
       setCurrentWeek(week);
       fetchDfsProjections(week);
-    } else {
-      fetch('https://api.sleeper.app/v1/state/nfl')
-        .then(res => res.json())
-        .then(data => {
-          sessionStorage.setItem('nfl_current_week', data.week.toString());
-          setCurrentWeek(data.week);
-          fetchDfsProjections(data.week);
-        })
-        .catch(err => console.error('Error fetching week:', err));
-    }
+    });
     
     fetchLeagueData();
     fetchInjuryReport();
