@@ -741,6 +741,21 @@ function HitRate({ value, n }) {
   );
 }
 
+function summarizeProps(list) {
+  const calls = list.filter((r) => r.result?.call_correct != null);
+  const sides = list.filter((r) => r.result?.projection_side_correct != null);
+  const rate = (subset, key) =>
+    subset.length ? Math.round((subset.filter((r) => r.result[key]).length / subset.length) * 1000) / 1000 : null;
+  return {
+    snapshots: list.length,
+    graded: list.filter((r) => r.result).length,
+    flagged_calls: calls.length,
+    flagged_hit_rate: rate(calls, "call_correct"),
+    all_sides: sides.length,
+    side_hit_rate: rate(sides, "projection_side_correct"),
+  };
+}
+
 function PropResultsTable({ data }) {
   const [sortConfig, setSortConfig] = useState({ key: "commence_time", dir: "desc" });
   function onSort(key) {
@@ -750,15 +765,23 @@ function PropResultsTable({ data }) {
     <SortHeader label={label} sortKey={key} sortConfig={sortConfig} onSort={onSort} className={cls} title={title} />
   );
 
-  const rows = useMemo(() => (data?.results || []).map(r => ({
-    ...r,
-    market_label: MARKET_LABELS[r.market] || r.market,
-    outcome: r.result?.outcome,
-    call_correct: r.result?.call_correct,
-    // Sortable form of the Hit column: hits, then misses, then no flagged call
-    hit_rank: r.result?.call_correct === true ? 1 : r.result?.call_correct === false ? 0 : null,
-    line_moved: r.first_line != null && r.line != null ? r.line - r.first_line : null,
-  })), [data]);
+  // No book offers the "no touchdown" side, so an anytime-TD under is not a call
+  // that could ever have been placed. They are also most of the page: 405 of the
+  // 711 anytime-TD snapshots, and 362 of those only because a player with no TDs
+  // yet projects 0.0, which flags under automatically. Because they come in
+  // whenever the player simply does not score, they hit 86% and were lifting the
+  // page's flagged rate from 43% to 56%.
+  const rows = useMemo(() => (data?.results || [])
+    .filter((r) => !(r.market === ANYTIME_TD && r.value_flag === "under"))
+    .map((r) => ({
+      ...r,
+      market_label: MARKET_LABELS[r.market] || r.market,
+      outcome: r.result?.outcome,
+      call_correct: r.result?.call_correct,
+      // Sortable form of the Hit column: hits, then misses, then no flagged call
+      hit_rank: r.result?.call_correct === true ? 1 : r.result?.call_correct === false ? 0 : null,
+      line_moved: r.first_line != null && r.line != null ? r.line - r.first_line : null,
+    })), [data]);
 
   const weeks = useMemo(() => weeksIn(rows), [rows]);
   const [week, setWeek] = useState("all");
@@ -797,20 +820,20 @@ function PropResultsTable({ data }) {
 
   // Hit rates describe what is on screen, so filtering to a market or a week
   // answers "how good are we at this" rather than always restating the season.
-  const s = useMemo(() => {
-    const calls = shown.filter((r) => r.result?.call_correct != null);
-    const sides = shown.filter((r) => r.result?.projection_side_correct != null);
-    const rate = (subset, key) =>
-      subset.length ? Math.round((subset.filter((r) => r.result[key]).length / subset.length) * 1000) / 1000 : null;
-    return {
-      snapshots: shown.length,
-      graded: shown.filter((r) => r.result).length,
-      flagged_calls: calls.length,
-      flagged_hit_rate: rate(calls, "call_correct"),
-      all_sides: sides.length,
-      side_hit_rate: rate(sides, "projection_side_correct"),
-    };
-  }, [shown]);
+  const s = useMemo(() => summarizeProps(shown), [shown]);
+
+  // Computed here rather than read from data.by_market, which still counts the
+  // anytime-TD unders dropped above and would contradict the cards beside it.
+  const byMarket = useMemo(() => {
+    const groups = {};
+    for (const r of rows) {
+      if (!groups[r.market]) groups[r.market] = [];
+      groups[r.market].push(r);
+    }
+    return Object.keys(groups)
+      .sort((a, b) => Object.keys(MARKET_LABELS).indexOf(a) - Object.keys(MARKET_LABELS).indexOf(b))
+      .map((m) => [m, summarizeProps(groups[m])]);
+  }, [rows]);
 
   return (
     <>
@@ -879,7 +902,7 @@ function PropResultsTable({ data }) {
         </div>
       )}
 
-      {data?.by_market && Object.keys(data.by_market).length > 0 && (
+      {byMarket.length > 0 && (
         <div className="odds-table-wrap">
           <table className="odds-table">
             <thead>
@@ -889,7 +912,7 @@ function PropResultsTable({ data }) {
               </tr>
             </thead>
             <tbody>
-              {Object.entries(data.by_market).map(([m, v]) => (
+              {byMarket.map(([m, v]) => (
                 <tr key={m}>
                   <td className="odds-market-label">{MARKET_LABELS[m] || m}</td>
                   <td className="num">{v.snapshots}</td>
