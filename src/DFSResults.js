@@ -28,6 +28,24 @@ const PRIMARY_SLEEPER_LEAGUE_ID = '1312016340290113536';
 const DST_SLEEPER_LEAGUE_ID = '1312016308207906816';
 const DEFENSE_POSITIONS = new Set(['DST', 'DEF', 'D/ST', 'D', 'TEAM', 'TM']);
 
+// The salary rows arrive keyed "{id}_W{week}_D{date}", but every lookup in this
+// file asks for "{id}_W{week}". None of them matched, so no player ever had a
+// kickoff time, an injury status or a name from this source. Re-key on arrival,
+// keeping the earliest game so a player is judged against the one they play next.
+const keyDfsSalariesById = (salaryData) => {
+  const out = {};
+  Object.values(salaryData || {}).forEach((row) => {
+    const id = row?.sleeper_id;
+    if (!id) return;
+    const key = `${id}_W${row.week}`;
+    const existing = out[key];
+    if (!existing || String(row.game_date || '') < String(existing.game_date || '')) {
+      out[key] = row;
+    }
+  });
+  return out;
+};
+
 const isDefensePosition = (position) => {
   if (!position || typeof position !== 'string') return false;
   return DEFENSE_POSITIONS.has(position.trim().toUpperCase());
@@ -417,7 +435,7 @@ function DFSResults() {
         }
         
         setFantasyPoints(mergedFantasyData);
-        setDfsSalaryData(salaryData);
+        setDfsSalaryData(keyDfsSalariesById(salaryData));
         if (Object.keys(nameData).length > 0) {
           setPlayerMetadata(prev => ({ ...prev, ...nameData }));
         }
@@ -1342,7 +1360,7 @@ function DFSResults() {
         }
           
           setFantasyPoints(mergedFantasyData);
-          setDfsSalaryData(salaryData);
+          setDfsSalaryData(keyDfsSalariesById(salaryData));
           if (Object.keys(nameData).length > 0) {
             setPlayerMetadata(prev => ({ ...prev, ...nameData }));
           }
@@ -1674,7 +1692,9 @@ function DFSResults() {
       // - If points are non-zero, assume game has started and show points
       // - If points are zero, show TBD (safer to assume game hasn't started)
       if (!canDetermineGameStart) {
-        if (points > 0) {
+        // A negative score can only come from a game that has been played — a
+        // defence conceding is still a result. Only an exact zero is ambiguous.
+        if (points !== 0) {
           return points.toFixed(1);
         } else {
           return 'TBD';
@@ -1695,7 +1715,7 @@ function DFSResults() {
       // - If points are non-zero, assume game has started and show points
       // - If points are zero, show TBD (safer to assume game hasn't started)
       if (!canDetermineGameStart) {
-        if (points > 0) {
+        if (points !== 0) {
           return `${points.toFixed(1)} (manual)`;
         } else {
           return 'TBD';
