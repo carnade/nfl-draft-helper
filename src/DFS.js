@@ -589,6 +589,7 @@ function DFS({ userName }) {
               hasData: false,
             hasPin: false,
             accessMode: 'allowlist',
+            canOpenWithLogin: false,
             submitAs: username
           };
         }
@@ -599,6 +600,7 @@ function DFS({ userName }) {
           hasData: entry.has_data || false,
           hasPin: entry.has_pin || false,
           accessMode: entry.access_mode || 'allowlist',
+          canOpenWithLogin: entry.can_open_with_login || false,
           submitAs: entry.submit_as || username
         };
       });
@@ -928,8 +930,8 @@ function DFS({ userName }) {
   };
 
   // Loading someone's stored lineup needs proof it is theirs. A PIN is one proof;
-  // on a Sleeper-gated tournament the token is another, and the backend checks it
-  // against the name the lineup was filed under, so no PIN is asked for there.
+  // a Sleeper token is another, and the backend checks it against the name the
+  // lineup was filed under, so no PIN is asked for when it matches.
   const loadSavedLineup = async (lineup, pin) => {
     try {
       const settings = JSON.parse(localStorage.getItem('FantasyHelperSettings') || '{}');
@@ -1843,12 +1845,13 @@ function DFS({ userName }) {
                   <h3 className="add-to-league-title">Load from your leagues</h3>
                   <div className="add-to-league-buttons">
                     {loadableLineups.map((lineup) => {
-                      // A Sleeper-gated tournament files the lineup under the verified
-                      // account, so being signed in is proof enough to open it and no
-                      // PIN is asked for. Elsewhere a PIN is the only proof there is:
-                      // without one the lineup stays shut, since a name alone is not
-                      // something we can check.
-                      const viaSleeper = lineup.hasData && lineup.accessMode === 'sleeper' && hasSleeperLogin;
+                      // Being signed in as the account the lineup was filed under is
+                      // proof enough to open it, and the backend says so per entry —
+                      // it no longer depends on how the tournament admits people, so a
+                      // tournament that locked its field after week one still opens for
+                      // the people in it. Without a login a PIN is the only proof there
+                      // is, since a name alone is not something we can check.
+                      const viaSleeper = lineup.hasData && hasSleeperLogin && lineup.canOpenWithLogin;
                       const isGreen = lineup.hasData && (lineup.hasPin || viaSleeper);
                       const isRed = lineup.hasData && !isGreen;
                       const isGrey = !lineup.hasData;
