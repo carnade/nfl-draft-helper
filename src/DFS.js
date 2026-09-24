@@ -724,7 +724,25 @@ function DFS({ userName }) {
     }
   }, [userName, fetchMyLineups]);
 
+  // The nine slots are the lineup. An unfilled one is simply dropped when the
+  // lineup is encoded, so a half-built one submitted cleanly and then scored as
+  // whatever it happened to contain, against full lineups.
+  const emptyRosterSlots = () =>
+    Object.entries(roster).filter(([, player]) => !player).map(([slot]) => slot);
+
+  const warnIfIncomplete = () => {
+    const empty = emptyRosterSlots();
+    if (empty.length === 0) return false;
+    alert(
+      `Your lineup is not complete. Fill all ${Object.keys(roster).length} slots ` +
+      `before submitting — still empty: ${empty.join(', ')}`
+    );
+    return true;
+  };
+
   const handleAddToLeague = (entry) => {
+    // Say so before the overwrite prompt, rather than after it.
+    if (warnIfIncomplete()) return;
     // If entry has data, show confirmation modal
     if (entry.has_data) {
       setEntryToOverwrite(entry);
@@ -737,6 +755,10 @@ function DFS({ userName }) {
 
   const proceedWithAddToLeague = async (entry) => {
     try {
+      // Also reached straight from the overwrite prompt, so it is checked here
+      // too rather than only on the way in.
+      if (warnIfIncomplete()) return;
+
       const username = effectiveUserName(userName) || 'Anonymous';
       
       if (!username || username === 'Anonymous') {
