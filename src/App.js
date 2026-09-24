@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import { ThemeProvider } from "./ThemeContext"; // Import ThemeProvider
 import StartPage from "./StartPage";
@@ -25,6 +25,8 @@ import StartSit from "./StartSit";
 import "./Layout.css";
 import "./LeftMenu.css";
 import "./GenericStyles.css";
+import { effectiveUserName } from "./settingsUser";
+import { useSleeperAuth } from "./auth";
 
 console.log({
   StartPage,
@@ -43,7 +45,28 @@ console.log({
 function App() {
   const [csvData, setCsvData] = useState(""); // Manage CSV data in App.js
   const [csvFileName, setCsvFileName] = useState(""); // Manage CSV data in App.js
-  const [userName, setUserName] = useState("");
+
+  // The menu name drives every per-user route and the DFS tournament list, but
+  // nothing here used to load it — only the home page did, on mount. Landing
+  // anywhere else (a deep link, a bookmark, a reload on /dfs) left it empty,
+  // which blanked the menu box and pointed Draft List, Leagues and Bestball at
+  // "/" instead of at a page. That is why clicking one of those went Home, and
+  // why clicking again worked: the trip Home mounted the one page that loaded
+  // the name.
+  const [userName, setUserName] = useState(() => effectiveUserName(""));
+
+  // Signing in when no name is saved should fill it in. Only on the transition,
+  // though — refilling whenever the box is empty would make it impossible to
+  // clear by hand.
+  const sleeperAuth = useSleeperAuth();
+  const wasSignedIn = useRef(!!sleeperAuth?.token);
+  useEffect(() => {
+    const signedIn = !!sleeperAuth?.token;
+    if (signedIn && !wasSignedIn.current && !userName && sleeperAuth.display_name) {
+      setUserName(sleeperAuth.display_name);
+    }
+    wasSignedIn.current = signedIn;
+  }, [sleeperAuth, userName]);
 
   return (
     <ThemeProvider>

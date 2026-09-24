@@ -5,6 +5,7 @@ import { faSort, faSortUp, faSortDown } from '@fortawesome/free-solid-svg-icons'
 import LZString from 'lz-string';
 import { PrivilegedOnly, loadSleeperAuth } from './auth';
 import { getCurrentWeek, peekCurrentWeek } from './currentWeekCache';
+import { effectiveUserName, rememberUserName } from './settingsUser';
 import './DFS.css';
 
 // Add a mock flag
@@ -367,9 +368,9 @@ function DFS({ userName }) {
   };
 
   const generateLineupCode = () => {
-    // Use userName from props, fallback to localStorage, then 'Anonymous'
-    const settings = JSON.parse(localStorage.getItem('FantasyHelperSettings') || '{}');
-    const username = userName || settings.userName || 'Anonymous';
+    // Menu name, else the saved one, else the Sleeper account we are signed in
+    // as. Only then are we genuinely nobody.
+    const username = effectiveUserName(userName) || 'Anonymous';
     
     // Build lineup string from roster, translating names to sleeper IDs when possible
     const lineupParts = Object.values(roster)
@@ -411,8 +412,7 @@ function DFS({ userName }) {
 
   const handleFinish = () => {
     // Check if username is empty
-    const settings = JSON.parse(localStorage.getItem('FantasyHelperSettings') || '{}');
-    const currentUsername = userName || settings.userName;
+    const currentUsername = effectiveUserName(userName);
     
     if (!currentUsername || currentUsername.trim() === '' || currentUsername === 'Anonymous') {
       // Show username prompt modal
@@ -434,10 +434,8 @@ function DFS({ userName }) {
     
     const trimmedUsername = tempUsername.trim();
     
-    // Save username to localStorage
-    const settings = JSON.parse(localStorage.getItem('FantasyHelperSettings') || '{}');
-    settings.userName = trimmedUsername;
-    localStorage.setItem('FantasyHelperSettings', JSON.stringify(settings));
+    // Save username to localStorage, keeping whatever else is stored there.
+    rememberUserName(trimmedUsername);
     
     // Close username modal
     setShowUsernameModal(false);
@@ -695,8 +693,7 @@ function DFS({ userName }) {
   // Fetch available tinyURLs when modal opens
   useEffect(() => {
     if (showModal) {
-      const settings = JSON.parse(localStorage.getItem('FantasyHelperSettings') || '{}');
-      const currentUsername = userName || settings.userName;
+      const currentUsername = effectiveUserName(userName);
       if (currentUsername && currentUsername !== 'Anonymous') {
         fetchAvailableTinyUrls(currentUsername);
       }
@@ -708,8 +705,7 @@ function DFS({ userName }) {
   // Fetch loadable lineups when load modal opens
   useEffect(() => {
     if (showLoadModal) {
-      const settings = JSON.parse(localStorage.getItem('FantasyHelperSettings') || '{}');
-      const currentUsername = userName || settings.userName;
+      const currentUsername = effectiveUserName(userName);
       if (currentUsername && currentUsername !== 'Anonymous') {
         fetchLoadableLineups(currentUsername);
       }
@@ -720,8 +716,7 @@ function DFS({ userName }) {
 
   // Fetch my lineups on component mount
   useEffect(() => {
-    const settings = JSON.parse(localStorage.getItem('FantasyHelperSettings') || '{}');
-    const currentUsername = userName || settings.userName;
+    const currentUsername = effectiveUserName(userName);
     if (currentUsername && currentUsername !== 'Anonymous') {
       fetchMyLineups(currentUsername);
     } else {
@@ -742,9 +737,7 @@ function DFS({ userName }) {
 
   const proceedWithAddToLeague = async (entry) => {
     try {
-      // Get username from props or settings
-      const settings = JSON.parse(localStorage.getItem('FantasyHelperSettings') || '{}');
-      const username = userName || settings.userName || 'Anonymous';
+      const username = effectiveUserName(userName) || 'Anonymous';
       
       if (!username || username === 'Anonymous') {
         alert('Please set a username in settings before adding to league.');
@@ -828,9 +821,9 @@ function DFS({ userName }) {
         // Reset PIN input after successful submission
         setLineupPin('');
         // Optionally refresh the available tinyURLs list and my lineups
-        if (userName || settings.userName) {
-          fetchAvailableTinyUrls(userName || settings.userName);
-          fetchMyLineups(userName || settings.userName);
+        if (username && username !== 'Anonymous') {
+          fetchAvailableTinyUrls(username);
+          fetchMyLineups(username);
         }
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
@@ -934,8 +927,7 @@ function DFS({ userName }) {
   // lineup was filed under, so no PIN is asked for when it matches.
   const loadSavedLineup = async (lineup, pin) => {
     try {
-      const settings = JSON.parse(localStorage.getItem('FantasyHelperSettings') || '{}');
-      const username = userName || settings.userName || 'Anonymous';
+      const username = effectiveUserName(userName) || 'Anonymous';
       
       if (!username || username === 'Anonymous') {
         alert('Please set a username in settings');

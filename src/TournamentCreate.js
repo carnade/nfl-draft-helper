@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { effectiveUserName } from './settingsUser';
 import './TournamentCreate.css';
 
 // Add a mock flag
@@ -125,9 +126,8 @@ function TournamentCreate({ userName: propUserName }) {
 
   // Fetch user's own leagues from Sleeper
   const fetchMyLeagues = async () => {
-    // First try to use userName from props (left menu), then fallback to settings
-    const settings = JSON.parse(localStorage.getItem('FantasyHelperSettings') || '{}');
-    const userName = propUserName || settings.userName || settings.username;
+    // Left-menu name, else the saved one, else the Sleeper account.
+    const userName = effectiveUserName(propUserName);
     
     if (!userName || userName.trim() === '' || userName === 'Anonymous') {
       alert('Please set a username in the left menu or settings to use "My Own Leagues"');

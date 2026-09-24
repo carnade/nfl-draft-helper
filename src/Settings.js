@@ -4,6 +4,7 @@ import HCaptcha from "@hcaptcha/react-hcaptcha";
 import { ThemeContext } from "./ThemeContext";
 import { loadSleeperAuth, notifySleeperAuthChanged } from "./auth";
 import "./Settings.css";
+import { readSettings } from "./settingsUser";
 
 const HCAPTCHA_SITE_KEY = "3bb6d565-5eb0-425f-acf8-64374f8bbc7b";
 const SLEEPER_GRAPHQL = "https://api.sleeper.app/graphql";
@@ -283,8 +284,12 @@ function Settings() {
   };
 
   const handleSave = () => {
-    // Include the new username in the object
-    const settingsToSave = { username, defaultRankings };
+    // Merge rather than replace. Rebuilding the object dropped every other key
+    // stored beside these two — including the `userName` spelling the DFS page
+    // wrote, which is why saving settings could make the DFS tournament list
+    // stop finding you.
+    const settingsToSave = { ...readSettings(), username, defaultRankings };
+    delete settingsToSave.userName;
     localStorage.setItem(
       "FantasyHelperSettings",
       JSON.stringify(settingsToSave)
