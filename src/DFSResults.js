@@ -4,6 +4,7 @@ import LZString from 'lz-string';
 import './DFSResults.css';
 import { loadSleeperAuth, useIsPrivilegedUser } from './auth';
 import { getCurrentWeek } from './currentWeekCache';
+import { effectiveUserName } from './settingsUser';
 
 // Add a mock flag
 const mock = process.env.REACT_APP_MOCK === 'true';
@@ -485,7 +486,7 @@ function DFSResults() {
   const fetchUserLeagues = useCallback(async () => {
     const settings = JSON.parse(localStorage.getItem('FantasyHelperSettings') || '{}');
     // Check both username (from Settings) and userName (from DFS)
-    const username = settings.username || settings.userName;
+    const username = effectiveUserName('');
     
     console.log('fetchUserLeagues called, username:', username, 'settings:', settings);
     

@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import "./StartPage.css";
+import { effectiveUserName } from "./settingsUser";
 
 function StartPage({ userName, setUserName }) {
   // On first render only, if userName is empty, load from localStorage
@@ -7,12 +8,9 @@ function StartPage({ userName, setUserName }) {
     // We only run this effect once (empty deps),
     // so it won't overwrite changes after initial load.
     if (!userName) {
-      const saved = localStorage.getItem("FantasyHelperSettings");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.username) {
-          setUserName(parsed.username);
-        }
+      const resolved = effectiveUserName("");
+      if (resolved) {
+        setUserName(resolved);
       }
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- runs only on mount
