@@ -69,9 +69,12 @@ body.dark .error {
   gap: 20px;
 }
 
+/* The league table is the part worth reading, so it gets the larger share. The
+   two asset panels stack instead of sitting side by side, which leaves the
+   analysis block below them exactly one panel wide. */
 .trade-content-wrapper {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: 1fr 2fr;
   gap: 20px;
   align-items: start;
 }
@@ -84,12 +87,8 @@ body.dark .error {
 
 .trade-panels {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 20px;
-}
-
-.trade-panels .trade-panel {
-  grid-column: span 1;
 }
 
 .trade-analysis-container {
@@ -135,7 +134,9 @@ body.dark .league-info-header {
 
 .trade-league-header {
   display: grid;
-  grid-template-columns: 4fr 1fr 3fr 2fr;
+  /* name | # | owner | record | pos | max pf | 2026 | 2027
+     Header and row must stay in step. */
+  grid-template-columns: 4fr 1fr 3fr 2fr 1.4fr 1.6fr 3.2fr 3.2fr;
   gap: 0.625rem;
   padding: 0.625rem 0;
   border-bottom: 1px solid hsl(var(--border));
@@ -147,7 +148,9 @@ body.dark .league-info-header {
 
 .trade-league-row {
   display: grid;
-  grid-template-columns: 4fr 1fr 3fr 2fr;
+  /* name | # | owner | record | pos | max pf | 2026 | 2027
+     Header and row must stay in step. */
+  grid-template-columns: 4fr 1fr 3fr 2fr 1.4fr 1.6fr 3.2fr 3.2fr;
   gap: 0.625rem;
   padding: 0.625rem 0;
   border-bottom: 1px solid hsl(var(--border));
@@ -162,9 +165,16 @@ body.dark .league-info-header {
 .trade-league-name-header,
 .trade-league-player-header,
 .trade-league-owner-header,
-.trade-league-record-header {
+.trade-league-record-header,
+.trade-league-rank-header,
+.trade-league-picks-header {
   font-weight: 600;
   color: hsl(var(--foreground));
+}
+
+.trade-league-rank-header,
+.trade-league-picks-header {
+  cursor: help;
 }
 
 .sortable {
@@ -255,6 +265,60 @@ body.dark .available {
   color: hsl(var(--foreground));
   font-weight: 600;
   text-align: center;
+}
+
+/* Both ranks read as "3/12". */
+.trade-league-rank {
+  text-align: center;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.trade-league-picks {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trade-league-pick-strip {
+  display: flex;
+  gap: 3px;
+  flex-wrap: nowrap;
+}
+
+/* One per draft round. Matches the tinted-fill-plus-darker-border look of
+   .result-square in ResultsGrid.css, at the smaller size a table cell wants. */
+.trade-pick-square {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  border: 2px solid;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.trade-pick-square.green {
+  background-color: rgba(0, 133, 0, 0.2);
+  border-color: darkgreen;
+}
+
+.trade-pick-square.yellow {
+  background-color: rgba(255, 215, 0, 0.2);
+  border-color: goldenrod;
+}
+
+.trade-pick-square.red {
+  background-color: rgba(255, 0, 0, 0.25);
+  border-color: rgb(133, 1, 1);
+}
+
+/* A league where picks are not an asset. */
+.trade-league-picks-none {
+  opacity: 0.45;
 }
 
 .trade-league-player {
