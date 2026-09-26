@@ -24,8 +24,11 @@ const PICKS_TTL_MS = 30 * 60 * 1000;
 // holding a full set, and next season's picks do not meaningfully exist.
 const isDynastyLeague = (league) => league?.settings?.type === 2;
 
+// The next two rookie drafts. Not the current season: by the time anyone is
+// trading during a season its own draft has already been held, so its picks are
+// spent and the ones worth anything are next year's and the year after.
 const CURRENT_SEASON = 2026;
-const PICK_SEASONS = [String(CURRENT_SEASON), String(CURRENT_SEASON + 1)];
+const PICK_SEASONS = [String(CURRENT_SEASON + 1), String(CURRENT_SEASON + 2)];
 
 // Store data in session cache with expiry
 const storeInSession = (key, data) => {
@@ -815,8 +818,9 @@ function TradeAnalyzer({ userName, setUserName }) {
     const rosterId = playerData.roster.roster_id;
     const position = rosterId != null ? leagueGroup.ranks?.[which]?.[rosterId] : null;
     return (
-      <div className={`trade-league-rank ${!playerData.roster.owner_id ? 'available' : ''}`}>
-        {position ? `${position}/${leagueGroup.ranks.total}` : '-'}
+      <div className={`trade-league-rank ${!playerData.roster.owner_id ? 'available' : ''}`}
+           title={position ? `${position} of ${leagueGroup.ranks.total}` : undefined}>
+        {position || '-'}
       </div>
     );
   };
