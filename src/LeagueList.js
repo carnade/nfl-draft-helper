@@ -8,6 +8,12 @@ import {
 import { useParams } from "react-router-dom";
 import DraftModal from "./DraftModal";
 import { getDvpColor, rankColor } from "./dvpColor";
+import {
+  orderLeagues,
+  nextLeagueSort,
+  isDynastyLeague,
+  NO_LEAGUE_SORT,
+} from "./leagueOrder";
 import { getCurrentWeek } from "./currentWeekCache";
 import { loadHiddenLeagues, visibleLeagues } from "./leagueVisibility";
 import "./LeagueList.css";
@@ -108,8 +114,6 @@ function LeagueList() {
   const [selectedLeague, setSelectedLeague] = useState(null);
   const [dynastyOnly, setDynastyOnly] = useState(true); // Filter for dynasty leagues only
 
-  // Sleeper encodes format on the league: type 2 is dynasty, 0 is redraft.
-  const isDynastyLeague = (league) => league.settings?.type === 2;
   const [waiverData, setWaiverData] = useState({});       // { league_id: Transaction[] }
   const [waiverPlayerNames, setWaiverPlayerNames] = useState({}); // { player_id: name }
   const [waiverLoading, setWaiverLoading] = useState(false);
@@ -121,6 +125,11 @@ function LeagueList() {
     key: "count",
     direction: "descending",
   });
+
+  // The league table has its own sort, separate from the portfolio table above.
+  // Three states rather than two: Sleeper's own order is the default and worth
+  // being able to get back to, so a third click clears the sort.
+  const [leagueSort, setLeagueSort] = useState(NO_LEAGUE_SORT);
 
   let searchTimeout;
 
@@ -664,6 +673,18 @@ function LeagueList() {
     if (sortConfig.key !== key) return "⇅";
     return sortConfig.direction === "ascending" ? "↑" : "↓";
   };
+
+  // ascending → descending → back to Sleeper's order.
+  const cycleLeagueSort = (key) =>
+    setLeagueSort((prev) => nextLeagueSort(prev, key));
+
+  const getLeagueSortIcon = (key) => {
+    if (leagueSort.key !== key) return "⇅";
+    return leagueSort.direction === "ascending" ? "↑" : "↓";
+  };
+
+  const orderedLeagues = () =>
+    orderLeagues(leagues, { dynastyOnly, sort: leagueSort });
 
   const fetchPortfolioData = useCallback(async (leagues) => {
     if (!leagues || leagues.length === 0) return;
@@ -1378,20 +1399,27 @@ function LeagueList() {
             <div className="league-grid-header">League Name</div>
             <div className="league-grid-header">Record</div>
             <div className="league-grid-header">Waivers</div>
-            <div className="league-grid-header" title="Position in the league standings">Pos</div>
-            <div className="league-grid-header" title="Position by maximum points — what the roster could have scored with perfect lineups">MPF</div>
+            <div
+              className="league-grid-header"
+              style={{ cursor: "pointer" }}
+              onClick={() => cycleLeagueSort("standingRank")}
+              title="Position in the league standings. Click to sort: up, down, then back to Sleeper's order."
+            >
+              Pos {getLeagueSortIcon("standingRank")}
+            </div>
+            <div
+              className="league-grid-header"
+              style={{ cursor: "pointer" }}
+              onClick={() => cycleLeagueSort("maxPfRank")}
+              title="Position by maximum points — what the roster could have scored with perfect lineups. Click to sort: up, down, then back to Sleeper's order."
+            >
+              MPF {getLeagueSortIcon("maxPfRank")}
+            </div>
             <div className="league-grid-header">Injuries on starters</div>
             <div className="league-grid-header">Actions</div>
 
             {leagues.length > 0 ? (
-              // Dynasty only: a plain filtered list. Showing both: group them under a
-              // heading each, so the two formats do not interleave in league order.
-              (dynastyOnly
-                ? leagues.filter(isDynastyLeague)
-                : [...leagues].sort(
-                    (a, b) => Number(isDynastyLeague(b)) - Number(isDynastyLeague(a))
-                  )
-              ).map((league, index, visibleLeagues) => {
+              orderedLeagues().map((league, index, visibleLeagues) => {
                 const groupHeading =
                   !dynastyOnly &&
                   (index === 0 ||
