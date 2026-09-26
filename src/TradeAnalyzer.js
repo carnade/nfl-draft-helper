@@ -2,10 +2,34 @@ import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch, faTimes, faSortUp, faSortDown, faSort } from "@fortawesome/free-solid-svg-icons";
 import "./TradeAnalyzer.css";
+import { pickHoldings, pickCellTone, DEFAULT_ROUNDS } from "./draftPickHoldings";
+import { readCache, writeCache } from "./ttlCache";
+import { rankColor } from "./dvpColor";
 
 // Session cache - persists across browser sessions using localStorage
-const CACHE_KEY_PREFIX = 'tradeAnalyzerCache_';
+//
+// The version suffix matters: rosters are cached for 24 hours, so widening what
+// is kept per roster (roster_id and the points fields, below) would otherwise
+// leave existing visitors reading a trimmed payload — and blank new columns —
+// until their cache aged out. Bumping the prefix abandons it instead.
+const CACHE_KEY_PREFIX = 'tradeAnalyzerCache_v2_';
 const CACHE_EXPIRY_HOURS = 24; // Cache expires after 24 hours
+
+// Draft picks and standings move whenever a trade goes through, so these are
+// held for far less time than the player/value data above, and per manager —
+// matching waiver_cache_${userName} in LeagueList.js.
+const PICKS_TTL_MS = 30 * 60 * 1000;
+
+// Sleeper marks dynasty leagues as type 2. Draft picks are only an asset there:
+// a redraft league returns no traded picks at all, so every team would read as
+// holding a full set, and next season's picks do not meaningfully exist.
+const isDynastyLeague = (league) => league?.settings?.type === 2;
+
+// The next two rookie drafts. Not the current season: by the time anyone is
+// trading during a season its own draft has already been held, so its picks are
+// spent and the ones worth anything are next year's and the year after.
+const CURRENT_SEASON = 2026;
+const PICK_SEASONS = [String(CURRENT_SEASON + 1), String(CURRENT_SEASON + 2)];
 
 // Store data in session cache with expiry
 const storeInSession = (key, data) => {
@@ -70,6 +94,7 @@ function TradeAnalyzer({ userName, setUserName }) {
   const [searchResults, setSearchResults] = useState([]);
   const [activeSearch, setActiveSearch] = useState(null); // 'team1' or 'team2'
   const [rosterData, setRosterData] = useState({}); // Cache for roster data
+  const [pickData, setPickData] = useState({}); // league_id -> raw traded_picks
   const [usernameMap, setUsernameMap] = useState({});
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [playerDataCache, setPlayerDataCache] = useState({}); // Cache for additional player data
@@ -231,12 +256,51 @@ function TradeAnalyzer({ userName, setUserName }) {
       // Fetch teams and roster data for each league
       await Promise.all([
         fetchTeamsData(filteredLeagues),
-        fetchRosterData(filteredLeagues)
+        fetchRosterData(filteredLeagues),
+        fetchPickData(filteredLeagues)
       ]);
       
     } catch (err) {
       throw new Error(`Failed to fetch leagues data: ${err.message}`);
     }
+  };
+
+  // Traded draft picks, for the dynasty leagues only — nine of forty-one here,
+  // so this asks for far less than it looks. Unlike the two loops below it goes
+  // out in parallel; those are sequential and are the page's main load cost.
+  const fetchPickData = async (leagues) => {
+    const dynasty = leagues.filter(isDynastyLeague);
+    if (dynasty.length === 0) {
+      setPickData({});
+      return;
+    }
+
+    const cacheKey = `tradePicks_${userName || 'anon'}`;
+    const cached = readCache(cacheKey, PICKS_TTL_MS);
+    if (cached) {
+      setPickData(cached);
+      return;
+    }
+
+    const entries = await Promise.all(
+      dynasty.map(async (league) => {
+        try {
+          const response = await fetch(
+            `https://api.sleeper.app/v1/league/${league.league_id}/traded_picks`
+          );
+          if (!response.ok) return null;
+          return [league.league_id, await response.json()];
+        } catch (e) {
+          // One league failing should not cost the others their columns.
+          console.error(`Failed to fetch traded picks for ${league.league_id}:`, e);
+          return null;
+        }
+      })
+    );
+
+    const newPickData = Object.fromEntries(entries.filter(Boolean));
+    setPickData(newPickData);
+    writeCache(cacheKey, newPickData);
   };
 
   // Fetch teams data for leagues
@@ -286,14 +350,23 @@ function TradeAnalyzer({ userName, setUserName }) {
           if (!response.ok) continue;
           
           const rosters = await response.json();
-          // Only store essential roster data to reduce size
+          // Only store essential roster data to reduce size.
+          //
+          // roster_id is what traded_picks keys picks by — owner_id will not do.
+          // fpts is the standings tiebreaker after wins, and ppts is Max PF;
+          // both come split into an integer and a decimal part.
           const optimizedRosters = rosters.map(roster => ({
+            roster_id: roster.roster_id,
             owner_id: roster.owner_id,
             players: roster.players,
             settings: {
               wins: roster.settings?.wins,
               losses: roster.settings?.losses,
-              ties: roster.settings?.ties
+              ties: roster.settings?.ties,
+              fpts: roster.settings?.fpts,
+              fpts_decimal: roster.settings?.fpts_decimal,
+              ppts: roster.settings?.ppts,
+              ppts_decimal: roster.settings?.ppts_decimal
             }
           }));
           newRosterData[league.league_id] = optimizedRosters;
@@ -741,6 +814,99 @@ function TradeAnalyzer({ userName, setUserName }) {
   };
 
   // Get all players grouped by league
+  // A free agent in this league has no team to rank and no picks to hold.
+  const renderRankCell = (leagueGroup, playerData, which) => {
+    const rosterId = playerData.roster.roster_id;
+    const position = rosterId != null ? leagueGroup.ranks?.[which]?.[rosterId] : null;
+    // Same red-to-green read as the defence ranks elsewhere, flipped: here
+    // first place is the good end.
+    const colour = rankColor(position, leagueGroup.ranks.total);
+    return (
+      <div className={`trade-league-rank ${!playerData.roster.owner_id ? 'available' : ''}`}
+           style={colour ? { color: colour, fontWeight: 600 } : undefined}
+           title={position ? `${position} of ${leagueGroup.ranks.total}` : undefined}>
+        {position || '-'}
+      </div>
+    );
+  };
+
+  const renderPickStrip = (leagueGroup, playerData, season) => {
+    const rosterId = playerData.roster.roster_id;
+    const holdings = rosterId != null ? leagueGroup.picks?.[season]?.[rosterId] : null;
+    if (!holdings) return <span className="trade-league-picks-none">—</span>;
+
+    return (
+      <span className="trade-league-pick-strip">
+        {DEFAULT_ROUNDS.map(round => {
+          const cell = holdings[round] || { count: 0, ownsOwn: false };
+          const owns = cell.count === 0
+            ? 'none'
+            : (cell.ownsOwn ? 'including their own' : 'none of them their own');
+          return (
+            <span key={round} className={`trade-pick-square ${pickCellTone(cell)}`}
+                  title={`Round ${round}: ${cell.count} pick${cell.count === 1 ? '' : 's'}, ${owns}`}>
+              {cell.count}
+            </span>
+          );
+        })}
+      </span>
+    );
+  };
+
+  // Points come split into an integer and a hundredths part. Existing rankings
+  // elsewhere in the app sort on the integer alone and silently drop the rest.
+  const exactPoints = (settings, key) =>
+    (settings?.[key] || 0) + (settings?.[`${key}_decimal`] || 0) / 100;
+
+  // Standings position and Max PF position, by roster_id.
+  //
+  // Two ranks rather than one because they disagree in the way that matters for
+  // a trade: a strong roster losing close games sits low in the standings and
+  // high on Max PF, and the reverse is a team getting away with it.
+  const getLeagueRanks = (leagueId) => {
+    const rosters = rosterData[leagueId] || [];
+    const rank = (sorted) => {
+      const byRoster = {};
+      sorted.forEach((roster, index) => {
+        byRoster[roster.roster_id] = index + 1;
+      });
+      return byRoster;
+    };
+
+    // Sleeper's default order: wins, then points scored.
+    const standings = [...rosters].sort((a, b) =>
+      (b.settings?.wins || 0) - (a.settings?.wins || 0) ||
+      exactPoints(b.settings, 'fpts') - exactPoints(a.settings, 'fpts')
+    );
+    const byMaxPf = [...rosters].sort((a, b) =>
+      exactPoints(b.settings, 'ppts') - exactPoints(a.settings, 'ppts')
+    );
+
+    return {
+      total: rosters.length,
+      standing: rank(standings),
+      maxPf: rank(byMaxPf)
+    };
+  };
+
+  // Pick holdings for both seasons, by roster_id. Null for a league where picks
+  // are not an asset, which the table renders as a dash.
+  const getLeaguePicks = (league) => {
+    if (!isDynastyLeague(league)) return null;
+    const rosters = rosterData[league.league_id] || [];
+    const rosterIds = rosters.map(r => r.roster_id).filter(id => id != null);
+    if (rosterIds.length === 0) return null;
+
+    const traded = pickData[league.league_id];
+    if (!traded) return null;
+
+    const bySeason = {};
+    PICK_SEASONS.forEach(season => {
+      bySeason[season] = pickHoldings(traded, rosterIds, season);
+    });
+    return bySeason;
+  };
+
   const getPlayersByLeague = () => {
     if (team2Players.length === 0) return [];
     
@@ -783,6 +949,8 @@ function TradeAnalyzer({ userName, setUserName }) {
       return {
         ...leagueGroup,
         allSameOwner,
+        ranks: getLeagueRanks(leagueGroup.league.league_id),
+        picks: getLeaguePicks(leagueGroup.league),
         ownerMatches: leagueGroup.players.map(playerData => {
           const playerOwner = playerData.roster.owner_id;
           if (!playerOwner) return false; // Available players don't match
@@ -1230,6 +1398,37 @@ function TradeAnalyzer({ userName, setUserName }) {
                       Record
                       <FontAwesomeIcon icon={getSortIcon('record')} className="sort-icon" />
                     </div>
+                    <div className="trade-league-rank-header" title="Position in the league standings">Pos</div>
+                    <div className="trade-league-rank-header" title="Position by maximum points — what the roster could have scored with perfect lineups">Max PF</div>
+                    {PICK_SEASONS.map((season, seasonIndex) => (
+                      <div key={season} className="trade-league-picks-header">
+                        <span title={`Draft picks held in ${season}, by round`}>{season}</span>
+                        {/* One legend for both columns, on the first. */}
+                        {seasonIndex === 0 && (
+                          <span className="trade-pick-legend-trigger" tabIndex={0}
+                                aria-label="What the pick colours mean">
+                            i
+                            <span className="trade-pick-legend" role="tooltip">
+                              <span className="trade-pick-legend-title">
+                                Picks held, one box per round
+                              </span>
+                              <span className="trade-pick-legend-row">
+                                <span className="trade-pick-square green">1</span>
+                                still has their own pick
+                              </span>
+                              <span className="trade-pick-legend-row">
+                                <span className="trade-pick-square yellow">2</span>
+                                holds picks, but not their own
+                              </span>
+                              <span className="trade-pick-legend-row">
+                                <span className="trade-pick-square red">0</span>
+                                no pick that round
+                              </span>
+                            </span>
+                          </span>
+                        )}
+                      </div>
+                    ))}
                   </div>
                   {getSortedPlayersByLeague().map((leagueGroup, groupIndex) => (
                     <React.Fragment key={leagueGroup.league.league_id}>
@@ -1248,6 +1447,13 @@ function TradeAnalyzer({ userName, setUserName }) {
                           <div className={`trade-league-record ${leagueGroup.ownerMatches[playerIndex] ? 'same-owner' : ''} ${!playerData.roster.owner_id ? 'available' : ''}`}>
                             {playerData.roster.owner_id ? `${playerData.roster.settings?.wins || 0}-${playerData.roster.settings?.losses || 0}-${playerData.roster.settings?.ties || 0}` : '-'}
                           </div>
+                          {renderRankCell(leagueGroup, playerData, 'standing')}
+                          {renderRankCell(leagueGroup, playerData, 'maxPf')}
+                          {PICK_SEASONS.map(season => (
+                            <div key={season} className="trade-league-picks">
+                              {renderPickStrip(leagueGroup, playerData, season)}
+                            </div>
+                          ))}
                         </div>
                       ))}
                     </React.Fragment>

@@ -69,9 +69,12 @@ body.dark .error {
   gap: 20px;
 }
 
+/* The league table is the part worth reading, so it gets the larger share. The
+   two asset panels stack instead of sitting side by side, which leaves the
+   analysis block below them exactly one panel wide. */
 .trade-content-wrapper {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: 1fr 2fr;
   gap: 20px;
   align-items: start;
 }
@@ -84,12 +87,8 @@ body.dark .error {
 
 .trade-panels {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 20px;
-}
-
-.trade-panels .trade-panel {
-  grid-column: span 1;
 }
 
 .trade-analysis-container {
@@ -134,8 +133,12 @@ body.dark .league-info-header {
 }
 
 .trade-league-header {
+  position: relative;
+  z-index: 2; /* so the picks legend opens over the rows, not behind them */
   display: grid;
-  grid-template-columns: 4fr 1fr 3fr 2fr;
+  /* name | # | owner | record | pos | max pf | season+1 | season+2
+     Header and row must stay in step. */
+  grid-template-columns: 4fr 1fr 3fr 2fr 1fr 1.5fr 3.3fr 3.3fr;
   gap: 0.625rem;
   padding: 0.625rem 0;
   border-bottom: 1px solid hsl(var(--border));
@@ -147,7 +150,9 @@ body.dark .league-info-header {
 
 .trade-league-row {
   display: grid;
-  grid-template-columns: 4fr 1fr 3fr 2fr;
+  /* name | # | owner | record | pos | max pf | season+1 | season+2
+     Header and row must stay in step. */
+  grid-template-columns: 4fr 1fr 3fr 2fr 1fr 1.5fr 3.3fr 3.3fr;
   gap: 0.625rem;
   padding: 0.625rem 0;
   border-bottom: 1px solid hsl(var(--border));
@@ -162,9 +167,23 @@ body.dark .league-info-header {
 .trade-league-name-header,
 .trade-league-player-header,
 .trade-league-owner-header,
-.trade-league-record-header {
+.trade-league-record-header,
+.trade-league-rank-header,
+.trade-league-picks-header {
   font-weight: 600;
   color: hsl(var(--foreground));
+}
+
+.trade-league-rank-header {
+  cursor: help;
+  white-space: nowrap;
+}
+
+.trade-league-picks-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
 }
 
 .sortable {
@@ -255,6 +274,135 @@ body.dark .available {
   color: hsl(var(--foreground));
   font-weight: 600;
   text-align: center;
+}
+
+/* Both ranks read as "3/12". */
+.trade-league-rank {
+  text-align: center;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.trade-league-picks {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trade-league-pick-strip {
+  display: flex;
+  gap: 3px;
+  flex-wrap: nowrap;
+}
+
+/* One per draft round. Matches the tinted-fill-plus-darker-border look of
+   .result-square in ResultsGrid.css, at the smaller size a table cell wants. */
+.trade-pick-square {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  border: 2px solid;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.trade-pick-square.green {
+  background-color: rgba(0, 133, 0, 0.2);
+  border-color: darkgreen;
+}
+
+.trade-pick-square.yellow {
+  background-color: rgba(255, 215, 0, 0.2);
+  border-color: goldenrod;
+}
+
+.trade-pick-square.red {
+  background-color: rgba(255, 0, 0, 0.25);
+  border-color: rgb(133, 1, 1);
+}
+
+/* Hover target explaining the colours. Sits on the first season only — one
+   legend covers both columns. */
+.trade-pick-legend-trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-family: Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: help;
+  /* Not opacity: that would fade the popover nested inside it. */
+  color: hsl(var(--muted-foreground));
+}
+
+.trade-pick-legend-trigger:hover,
+.trade-pick-legend-trigger:focus-visible {
+  color: hsl(var(--foreground));
+}
+
+/* Anchored to its right edge so it opens inward: the season columns are the
+   rightmost in the table, and .league-info-column clips overflow to keep its
+   rounded corners. */
+.trade-pick-legend {
+  position: absolute;
+  top: calc(100% + 7px);
+  right: -6px;
+  z-index: 20;
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  width: 15rem;
+  padding: 0.625rem 0.75rem;
+  /* Themed rather than a hardcoded dark, so it stays readable in light mode. */
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  font-size: 0.72rem;
+  font-weight: 500;
+  font-style: normal;
+  font-family: inherit;
+  text-align: left;
+  white-space: normal;
+  cursor: default;
+}
+
+.trade-pick-legend-trigger:hover .trade-pick-legend,
+.trade-pick-legend-trigger:focus .trade-pick-legend,
+.trade-pick-legend-trigger:focus-within .trade-pick-legend {
+  display: flex;
+}
+
+.trade-pick-legend-title {
+  font-weight: 700;
+  color: hsl(var(--muted-foreground));
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.65rem;
+}
+
+.trade-pick-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* A league where picks are not an asset. */
+.trade-league-picks-none {
+  opacity: 0.45;
 }
 
 .trade-league-player {
