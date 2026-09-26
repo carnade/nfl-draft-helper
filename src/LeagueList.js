@@ -7,7 +7,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { useParams } from "react-router-dom";
 import DraftModal from "./DraftModal";
-import { getDvpColor } from "./dvpColor";
+import { getDvpColor, rankColor } from "./dvpColor";
 import { getCurrentWeek } from "./currentWeekCache";
 import { loadHiddenLeagues, visibleLeagues } from "./leagueVisibility";
 import "./LeagueList.css";
@@ -805,6 +805,27 @@ function LeagueList() {
           return null;
         }
 
+        // Every roster in the league is already here — only ours was being kept.
+        // Points arrive split into an integer and a hundredths part.
+        const exactPoints = (settings, key) =>
+          (settings?.[key] || 0) + (settings?.[`${key}_decimal`] || 0) / 100;
+        const placeOf = (sorted) =>
+          sorted.findIndex((r) => r.roster_id === userRoster.roster_id) + 1;
+
+        // Sleeper's default standings order: wins, then points scored.
+        const standingRank = placeOf(
+          [...rostersData].sort(
+            (a, b) =>
+              (b.settings?.wins || 0) - (a.settings?.wins || 0) ||
+              exactPoints(b.settings, "fpts") - exactPoints(a.settings, "fpts")
+          )
+        );
+        const maxPfRank = placeOf(
+          [...rostersData].sort(
+            (a, b) => exactPoints(b.settings, "ppts") - exactPoints(a.settings, "ppts")
+          )
+        );
+
         const starters = userRoster.starters || [];
         const reserve = userRoster.reserve || [];
         const taxi = userRoster.taxi || [];
@@ -819,6 +840,9 @@ function LeagueList() {
 
         return {
           ...league,
+          standingRank,
+          maxPfRank,
+          rankTotal: rostersData.length,
           userRoster: {
             starters,
             uniquePlayers,
@@ -1354,7 +1378,8 @@ function LeagueList() {
             <div className="league-grid-header">League Name</div>
             <div className="league-grid-header">Record</div>
             <div className="league-grid-header">Waivers</div>
-            <div className="league-grid-header">Used Waiver Budget</div>
+            <div className="league-grid-header" title="Position in the league standings">Pos</div>
+            <div className="league-grid-header" title="Position by maximum points — what the roster could have scored with perfect lineups">MPF</div>
             <div className="league-grid-header">Injuries on starters</div>
             <div className="league-grid-header">Actions</div>
 
@@ -1422,10 +1447,21 @@ function LeagueList() {
                         </span>;
                       })() : "—"}
                     </div>
-                    <div className="league-grid-item">
-                      {league.userRoster?.settings?.waiver_budget_used}/
-                      {league.settings.waiver_budget}
-                    </div>
+                    {[league.standingRank, league.maxPfRank].map((place, i) => {
+                      // First place is the good end here, unlike the defence
+                      // ranks this gradient was written for.
+                      const colour = rankColor(place, league.rankTotal);
+                      return (
+                        <div
+                          key={i}
+                          className="league-grid-item"
+                          style={colour ? { color: colour, fontWeight: 600 } : undefined}
+                          title={place ? `${place} of ${league.rankTotal}` : undefined}
+                        >
+                          {place || "—"}
+                        </div>
+                      );
+                    })}
                     <div className="league-grid-item">
                       {redCount > 0 && (
                         <>

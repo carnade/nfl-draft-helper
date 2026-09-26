@@ -4,6 +4,7 @@ import { faSearch, faTimes, faSortUp, faSortDown, faSort } from "@fortawesome/fr
 import "./TradeAnalyzer.css";
 import { pickHoldings, pickCellTone, DEFAULT_ROUNDS } from "./draftPickHoldings";
 import { readCache, writeCache } from "./ttlCache";
+import { rankColor } from "./dvpColor";
 
 // Session cache - persists across browser sessions using localStorage
 //
@@ -817,8 +818,12 @@ function TradeAnalyzer({ userName, setUserName }) {
   const renderRankCell = (leagueGroup, playerData, which) => {
     const rosterId = playerData.roster.roster_id;
     const position = rosterId != null ? leagueGroup.ranks?.[which]?.[rosterId] : null;
+    // Same red-to-green read as the defence ranks elsewhere, flipped: here
+    // first place is the good end.
+    const colour = rankColor(position, leagueGroup.ranks.total);
     return (
       <div className={`trade-league-rank ${!playerData.roster.owner_id ? 'available' : ''}`}
+           style={colour ? { color: colour, fontWeight: 600 } : undefined}
            title={position ? `${position} of ${leagueGroup.ranks.total}` : undefined}>
         {position || '-'}
       </div>
@@ -1395,10 +1400,33 @@ function TradeAnalyzer({ userName, setUserName }) {
                     </div>
                     <div className="trade-league-rank-header" title="Position in the league standings">Pos</div>
                     <div className="trade-league-rank-header" title="Position by maximum points — what the roster could have scored with perfect lineups">Max PF</div>
-                    {PICK_SEASONS.map(season => (
-                      <div key={season} className="trade-league-picks-header"
-                           title={`Draft picks held in ${season}, by round. Green: they have their own pick. Yellow: they hold someone else's but not their own. Red: none.`}>
-                        {season}
+                    {PICK_SEASONS.map((season, seasonIndex) => (
+                      <div key={season} className="trade-league-picks-header">
+                        <span title={`Draft picks held in ${season}, by round`}>{season}</span>
+                        {/* One legend for both columns, on the first. */}
+                        {seasonIndex === 0 && (
+                          <span className="trade-pick-legend-trigger" tabIndex={0}
+                                aria-label="What the pick colours mean">
+                            i
+                            <span className="trade-pick-legend" role="tooltip">
+                              <span className="trade-pick-legend-title">
+                                Picks held, one box per round
+                              </span>
+                              <span className="trade-pick-legend-row">
+                                <span className="trade-pick-square green">1</span>
+                                still has their own pick
+                              </span>
+                              <span className="trade-pick-legend-row">
+                                <span className="trade-pick-square yellow">2</span>
+                                holds picks, but not their own
+                              </span>
+                              <span className="trade-pick-legend-row">
+                                <span className="trade-pick-square red">0</span>
+                                no pick that round
+                              </span>
+                            </span>
+                          </span>
+                        )}
                       </div>
                     ))}
                   </div>

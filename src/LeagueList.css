@@ -128,7 +128,8 @@ body.dark .medical-cross-icon {
 /* The grid for league info */
 .league-grid {
   display: grid;
-  grid-template-columns: 3fr 1fr 1fr 1fr 1fr 1fr;
+  /* name | record | waivers | pos | mpf | injuries | actions */
+  grid-template-columns: 3fr 1fr 1fr 0.6fr 0.6fr 1fr 1fr;
   gap: 10px;
 }
 
