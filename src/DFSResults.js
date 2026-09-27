@@ -26,8 +26,42 @@ const BASE_URL = mock
 // /matchups/<week> with that season's points, so a stale id here shows last
 // year's scores for this year's lineups without erroring.
 // The backend keeps its own copy in DFS_SCORING_LEAGUE_IDS — change both together.
-const PRIMARY_SLEEPER_LEAGUE_ID = '1312016340290113536';
-const DST_SLEEPER_LEAGUE_ID = '1312016308207906816';
+// Two halves of one pool. Sleeper caps a league at 32 rosters, so the players
+// who do not fit live in a second league — they are called "DFS players" and
+// "DFS extras". Their scoring settings are identical, all 43 keys, so a player
+// who appears in both scores the same either way and neither takes precedence.
+//
+// They used to be treated as a primary league plus a DST-only one, and only
+// team codes were taken from the second. That silently dropped every ordinary
+// player who happened to sit in the overflow league: Xavier Hutchinson scored
+// 1.6 in week 3 and the page said "Awaiting Pts", along with five others. The
+// backend has always merged both (fetch_sleeper_matchup_points), so the
+// standings and the page disagreed. The names had stopped describing reality
+// too — the "DST" league holds no defences at all now; all 32 are in the other.
+const DFS_SCORING_LEAGUE_IDS = ['1312016340290113536', '1312016308207906816'];
+
+// Every scored player for a week, from every scoring league. Mirrors what the
+// backend builds the standings from.
+async function fetchScoringLeaguePoints(week) {
+  const perLeague = await Promise.all(
+    DFS_SCORING_LEAGUE_IDS.map((leagueId) =>
+      fetch(`https://api.sleeper.app/v1/league/${leagueId}/matchups/${week}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .catch((error) => {
+          // One league failing should not cost us the other's points.
+          console.error(`Error fetching matchups for league ${leagueId}:`, error);
+          return null;
+        })
+    )
+  );
+
+  const points = {};
+  perLeague.forEach((matchups) => {
+    if (!Array.isArray(matchups)) return;
+    matchups.forEach((matchup) => Object.assign(points, matchup.players_points || {}));
+  });
+  return points;
+}
 const DEFENSE_POSITIONS = new Set(['DST', 'DEF', 'D/ST', 'D', 'TEAM', 'TM']);
 
 // The salary rows arrive keyed "{id}_W{week}_D{date}", but every lookup in this
@@ -309,24 +343,12 @@ function DFSResults() {
           });
         });
         
-        // Always fetch fantasy points from Sleeper matchups API
-        const matchupsData = await fetch(`https://api.sleeper.app/v1/league/${PRIMARY_SLEEPER_LEAGUE_ID}/matchups/${selectedWeek}`).then(res => res.json());
-        
-        // Extract and combine all players_points from all matchups
+        // Fantasy points from every scoring league, players and defences alike
+        const scoringPoints = await fetchScoringLeaguePoints(selectedWeek);
         let fantasyData = {};
-        if (Array.isArray(matchupsData)) {
-          matchupsData.forEach(matchup => {
-            if (matchup.players_points) {
-              Object.entries(matchup.players_points).forEach(([sleeperId, points]) => {
-                // Create object structure expected by the code
-                fantasyData[sleeperId] = {
-                  fantasy_points: points,
-                  sleeper_id: sleeperId
-                };
-              });
-            }
-          });
-        }
+        Object.entries(scoringPoints).forEach(([sleeperId, points]) => {
+          fantasyData[sleeperId] = { fantasy_points: points, sleeper_id: sleeperId };
+        });
         
         // Fetch other data from original endpoints
         // Check cache first for DFS salaries
@@ -349,70 +371,6 @@ function DFSResults() {
           console.log('DFS salary data fetched and cached');
         }
         
-        // Determine DST players present in the lineups
-        const dstSleeperIds = new Set();
-        Array.from(allSleeperIds).forEach(rawSleeperId => {
-          const sleeperId = String(rawSleeperId);
-          const dfsPlayerKey = `${sleeperId}_W${selectedWeek}`;
-          const dfsPlayer = salaryData[dfsPlayerKey];
-          const salaryPosition =
-            dfsPlayer?.position ||
-            dfsPlayer?.fantasy_positions?.[0];
-          const metadataPosition = playerMetadata[sleeperId]?.position;
-          const lineupIndicatesDefense = isDefenseSleeperId(sleeperId);
-
-          const isDefense =
-            lineupIndicatesDefense ||
-            isDefensePosition(salaryPosition) ||
-            isDefensePosition(metadataPosition);
-
-          if (isDefense) {
-            dstSleeperIds.add(sleeperId);
-            console.log('DST detection (handleProceed):', {
-              sleeperId,
-              dfsPlayerKey,
-              salaryPosition,
-              metadataPosition,
-              lineupIndicatesDefense,
-              salaryEntry: dfsPlayer
-            });
-          }
-        });
-
-        // Always fetch DST matchup data to get ALL DST points (needed for "Best Not Chosen" stats)
-        // Merge ALL non-numeric keys (DST team abbreviations) from the DST league
-        try {
-          const dstMatchupsData = await fetch(`https://api.sleeper.app/v1/league/${DST_SLEEPER_LEAGUE_ID}/matchups/${selectedWeek}`).then(res => res.json());
-          if (Array.isArray(dstMatchupsData)) {
-            dstMatchupsData.forEach(matchup => {
-              if (!matchup.players_points) return;
-              Object.entries(matchup.players_points).forEach(([sleeperId, points]) => {
-                const sid = String(sleeperId);
-                // Merge ALL non-numeric keys (DST team abbreviations like "CHI", "LAC", etc.)
-                // Also merge numeric IDs that are in our dstSleeperIds set (for DSTs in lineups)
-                if (!/^\d+$/.test(sid) || dstSleeperIds.has(sid)) {
-                  const existing = fantasyData[sid] || { sleeper_id: sid };
-                  existing.fantasy_points = points ?? 0;
-                  fantasyData[sid] = existing;
-                  if (dstSleeperIds.has(sid)) {
-                    console.log('DST points merged (handleProceed - in lineup):', {
-                      sleeperId: sid,
-                      points,
-                      matchupId: matchup.matchup_id
-                    });
-                  }
-                }
-              });
-            });
-            console.log('DST points merged (handleProceed - all DSTs):', {
-              totalDstPoints: Object.keys(fantasyData).filter(k => !/^\d+$/.test(k)).length,
-              dstSleeperIdsInLineups: Array.from(dstSleeperIds)
-            });
-          }
-        } catch (error) {
-          console.error('Error fetching DST matchup data:', error);
-        }
-
         // Use Sleeper points directly - names, positions, teams come from dfsSalaryData
         const mergedFantasyData = { ...fantasyData };
         
@@ -1227,24 +1185,12 @@ function DFSResults() {
         });
         
         try {
-          // Always fetch fantasy points from Sleeper matchups API
-          const matchupsData = await fetch(`https://api.sleeper.app/v1/league/${PRIMARY_SLEEPER_LEAGUE_ID}/matchups/${selectedWeek}`).then(res => res.json());
-          
-          // Extract and combine all players_points from all matchups
+          // Fantasy points from every scoring league, players and defences alike
+          const scoringPoints = await fetchScoringLeaguePoints(selectedWeek);
           let fantasyData = {};
-          if (Array.isArray(matchupsData)) {
-            matchupsData.forEach(matchup => {
-              if (matchup.players_points) {
-                Object.entries(matchup.players_points).forEach(([sleeperId, points]) => {
-                  // Create object structure expected by the code
-                  fantasyData[sleeperId] = {
-                    fantasy_points: points,
-                    sleeper_id: sleeperId
-                  };
-                });
-              }
-            });
-          }
+          Object.entries(scoringPoints).forEach(([sleeperId, points]) => {
+            fantasyData[sleeperId] = { fantasy_points: points, sleeper_id: sleeperId };
+          });
           
           // Fetch other data from original endpoints
           // Check cache first for DFS salaries
@@ -1268,47 +1214,6 @@ function DFSResults() {
           }
           
           // Use Sleeper points directly - names, positions, teams come from dfsSalaryData
-          // Determine DST players present in the lineups (for reference)
-          const dstSleeperIds = new Set();
-          Array.from(allSleeperIds).forEach(rawSleeperId => {
-            const sleeperId = String(rawSleeperId);
-            const dfsPlayerKey = `${sleeperId}_W${selectedWeek}`;
-            const dfsPlayer = salaryData[dfsPlayerKey];
-            const salaryPosition = dfsPlayer?.position || dfsPlayer?.fantasy_positions?.[0];
-            const lineupIndicatesDefense = isDefenseSleeperId(sleeperId);
-            const isDefense = lineupIndicatesDefense || isDefensePosition(salaryPosition);
-            if (isDefense) {
-              dstSleeperIds.add(sleeperId);
-            }
-          });
-
-          // Always fetch DST matchup data to get ALL DST points (needed for "Best Not Chosen" stats)
-          // Merge ALL non-numeric keys (DST team abbreviations) from the DST league
-          try {
-            const dstMatchupsData = await fetch(`https://api.sleeper.app/v1/league/${DST_SLEEPER_LEAGUE_ID}/matchups/${selectedWeek}`).then(res => res.json());
-            if (Array.isArray(dstMatchupsData)) {
-              dstMatchupsData.forEach(matchup => {
-                if (!matchup.players_points) return;
-                Object.entries(matchup.players_points).forEach(([sleeperId, points]) => {
-                  const sid = String(sleeperId);
-                  // Merge ALL non-numeric keys (DST team abbreviations like "CHI", "LAC", etc.)
-                  // Also merge numeric IDs that are in our dstSleeperIds set (for DSTs in lineups)
-                  if (!/^\d+$/.test(sid) || dstSleeperIds.has(sid)) {
-                    const existing = fantasyData[sid] || { sleeper_id: sid };
-                    existing.fantasy_points = points ?? 0;
-                    fantasyData[sid] = existing;
-                  }
-                });
-              });
-              console.log('DST points merged (URL load - all DSTs):', {
-                totalDstPoints: Object.keys(fantasyData).filter(k => !/^\d+$/.test(k)).length,
-                dstSleeperIdsInLineups: Array.from(dstSleeperIds)
-              });
-            }
-          } catch (error) {
-            console.error('Error fetching DST matchup data (URL load):', error);
-          }
-
           const mergedFantasyData = { ...fantasyData };
           
           console.log('Fantasy points fetched (from URL, Sleeper matchups):', mergedFantasyData);
@@ -1396,28 +1301,6 @@ function DFSResults() {
     }
   }, [inputData]);
 
-  const buildDstSleeperIdSet = useCallback((lineups) => {
-    const dstIds = new Set();
-    lineups.forEach(lineup => {
-      lineup.players.forEach(player => {
-        const sleeperId = String(player.sleeperId);
-        if (isDefenseSleeperId(sleeperId)) {
-          dstIds.add(sleeperId);
-          return;
-        }
-        const dfsPlayerKey = `${sleeperId}_W${selectedWeek}`;
-        const salaryEntry = dfsSalaryData[dfsPlayerKey];
-        const position =
-          salaryEntry?.position ||
-          salaryEntry?.fantasy_positions?.[0] ||
-          playerMetadata[sleeperId]?.position;
-        if (isDefensePosition(position)) {
-          dstIds.add(sleeperId);
-        }
-      });
-    });
-    return dstIds;
-  }, [dfsSalaryData, playerMetadata, selectedWeek]);
 
   // Check if we should show placeholder data (before reveal time and not admin)
   const shouldShowPlaceholder = useCallback(() => {
@@ -2542,44 +2425,7 @@ function DFSResults() {
     const refreshPoints = async () => {
       setShowUpdatingIndicator(true);
       try {
-        const matchupsData = await fetch(`https://api.sleeper.app/v1/league/${PRIMARY_SLEEPER_LEAGUE_ID}/matchups/${selectedWeek}`).then(res => res.json());
-
-        const sleeperPoints = {};
-        if (Array.isArray(matchupsData)) {
-          matchupsData.forEach(matchup => {
-            if (matchup.players_points) {
-              Object.assign(sleeperPoints, matchup.players_points);
-            }
-          });
-        }
-
-        const lineups = parseLineups();
-        const dstSleeperIds = buildDstSleeperIdSet(lineups);
-
-        // Always fetch DST matchup data to update ALL DST points (needed for "Best Not Chosen" stats)
-        // Merge ALL non-numeric keys (DST team abbreviations) from the DST league
-        try {
-          const dstMatchupsData = await fetch(`https://api.sleeper.app/v1/league/${DST_SLEEPER_LEAGUE_ID}/matchups/${selectedWeek}`).then(res => res.json());
-          if (Array.isArray(dstMatchupsData)) {
-            dstMatchupsData.forEach(matchup => {
-              if (!matchup.players_points) return;
-              Object.entries(matchup.players_points).forEach(([sleeperId, points]) => {
-                const sid = String(sleeperId);
-                // Merge ALL non-numeric keys (DST team abbreviations like "CHI", "LAC", etc.)
-                // Also merge numeric IDs that are in our dstSleeperIds set (for DSTs in lineups)
-                if (!/^\d+$/.test(sid) || dstSleeperIds.has(sid)) {
-                  sleeperPoints[sid] = points ?? 0;
-                }
-              });
-            });
-            console.log('DST points merged (liveUpdate - all DSTs):', {
-              totalDstPoints: Object.keys(sleeperPoints).filter(k => !/^\d+$/.test(k)).length,
-              dstSleeperIdsInLineups: Array.from(dstSleeperIds)
-            });
-          }
-        } catch (error) {
-          console.error('Error refreshing DST Sleeper points:', error);
-        }
+        const sleeperPoints = await fetchScoringLeaguePoints(selectedWeek);
 
         setFantasyPoints(prevFantasyPoints => {
           const updatedFantasyPoints = { ...prevFantasyPoints };
@@ -2620,7 +2466,7 @@ function DFSResults() {
         clearTimeout(hideIndicatorTimeoutId);
       }
     };
-  }, [liveUpdate, selectedWeek, dfsSalaryData, playerMetadata, parseLineups, buildDstSleeperIdSet]);
+  }, [liveUpdate, selectedWeek]);
 
   // A link can ask for the tournament standings straight away (from My Lineups, say).
   // Whether that is possible depends on the entry's type, which only arrives with its
