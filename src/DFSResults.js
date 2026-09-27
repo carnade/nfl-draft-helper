@@ -26,10 +26,11 @@ const BASE_URL = mock
 // /matchups/<week> with that season's points, so a stale id here shows last
 // year's scores for this year's lineups without erroring.
 // The backend keeps its own copy in DFS_SCORING_LEAGUE_IDS — change both together.
-// Two halves of one pool. Sleeper caps a league at 32 rosters, so the players
-// who do not fit live in a second league — they are called "DFS players" and
-// "DFS extras". Their scoring settings are identical, all 43 keys, so a player
-// who appears in both scores the same either way and neither takes precedence.
+// Two containers for one pool, not a main league and a sidecar. More players
+// are needed than a single Sleeper league can hold — it caps at 32 rosters — so
+// the overflow goes in a second one ("DFS players" and "DFS extras"). Which of
+// them a player happens to sit in is an artifact of capacity and means nothing,
+// so the two are interchangeable by construction. Treat them alike everywhere.
 //
 // They used to be treated as a primary league plus a DST-only one, and only
 // team codes were taken from the second. That silently dropped every ordinary
