@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import "./Odds.css";
 import { getDvpColor } from "./dvpColor";
+import {
+  buildKickoffOptions,
+  filterByKickoff,
+  toggleKickoffValue,
+  kickoffFilterIsEmpty,
+  EMPTY_KICKOFF_FILTER,
+} from "./kickoffFilter";
 import { PrivilegedOnly } from "./auth";
 
 const mock = process.env.REACT_APP_MOCK === "true";
@@ -64,6 +71,45 @@ function fmtStat(val, market) {
   if (val == null || val === "" || isNaN(val)) return "—";
   if (BINARY_MARKETS.has(market)) return `${(Number(val) * 100).toFixed(0)}%`;
   return Number(val).toFixed(1);
+}
+
+// Day and kickoff-time toggles, in the browser's timezone so they agree with
+// the times printed in the rows below. Nothing selected means everything.
+function KickoffFilter({ options, value, onChange, shown, total }) {
+  if (options.days.length <= 1 && options.times.length <= 1) return null;
+
+  const group = (field, values) =>
+    values.map((v) => (
+      <button
+        key={v}
+        type="button"
+        className={`odds-kickoff-btn ${(value[field] || []).includes(v) ? "active" : ""}`}
+        onClick={() => onChange(toggleKickoffValue(value, field, v))}
+      >
+        {v}
+      </button>
+    ));
+
+  return (
+    <div className="odds-kickoff-bar">
+      <span className="odds-kickoff-label">Day</span>
+      <div className="odds-kickoff-group">{group("days", options.days)}</div>
+      <span className="odds-kickoff-label">Kickoff</span>
+      <div className="odds-kickoff-group">{group("times", options.times)}</div>
+      {!kickoffFilterIsEmpty(value) && (
+        <>
+          <button
+            type="button"
+            className="odds-kickoff-clear"
+            onClick={() => onChange(EMPTY_KICKOFF_FILTER)}
+          >
+            Clear
+          </button>
+          <span className="odds-filter-count">{shown} of {total}</span>
+        </>
+      )}
+    </div>
+  );
 }
 
 function fmtTime(iso) {
@@ -998,6 +1044,7 @@ export default function Odds() {
   const [marketFilter, setMarketFilter] = useState("ALL");
   const [valueOnly, setValueOnly] = useState(false);
   const [weeklyView, setWeeklyView] = useState(true);
+  const [kickoff, setKickoff] = useState(EMPTY_KICKOFF_FILTER);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [nameFilter, setNameFilter] = useState("");
@@ -1083,6 +1130,22 @@ export default function Odds() {
     else if (tab === "results") fetchResults();
     else if (tab === "propresults") fetchPropResults();
   }, [tab, fetchGames, fetchProps, fetchResults, fetchPropResults]);
+
+  // The kickoff filter is one control for the whole page, so it works off
+  // whichever dataset the open tab is showing.
+  const kickoffRows = useMemo(() => {
+    if (tab === "games") return gamesData || [];
+    if (tab === "props") return filteredPropsData || [];
+    if (tab === "results") return resultsData || [];
+    if (tab === "propresults") return propResults?.results || [];
+    return [];
+  }, [tab, gamesData, filteredPropsData, resultsData, propResults]);
+
+  const kickoffOptions = useMemo(() => buildKickoffOptions(kickoffRows), [kickoffRows]);
+  const kickoffShown = useMemo(
+    () => filterByKickoff(kickoffRows, kickoff),
+    [kickoffRows, kickoff]
+  );
 
   const noData = tab === "games"
     ? gamesData.length === 0
@@ -1249,10 +1312,17 @@ export default function Odds() {
 
       {!loading && !error && !noData && (
         <>
-          {tab === "games" && <GameLinesTable games={gamesData} weeklyView={weeklyView} />}
-          {tab === "props" && <PropsTable players={filteredPropsData} marketFilter={marketFilter === "ALL" ? null : marketFilter} weeklyView={weeklyView} />}
-          {tab === "results" && <ResultsTable games={resultsData || []} />}
-          {tab === "propresults" && <PropResultsTable data={propResults} />}
+          <KickoffFilter
+            options={kickoffOptions}
+            value={kickoff}
+            onChange={setKickoff}
+            shown={kickoffShown.length}
+            total={kickoffRows.length}
+          />
+          {tab === "games" && <GameLinesTable games={kickoffShown} weeklyView={weeklyView} />}
+          {tab === "props" && <PropsTable players={kickoffShown} marketFilter={marketFilter === "ALL" ? null : marketFilter} weeklyView={weeklyView} />}
+          {tab === "results" && <ResultsTable games={kickoffShown} />}
+          {tab === "propresults" && <PropResultsTable data={{ ...propResults, results: kickoffShown }} />}
         </>
       )}
     </div>

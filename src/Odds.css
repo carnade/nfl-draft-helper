@@ -537,6 +537,63 @@
 
 /* Filter bar above a results table. Sits on one line and wraps on narrow
    screens rather than pushing the table off the page. */
+/* Day and kickoff toggles. Same look as the market tabs above them, since they
+   do the same job — pick some of a small fixed set. */
+.odds-kickoff-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.odds-kickoff-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+}
+
+.odds-kickoff-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.odds-kickoff-btn {
+  padding: 4px 10px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 4px;
+  background: hsl(var(--card));
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.odds-kickoff-btn.active {
+  background: #4a9eff;
+  color: #fff;
+  border-color: #4a9eff;
+}
+
+.odds-kickoff-btn:hover:not(.active) {
+  background: hsl(var(--sidebar-accent));
+}
+
+.odds-kickoff-clear {
+  padding: 4px 10px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 4px;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.odds-kickoff-clear:hover {
+  color: hsl(var(--foreground));
+}
+
 .odds-filter-bar {
   display: flex;
   align-items: center;
