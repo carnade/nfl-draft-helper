@@ -202,19 +202,43 @@ function getWeekBucket(commence_time) {
   return tue.getTime();
 }
 
+// Which week a row belongs to, and what to call it.
+//
+// Every row the backend serves carries its real nfl_week, so use it. The
+// heading used to be the bucket's position in the data — the first week present
+// was always "Week 1" whatever week it actually was — and the buckets
+// themselves ran Tuesday to Tuesday in local time, which put a Monday night
+// game (Tuesday 02:15 here) into the following week rather than its own.
+function weekIdentity(row) {
+  const week = Number(row?.nfl_week);
+  if (row?.nfl_week != null && Number.isFinite(week)) {
+    return { key: `week-${week}`, label: `Week ${week}` };
+  }
+  // Nothing served today lands here, but a row without a week should still
+  // group sensibly rather than all falling together under one heading.
+  const bucket = getWeekBucket(row?.commence_time);
+  if (bucket == null) return { key: "unknown", label: "Unknown Week" };
+  const starting = new Date(bucket).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return { key: `from-${bucket}`, label: `Week of ${starting}` };
+}
+
 function groupByWeek(rows) {
   const map = new Map();
   for (const r of rows) {
-    const bucket = getWeekBucket(r.commence_time);
-    const key = bucket ?? -1;
-    if (!map.has(key)) map.set(key, []);
-    map.get(key).push(r);
+    const { key, label } = weekIdentity(r);
+    if (!map.has(key)) map.set(key, { label, rows: [], firstKickoff: Infinity });
+    const group = map.get(key);
+    group.rows.push(r);
+    // Guard the null: new Date(null) is the epoch, not an invalid date, which
+    // would sort an undated row to the very front.
+    const at = r?.commence_time ? new Date(r.commence_time).getTime() : NaN;
+    if (Number.isFinite(at)) group.firstKickoff = Math.min(group.firstKickoff, at);
   }
-  const sorted = [...map.entries()].sort(([a], [b]) => a - b);
-  return sorted.map(([ts, weekRows], i) => {
-    const label = ts === -1 ? "Unknown Week" : `Week ${i + 1}`;
-    return [label, weekRows];
-  });
+  // Order by when each week actually starts, which stays right whether the
+  // groups came from nfl_week or from the fallback. Anything undated sorts last.
+  return [...map.values()]
+    .sort((a, b) => a.firstKickoff - b.firstKickoff)
+    .map((group) => [group.label, group.rows]);
 }
 
 function useSortedData(data, sortConfig) {
