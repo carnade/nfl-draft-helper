@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import "./Odds.css";
 import { getDvpColor } from "./dvpColor";
+import {
+  buildKickoffOptions,
+  filterByKickoff,
+  toggleKickoffValue,
+  kickoffFilterIsEmpty,
+  EMPTY_KICKOFF_FILTER,
+} from "./kickoffFilter";
 import { PrivilegedOnly } from "./auth";
 
 const mock = process.env.REACT_APP_MOCK === "true";
@@ -64,6 +71,45 @@ function fmtStat(val, market) {
   if (val == null || val === "" || isNaN(val)) return "—";
   if (BINARY_MARKETS.has(market)) return `${(Number(val) * 100).toFixed(0)}%`;
   return Number(val).toFixed(1);
+}
+
+// Day and kickoff-time toggles, in the browser's timezone so they agree with
+// the times printed in the rows below. Nothing selected means everything.
+function KickoffFilter({ options, value, onChange, shown, total }) {
+  if (options.days.length <= 1 && options.times.length <= 1) return null;
+
+  const group = (field, values) =>
+    values.map((v) => (
+      <button
+        key={v}
+        type="button"
+        className={`odds-kickoff-btn ${(value[field] || []).includes(v) ? "active" : ""}`}
+        onClick={() => onChange(toggleKickoffValue(value, field, v))}
+      >
+        {v}
+      </button>
+    ));
+
+  return (
+    <div className="odds-kickoff-bar">
+      <span className="odds-kickoff-label">Day</span>
+      <div className="odds-kickoff-group">{group("days", options.days)}</div>
+      <span className="odds-kickoff-label">Kickoff</span>
+      <div className="odds-kickoff-group">{group("times", options.times)}</div>
+      {!kickoffFilterIsEmpty(value) && (
+        <>
+          <button
+            type="button"
+            className="odds-kickoff-clear"
+            onClick={() => onChange(EMPTY_KICKOFF_FILTER)}
+          >
+            Clear
+          </button>
+          <span className="odds-filter-count">{shown} of {total}</span>
+        </>
+      )}
+    </div>
+  );
 }
 
 function fmtTime(iso) {
@@ -156,19 +202,43 @@ function getWeekBucket(commence_time) {
   return tue.getTime();
 }
 
+// Which week a row belongs to, and what to call it.
+//
+// Every row the backend serves carries its real nfl_week, so use it. The
+// heading used to be the bucket's position in the data — the first week present
+// was always "Week 1" whatever week it actually was — and the buckets
+// themselves ran Tuesday to Tuesday in local time, which put a Monday night
+// game (Tuesday 02:15 here) into the following week rather than its own.
+function weekIdentity(row) {
+  const week = Number(row?.nfl_week);
+  if (row?.nfl_week != null && Number.isFinite(week)) {
+    return { key: `week-${week}`, label: `Week ${week}` };
+  }
+  // Nothing served today lands here, but a row without a week should still
+  // group sensibly rather than all falling together under one heading.
+  const bucket = getWeekBucket(row?.commence_time);
+  if (bucket == null) return { key: "unknown", label: "Unknown Week" };
+  const starting = new Date(bucket).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return { key: `from-${bucket}`, label: `Week of ${starting}` };
+}
+
 function groupByWeek(rows) {
   const map = new Map();
   for (const r of rows) {
-    const bucket = getWeekBucket(r.commence_time);
-    const key = bucket ?? -1;
-    if (!map.has(key)) map.set(key, []);
-    map.get(key).push(r);
+    const { key, label } = weekIdentity(r);
+    if (!map.has(key)) map.set(key, { label, rows: [], firstKickoff: Infinity });
+    const group = map.get(key);
+    group.rows.push(r);
+    // Guard the null: new Date(null) is the epoch, not an invalid date, which
+    // would sort an undated row to the very front.
+    const at = r?.commence_time ? new Date(r.commence_time).getTime() : NaN;
+    if (Number.isFinite(at)) group.firstKickoff = Math.min(group.firstKickoff, at);
   }
-  const sorted = [...map.entries()].sort(([a], [b]) => a - b);
-  return sorted.map(([ts, weekRows], i) => {
-    const label = ts === -1 ? "Unknown Week" : `Week ${i + 1}`;
-    return [label, weekRows];
-  });
+  // Order by when each week actually starts, which stays right whether the
+  // groups came from nfl_week or from the fallback. Anything undated sorts last.
+  return [...map.values()]
+    .sort((a, b) => a.firstKickoff - b.firstKickoff)
+    .map((group) => [group.label, group.rows]);
 }
 
 function useSortedData(data, sortConfig) {
@@ -998,6 +1068,7 @@ export default function Odds() {
   const [marketFilter, setMarketFilter] = useState("ALL");
   const [valueOnly, setValueOnly] = useState(false);
   const [weeklyView, setWeeklyView] = useState(true);
+  const [kickoff, setKickoff] = useState(EMPTY_KICKOFF_FILTER);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [nameFilter, setNameFilter] = useState("");
@@ -1083,6 +1154,22 @@ export default function Odds() {
     else if (tab === "results") fetchResults();
     else if (tab === "propresults") fetchPropResults();
   }, [tab, fetchGames, fetchProps, fetchResults, fetchPropResults]);
+
+  // The kickoff filter is one control for the whole page, so it works off
+  // whichever dataset the open tab is showing.
+  const kickoffRows = useMemo(() => {
+    if (tab === "games") return gamesData || [];
+    if (tab === "props") return filteredPropsData || [];
+    if (tab === "results") return resultsData || [];
+    if (tab === "propresults") return propResults?.results || [];
+    return [];
+  }, [tab, gamesData, filteredPropsData, resultsData, propResults]);
+
+  const kickoffOptions = useMemo(() => buildKickoffOptions(kickoffRows), [kickoffRows]);
+  const kickoffShown = useMemo(
+    () => filterByKickoff(kickoffRows, kickoff),
+    [kickoffRows, kickoff]
+  );
 
   const noData = tab === "games"
     ? gamesData.length === 0
@@ -1249,10 +1336,17 @@ export default function Odds() {
 
       {!loading && !error && !noData && (
         <>
-          {tab === "games" && <GameLinesTable games={gamesData} weeklyView={weeklyView} />}
-          {tab === "props" && <PropsTable players={filteredPropsData} marketFilter={marketFilter === "ALL" ? null : marketFilter} weeklyView={weeklyView} />}
-          {tab === "results" && <ResultsTable games={resultsData || []} />}
-          {tab === "propresults" && <PropResultsTable data={propResults} />}
+          <KickoffFilter
+            options={kickoffOptions}
+            value={kickoff}
+            onChange={setKickoff}
+            shown={kickoffShown.length}
+            total={kickoffRows.length}
+          />
+          {tab === "games" && <GameLinesTable games={kickoffShown} weeklyView={weeklyView} />}
+          {tab === "props" && <PropsTable players={kickoffShown} marketFilter={marketFilter === "ALL" ? null : marketFilter} weeklyView={weeklyView} />}
+          {tab === "results" && <ResultsTable games={kickoffShown} />}
+          {tab === "propresults" && <PropResultsTable data={{ ...propResults, results: kickoffShown }} />}
         </>
       )}
     </div>
