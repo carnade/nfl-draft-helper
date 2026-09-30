@@ -212,7 +212,7 @@ function SuggestionCell({ row, canEdit, onSwap, busy }) {
   );
 }
 
-function PlayerRow({ row, canEdit, onSwap, busy }) {
+function PlayerRow({ row, canEdit, onSwap, busy, formWindow }) {
   const p = row.starter;
   // Every unlocked slot with somewhere to go can be changed, not only the flagged
   // ones — otherwise a toss-up could never be acted on.
@@ -236,7 +236,7 @@ function PlayerRow({ row, canEdit, onSwap, busy }) {
         {p?.hasProjection ? fmt(p.proj) : <span className="ss-muted">—</span>}
       </td>
       <td className="ss-num">{fmt(p?.fptsG)}</td>
-      <td className="ss-num"><FormCell average={p?.l5} games={p?.l5Games} /></td>
+      <td className="ss-num ss-num-form"><FormCell average={p?.l5} games={p?.l5Games} window={formWindow} /></td>
       <td className="ss-num"><DvpCell rank={p?.dvpRank} /></td>
       <td><StatusCell player={p} /></td>
       <td><VerdictCell row={row} /></td>
@@ -249,17 +249,25 @@ function PlayerRow({ row, canEdit, onSwap, busy }) {
 
 // The count matters: a two-game average is not a five-game one, and early in a
 // season L5 is necessarily short.
-function FormCell({ average, games }) {
+// The heading says how many weeks were available; a row only speaks up when it
+// found fewer, which is a quarter of rostered players and exactly the ones whose
+// average deserves the least trust — a "1" is a single game, not an average.
+function FormCell({ average, games, window }) {
   if (average == null) return <span className="ss-muted">—</span>;
+  const short = games > 0 && games < (window || 5);
   return (
     <>
       {fmt(average)}
-      {games > 0 && games < 5 && <span className="ss-th-sub"> ({games})</span>}
+      {short && (
+        <span className="ss-form-games" title={`Only ${games} of the last ${window} games played`}>
+          ({games})
+        </span>
+      )}
     </>
   );
 }
 
-function BenchRow({ player, slots }) {
+function BenchRow({ player, slots, formWindow }) {
   const fits = [...new Set(slots.filter((slot) => isEligible(slot, player)))];
   return (
     <tr className="ss-row ss-row-bench">
@@ -271,7 +279,7 @@ function BenchRow({ player, slots }) {
       <td><TeamCell team={player.team} opponent={player.opponent} /></td>
       <td className="ss-num">{player.hasProjection ? fmt(player.proj) : <span className="ss-muted">—</span>}</td>
       <td className="ss-num">{fmt(player.fptsG)}</td>
-      <td className="ss-num"><FormCell average={player.l5} games={player.l5Games} /></td>
+      <td className="ss-num ss-num-form"><FormCell average={player.l5} games={player.l5Games} window={formWindow} /></td>
       <td className="ss-num"><DvpCell rank={player.dvpRank} /></td>
       <td><StatusCell player={player} /></td>
       <td className="ss-muted">bench</td>
@@ -280,7 +288,7 @@ function BenchRow({ player, slots }) {
   );
 }
 
-function LeagueCard({ league, onlyActionable, benchOpen, onToggleBench, canEdit, onSwap, busyRow }) {
+function LeagueCard({ league, onlyActionable, benchOpen, onToggleBench, canEdit, onSwap, busyRow, formWindow }) {
   const { rows, bench, slots, flagged } = league;
   const shown = onlyActionable ? rows.filter((r) => r.verdict === "sit") : rows;
 
@@ -303,8 +311,14 @@ function LeagueCard({ league, onlyActionable, benchOpen, onToggleBench, canEdit,
               <th className="ss-num" title="Points per game across the season so far, in this league's scoring">
                 FPTS/G
               </th>
-              <th className="ss-num" title="Average over the last 5 games played, in this league's scoring. Fewer than 5 early in the season — the count is shown beside it.">
-                L5
+              <th
+                className="ss-num ss-num-form"
+                title={
+                  `Average over the last ${formWindow || 5} game${formWindow === 1 ? "" : "s"} played, ` +
+                  "in this league's scoring. A player who missed a week shows his own count beside the figure."
+                }
+              >
+                L5{formWindow > 0 && formWindow < 5 && <span className="ss-form-games">({formWindow})</span>}
               </th>
               <th className="ss-num" title="Opponent's rank against this position, 1 = toughest">DvP</th>
               <th>Status</th><th>Verdict</th><th>Suggestion</th>
@@ -313,6 +327,7 @@ function LeagueCard({ league, onlyActionable, benchOpen, onToggleBench, canEdit,
           <tbody>
             {shown.map((row) => (
               <PlayerRow
+                formWindow={formWindow}
                 key={`${row.slot}-${row.index}`}
                 row={row}
                 canEdit={canEdit}
@@ -320,7 +335,7 @@ function LeagueCard({ league, onlyActionable, benchOpen, onToggleBench, canEdit,
                 onSwap={() => onSwap(league, row)}
               />
             ))}
-            {benchOpen && bench.map((p) => <BenchRow key={p.id} player={p} slots={slots} />)}
+            {benchOpen && bench.map((p) => <BenchRow key={p.id} player={p} slots={slots} formWindow={formWindow} />)}
           </tbody>
         </table>
       </div>
@@ -336,6 +351,10 @@ function LeagueCard({ league, onlyActionable, benchOpen, onToggleBench, canEdit,
 function StartSit({ userName }) {
   const auth = useSleeperAuth();
   const [week, setWeek] = useState(null);
+  // How many weeks the L5 average has to draw on. Early in a season that is
+  // fewer than five, and it belongs in the heading rather than repeated down
+  // every row — most players will have found exactly this many.
+  const formWindow = week ? playedWeeksBefore(week, 5).length : 0;
   const [leagues, setLeagues] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -824,6 +843,7 @@ function StartSit({ userName }) {
             )}
             <LeagueCard
               league={league}
+              formWindow={formWindow}
               onlyActionable={onlyActionable}
               canEdit={canEdit}
               onSwap={requestSwap}
