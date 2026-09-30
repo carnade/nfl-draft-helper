@@ -519,19 +519,32 @@ body.dark .dfs-manage-submission-value {
   font-size: 0.8125rem;
   color: hsl(var(--foreground));
   background: transparent;
-  border: 1px solid hsl(var(--border));
+  /* currentColor, like .dfs-manage-clear-lineup: --border is close enough to
+     the panel behind it that the button stops reading as one. */
+  border: 1px solid currentColor;
   border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  opacity: 0.75;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
 }
 
 .dfs-manage-refresh-dfs:hover:not(:disabled) {
-  background-color: hsl(var(--muted));
+  opacity: 1;
 }
 
 .dfs-manage-refresh-dfs:disabled {
   opacity: 0.6;
   cursor: progress;
+}
+
+/* Cleanup scores a week and deletes the lineups it scored. */
+.dfs-manage-refresh-dfs.is-destructive {
+  color: #c0392b;
+  border-color: currentColor;
+}
+
+.dfs-manage-refresh-dfs.is-destructive:hover:not(:disabled) {
+  background-color: rgba(192, 57, 43, 0.12);
 }
 
 .dfs-manage-refresh-status {

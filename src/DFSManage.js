@@ -41,6 +41,10 @@ function DFSManage() {
   // is the manual nudge for when the data is visibly up but ours is not.
   const [refreshingDfs, setRefreshingDfs] = useState(false);
   const [dfsStatus, setDfsStatus] = useState(null);
+  // The /admin routes are gated on an organiser's Sleeper login, so they are no
+  // longer reachable from a browser tab. These are the ones worth a button.
+  const [runningTask, setRunningTask] = useState(null);
+  const [taskStatus, setTaskStatus] = useState(null);
   const [overrideWeek, setOverrideWeek] = useState(null);
   const [overrides, setOverrides] = useState({});
   const [slatePlayers, setSlatePlayers] = useState([]);
@@ -157,7 +161,10 @@ function DFSManage() {
     setRefreshingDfs(true);
     setDfsStatus({ state: 'working', message: 'Scraping — this takes a few minutes.' });
     try {
-      const response = await fetch(`${BASE_URL}/admin/dfs-salaries/update`, { method: 'POST' });
+      const response = await fetch(`${BASE_URL}/admin/dfs-salaries/update`, {
+        method: 'POST',
+        headers: sleeperAuthHeaders(),
+      });
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
         throw new Error(error.error || response.statusText);
@@ -210,6 +217,59 @@ function DFSManage() {
     };
     setTimeout(check, 15000);
   };
+
+  // A plain fire-and-report admin action. The destructive one gets a confirm
+  // that says what it will do rather than asking "are you sure".
+  const runMaintenance = async ({ id, label, path, confirm }) => {
+    if (confirm && !window.confirm(confirm)) return;
+
+    setRunningTask(id);
+    setTaskStatus(null);
+    try {
+      const response = await fetch(`${BASE_URL}${path}`, {
+        method: 'POST',
+        headers: sleeperAuthHeaders(),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || response.statusText);
+      setTaskStatus({
+        state: 'done',
+        message: body.message || `${label} finished.`,
+      });
+    } catch (error) {
+      setTaskStatus({ state: 'failed', message: `${label} failed: ${error.message}` });
+    } finally {
+      setRunningTask(null);
+    }
+  };
+
+  const MAINTENANCE = [
+    {
+      id: 'fantasy-points',
+      label: 'Refresh FantasyData points',
+      path: '/admin/fantasy-points/update',
+      confirm: 'Refresh FantasyData points now?\n\nUsed as a fallback when Sleeper has '
+        + 'no score for a player. Safe to run at any time.',
+    },
+    {
+      id: 'rankings',
+      label: 'Refresh dynasty rankings',
+      path: '/admin/rankings/update',
+      confirm: 'Refresh dynasty rankings now?\n\nRe-scrapes KTC and FantasyCalc values. '
+        + 'Safe to run at any time.',
+    },
+    {
+      id: 'cleanup',
+      label: 'Run tournament cleanup',
+      path: '/admin/tinyurl/cleanup',
+      destructive: true,
+      confirm: 'Run tournament cleanup now?\n\nThis is the Wednesday/Thursday pass, and it '
+        + 'is not a dry run. It scores the week that has finished, DELETES every lineup it '
+        + 'scored, advances each tournament a week, and removes tournaments that have ended.\n\n'
+        + 'Set any points overrides before running it — once the lineups are gone the week '
+        + 'cannot be recomputed.',
+    },
+  ];
 
   // Clearing exists for the lineup its owner can no longer fix: once one of its
   // players has kicked off, submitting over it is refused. This wipes only the
@@ -535,9 +595,25 @@ function DFSManage() {
         >
           {refreshingDfs ? 'Fetching DFS salaries…' : 'Fetch DFS salaries now'}
         </button>
+        {MAINTENANCE.map((task) => (
+          <button
+            key={task.id}
+            type="button"
+            className={`dfs-manage-refresh-dfs${task.destructive ? ' is-destructive' : ''}`}
+            onClick={() => runMaintenance(task)}
+            disabled={runningTask !== null}
+          >
+            {runningTask === task.id ? `${task.label}…` : task.label}
+          </button>
+        ))}
         {dfsStatus && (
           <span className={`dfs-manage-refresh-status is-${dfsStatus.state}`}>
             {dfsStatus.message}
+          </span>
+        )}
+        {taskStatus && (
+          <span className={`dfs-manage-refresh-status is-${taskStatus.state}`}>
+            {taskStatus.message}
           </span>
         )}
       </div>
