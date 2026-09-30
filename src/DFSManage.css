@@ -504,6 +504,49 @@ body.dark .dfs-manage-submission-value {
 
 /* Clear: wipes one lineup so its owner can submit again. Sits beside Remove but
    reads as the lesser action, since the entrant stays in the tournament. */
+/* The manual DFS scrape, for when the slate is published but the scheduled run
+   has not picked it up. Ghost button, like the other destructive-ish actions. */
+.dfs-manage-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.dfs-manage-refresh-dfs {
+  padding: 0.375rem 0.875rem;
+  font-size: 0.8125rem;
+  color: hsl(var(--foreground));
+  background: transparent;
+  border: 1px solid hsl(var(--border));
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.dfs-manage-refresh-dfs:hover:not(:disabled) {
+  background-color: hsl(var(--muted));
+}
+
+.dfs-manage-refresh-dfs:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.dfs-manage-refresh-status {
+  font-size: 0.8125rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.dfs-manage-refresh-status.is-done {
+  color: #3f9142;
+}
+
+.dfs-manage-refresh-status.is-failed {
+  color: #c0392b;
+}
+
 .dfs-manage-clear-lineup {
   margin-left: 12px;
   padding: 2px 10px;

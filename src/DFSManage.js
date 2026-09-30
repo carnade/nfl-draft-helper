@@ -36,6 +36,11 @@ function DFSManage() {
   // Per-player point overrides, keyed by week. They are global, not per
   // tournament — the picker is shown per entry only because that is where the
   // players who were actually used can be listed.
+  // The nightly scrape can run before DailyFantasyFuel has published the slate,
+  // which leaves the day with no salaries until the next scheduled attempt. This
+  // is the manual nudge for when the data is visibly up but ours is not.
+  const [refreshingDfs, setRefreshingDfs] = useState(false);
+  const [dfsStatus, setDfsStatus] = useState(null);
   const [overrideWeek, setOverrideWeek] = useState(null);
   const [overrides, setOverrides] = useState({});
   const [slatePlayers, setSlatePlayers] = useState([]);
@@ -117,6 +122,93 @@ function DFSManage() {
     } finally {
       setRemovingEntrant(null);
     }
+  };
+
+  const readDfsStatus = async () => {
+    try {
+      const stats = await fetch(`${BASE_URL}/statistics`).then((r) => r.json());
+      return {
+        updated: stats.last_dfs_salaries_update,
+        attempted: stats.last_dfs_salaries_attempt,
+        error: stats.dfs_salaries_error,
+        retries: stats.dfs_salaries_retries_queued,
+      };
+    } catch {
+      return null;
+    }
+  };
+
+  // The scrape outlives the hosting gateway's 100-second limit, so the endpoint
+  // returns 202 and works in the background. Watch /statistics for the outcome
+  // rather than waiting on the request, which would look like a failure.
+  const refreshDfsSalaries = async () => {
+    const before = await readDfsStatus();
+    const last = before?.updated && before.updated !== 'Never' ? before.updated : 'never';
+    if (!window.confirm(
+      'Fetch DFS salaries now?\n\n' +
+      `Last successful update: ${last}.\n\n` +
+      'It takes several minutes and runs in the background — this page will keep ' +
+      'checking and tell you how it went. Worth doing when the slate is up on ' +
+      'DailyFantasyFuel but the scheduled run has not picked it up yet.'
+    )) {
+      return;
+    }
+
+    setRefreshingDfs(true);
+    setDfsStatus({ state: 'working', message: 'Scraping — this takes a few minutes.' });
+    try {
+      const response = await fetch(`${BASE_URL}/admin/dfs-salaries/update`, { method: 'POST' });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || response.statusText);
+      }
+    } catch (error) {
+      setRefreshingDfs(false);
+      setDfsStatus({ state: 'failed', message: `Could not start: ${error.message}` });
+      return;
+    }
+
+    // What to watch is not the attempt timestamp: that is stamped when the
+    // scrape starts, so it moves within a second of the request and would read
+    // as a finished run while the thing is still going. A success moves
+    // last_dfs_salaries_update; a failure records an error and queues a retry.
+    const beforeUpdated = before?.updated ?? null;
+    const beforeError = before?.error ?? null;
+    const beforeRetries = before?.retries ?? 0;
+    const deadline = Date.now() + 10 * 60 * 1000;
+
+    const check = async () => {
+      if (Date.now() > deadline) {
+        setRefreshingDfs(false);
+        setDfsStatus({
+          state: 'unknown',
+          message: 'Still going after ten minutes — check /statistics for the outcome.',
+        });
+        return;
+      }
+
+      const now = await readDfsStatus();
+      if (now) {
+        if (now.updated && now.updated !== beforeUpdated) {
+          setRefreshingDfs(false);
+          setDfsStatus({ state: 'done', message: `Salaries updated ${now.updated}.` });
+          return;
+        }
+        const failed =
+          (now.error && now.error !== beforeError) || (now.retries ?? 0) > beforeRetries;
+        if (failed) {
+          setRefreshingDfs(false);
+          setDfsStatus({
+            state: 'failed',
+            message: `Scrape failed: ${now.error || 'no reason recorded'}` +
+              (now.retries ? ` — ${now.retries} retry queued.` : ''),
+          });
+          return;
+        }
+      }
+      setTimeout(check, 15000);
+    };
+    setTimeout(check, 15000);
   };
 
   // Clearing exists for the lineup its owner can no longer fix: once one of its
@@ -433,6 +525,22 @@ function DFSManage() {
   return (
     <div className="dfs-manage-container">
       <h1 className="dfs-manage-title">DFS TinyURL Management</h1>
+
+      <div className="dfs-manage-tools">
+        <button
+          type="button"
+          className="dfs-manage-refresh-dfs"
+          onClick={refreshDfsSalaries}
+          disabled={refreshingDfs}
+        >
+          {refreshingDfs ? 'Fetching DFS salaries…' : 'Fetch DFS salaries now'}
+        </button>
+        {dfsStatus && (
+          <span className={`dfs-manage-refresh-status is-${dfsStatus.state}`}>
+            {dfsStatus.message}
+          </span>
+        )}
+      </div>
 
       {overrideWeek && (
         <div className="dfs-manage-override-panel">
