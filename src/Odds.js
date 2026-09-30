@@ -8,7 +8,7 @@ import {
   kickoffFilterIsEmpty,
   EMPTY_KICKOFF_FILTER,
 } from "./kickoffFilter";
-import { PrivilegedOnly } from "./auth";
+import { PrivilegedOnly, loadSleeperAuth } from "./auth";
 
 const mock = process.env.REACT_APP_MOCK === "true";
 const BASE_URL = mock
@@ -149,7 +149,12 @@ function RefreshButton({ onDone }) {
     setState("working");
     setResult(null);
     try {
-      const r = await fetch(`${BASE_URL}/admin/trigger-odds-fetch`, { method: "POST" });
+      // /admin is gated on an organiser's Sleeper login.
+      const token = loadSleeperAuth()?.token;
+      const r = await fetch(`${BASE_URL}/admin/trigger-odds-fetch`, {
+        method: "POST",
+        headers: token ? { Authorization: token } : {},
+      });
       const d = await r.json().catch(() => ({}));
       setResult(d.ok === false || !r.ok
         ? { ok: false, msg: d.error || d.message || `HTTP ${r.status}` }

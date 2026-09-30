@@ -36,6 +36,15 @@ function DFSManage() {
   // Per-player point overrides, keyed by week. They are global, not per
   // tournament — the picker is shown per entry only because that is where the
   // players who were actually used can be listed.
+  // The nightly scrape can run before DailyFantasyFuel has published the slate,
+  // which leaves the day with no salaries until the next scheduled attempt. This
+  // is the manual nudge for when the data is visibly up but ours is not.
+  const [refreshingDfs, setRefreshingDfs] = useState(false);
+  const [dfsStatus, setDfsStatus] = useState(null);
+  // The /admin routes are gated on an organiser's Sleeper login, so they are no
+  // longer reachable from a browser tab. These are the ones worth a button.
+  const [runningTask, setRunningTask] = useState(null);
+  const [taskStatus, setTaskStatus] = useState(null);
   const [overrideWeek, setOverrideWeek] = useState(null);
   const [overrides, setOverrides] = useState({});
   const [slatePlayers, setSlatePlayers] = useState([]);
@@ -118,6 +127,149 @@ function DFSManage() {
       setRemovingEntrant(null);
     }
   };
+
+  const readDfsStatus = async () => {
+    try {
+      const stats = await fetch(`${BASE_URL}/statistics`).then((r) => r.json());
+      return {
+        updated: stats.last_dfs_salaries_update,
+        attempted: stats.last_dfs_salaries_attempt,
+        error: stats.dfs_salaries_error,
+        retries: stats.dfs_salaries_retries_queued,
+      };
+    } catch {
+      return null;
+    }
+  };
+
+  // The scrape outlives the hosting gateway's 100-second limit, so the endpoint
+  // returns 202 and works in the background. Watch /statistics for the outcome
+  // rather than waiting on the request, which would look like a failure.
+  const refreshDfsSalaries = async () => {
+    const before = await readDfsStatus();
+    const last = before?.updated && before.updated !== 'Never' ? before.updated : 'never';
+    if (!window.confirm(
+      'Fetch DFS salaries now?\n\n' +
+      `Last successful update: ${last}.\n\n` +
+      'It takes several minutes and runs in the background — this page will keep ' +
+      'checking and tell you how it went. Worth doing when the slate is up on ' +
+      'DailyFantasyFuel but the scheduled run has not picked it up yet.'
+    )) {
+      return;
+    }
+
+    setRefreshingDfs(true);
+    setDfsStatus({ state: 'working', message: 'Scraping — this takes a few minutes.' });
+    try {
+      const response = await fetch(`${BASE_URL}/admin/dfs-salaries/update`, {
+        method: 'POST',
+        headers: sleeperAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || response.statusText);
+      }
+    } catch (error) {
+      setRefreshingDfs(false);
+      setDfsStatus({ state: 'failed', message: `Could not start: ${error.message}` });
+      return;
+    }
+
+    // What to watch is not the attempt timestamp: that is stamped when the
+    // scrape starts, so it moves within a second of the request and would read
+    // as a finished run while the thing is still going. A success moves
+    // last_dfs_salaries_update; a failure records an error and queues a retry.
+    const beforeUpdated = before?.updated ?? null;
+    const beforeError = before?.error ?? null;
+    const beforeRetries = before?.retries ?? 0;
+    const deadline = Date.now() + 10 * 60 * 1000;
+
+    const check = async () => {
+      if (Date.now() > deadline) {
+        setRefreshingDfs(false);
+        setDfsStatus({
+          state: 'unknown',
+          message: 'Still going after ten minutes — check /statistics for the outcome.',
+        });
+        return;
+      }
+
+      const now = await readDfsStatus();
+      if (now) {
+        if (now.updated && now.updated !== beforeUpdated) {
+          setRefreshingDfs(false);
+          setDfsStatus({ state: 'done', message: `Salaries updated ${now.updated}.` });
+          return;
+        }
+        const failed =
+          (now.error && now.error !== beforeError) || (now.retries ?? 0) > beforeRetries;
+        if (failed) {
+          setRefreshingDfs(false);
+          setDfsStatus({
+            state: 'failed',
+            message: `Scrape failed: ${now.error || 'no reason recorded'}` +
+              (now.retries ? ` — ${now.retries} retry queued.` : ''),
+          });
+          return;
+        }
+      }
+      setTimeout(check, 15000);
+    };
+    setTimeout(check, 15000);
+  };
+
+  // A plain fire-and-report admin action. The destructive one gets a confirm
+  // that says what it will do rather than asking "are you sure".
+  const runMaintenance = async ({ id, label, path, confirm }) => {
+    if (confirm && !window.confirm(confirm)) return;
+
+    setRunningTask(id);
+    setTaskStatus(null);
+    try {
+      const response = await fetch(`${BASE_URL}${path}`, {
+        method: 'POST',
+        headers: sleeperAuthHeaders(),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || response.statusText);
+      setTaskStatus({
+        state: 'done',
+        message: body.message || `${label} finished.`,
+      });
+    } catch (error) {
+      setTaskStatus({ state: 'failed', message: `${label} failed: ${error.message}` });
+    } finally {
+      setRunningTask(null);
+    }
+  };
+
+  const MAINTENANCE = [
+    {
+      id: 'fantasy-points',
+      label: 'Refresh FantasyData points',
+      path: '/admin/fantasy-points/update',
+      confirm: 'Refresh FantasyData points now?\n\nUsed as a fallback when Sleeper has '
+        + 'no score for a player. Safe to run at any time.',
+    },
+    {
+      id: 'rankings',
+      label: 'Refresh dynasty rankings',
+      path: '/admin/rankings/update',
+      confirm: 'Refresh dynasty rankings now?\n\nRe-scrapes KTC and FantasyCalc values. '
+        + 'Safe to run at any time.',
+    },
+    {
+      id: 'cleanup',
+      label: 'Run tournament cleanup',
+      path: '/admin/tinyurl/cleanup',
+      destructive: true,
+      confirm: 'Run tournament cleanup now?\n\nThis is the Wednesday/Thursday pass, and it '
+        + 'is not a dry run. It scores the week that has finished, DELETES every lineup it '
+        + 'scored, advances each tournament a week, and removes tournaments that have ended.\n\n'
+        + 'Set any points overrides before running it — once the lineups are gone the week '
+        + 'cannot be recomputed.',
+    },
+  ];
 
   // Clearing exists for the lineup its owner can no longer fix: once one of its
   // players has kicked off, submitting over it is refused. This wipes only the
@@ -433,6 +585,38 @@ function DFSManage() {
   return (
     <div className="dfs-manage-container">
       <h1 className="dfs-manage-title">DFS TinyURL Management</h1>
+
+      <div className="dfs-manage-tools">
+        <button
+          type="button"
+          className="dfs-manage-refresh-dfs"
+          onClick={refreshDfsSalaries}
+          disabled={refreshingDfs}
+        >
+          {refreshingDfs ? 'Fetching DFS salaries…' : 'Fetch DFS salaries now'}
+        </button>
+        {MAINTENANCE.map((task) => (
+          <button
+            key={task.id}
+            type="button"
+            className={`dfs-manage-refresh-dfs${task.destructive ? ' is-destructive' : ''}`}
+            onClick={() => runMaintenance(task)}
+            disabled={runningTask !== null}
+          >
+            {runningTask === task.id ? `${task.label}…` : task.label}
+          </button>
+        ))}
+        {dfsStatus && (
+          <span className={`dfs-manage-refresh-status is-${dfsStatus.state}`}>
+            {dfsStatus.message}
+          </span>
+        )}
+        {taskStatus && (
+          <span className={`dfs-manage-refresh-status is-${taskStatus.state}`}>
+            {taskStatus.message}
+          </span>
+        )}
+      </div>
 
       {overrideWeek && (
         <div className="dfs-manage-override-panel">
