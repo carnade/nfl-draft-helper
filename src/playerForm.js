@@ -88,6 +88,22 @@ export function recentForm(weeklyStats, playerId, scoring, scorePoints, count = 
   };
 }
 
+/**
+ * Points per game averaged over every scoring the player is rostered under.
+ *
+ * The portfolio table has one row per player across every league, so there is
+ * no single scoring to price it in. Averaging is honest to that: a tight end
+ * held in three TE-premium leagues reads higher than one held in three PPR
+ * leagues, which is the thing the column is being read for.
+ */
+export function averageFptsPerGame(seasonStats, scoringSettings, scorePoints) {
+  const rates = (scoringSettings || [])
+    .map((scoring) => fptsPerGame(seasonStats, scoring, scorePoints))
+    .filter((rate) => typeof rate === "number" && Number.isFinite(rate));
+  if (rates.length === 0) return null;
+  return rates.reduce((sum, rate) => sum + rate, 0) / rates.length;
+}
+
 /** The weeks to average over: the ones already played, newest first. */
 export function playedWeeksBefore(currentWeek, count = 5) {
   const weeks = [];
