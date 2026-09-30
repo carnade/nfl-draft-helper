@@ -107,6 +107,23 @@
   text-align: right;
 }
 
+/* How many games the average actually found, when it is short of five. Inline
+   and small: .ss-th-sub next door is display:block on purpose, for a second
+   header line, and borrowing it here pushed the count onto its own row. */
+.ss-form-games {
+  margin-left: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 400;
+  opacity: 0.6;
+}
+
+/* Wide enough for "11.9 (3)" so neither part wraps. */
+.ss-table th.ss-num-form,
+.ss-table td.ss-num-form {
+  white-space: nowrap;
+  min-width: 4.75rem;
+}
+
 .ss-slot {
   font-size: 0.72rem;
   font-weight: 600;
