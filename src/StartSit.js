@@ -1,6 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./StartSit.css";
 import { getDvpColor } from "./dvpColor";
+import {
+  weekStatsUrl,
+  seasonStatsUrl,
+  scoringStatKeys,
+  reduceStatRows,
+  fptsPerGame,
+  recentForm,
+  playedWeeksBefore,
+} from "./playerForm";
 import { useSleeperAuth } from "./auth";
 import { projectedPoints, hasProjection, fetchWeekProjectionsUrl } from "./leagueScoring";
 import { evaluateLineup, countActionable, isEligible } from "./startSitModel";
@@ -23,6 +32,8 @@ const OVERRIDE_KEY = "startsit_use_menu_name";
 
 const PROJECTION_TTL_MS = 30 * 60 * 1000;
 const DFS_TTL_MS = 60 * 60 * 1000;
+// Finished weeks do not change, so these can be held longer than projections.
+const STATS_TTL_MS = 6 * 60 * 60 * 1000;
 
 function readCache(key, ttl) {
   try {
@@ -224,14 +235,27 @@ function PlayerRow({ row, canEdit, onSwap, busy }) {
       <td className="ss-num" title={p && !p.hasProjection ? "Sleeper has no projection for this player" : undefined}>
         {p?.hasProjection ? fmt(p.proj) : <span className="ss-muted">—</span>}
       </td>
+      <td className="ss-num">{fmt(p?.fptsG)}</td>
+      <td className="ss-num"><FormCell average={p?.l5} games={p?.l5Games} /></td>
       <td className="ss-num"><DvpCell rank={p?.dvpRank} /></td>
-      <td className="ss-num">{fmt(p?.l5)}</td>
       <td><StatusCell player={p} /></td>
       <td><VerdictCell row={row} /></td>
       <td className="ss-suggestion-cell">
         <SuggestionCell row={row} canEdit={canEdit} onSwap={onSwap} busy={busy} />
       </td>
     </tr>
+  );
+}
+
+// The count matters: a two-game average is not a five-game one, and early in a
+// season L5 is necessarily short.
+function FormCell({ average, games }) {
+  if (average == null) return <span className="ss-muted">—</span>;
+  return (
+    <>
+      {fmt(average)}
+      {games > 0 && games < 5 && <span className="ss-th-sub"> ({games})</span>}
+    </>
   );
 }
 
@@ -246,8 +270,9 @@ function BenchRow({ player, slots }) {
       </td>
       <td><TeamCell team={player.team} opponent={player.opponent} /></td>
       <td className="ss-num">{player.hasProjection ? fmt(player.proj) : <span className="ss-muted">—</span>}</td>
+      <td className="ss-num">{fmt(player.fptsG)}</td>
+      <td className="ss-num"><FormCell average={player.l5} games={player.l5Games} /></td>
       <td className="ss-num"><DvpCell rank={player.dvpRank} /></td>
-      <td className="ss-num">{fmt(player.l5)}</td>
       <td><StatusCell player={player} /></td>
       <td className="ss-muted">bench</td>
       <td />
@@ -275,10 +300,13 @@ function LeagueCard({ league, onlyActionable, benchOpen, onToggleBench, canEdit,
               <th className="ss-num" title="Sleeper's projection for this week, priced in this league's scoring — so TE premium and SuperFlex are included">
                 Proj
               </th>
-              <th className="ss-num" title="Opponent's rank against this position, 1 = toughest">DvP</th>
-              <th className="ss-num" title="Average over the last 5 games in DraftKings scoring, which has no TE premium — so it is not on the same scale as Proj">
-                L5<span className="ss-th-sub">(no TEP)</span>
+              <th className="ss-num" title="Points per game across the season so far, in this league's scoring">
+                FPTS/G
               </th>
+              <th className="ss-num" title="Average over the last 5 games played, in this league's scoring. Fewer than 5 early in the season — the count is shown beside it.">
+                L5
+              </th>
+              <th className="ss-num" title="Opponent's rank against this position, 1 = toughest">DvP</th>
               <th>Status</th><th>Verdict</th><th>Suggestion</th>
             </tr>
           </thead>
@@ -389,7 +417,32 @@ function StartSit({ userName }) {
       // from a player having no data, so failures are collected and shown.
       const failed = [];
 
-      const [projections, dfsRaw, teamStats, schedule, rosterLists] = await Promise.all([
+      // Only the stats these leagues actually score are kept, which takes a week
+      // from ~640 KB to ~40 KB. The set is stored with the payload so a cache
+      // trimmed for a narrower set of leagues is refetched rather than reused.
+      const keepKeys = scoringStatKeys(playable);
+      const statsCache = (key, url) => async () => {
+        const cached = readCache(key, STATS_TTL_MS);
+        if (cached?.stats && [...keepKeys].every((k) => cached.keys?.includes(k))) {
+          return cached.stats;
+        }
+        try {
+          const rows = await fetch(url, { signal }).then((r) => {
+            if (!r.ok) throw new Error(String(r.status));
+            return r.json();
+          });
+          const stats = reduceStatRows(rows, keepKeys);
+          writeCache(key, { keys: [...keepKeys], stats });
+          return stats;
+        } catch (err) {
+          if (err.name !== "AbortError") failed.push("recent form");
+          return {};
+        }
+      };
+
+      const formWeeks = playedWeeksBefore(currentWeek, 5);
+
+      const [projections, dfsRaw, teamStats, schedule, rosterLists, seasonStats, weeklyStats] = await Promise.all([
         (async () => {
           if (projectionsRef.current?.week === currentWeek) return projectionsRef.current.data;
           const cached = readCache(projKey, PROJECTION_TTL_MS);
@@ -411,7 +464,9 @@ function StartSit({ userName }) {
             writeCache(dfsKey, data);
             return data;
           } catch (err) {
-            if (err.name !== "AbortError") failed.push("recent form");
+            // Recent form no longer comes from here — this is now only a
+            // fallback for a player's name, team and opponent.
+            if (err.name !== "AbortError") failed.push("player details");
             return {};
           }
         })(),
@@ -433,6 +488,13 @@ function StartSit({ userName }) {
             fetch(`https://api.sleeper.app/v1/league/${l.league_id}/rosters`, { signal })
               .then((r) => r.json())
               .catch(() => [])
+          )
+        ),
+        statsCache(`sleeper_stats_season_${SEASON}`, seasonStatsUrl(SEASON))(),
+        // Newest week first, which is the order recentForm walks.
+        Promise.all(
+          formWeeks.map((w) =>
+            statsCache(`sleeper_stats_week_${SEASON}_${w}`, weekStatsUrl(SEASON, w))()
           )
         ),
       ]);
@@ -514,8 +576,15 @@ function StartSit({ userName }) {
             // No opponent on a row Sleeper does project means the team is idle.
             onBye: status === "Bye" || (hasProjection(proj.stats) && !opponent),
             locked: !!team && locked.has(team),
-            l5: dfs.l5_avg ?? null,
-            l10: dfs.l10_avg ?? null,
+            // Priced in this league's scoring, so these sit on the same scale
+            // as Proj. The DFS scrape's own l5_avg is DraftKings scoring and
+            // cannot be compared with it — a TE premium alone moved Trey
+            // McBride 4.3 points a game.
+            fptsG: fptsPerGame(seasonStats[id], league.scoring_settings, projectedPoints),
+            ...(() => {
+              const form = recentForm(weeklyStats, id, league.scoring_settings, projectedPoints);
+              return { l5: form.average, l5Games: form.games };
+            })(),
             dvpRank: DVP_POSITIONS.has(posKey)
               ? oppStats?.def_rank_vs_position?.season?.[posKey] ?? null
               : null,

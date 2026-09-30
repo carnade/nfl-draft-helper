@@ -14,9 +14,19 @@ import {
   isDynastyLeague,
   NO_LEAGUE_SORT,
 } from "./leagueOrder";
+import { projectedPoints } from "./leagueScoring";
+import {
+  seasonStatsUrl,
+  scoringStatKeys,
+  reduceStatRows,
+  averageFptsPerGame,
+} from "./playerForm";
 import { getCurrentWeek } from "./currentWeekCache";
 import { loadHiddenLeagues, visibleLeagues } from "./leagueVisibility";
 import "./LeagueList.css";
+
+// The two Sleeper calls in this file have to agree about the season.
+const SEASON = 2026;
 
 // Add a mock flag
 const mock = process.env.REACT_APP_MOCK === 'true';
@@ -689,8 +699,10 @@ function LeagueList() {
   const fetchPortfolioData = useCallback(async (leagues) => {
     if (!leagues || leagues.length === 0) return;
 
-    // Build player count map
+    // Build player count map, and the scorings each player is rostered under —
+    // this row spans every league, so there is no single scoring to price it in.
     const playerCountMap = {};
+    const playerLeagues = {};
     leagues.forEach((league) => {
       const players = [
         ...league.userRoster.starters,
@@ -703,8 +715,12 @@ function LeagueList() {
         if (playerId && playerId !== "0") {
           if (!playerCountMap[playerId]) {
             playerCountMap[playerId] = 0;
+            playerLeagues[playerId] = [];
           }
           playerCountMap[playerId]++;
+          if (league.scoring_settings) {
+            playerLeagues[playerId].push(league.scoring_settings);
+          }
         }
       });
     });
@@ -729,6 +745,22 @@ function LeagueList() {
 
       const data = await response.json();
 
+      // Sleeper's season stat lines, so the rate can be priced in each league's
+      // own scoring rather than in PPR regardless of what the league plays.
+      // One request, shared by every row.
+      let seasonStats = {};
+      try {
+        const keepKeys = scoringStatKeys(leagues);
+        const rows = await fetch(seasonStatsUrl(SEASON)).then((r) => {
+          if (!r.ok) throw new Error(String(r.status));
+          return r.json();
+        });
+        seasonStats = reduceStatRows(rows, keepKeys);
+      } catch (err) {
+        // Without it the column falls back to what it always showed.
+        console.error("Error fetching season stats for portfolio:", err);
+      }
+
       // Map player data to portfolio format
       const portfolio = Object.entries(data).map(([playerId, player]) => {
         const count = playerCountMap[playerId] || 0;
@@ -736,10 +768,20 @@ function LeagueList() {
           ? ((count / leagues.length) * 100).toFixed(0)
           : "0";
 
-        // Calculate FPTS/G (pts_ppr / gp)
-        const fpts_g = (player.pts_ppr !== null && player.pts_ppr !== undefined && player.gp && player.gp > 0)
-          ? (player.pts_ppr / player.gp).toFixed(1)
-          : "N/A";
+        // Averaged over every scoring this player is rostered under: a tight
+        // end held in three TE-premium leagues should read higher than one held
+        // in three PPR leagues, which is what this column is read for.
+        const leagueScored = averageFptsPerGame(
+          seasonStats[playerId],
+          playerLeagues[playerId],
+          projectedPoints
+        );
+        const fpts_g = leagueScored != null
+          ? leagueScored.toFixed(1)
+          // Sleeper has no stat line for them, so fall back to the plain PPR rate.
+          : (player.pts_ppr !== null && player.pts_ppr !== undefined && player.gp && player.gp > 0)
+            ? (player.pts_ppr / player.gp).toFixed(1)
+            : "N/A";
 
         return {
           name: `${player.first_name || ""} ${player.last_name || ""}`.trim(),
@@ -797,7 +839,7 @@ function LeagueList() {
       setUserId(userId);
 
       const leaguesResponse = await fetch(
-        `https://api.sleeper.app/v1/user/${userId}/leagues/nfl/2026`
+        `https://api.sleeper.app/v1/user/${userId}/leagues/nfl/${SEASON}`
       );
       const leaguesData = await leaguesResponse.json();
 
