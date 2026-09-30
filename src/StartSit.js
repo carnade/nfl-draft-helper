@@ -236,7 +236,7 @@ function PlayerRow({ row, canEdit, onSwap, busy }) {
         {p?.hasProjection ? fmt(p.proj) : <span className="ss-muted">—</span>}
       </td>
       <td className="ss-num">{fmt(p?.fptsG)}</td>
-      <td className="ss-num"><FormCell average={p?.l5} games={p?.l5Games} /></td>
+      <td className="ss-num ss-num-form"><FormCell average={p?.l5} games={p?.l5Games} /></td>
       <td className="ss-num"><DvpCell rank={p?.dvpRank} /></td>
       <td><StatusCell player={p} /></td>
       <td><VerdictCell row={row} /></td>
@@ -254,7 +254,7 @@ function FormCell({ average, games }) {
   return (
     <>
       {fmt(average)}
-      {games > 0 && games < 5 && <span className="ss-th-sub"> ({games})</span>}
+      {games > 0 && games < 5 && <span className="ss-form-games">({games})</span>}
     </>
   );
 }
@@ -271,7 +271,7 @@ function BenchRow({ player, slots }) {
       <td><TeamCell team={player.team} opponent={player.opponent} /></td>
       <td className="ss-num">{player.hasProjection ? fmt(player.proj) : <span className="ss-muted">—</span>}</td>
       <td className="ss-num">{fmt(player.fptsG)}</td>
-      <td className="ss-num"><FormCell average={player.l5} games={player.l5Games} /></td>
+      <td className="ss-num ss-num-form"><FormCell average={player.l5} games={player.l5Games} /></td>
       <td className="ss-num"><DvpCell rank={player.dvpRank} /></td>
       <td><StatusCell player={player} /></td>
       <td className="ss-muted">bench</td>
@@ -303,7 +303,7 @@ function LeagueCard({ league, onlyActionable, benchOpen, onToggleBench, canEdit,
               <th className="ss-num" title="Points per game across the season so far, in this league's scoring">
                 FPTS/G
               </th>
-              <th className="ss-num" title="Average over the last 5 games played, in this league's scoring. Fewer than 5 early in the season — the count is shown beside it.">
+              <th className="ss-num ss-num-form" title="Average over the last 5 games played, in this league's scoring. Fewer than 5 early in the season — the count is shown beside it.">
                 L5
               </th>
               <th className="ss-num" title="Opponent's rank against this position, 1 = toughest">DvP</th>
