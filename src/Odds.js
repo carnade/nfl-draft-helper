@@ -112,6 +112,26 @@ function KickoffFilter({ options, value, onChange, shown, total }) {
   );
 }
 
+// How far a line has come since it opened. Thursday's refresh sets the opening
+// and Sunday's moves it, so this is mostly a Thursday-to-Sunday read.
+//
+// Shown only when it has actually moved: a column of em-dashes for the 90% that
+// sat still would bury the ones that did.
+function LineMove({ from, to, decimals = 1 }) {
+  if (from == null || to == null) return <span className="odds-move-none">—</span>;
+  const delta = to - from;
+  if (Math.abs(delta) < 0.001) return <span className="odds-move-none">—</span>;
+  const sign = delta > 0 ? "+" : "";
+  return (
+    <span
+      className={`odds-move odds-move-${delta > 0 ? "up" : "down"}`}
+      title={`Opened at ${from}, now ${to}`}
+    >
+      {sign}{delta.toFixed(decimals)}
+    </span>
+  );
+}
+
 function fmtTime(iso) {
   if (!iso) return "—";
   try {
@@ -282,6 +302,12 @@ function GameLinesRows({ games, sortConfig, onSort }) {
     ...g,
     spread_line: g.spread?.home_spread,
     total_line:  g.total?.line,
+    spread_open: g.opening?.home_spread,
+    total_open:  g.opening?.total,
+    spread_move: g.opening?.home_spread != null && g.spread?.home_spread != null
+      ? g.spread.home_spread - g.opening.home_spread : null,
+    total_move:  g.opening?.total != null && g.total?.line != null
+      ? g.total.line - g.opening.total : null,
     home_ml:     g.h2h?.home_price,
     away_ml:     g.h2h?.away_price,
     ou_implied:  g.ou_eval?.implied,
@@ -296,7 +322,9 @@ function GameLinesRows({ games, sortConfig, onSort }) {
           {sh("Matchup", "away_abbr")}
           {sh("Date", "commence_time", "num")}
           {sh("Spread", "spread_line", "num")}
+          {sh("Move", "spread_move", "num")}
           {sh("Total", "total_line", "num")}
+          {sh("Move", "total_move", "num")}
           {sh("Our Total", "ou_implied", "num")}
           {sh("Edge", "ou_edge_pct", "num")}
           {sh("Home ML", "home_ml", "num")}
@@ -313,7 +341,9 @@ function GameLinesRows({ games, sortConfig, onSort }) {
             </td>
             <td className="num odds-time">{fmtTime(g.commence_time)}</td>
             <td className="num">{g.spread_line != null ? (g.spread_line > 0 ? `+${g.spread_line}` : g.spread_line) : "—"}</td>
+            <td className="num"><LineMove from={g.spread_open} to={g.spread_line} /></td>
             <td className="num">{fmt(g.total_line)}</td>
+            <td className="num"><LineMove from={g.total_open} to={g.total_line} /></td>
             <td className="num">{g.ou_implied != null ? fmt(g.ou_implied) : "—"}</td>
             <td className="num">
               {g.ou_signal ? (
@@ -378,6 +408,12 @@ function flattenProps(players, marketFilter) {
         market_label:  MARKET_LABELS[mkey] || mkey,
         // Anytime TD has no real yardage line — show the Yes price there instead.
         line:          mkey === "player_anytime_td" ? m.best_over_price : m.line,
+        // Anytime TD's "line" is a price, so its movement is not a yardage
+        // move and is left out rather than shown as one.
+        opening_line:  mkey === "player_anytime_td" ? null : m.opening?.line,
+        line_move:     mkey === "player_anytime_td" || m.opening?.line == null || m.line == null
+          ? null
+          : m.line - m.opening.line,
         rolling_avg:   m.rolling_avg,
         projection:    m.projection,
         value_flag:    m.value_flag,
@@ -456,6 +492,7 @@ function PropsRows({ rows, sortConfig, onSort }) {
           {sh("Team", "team")}
           {sh("Market", "market_label")}
           {sh("Line", "line", "num", "Yardage line, or the Yes price for Anytime TD")}
+          {sh("Move", "line_move", "num", "How far the line has come since it opened — Thursday's refresh sets it, Sunday's moves it")}
           {sh("Rolling Avg", "rolling_avg", "num", "5-game rolling average for this stat")}
           {sh("Proj", "projection", "num", "Rolling average adjusted for the opponent's defence — this is what the Value % is measured from")}
           <th className="odds-last5-col" title="Last 5 individual games for this stat, colored vs. the current line">Last 5</th>
@@ -472,6 +509,7 @@ function PropsRows({ rows, sortConfig, onSort }) {
             <td><TeamBadge team={r.team} /></td>
             <td className="odds-market-label">{r.market_label}</td>
             <td className="num">{r.market === "player_anytime_td" ? fmtPrice(r.line) : fmt(r.line)}</td>
+            <td className="num"><LineMove from={r.opening_line} to={r.line} /></td>
             <td className="num">{fmtStat(r.rolling_avg, r.market)}</td>
             <td className="num">{fmtStat(r.projection, r.market)}</td>
             <td><Last5Chips values={r.last5} line={r.line} market={r.market} /></td>

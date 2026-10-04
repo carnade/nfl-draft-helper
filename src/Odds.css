@@ -594,6 +594,27 @@
   color: hsl(var(--foreground));
 }
 
+/* Line movement since a line opened. Green when it has gone up, red down —
+   direction only, with no claim about whether that is good for you, which
+   depends entirely on which side you are looking at. */
+.odds-move {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.odds-move-up {
+  color: #6fba6f;
+}
+
+.odds-move-down {
+  color: #e07070;
+}
+
+.odds-move-none {
+  opacity: 0.35;
+}
+
 .odds-filter-bar {
   display: flex;
   align-items: center;
