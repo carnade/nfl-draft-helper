@@ -12,7 +12,8 @@ import {
 } from "./playerForm";
 import { useSleeperAuth } from "./auth";
 import { projectedPoints, hasProjection, fetchWeekProjectionsUrl } from "./leagueScoring";
-import { evaluateLineup, countActionable, isEligible } from "./startSitModel";
+import { evaluateLineup, countActionable, isEligible, benchFrom } from "./startSitModel";
+import { lockedTeamsFor, byeTeamsFor } from "./nflSchedule";
 import { loadHiddenLeagues, visibleLeagues, useHiddenLeagues } from "./leagueVisibility";
 
 const SEASON = 2026;
@@ -89,21 +90,6 @@ function indexDfs(data) {
     }
   }
   return out;
-}
-
-// A game that is no longer "pre_game" cannot be changed, so everyone playing in
-// it is locked. Using Sleeper's own status avoids parsing kickoff times and the
-// timezone guesswork that comes with them.
-function lockedTeamsFor(schedule, week) {
-  const locked = new Set();
-  for (const game of Array.isArray(schedule) ? schedule : []) {
-    if (game?.week !== week) continue;
-    if (game.status && game.status !== "pre_game") {
-      if (game.home) locked.add(game.home);
-      if (game.away) locked.add(game.away);
-    }
-  }
-  return locked;
 }
 
 // Sleeper's own lineup change, captured from its web app. `starters` is the whole
@@ -194,6 +180,13 @@ function VerdictCell({ row }) {
 function SuggestionCell({ row, canEdit, onSwap, busy }) {
   if (row.verdict === "locked") return <span className="ss-muted">—</span>;
   if (row.noReplacement) return <span className="ss-muted">no eligible replacement</span>;
+  if (row.benchSpokenFor) {
+    return (
+      <span className="ss-muted" title="The bench players who fit this slot are needed by another one">
+        bench used elsewhere
+      </span>
+    );
+  }
   if (!row.suggestion) return <span className="ss-muted">—</span>;
   const delta = row.delta;
   // Neither side may have kicked off: the outgoing player is leaving a lineup
@@ -522,6 +515,7 @@ function StartSit({ userName }) {
 
       const dfsById = indexDfs(dfsRaw);
       const locked = lockedTeamsFor(schedule, currentWeek);
+      const byeTeams = byeTeamsFor(schedule, currentWeek);
       const teamByAbbr = {};
       for (const t of Array.isArray(teamStats) ? teamStats : []) {
         if (t?.team) teamByAbbr[t.team] = t;
@@ -561,9 +555,7 @@ function StartSit({ userName }) {
         const reserve = roster?.reserve || [];
         const taxi = roster?.taxi || [];
         const all = roster?.players || [];
-        const bench = all.filter(
-          (id) => !starters.includes(id) && !reserve.includes(id) && !taxi.includes(id)
-        );
+        const bench = benchFrom({ players: all, starters, reserve, taxi });
 
         const playerById = {};
         for (const id of new Set([...all, ...starters])) {
@@ -592,8 +584,9 @@ function StartSit({ userName }) {
             proj: projectedPoints(proj.stats, league.scoring_settings),
             hasProjection: hasProjection(proj.stats),
             status,
-            // No opponent on a row Sleeper does project means the team is idle.
-            onBye: status === "Bye" || (hasProjection(proj.stats) && !opponent),
+            // From the schedule, not from injury_status, which only says "Bye"
+            // when the player has no other designation.
+            onBye: status === "Bye" || (!!team && byeTeams.has(team)),
             locked: !!team && locked.has(team),
             // Priced in this league's scoring, so these sit on the same scale
             // as Proj. The DFS scrape's own l5_avg is DraftKings scoring and
@@ -624,6 +617,10 @@ function StartSit({ userName }) {
           isDynasty: league.settings?.type === 2,
           // Kept so a lineup change can be submitted and applied without refetching.
           rosterId: roster?.roster_id ?? null,
+          // Sleeper's lineup mutation returns neither of these, and a swap cannot
+          // change them, so they are carried over rather than re-fetched.
+          reserveIds: reserve,
+          taxiIds: taxi,
           rosterPositions: league.roster_positions || [],
           starterIds: starters,
           benchIds: bench,
@@ -712,9 +709,15 @@ function StartSit({ userName }) {
 
       // Rebuild from what Sleeper says the lineup now is, not from what was sent.
       const confirmedStarters = updated.starters.map(String);
-      const benchIds = (updated.players || league.benchIds)
-        .map(String)
-        .filter((id) => !confirmedStarters.includes(id));
+      // updated.players is the whole roster and the response carries no taxi or
+      // reserve list, so those have to come from what was loaded. Without them
+      // every taxi and IR player rejoined the bench and became suggestable.
+      const benchIds = benchFrom({
+        players: updated.players || league.benchIds,
+        starters: confirmedStarters,
+        reserve: league.reserveIds,
+        taxi: league.taxiIds,
+      });
 
       setLeagues((prev) =>
         prev.map((l) => {
@@ -867,7 +870,10 @@ function StartSit({ userName }) {
           Projections are Sleeper's, priced with each league's own scoring. A suggestion means
           the bench player projects at least a point higher — small gaps sit inside the
           projection's own error, so treat them as a prompt to look, not an instruction.
-          One player is only ever suggested for one slot.
+          One player is only ever suggested for one slot, and only where the swap is
+          actually recommended. Where a starter is on bye or ruled out, anyone who can play
+          is an improvement, so a backup Sleeper does not project may be offered — shown
+          with a dash instead of a number.
         </p>
       )}
       {pendingSwap && (
@@ -891,7 +897,11 @@ function StartSit({ userName }) {
                 const outProj = pendingSwap.row.starter?.hasProjection
                   ? pendingSwap.row.starter.proj
                   : null;
-                const gain = outProj == null ? null : c.proj - outProj;
+                // Sleeper does not project backups, and projectedPoints returns 0
+                // for a missing stat line — which must not read as a genuine zero,
+                // nor produce a gain figure computed against one.
+                const gain =
+                  outProj == null || !c.hasProjection ? null : c.proj - outProj;
                 const chosen = c.id === pendingSwap.selectedId;
                 return (
                   <button
@@ -905,7 +915,9 @@ function StartSit({ userName }) {
                       {c.name}
                       <span className="ss-pos"> {c.position}</span>
                     </span>
-                    <span className="ss-modal-opt-proj">{fmt(c.proj)}</span>
+                    <span className="ss-modal-opt-proj">
+                      {c.hasProjection ? fmt(c.proj) : "—"}
+                    </span>
                     <span
                       className={
                         gain == null || gain === 0

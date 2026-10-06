@@ -41,6 +41,19 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2026-10-06",
+      title: "Better Start/Sit suggestions",
+      items: [
+        "A slot that keeps its own starter no longer holds a bench player back from a slot that needs one. Some lineups read \u201cno eligible replacement\u201d while a perfectly good substitute sat on the bench, reserved by a slot that was never going to use them.",
+        "Slots whose starter cannot play are now served first, so the best available bench player goes where it matters most instead of being taken by a slot that was only slightly behind.",
+        "Where a starter is on bye or ruled out, backups Sleeper does not publish a projection for can now be suggested and picked. A player who might score something is better than one who certainly will not, and the slot can be changed rather than being stuck.",
+        "Those players show a dash instead of a projection, and are never suggested ahead of someone who is actually playing.",
+        "Bye weeks are now read from the schedule, so a player whose team is idle is always marked as on bye \u2014 previously an injury designation could hide it and the row said the projection was simply missing.",
+        "When every bench player who fits a slot is already needed by another, the row says so rather than claiming there is nobody eligible.",
+        "Taxi squad and injured reserve players are no longer offered as substitutions after a lineup change has been made on the page. They were correctly left out when the page first loaded, but came back once a change had gone through.",
+      ],
+    },
+    {
       date: "2026-09-20",
       title: "Show or hide leagues",
       items: [
