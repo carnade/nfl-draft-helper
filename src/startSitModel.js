@@ -74,6 +74,29 @@ function score(player) {
   return player && player.hasProjection ? player.proj : null;
 }
 
+/**
+ * Whether this slot is currently worth nothing.
+ *
+ * A player on bye, ruled out, or missing from Sleeper's projections entirely is
+ * not going to score. Anything eligible is an improvement on that — including a
+ * backup projected at zero, who at least might play.
+ */
+function starterIsUnplayable(player) {
+  return !player || !!hardFlag(player) || !player.hasProjection;
+}
+
+/**
+ * What the slot is worth right now, as a number rather than an absence.
+ *
+ * Ranking used to use score(), which is null for anyone unprojected, and null
+ * became -Infinity — so the rows that most needed a replacement sorted *last*
+ * and picked over whatever the healthy rows had left. A bye is a certain zero,
+ * and saying so puts those rows at the front where they belong.
+ */
+function effectiveScore(player) {
+  return starterIsUnplayable(player) ? 0 : player.proj;
+}
+
 // Slots are positional: starters[i] fills the i-th non-bench roster position.
 export function buildRows({ rosterPositions = [], starters = [], bench = [], playerById = {} }) {
   const slots = buildSlots(rosterPositions);
@@ -93,10 +116,22 @@ export function buildRows({ rosterPositions = [], starters = [], bench = [], pla
     const isEmpty = rawId == null || EMPTY_SLOT_IDS.has(String(rawId));
     const starter = isEmpty ? null : playerById[rawId] || null;
 
+    // Everyone who could legally fill the slot, projected or not. Sleeper does
+    // not project backups at all, so requiring a projection here used to hide
+    // legal substitutions completely: a bye-week starter whose only cover was a
+    // backup QB read "no eligible replacement" and the slot would not even open.
+    // Unprojected players sort last and are never *recommended* over someone who
+    // is playing — see assignCandidates — but they can be chosen by hand.
     const candidates = benchPlayers
       .filter((p) => !p.locked && isEligible(slot, p))
-      .filter((p) => score(p) != null)
-      .sort((a, b) => score(b) - score(a));
+      .sort((a, b) => {
+        const left = score(a);
+        const right = score(b);
+        if (left == null && right == null) return 0;
+        if (left == null) return 1;
+        if (right == null) return -1;
+        return right - left;
+      });
 
     rows.push({
       slot,
@@ -117,21 +152,40 @@ export function buildRows({ rosterPositions = [], starters = [], bench = [], pla
 function assignCandidates(rows) {
   const ranked = rows
     .map((row) => {
-      const starterScore = score(row.starter);
       const best = row.candidates[0];
-      const delta = best && starterScore != null ? score(best) - starterScore : null;
-      return { row, delta: delta == null ? Number.NEGATIVE_INFINITY : delta };
+      const gain = best ? score(best) - effectiveScore(row.starter) : null;
+      return { row, gain: gain == null ? Number.NEGATIVE_INFINITY : gain };
     })
-    .sort((a, b) => b.delta - a.delta);
+    .sort((a, b) => b.gain - a.gain);
 
   const taken = new Set();
   for (const { row } of ranked) {
+    row.suggestion = null;
     if (row.locked) continue;
     const pick = row.candidates.find((p) => !taken.has(p.id));
-    row.suggestion = pick || null;
-    if (pick) taken.add(pick.id);
+    if (pick && worthSuggesting(row.starter, pick)) {
+      row.suggestion = pick;
+      // Reserved only now that the row will actually recommend them. Claiming
+      // on every row meant a slot that ends up saying "start" still took a
+      // bench player off the table, and the suggestion was then discarded —
+      // leaving a genuinely empty slot with nothing to fill it.
+      taken.add(pick.id);
+    }
   }
   return rows;
+}
+
+/**
+ * Whether this row would recommend the player, as opposed to merely allowing them.
+ *
+ * An unplayable starter is beaten by anything. Otherwise the candidate has to be
+ * projected and ahead — which is also what keeps an unprojected backup from ever
+ * being recommended over someone who is playing.
+ */
+function worthSuggesting(starter, candidate) {
+  if (starterIsUnplayable(starter)) return true;
+  const candidateScore = score(candidate);
+  return candidateScore != null && candidateScore > score(starter);
 }
 
 export function evaluateLineup({ rosterPositions, starters, bench, playerById }) {
@@ -157,7 +211,11 @@ export function evaluateLineup({ rosterPositions, starters, bench, playerById })
         reason: flag,
         delta,
         suggestion: suggestion || null,
-        noReplacement: !suggestion,
+        // Two different nothings, and the row should not conflate them: an empty
+        // bench, or a bench whose eligible players a more valuable slot already
+        // claimed. Only the first is "no eligible replacement".
+        noReplacement: !suggestion && row.candidates.length === 0,
+        benchSpokenFor: !suggestion && row.candidates.length > 0,
       };
     }
 
@@ -173,17 +231,29 @@ export function evaluateLineup({ rosterPositions, starters, bench, playerById })
       };
     }
 
+    // No suggestion, for one of two different reasons: nothing eligible is on the
+    // bench, or the bench is simply worse. Both say "start", but the gap is still
+    // worth reporting, so it comes off the best candidate rather than off the
+    // suggestion that was deliberately not made.
     if (delta == null) {
-      return { ...row, verdict: "start", reason: "no alternative", delta: null, suggestion: null };
+      const best = row.candidates[0];
+      const bestScore = score(best);
+      if (bestScore == null) {
+        return { ...row, verdict: "start", reason: "no alternative", delta: null, suggestion: null };
+      }
+      // Ties go to the player already in the lineup.
+      return {
+        ...row,
+        verdict: "start",
+        reason: "ahead",
+        delta: bestScore - starterScore,
+        suggestion: null,
+      };
     }
     if (delta >= SWAP_THRESHOLD) {
       return { ...row, verdict: "sit", reason: "outprojected", delta };
     }
-    if (delta > 0) {
-      return { ...row, verdict: "tossup", reason: "close", delta };
-    }
-    // Ties go to the player already in the lineup.
-    return { ...row, verdict: "start", reason: "ahead", delta, suggestion: null };
+    return { ...row, verdict: "tossup", reason: "close", delta };
   });
 }
 
