@@ -1,5 +1,6 @@
 import {
   buildSlots,
+  benchFrom,
   isEligible,
   hardFlag,
   evaluateLineup,
@@ -41,6 +42,45 @@ describe("buildSlots", () => {
     expect(buildSlots(["QB", "RB", "FLEX", "BN", "BN", "IR", "TAXI"])).toEqual([
       "QB", "RB", "FLEX",
     ]);
+  });
+});
+
+describe("benchFrom", () => {
+  // Shaped like a Sleeper roster: players is everyone, and the other three are
+  // subsets of it rather than separate lists.
+  const roster = {
+    players: ["start1", "start2", "bench1", "bench2", "ir1", "taxi1", "taxi2"],
+    starters: ["start1", "start2"],
+    reserve: ["ir1"],
+    taxi: ["taxi1", "taxi2"],
+  };
+
+  it("leaves out starters, IR and the taxi squad", () => {
+    expect(benchFrom(roster)).toEqual(["bench1", "bench2"]);
+  });
+
+  it("never offers a taxi player, whatever else is going on", () => {
+    // Starting one costs the taxi spot, so it is not a swap the page may suggest
+    // — and after a lineup change it used to do exactly that, because Sleeper's
+    // mutation returns the whole roster and no taxi list.
+    expect(benchFrom({ ...roster, starters: [] })).not.toContain("taxi1");
+    expect(benchFrom({ ...roster, starters: [] })).not.toContain("taxi2");
+  });
+
+  it("copes with a roster that has no taxi or IR at all", () => {
+    expect(benchFrom({ players: ["a", "b"], starters: ["a"] })).toEqual(["b"]);
+  });
+
+  it("drops Sleeper's empty-slot placeholders", () => {
+    expect(benchFrom({ players: ["a", "0", ""], starters: [] })).toEqual(["a"]);
+  });
+
+  it("compares as strings, so a numeric id still matches", () => {
+    expect(benchFrom({ players: [1, 2, 3], starters: ["1"], taxi: [3] })).toEqual(["2"]);
+  });
+
+  it("returns nothing rather than throwing on an empty roster", () => {
+    expect(benchFrom({})).toEqual([]);
   });
 });
 
@@ -356,6 +396,28 @@ describe("evaluateLineup", () => {
       // Nothing was left for the other slot, but the bench was not empty.
       expect(unserved.noReplacement).toBe(false);
       expect(unserved.benchSpokenFor).toBe(true);
+    });
+
+    it("does not recommend a taxi player to a slot with nothing else", () => {
+      // Dårarnas Kamp (9) carries six taxi players; three of them are projected,
+      // so a bye-week row would happily have suggested one.
+      const bench = benchFrom({
+        players: ["bye", "taxiRb"],
+        starters: ["bye"],
+        taxi: ["taxiRb"],
+      });
+      const rows = evaluateLineup({
+        rosterPositions: ["RB"],
+        starters: ["bye"],
+        bench,
+        playerById: index(
+          unprojected("bye", { onBye: true }),
+          player("taxiRb", { proj: 1.4 })
+        ),
+      });
+      expect(rows[0].suggestion).toBeNull();
+      expect(rows[0].candidates).toHaveLength(0);
+      expect(rows[0].noReplacement).toBe(true);
     });
 
     it("still reports the gap when it keeps the starter ahead", () => {

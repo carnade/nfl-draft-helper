@@ -12,7 +12,7 @@ import {
 } from "./playerForm";
 import { useSleeperAuth } from "./auth";
 import { projectedPoints, hasProjection, fetchWeekProjectionsUrl } from "./leagueScoring";
-import { evaluateLineup, countActionable, isEligible } from "./startSitModel";
+import { evaluateLineup, countActionable, isEligible, benchFrom } from "./startSitModel";
 import { lockedTeamsFor, byeTeamsFor } from "./nflSchedule";
 import { loadHiddenLeagues, visibleLeagues, useHiddenLeagues } from "./leagueVisibility";
 
@@ -555,9 +555,7 @@ function StartSit({ userName }) {
         const reserve = roster?.reserve || [];
         const taxi = roster?.taxi || [];
         const all = roster?.players || [];
-        const bench = all.filter(
-          (id) => !starters.includes(id) && !reserve.includes(id) && !taxi.includes(id)
-        );
+        const bench = benchFrom({ players: all, starters, reserve, taxi });
 
         const playerById = {};
         for (const id of new Set([...all, ...starters])) {
@@ -619,6 +617,10 @@ function StartSit({ userName }) {
           isDynasty: league.settings?.type === 2,
           // Kept so a lineup change can be submitted and applied without refetching.
           rosterId: roster?.roster_id ?? null,
+          // Sleeper's lineup mutation returns neither of these, and a swap cannot
+          // change them, so they are carried over rather than re-fetched.
+          reserveIds: reserve,
+          taxiIds: taxi,
           rosterPositions: league.roster_positions || [],
           starterIds: starters,
           benchIds: bench,
@@ -707,9 +709,15 @@ function StartSit({ userName }) {
 
       // Rebuild from what Sleeper says the lineup now is, not from what was sent.
       const confirmedStarters = updated.starters.map(String);
-      const benchIds = (updated.players || league.benchIds)
-        .map(String)
-        .filter((id) => !confirmedStarters.includes(id));
+      // updated.players is the whole roster and the response carries no taxi or
+      // reserve list, so those have to come from what was loaded. Without them
+      // every taxi and IR player rejoined the bench and became suggestable.
+      const benchIds = benchFrom({
+        players: updated.players || league.benchIds,
+        starters: confirmedStarters,
+        reserve: league.reserveIds,
+        taxi: league.taxiIds,
+      });
 
       setLeagues((prev) =>
         prev.map((l) => {

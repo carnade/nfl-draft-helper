@@ -43,6 +43,28 @@ export function buildSlots(rosterPositions = []) {
   return rosterPositions.filter((p) => !LINEUP_EXCLUDED.has(p));
 }
 
+/**
+ * The players who can actually be moved into the lineup.
+ *
+ * Not everyone on the roster: a taxi-squad player cannot be started without
+ * giving up their taxi spot, and an IR player cannot be started at all. Neither
+ * is ever a suggestion, so neither belongs on the bench this works from.
+ *
+ * Worth having as one function because it is needed twice — once on load and
+ * again after a swap — and the second one got it wrong. Sleeper's lineup
+ * mutation returns the whole roster and no taxi or reserve lists, so rebuilding
+ * the bench from its response alone put every taxi and IR player back in play.
+ */
+export function benchFrom({ players = [], starters = [], reserve = [], taxi = [] }) {
+  const unavailable = new Set(
+    [...starters, ...reserve, ...taxi].filter((id) => id != null).map(String)
+  );
+  return (players || [])
+    .filter((id) => id != null)
+    .map(String)
+    .filter((id) => !EMPTY_SLOT_IDS.has(id) && !unavailable.has(id));
+}
+
 export function eligiblePositions(slot) {
   if (SLOT_ELIGIBILITY[slot]) return SLOT_ELIGIBILITY[slot];
   // An unknown flex variant is still a flex: better to offer RB/WR/TE than to

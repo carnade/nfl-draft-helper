@@ -50,6 +50,7 @@ export default function Changelog() {
         "Those players show a dash instead of a projection, and are never suggested ahead of someone who is actually playing.",
         "Bye weeks are now read from the schedule, so a player whose team is idle is always marked as on bye \u2014 previously an injury designation could hide it and the row said the projection was simply missing.",
         "When every bench player who fits a slot is already needed by another, the row says so rather than claiming there is nobody eligible.",
+        "Taxi squad and injured reserve players are no longer offered as substitutions after a lineup change has been made on the page. They were correctly left out when the page first loaded, but came back once a change had gone through.",
       ],
     },
     {
