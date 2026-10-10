@@ -1606,15 +1606,14 @@ function LeagueList() {
         </div>
       </div>
 
-      <LeagueIssues
-        issues={irIssues}
-        canEdit={canEditRosters}
-        onApplyIr={applyIr}
-      />
-
       <div className="league-main-content">
         {/* Left Side: Leagues */}
         <div className="league-list-container">
+          <LeagueIssues
+            issues={irIssues}
+            canEdit={canEditRosters}
+            onApplyIr={applyIr}
+          />
           <section className="ss-card">
            <div className="ss-table-wrap">
             <table className="ss-table league-table">
