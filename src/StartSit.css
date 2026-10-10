@@ -41,70 +41,9 @@
   font-weight: 600;
 }
 
-.ss-card {
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius, 6px);
-  padding: 12px 14px;
-  margin-bottom: 14px;
-}
-
-.ss-card-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 8px;
-}
-
-.ss-league-name {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: hsl(var(--foreground));
-}
-
 .ss-flag-count {
   font-size: 0.8rem;
   color: hsl(var(--muted-foreground));
-}
-
-.ss-table-wrap {
-  overflow-x: auto;
-}
-
-.ss-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.85rem;
-  color: hsl(var(--foreground));
-}
-
-.ss-table th {
-  text-align: left;
-  padding: 6px 8px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  color: hsl(var(--muted-foreground));
-  border-bottom: 1px solid hsl(var(--border));
-  white-space: nowrap;
-}
-
-.ss-table td {
-  padding: 6px 8px;
-  border-bottom: 1px solid hsl(var(--border) / 0.5);
-  white-space: nowrap;
-}
-
-.ss-num {
-  text-align: right;
-}
-
-.ss-table th.ss-num {
-  text-align: right;
 }
 
 /* How many games the average actually found, when it is short of five. Inline
@@ -162,10 +101,6 @@
 
 .ss-bye {
   color: #d08a2f;
-}
-
-.ss-muted {
-  opacity: 0.45;
 }
 
 .ss-row-sit {
@@ -283,22 +218,6 @@
   border-radius: var(--radius, 6px);
   font-size: 0.82rem;
   color: hsl(var(--foreground));
-}
-
-/* Dynasty first, redraft below — the same split the league page uses. */
-.ss-group-header {
-  margin: 18px 0 8px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: hsl(var(--muted-foreground));
-  padding-bottom: 4px;
-  border-bottom: 1px solid hsl(var(--border));
-}
-
-.ss-group-header:first-of-type {
-  margin-top: 4px;
 }
 
 /* A second header line keeps the qualifier out of the column width. */

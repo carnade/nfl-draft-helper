@@ -21,19 +21,23 @@
 }
 
 /* Search area */
+/* Was written out twice here, identically but for the margin and the gap, so
+   the second quietly won. */
 .search-container {
   display: flex;
   align-items: center;
-  margin-bottom: 10px;
-  overflow: visible; /* ensure dropdown is not clipped */
-}
-
-.search-container {
-  display: flex;
-  align-items: center;
-  margin-bottom: 12px;
   overflow: visible; /* ensure dropdown is not clipped */
   gap: 18px; /* spacing between search fields */
+}
+
+/* .search-container is global and TradeAnalyzer.css declares it too, with
+   `padding: 20px 0 20px 20px` — and that file loads later, so it won here and
+   put 20px above and below this page's search fields. Rather than restyle the
+   Trade Helper from this file, the page's own row carries a second class and
+   two of them beat one. */
+.search-container.league-search {
+  padding: 0;
+  margin-bottom: 2px;
 }
 
 .search-label {
@@ -69,12 +73,15 @@
 }
 
 /* Medical cross icon - soft red, toned down from vibrant but still clearly red */
+/* Sized in em so it follows the cell. It was a fixed 1.1rem, which looked
+   right when the row inherited the page's 16px and far too heavy once the
+   table set its own smaller scale — and it no longer matched the FontAwesome
+   question mark beside it, which does scale. */
 .medical-cross-icon {
-  width: 1.1rem;
-  height: 1.1rem;
+  width: 1.05em;
+  height: 1.05em;
   display: inline-block;
-  vertical-align: baseline;
-  margin-bottom: -0.1rem;
+  vertical-align: -0.15em;
   filter: brightness(0) saturate(100%) invert(28%) sepia(82%) saturate(1700%) hue-rotate(350deg) brightness(90%) contrast(93%);
 }
 
@@ -107,55 +114,65 @@ body.dark .medical-cross-icon {
 }
 
 /* Main layout */
+/* A grid rather than a row, so the issue card can be the table's width while
+   the waivers/injuries column still starts level with the table itself.
+   As a flex row the card was the first thing in the left column, which pushed
+   that column's content down and left the tabs aligned to the card instead.
+
+   row-gap is 0 deliberately: with no issues to report the card renders nothing
+   at all, and a row gap would leave its empty row's spacing behind. The card
+   carries its own margin-bottom instead.
+
+   The top padding is gone too — it sat under the search fields and put 32px
+   between them and the table, counting the search's own margin. */
 .league-main-content {
-  display: flex;
-  justify-content: space-between;
-  gap: 1.25rem;
+  display: grid;
+  grid-template-columns: 1fr 35%;
+  grid-template-areas:
+    "issues ."
+    "table  tabs";
+  column-gap: 1.25rem;
+  row-gap: 0;
   width: 100%;
   margin: 0 auto;
-  padding: 1.25rem;
+  padding: 0 1.25rem 1.25rem;
   box-sizing: border-box;
   overflow-x: hidden;
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
 }
 
+.league-main-content > .li-panel {
+  grid-area: issues;
+}
+
 /* Left side: league list */
 .league-list-container {
-  flex: 1;
+  grid-area: table;
+  /* Lets the table shrink and scroll inside its own wrapper rather than
+     stretching the column; a grid item defaults to min-width: auto. */
+  min-width: 0;
 }
 
-/* The grid for league info */
-.league-grid {
-  display: grid;
-  /* name | record | waivers | pos | mpf | injuries | actions */
-  grid-template-columns: 3fr 1fr 1fr 0.6fr 0.6fr 1fr 1fr;
-  gap: 10px;
+/* The league list is a real table now; its shell lives in TableStyles.css,
+   shared with Start/Sit. Only the column widths are page-specific. */
+.league-table th:first-child,
+.league-table td:first-child {
+  width: 32%;
 }
 
-.league-grid-header {
-  font-weight: 600;
-  font-size: 0.875rem;
+/* Pos and MPF sort on click; the other five headers do not. */
+.league-table th.league-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+/* The expanded roster spans every column, so it needs no cell padding of
+   its own and no rule under it — the roster brings its own. */
+.league-table .league-details-row > td {
+  padding: 0 8px 10px;
   border-bottom: 1px solid hsl(var(--border));
-  padding: 0.75rem;
-  text-align: left;
-  border-radius: var(--radius) var(--radius) 0 0;
-  background-color: hsl(222 47% 8%);
-  color: hsl(var(--foreground));
-}
-
-body.light .league-grid-header {
-  background-color: hsl(220 14% 97%);
-}
-
-body.dark .league-grid-header {
-  background-color: hsl(222 47% 10%);
-}
-
-.league-grid-item {
-  padding: 0.75rem;
-  border-bottom: 1px solid hsl(var(--border));
-  color: hsl(var(--foreground));
+  white-space: normal;
 }
 
 /* The league name with possible highlighting */
@@ -166,10 +183,12 @@ body.dark .league-grid-header {
   color: hsl(var(--foreground));
 }
 
+/* An outline rather than a border, and no padding: both of those used to resize
+   the cell, so highlighting a league nudged everything in its row sideways. */
 .league-highlighted-league {
   background-color: #fff7e6; /* pale warm background */
-  border: 2px solid #ffb74d;
-  padding: 8px;
+  outline: 2px solid #ffb74d;
+  outline-offset: -2px;
   border-radius: 6px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
   font-weight: 600;
@@ -177,22 +196,81 @@ body.dark .league-grid-header {
 
 body.dark .league-highlighted-league {
   background-color: #3a3a3a;
-  border: 2px solid #ff9800;
-  padding: 8px;
+  outline: 2px solid #ff9800;
+  outline-offset: -2px;
   border-radius: 6px;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.25);
   font-weight: 600;
 }
 
 /* Expand/collapse arrow */
-.toggle-button {
+/* A chevron rather than a solid triangle, and sized down from the league name
+   it sits beside so it reads as an affordance rather than as punctuation. */
+/* .toggle-button used to be defined here too. This page no longer uses it —
+   the name cell is the control now — and BestballList.css carries an
+   identical copy for the one page that still does. */
+
+/* Scoped to this page: .toggle-button is global and BestballList uses it too,
+   where it is still a text triangle and would not survive a chevron's
+   proportions. */
+.league-expander {
   cursor: pointer;
-  margin-right: 5px;
+  margin-right: 7px;
+  font-size: 0.72em;
+  color: hsl(var(--muted-foreground));
+  vertical-align: 0.1em;
+}
+
+.league-expander:hover {
+  color: hsl(var(--foreground));
+}
+
+/* The whole name cell expands the row, not just the chevron.
+   The chevron on its own was about 7x12px of hit area — roughly a tenth of the
+   24x24 a target is meant to be — and a span with role="button" has no tab stop,
+   so it could not be reached from the keyboard at all. The name is what you aim
+   at anyway; the chevron is now only an indicator. */
+.league-expand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 4px 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+
+.league-expand-icon {
+  flex: none;
+  font-size: 0.72em;
+  color: hsl(var(--muted-foreground));
+}
+
+.league-expand:hover .league-expand-icon {
+  color: hsl(var(--foreground));
+}
+
+/* The name can be longer than its column; the chevron must not be squeezed. */
+.league-expand-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.league-expand:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+  border-radius: 3px;
 }
 
 /* Any additional .league-details you had (optional) */
+/* The expanded roster. It sits in a cell that already spans every column, so
+   the grid-column trick it used to need is gone. */
 .league-details {
-  grid-column: 1 / -1;
   padding: 10px 0;
   margin-left: 20px;
 }
@@ -202,28 +280,28 @@ body.dark .league-highlighted-league {
   margin-top: 10px;
 }
 
+/* Matched to .ss-table th, so the roster reads as part of the table it opens
+   inside rather than as a second table with its own conventions. */
 .roster-header {
   font-weight: 600;
-  font-size: 0.875rem;
-  background-color: hsl(222 47% 8%);
-  color: hsl(var(--foreground));
-  padding: 0.75rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: hsl(var(--muted-foreground));
+  background-color: transparent;
+  padding: 4px 0;
   border-bottom: 1px solid hsl(var(--border));
 }
 
-body.light .roster-header {
-  background-color: hsl(220 14% 97%);
-}
-
-body.dark .roster-header {
-  background-color: hsl(222 47% 10%);
-}
-
+/* One grid per row, so this padding lands between every pair of players. At
+   10px top and bottom it left a 16px scale sitting inside a 0.85rem table,
+   which read as a different page rather than a detail of this one. */
 .roster-grid {
   display: grid;
   grid-template-columns: 3.5fr 1fr 1.5fr 1.5fr 1fr 2fr 2fr 2fr 1fr; /* Player, Pos, FPTS/G, Proj Pts, Opp Rank, Status, KTC, FC, Links */
   gap: 10px;
-  padding: 10px 0;
+  padding: 3px 0;
+  align-items: center;
 }
 
 .roster-grid .align_center {
@@ -231,8 +309,9 @@ body.dark .roster-header {
 }
 
 .roster-grid-item {
-  font-size: 16px;
-  padding: 2px 0;
+  font-size: 0.85rem;
+  padding: 0;
+  line-height: 1.45;
 }
 
 .ordinal-suffix {
@@ -254,16 +333,18 @@ body.dark .roster-header {
 }
 
 /* When a player is selected */
+/* Same reason as above: a border plus padding resized whatever it marked. */
 .selected-player {
-  border: 2px solid red; /* or your chosen highlight */
+  outline: 2px solid red;
+  outline-offset: -2px;
   border-radius: 5px;
-  padding: 5px;
   background-color: #ffe5e5;
 }
 
 /* Right-side container */
 .league-right-side-container {
-  width: 35%;
+  grid-area: tabs;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
@@ -735,19 +816,8 @@ body.dark .selected-player {
   background-color: #661a1a; /* Darker red background for dark mode */
 }
 
-/* Light mode styles for highlighted-league */
-body.light .highlighted-league {
-  border: 2px solid #ff6666;
-  background-color: #ffb97c; /* Current light mode background */
-  border-radius: 5px;
-}
-
-/* Dark mode styles for highlighted-league */
-body.dark .highlighted-league {
-  border: 2px solid #661a1a;
-  background-color: #45454b; /* Darker orange for dark mode */
-  border-radius: 5px;
-}
+/* .highlighted-league used to be styled here, but the markup has always said
+   .league-highlighted-league, so these two rules never matched anything. */
 
 /* Align text to the right */
 .align_right {
@@ -939,25 +1009,6 @@ body.dark .league-action-icon:hover {
 }
 .dvp-has-tooltip:hover::after {
   opacity: 1;
-}
-
-/* Format heading ("Dynasty" / "Redraft") shown when both formats are listed.
-   Spans the whole row so it reads as a divider rather than a first-column cell. */
-.league-group-header {
-  grid-column: 1 / -1;
-  font-weight: 700;
-  font-size: 0.8rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: hsl(var(--muted-foreground, var(--foreground)));
-  padding: 1rem 0.25rem 0.25rem;
-  border-bottom: 1px solid hsl(var(--border));
-}
-
-/* The first heading sits directly under the column headers, so it needs no
-   extra space above it. */
-.league-grid-header + .league-group-header {
-  padding-top: 0.5rem;
 }
 
 /* Waiver archive: previous weeks, folded away under this week's claims. */
