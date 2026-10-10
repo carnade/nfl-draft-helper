@@ -1021,49 +1021,71 @@ function LeagueList() {
   );
 
   const applyIr = useCallback(
-    async (issue, playerIds) => {
-      if (!playerIds.length) return;
-      // The whole list is sent, not a delta, so whoever is already on reserve
-      // has to go along with it.
-      const reserve = [...issue.reserve, ...playerIds];
-      await submitReserve({
-        leagueId: issue.leagueId,
-        rosterId: issue.rosterId,
-        reserve,
-        token: auth?.token,
-      });
+    async (picks) => {
+      const results = [];
+      const applied = [];
 
-      // Reflect it without refetching every league. A player moving to reserve
-      // leaves the bench, which is also what frees the roster spot the Empty
-      // bench column counts.
-      setLeagues((prev) =>
-        prev.map((l) => {
-          if (l.league_id !== issue.leagueId) return l;
-          const moved = new Set(playerIds.map(String));
-          const userRoster = {
-            ...l.userRoster,
+      // One league at a time. Sleeper is asked for no more than it needs, and a
+      // league that refuses does not stop the rest from going through.
+      for (const { issue, playerIds } of picks) {
+        if (!playerIds.length) continue;
+        try {
+          // The whole list is sent, not a delta, so whoever is already on
+          // reserve has to go along with it.
+          const reserve = [...issue.reserve, ...playerIds];
+          await submitReserve({
+            leagueId: issue.leagueId,
+            rosterId: issue.rosterId,
             reserve,
-            uniquePlayers: (l.userRoster.uniquePlayers || []).filter(
-              (id) => !moved.has(String(id))
-            ),
-          };
-          return {
-            ...l,
-            userRoster,
-            emptyBenchSlots: emptyBenchSlots({
-              rosterPositions: l.roster_positions,
-              players: [
-                ...userRoster.starters,
-                ...userRoster.uniquePlayers,
-                ...userRoster.reserve,
-                ...userRoster.taxi,
-              ],
-              reserve: userRoster.reserve,
-              taxi: userRoster.taxi,
-            }),
-          };
-        })
-      );
+            token: auth?.token,
+          });
+          applied.push({ leagueId: issue.leagueId, reserve, playerIds });
+          results.push({ leagueId: issue.leagueId, leagueName: issue.leagueName });
+        } catch (err) {
+          results.push({
+            leagueId: issue.leagueId,
+            leagueName: issue.leagueName,
+            error: err?.message || String(err),
+          });
+        }
+      }
+
+      // Reflect what landed without refetching every league. A player moving to
+      // reserve leaves the bench, which is also what frees the roster spot the
+      // Empty bench column counts.
+      if (applied.length) {
+        setLeagues((prev) =>
+          prev.map((l) => {
+            const change = applied.find((a) => a.leagueId === l.league_id);
+            if (!change) return l;
+            const moved = new Set(change.playerIds.map(String));
+            const userRoster = {
+              ...l.userRoster,
+              reserve: change.reserve,
+              uniquePlayers: (l.userRoster.uniquePlayers || []).filter(
+                (id) => !moved.has(String(id))
+              ),
+            };
+            return {
+              ...l,
+              userRoster,
+              emptyBenchSlots: emptyBenchSlots({
+                rosterPositions: l.roster_positions,
+                players: [
+                  ...userRoster.starters,
+                  ...userRoster.uniquePlayers,
+                  ...userRoster.reserve,
+                  ...userRoster.taxi,
+                ],
+                reserve: userRoster.reserve,
+                taxi: userRoster.taxi,
+              }),
+            };
+          })
+        );
+      }
+
+      return results;
     },
     [auth]
   );

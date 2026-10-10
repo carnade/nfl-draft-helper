@@ -1,34 +1,50 @@
 import React from "react";
-import { render, screen, within, fireEvent } from "@testing-library/react";
+import {
+  render,
+  screen,
+  within,
+  fireEvent,
+  waitForElementToBeRemoved,
+} from "@testing-library/react";
 import LeagueIssues from "./LeagueIssues";
 
-const issue = (over = {}) => ({
+const fools = {
   leagueId: "L1",
   leagueName: "Fantasy Fools",
-  rosterId: 7,
+  rosterId: 5,
   reserve: ["already1", "already2"],
   freeSlots: 2,
   oversubscribed: false,
   candidates: [
     { id: "a", name: "Xavier Legette", status: "IR", position: "WR" },
-    { id: "b", name: "Michael Pittman", status: "IR", position: "WR" },
+    { id: "b", name: "Barion Brown", status: "PUP", position: "WR" },
   ],
-  ...over,
-});
+};
 
-const boxes = () => screen.getAllByRole("checkbox");
+const swedish = {
+  leagueId: "L2",
+  leagueName: "Swedish Dynasty Super League",
+  rosterId: 3,
+  reserve: ["r1", "r2"],
+  freeSlots: 1,
+  oversubscribed: true,
+  candidates: [
+    { id: "c", name: "Jaxson Dart", status: "IR", position: "QB" },
+    { id: "d", name: "Jadarian Price", status: "IR", position: "RB" },
+  ],
+};
 
 // fireEvent rather than user-event: the installed user-event is v13, which
 // predates .setup() and does not flush React 18 state updates on its own.
 const click = (el) => fireEvent.click(el);
 const fixButton = () => screen.getByRole("button", { name: "Fix" });
+const continueButton = () => screen.getByRole("button", { name: /Continue|Moving/ });
+const leagueBlock = (name) => screen.getByText(name).closest("section");
 
-function setup(props = {}) {
-  const onApplyIr = jest.fn().mockResolvedValue(undefined);
-  render(
-    <LeagueIssues issues={[issue()]} canEdit onApplyIr={onApplyIr} {...props} />
-  );
-  return { onApplyIr };
+function setup({ issues = [fools, swedish], onApplyIr, ...rest } = {}) {
+  const apply = onApplyIr || jest.fn().mockResolvedValue([]);
+  render(<LeagueIssues issues={issues} canEdit onApplyIr={apply} {...rest} />);
+  return { onApplyIr: apply };
 }
 
 describe("the panel", () => {
@@ -36,26 +52,21 @@ describe("the panel", () => {
     const { container } = render(
       <LeagueIssues issues={[]} canEdit onApplyIr={jest.fn()} />
     );
-    // An empty "no issues" box is just something to scroll past every week.
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("states the problem and names the league", () => {
+  it("is one card for every league, not one per league", () => {
     setup();
+    expect(screen.getAllByRole("button", { name: "Fix" })).toHaveLength(1);
+    expect(screen.getByText("4 players could be on injured reserve")).toBeInTheDocument();
     expect(
-      screen.getByText("2 players on the bench could be on injured reserve")
+      screen.getByText("Fantasy Fools · Swedish Dynasty Super League")
     ).toBeInTheDocument();
-    expect(screen.getByText(/Fantasy Fools — 2 slots free/)).toBeInTheDocument();
   });
 
-  it("uses the singular for one player and one slot", () => {
-    setup({
-      issues: [issue({ freeSlots: 1, candidates: [issue().candidates[0]] })],
-    });
-    expect(
-      screen.getByText("A player on the bench could be on injured reserve")
-    ).toBeInTheDocument();
-    expect(screen.getByText(/1 slot free/)).toBeInTheDocument();
+  it("uses the singular for one player", () => {
+    setup({ issues: [{ ...fools, candidates: [fools.candidates[0]] }] });
+    expect(screen.getByText("1 player could be on injured reserve")).toBeInTheDocument();
   });
 
   it("offers no Fix button without a Sleeper login", () => {
@@ -66,91 +77,140 @@ describe("the panel", () => {
 });
 
 describe("the dialog", () => {
-  it("pre-ticks everyone when they all fit", async () => {
+  it("lists every league in one dialog", () => {
     setup();
     click(fixButton());
-    expect(boxes().every((b) => b.checked)).toBe(true);
-    expect(screen.getByText("2 of 2 selected")).toBeInTheDocument();
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Fantasy Fools")).toBeInTheDocument();
+    expect(within(dialog).getByText("Swedish Dynasty Super League")).toBeInTheDocument();
+    expect(within(dialog).getAllByRole("checkbox")).toHaveLength(4);
   });
 
-  it("pre-ticks only as many as fit, and closes off the rest", async () => {
-    setup({
-      issues: [
-        issue({
-          freeSlots: 1,
-          oversubscribed: true,
-          candidates: [
-            { id: "a", name: "First", status: "IR", position: "WR" },
-            { id: "b", name: "Second", status: "IR", position: "RB" },
-            { id: "c", name: "Third", status: "PUP", position: "TE" },
-          ],
-        }),
-      ],
-    });
+  it("applies each league's own slot limit independently", () => {
+    setup();
     click(fixButton());
 
-    const [first, second, third] = boxes();
-    expect(first.checked).toBe(true);
-    expect(second.checked).toBe(false);
-    expect(third.checked).toBe(false);
-    // Closed off rather than hidden, so you can see who else qualifies.
-    expect(second).toBeDisabled();
-    expect(third).toBeDisabled();
+    // Fools has two free slots and two candidates, so both are ticked.
+    const foolsBoxes = within(leagueBlock("Fantasy Fools")).getAllByRole("checkbox");
+    expect(foolsBoxes.map((b) => b.checked)).toEqual([true, true]);
+
+    // Swedish has one free slot and two candidates, so only the first is.
+    const swedishBoxes = within(
+      leagueBlock("Swedish Dynasty Super League")
+    ).getAllByRole("checkbox");
+    expect(swedishBoxes.map((b) => b.checked)).toEqual([true, false]);
+    expect(swedishBoxes[1]).toBeDisabled();
   });
 
-  it("re-opens the others when one is un-ticked", async () => {
-    setup({
-      issues: [
-        issue({
-          freeSlots: 1,
-          oversubscribed: true,
-          candidates: [
-            { id: "a", name: "First", status: "IR", position: "WR" },
-            { id: "b", name: "Second", status: "IR", position: "RB" },
-          ],
-        }),
-      ],
-    });
+  it("unticking in one league does not open slots in another", () => {
+    setup();
     click(fixButton());
-    expect(boxes()[1]).toBeDisabled();
 
-    click(boxes()[0]);
-    expect(boxes()[1]).toBeEnabled();
-    expect(screen.getByText("0 of 1 selected")).toBeInTheDocument();
+    const foolsBoxes = within(leagueBlock("Fantasy Fools")).getAllByRole("checkbox");
+    click(foolsBoxes[0]);
 
-    click(boxes()[1]);
-    expect(boxes()[0]).toBeDisabled();
-    expect(boxes()[1].checked).toBe(true);
+    const swedishBoxes = within(
+      leagueBlock("Swedish Dynasty Super League")
+    ).getAllByRole("checkbox");
+    expect(swedishBoxes[1]).toBeDisabled();
   });
 
-  it("sends the players already on reserve along with the new ones", async () => {
-    // The whole list is sent, not a delta — anyone left out comes straight
-    // back off reserve.
+  it("re-opens the others in its own league when one is unticked", () => {
+    setup();
+    click(fixButton());
+    const block = () => within(leagueBlock("Swedish Dynasty Super League"));
+
+    expect(block().getAllByRole("checkbox")[1]).toBeDisabled();
+    click(block().getAllByRole("checkbox")[0]);
+    expect(block().getAllByRole("checkbox")[1]).toBeEnabled();
+  });
+
+  it("shows each league's own count", () => {
+    setup();
+    click(fixButton());
+    expect(
+      within(leagueBlock("Fantasy Fools")).getByText("2 of 2 free")
+    ).toBeInTheDocument();
+    expect(
+      within(leagueBlock("Swedish Dynasty Super League")).getByText("1 of 1 free")
+    ).toBeInTheDocument();
+  });
+
+  it("fixes every league in one click", () => {
     const { onApplyIr } = setup();
     click(fixButton());
-    click(screen.getByRole("button", { name: "Continue" }));
+    click(continueButton());
 
     expect(onApplyIr).toHaveBeenCalledTimes(1);
-    const [sentIssue, ids] = onApplyIr.mock.calls[0];
-    expect(ids).toEqual(["a", "b"]);
-    expect(sentIssue.reserve).toEqual(["already1", "already2"]);
+    const picks = onApplyIr.mock.calls[0][0];
+    expect(picks).toHaveLength(2);
+    expect(picks[0].issue.leagueName).toBe("Fantasy Fools");
+    expect(picks[0].playerIds).toEqual(["a", "b"]);
+    expect(picks[1].issue.leagueName).toBe("Swedish Dynasty Super League");
+    expect(picks[1].playerIds).toEqual(["c"]);
   });
 
-  it("will not continue with nothing selected", async () => {
+  it("leaves out a league nothing was selected in", () => {
+    const { onApplyIr } = setup();
+    click(fixButton());
+    const foolsBoxes = within(leagueBlock("Fantasy Fools")).getAllByRole("checkbox");
+    click(foolsBoxes[0]);
+    click(foolsBoxes[1]);
+    click(continueButton());
+
+    const picks = onApplyIr.mock.calls[0][0];
+    expect(picks.map((p) => p.issue.leagueName)).toEqual([
+      "Swedish Dynasty Super League",
+    ]);
+  });
+
+  it("counts the whole selection across leagues", () => {
     setup();
     click(fixButton());
-    click(boxes()[0]);
-    click(boxes()[1]);
-    expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+    expect(
+      screen.getByText(/3 players selected\. This changes your rosters on Sleeper\./)
+    ).toBeInTheDocument();
   });
 
-  it("says plainly that this touches the real roster", async () => {
+  it("will not continue with nothing selected anywhere", () => {
     setup();
     click(fixButton());
-    expect(screen.getByText("This changes your roster on Sleeper.")).toBeInTheDocument();
+    screen.getAllByRole("checkbox").forEach((b) => {
+      if (b.checked) click(b);
+    });
+    expect(continueButton()).toBeDisabled();
   });
 
-  it("closes on Cancel without applying anything", async () => {
+  it("closes when every league went through", async () => {
+    const onApplyIr = jest
+      .fn()
+      .mockResolvedValue([{ leagueId: "L1" }, { leagueId: "L2" }]);
+    setup({ onApplyIr });
+    click(fixButton());
+    click(continueButton());
+
+    // The Fix button never goes away — it is on the card behind the dialog —
+    // so waiting for it would pass before anything had happened.
+    await waitForElementToBeRemoved(() => screen.queryByRole("dialog"));
+    expect(screen.getByRole("button", { name: "Fix" })).toBeInTheDocument();
+  });
+
+  it("keeps the dialog open and names the league that refused", async () => {
+    // One league failing must not hide that the other worked, nor lose the
+    // reason the first one gave.
+    const onApplyIr = jest.fn().mockResolvedValue([
+      { leagueId: "L1", leagueName: "Fantasy Fools" },
+      { leagueId: "L2", leagueName: "Swedish", error: "Roster is locked" },
+    ]);
+    setup({ onApplyIr });
+    click(fixButton());
+    click(continueButton());
+
+    expect(await screen.findByText("Roster is locked")).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("closes on Cancel without applying anything", () => {
     const { onApplyIr } = setup();
     click(fixButton());
     click(screen.getByRole("button", { name: "Cancel" }));
@@ -158,23 +218,12 @@ describe("the dialog", () => {
     expect(onApplyIr).not.toHaveBeenCalled();
   });
 
-  it("keeps the dialog open and shows why when Sleeper refuses", async () => {
-    const onApplyIr = jest.fn().mockRejectedValue(new Error("Roster is locked"));
-    render(<LeagueIssues issues={[issue()]} canEdit onApplyIr={onApplyIr} />);
-
-    click(fixButton());
-    click(screen.getByRole("button", { name: "Continue" }));
-
-    expect(await screen.findByText("Roster is locked")).toBeInTheDocument();
-    // Still open, with the selection it refers to still on screen.
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
-  });
-
-  it("shows each candidate's status and position", async () => {
+  it("shows each candidate's status and position", () => {
     setup();
     click(fixButton());
-    const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getAllByText("IR")).toHaveLength(2);
-    expect(within(dialog).getAllByTitle("WR")).toHaveLength(2);
+    const block = within(leagueBlock("Fantasy Fools"));
+    expect(block.getByText("IR")).toBeInTheDocument();
+    expect(block.getByText("PUP")).toBeInTheDocument();
+    expect(block.getAllByTitle("WR")).toHaveLength(2);
   });
 });

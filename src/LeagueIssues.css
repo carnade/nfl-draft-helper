@@ -81,11 +81,14 @@
   z-index: 1000;
 }
 
+/* A column, so the list between the heading and the buttons is the only part
+   that scrolls — the Continue button stays put however many leagues there are. */
 .li-modal {
+  display: flex;
+  flex-direction: column;
   width: 100%;
-  max-width: 440px;
-  max-height: 85vh;
-  overflow-y: auto;
+  max-width: 460px;
+  max-height: 80vh;
   padding: 18px 20px;
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
@@ -93,16 +96,24 @@
   color: hsl(var(--foreground));
 }
 
+.li-modal-head,
+.li-modal-foot {
+  flex: none;
+}
+
+/* min-height: 0 is what lets a flex child actually shrink and scroll. */
+.li-modal-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0 -4px;
+  padding: 0 4px;
+}
+
 .li-modal-title {
   margin: 0 0 2px;
   font-size: 1.05rem;
   font-weight: 600;
-}
-
-.li-modal-league {
-  margin: 0 0 10px;
-  font-size: 0.85rem;
-  color: hsl(var(--muted-foreground));
 }
 
 .li-modal-note {
@@ -112,9 +123,36 @@
   color: hsl(var(--muted-foreground));
 }
 
+/* One block per league. The rule between them is what makes a long list
+   readable as separate rosters rather than one run of names. */
+.li-league + .li-league {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid hsl(var(--border));
+}
+
+.li-league-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.li-league-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.li-league-slots {
+  flex: none;
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+}
+
 .li-options {
   list-style: none;
-  margin: 0 0 10px;
+  margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -168,20 +206,14 @@
   color: #d0a52f;
 }
 
-.li-modal-count {
-  margin: 0 0 12px;
-  font-size: 0.78rem;
-  color: hsl(var(--muted-foreground));
-}
-
 .li-modal-warning {
-  margin: 0 0 4px;
+  margin: 12px 0 0;
   font-size: 0.78rem;
   color: hsl(var(--muted-foreground));
 }
 
 .li-modal-error {
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   font-size: 0.82rem;
   color: #e07070;
 }
