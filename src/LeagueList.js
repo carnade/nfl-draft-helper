@@ -4,6 +4,8 @@ import {
   faQuestion,
   faExternalLinkAlt,
   faTableCells,
+  faChevronDown,
+  faChevronRight,
 } from "@fortawesome/free-solid-svg-icons";
 import { useParams } from "react-router-dom";
 import DraftModal from "./DraftModal";
@@ -1506,8 +1508,21 @@ function LeagueList() {
                       <span
                         className="toggle-button"
                         onClick={() => handleToggle(league.league_id)}
+                        role="button"
+                        aria-label={
+                          expandedLeagueIds.has(league.league_id)
+                            ? "Collapse roster"
+                            : "Expand roster"
+                        }
+                        aria-expanded={expandedLeagueIds.has(league.league_id)}
                       >
-                        {expandedLeagueIds.has(league.league_id) ? "▼" : "►"}{" "}
+                        <FontAwesomeIcon
+                          icon={
+                            expandedLeagueIds.has(league.league_id)
+                              ? faChevronDown
+                              : faChevronRight
+                          }
+                        />
                       </span>
                       {league.name}
                     </td>
@@ -1879,7 +1894,14 @@ function LeagueList() {
                             className="team-name"
                             onClick={() => handleTeamToggle(teamAbbreviation)}
                           >
-                            {expandedTeams.has(teamAbbreviation) ? "▼" : "►"}{" "}
+                            <FontAwesomeIcon
+                              className="league-expander"
+                              icon={
+                                expandedTeams.has(teamAbbreviation)
+                                  ? faChevronDown
+                                  : faChevronRight
+                              }
+                            />{" "}
                             {teamFullName(teamAbbreviation)}
                           </span>
                           <div className="team-injury-icons">
@@ -2134,7 +2156,11 @@ function LeagueList() {
                             onClick={() => setWaiverArchiveOpen(open => !open)}
                             aria-expanded={waiverArchiveOpen}
                           >
-                            {waiverArchiveOpen ? "▼" : "►"} Archive ({archivedCount})
+                            <FontAwesomeIcon
+                              className="league-expander"
+                              icon={waiverArchiveOpen ? faChevronDown : faChevronRight}
+                            />{" "}
+                            Archive ({archivedCount})
                           </button>
                           {waiverArchiveOpen && sections.map(({ league, past }) => past.length > 0 && (
                             <div key={league.league_id} className="waiver-league-section">

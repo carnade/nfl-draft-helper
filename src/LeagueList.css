@@ -69,12 +69,15 @@
 }
 
 /* Medical cross icon - soft red, toned down from vibrant but still clearly red */
+/* Sized in em so it follows the cell. It was a fixed 1.1rem, which looked
+   right when the row inherited the page's 16px and far too heavy once the
+   table set its own smaller scale — and it no longer matched the FontAwesome
+   question mark beside it, which does scale. */
 .medical-cross-icon {
-  width: 1.1rem;
-  height: 1.1rem;
+  width: 1.05em;
+  height: 1.05em;
   display: inline-block;
-  vertical-align: baseline;
-  margin-bottom: -0.1rem;
+  vertical-align: -0.15em;
   filter: brightness(0) saturate(100%) invert(28%) sepia(82%) saturate(1700%) hue-rotate(350deg) brightness(90%) contrast(93%);
 }
 
@@ -175,9 +178,31 @@ body.dark .league-highlighted-league {
 }
 
 /* Expand/collapse arrow */
+/* A chevron rather than a solid triangle, and sized down from the league name
+   it sits beside so it reads as an affordance rather than as punctuation. */
 .toggle-button {
   cursor: pointer;
   margin-right: 5px;
+}
+
+/* Scoped to this page's table: .toggle-button is global and BestballList uses
+   it too, where it is still a text triangle and would not survive being sized
+   down to a chevron's proportions. */
+.league-table .toggle-button,
+.league-expander {
+  margin-right: 7px;
+  font-size: 0.72em;
+  color: hsl(var(--muted-foreground));
+  vertical-align: 0.1em;
+}
+
+.league-table .toggle-button:hover,
+.league-expander:hover {
+  color: hsl(var(--foreground));
+}
+
+.league-expander {
+  cursor: pointer;
 }
 
 /* Any additional .league-details you had (optional) */
@@ -193,28 +218,28 @@ body.dark .league-highlighted-league {
   margin-top: 10px;
 }
 
+/* Matched to .ss-table th, so the roster reads as part of the table it opens
+   inside rather than as a second table with its own conventions. */
 .roster-header {
   font-weight: 600;
-  font-size: 0.875rem;
-  background-color: hsl(222 47% 8%);
-  color: hsl(var(--foreground));
-  padding: 0.75rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: hsl(var(--muted-foreground));
+  background-color: transparent;
+  padding: 4px 0;
   border-bottom: 1px solid hsl(var(--border));
 }
 
-body.light .roster-header {
-  background-color: hsl(220 14% 97%);
-}
-
-body.dark .roster-header {
-  background-color: hsl(222 47% 10%);
-}
-
+/* One grid per row, so this padding lands between every pair of players. At
+   10px top and bottom it left a 16px scale sitting inside a 0.85rem table,
+   which read as a different page rather than a detail of this one. */
 .roster-grid {
   display: grid;
   grid-template-columns: 3.5fr 1fr 1.5fr 1.5fr 1fr 2fr 2fr 2fr 1fr; /* Player, Pos, FPTS/G, Proj Pts, Opp Rank, Status, KTC, FC, Links */
   gap: 10px;
-  padding: 10px 0;
+  padding: 3px 0;
+  align-items: center;
 }
 
 .roster-grid .align_center {
@@ -222,8 +247,9 @@ body.dark .roster-header {
 }
 
 .roster-grid-item {
-  font-size: 16px;
-  padding: 2px 0;
+  font-size: 0.85rem;
+  padding: 0;
+  line-height: 1.45;
 }
 
 .ordinal-suffix {
