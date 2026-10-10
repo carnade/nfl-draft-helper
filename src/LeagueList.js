@@ -1412,9 +1412,19 @@ function LeagueList() {
     );
   };
 
+  // Copied before sorting. The argument is league.userRoster[group], which is
+  // held in React state, and .sort() works in place — so this used to reorder
+  // state during a render.
+  //
+  // It mattered most for `starters`, which is positional: index i is the i-th
+  // non-bench slot in roster_positions. Sorting it looks harmless because a
+  // lineup is usually already roughly QB, RB, WR, TE — but a flex holding a
+  // running back sorts up beside the other running backs and the slot mapping
+  // is gone. Nothing on this page reads that order today; Start/Sit's lineup
+  // submission does.
   const sortPlayersByPosition = (playerIds, leagueId) => {
     const positionOrder = { QB: 1, RB: 2, WR: 3, TE: 4, DEF: 5 };
-    return playerIds.sort((a, b) => {
+    return [...playerIds].sort((a, b) => {
       const posA = playerData[leagueId]?.players[a]?.position || "ZZZ";
       const posB = playerData[leagueId]?.players[b]?.position || "ZZZ";
       return (positionOrder[posA] || 99) - (positionOrder[posB] || 99);
