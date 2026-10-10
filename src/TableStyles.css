@@ -1,0 +1,122 @@
+/* The table shell shared by Start/Sit and the League page.
+ *
+ * These rules started life in StartSit.css, which is why they carry an `ss-`
+ * prefix. The prefix is now historical rather than descriptive — renaming would
+ * churn every cell in a ten-column table for no behavioural gain, so it stays,
+ * and this comment exists so the next reader is not left wondering why the
+ * League page is full of Start/Sit class names.
+ *
+ * Imported by both pages. It must not be copied into either stylesheet: CRA
+ * serves all CSS globally, so two copies would both load on every page and the
+ * later one would quietly win.
+ *
+ * Deliberately absent: zebra striping, row hover, and sticky headers. Separation
+ * is a half-strength rule under each row and nothing else, which is what makes a
+ * dense table readable without decorating it.
+ */
+
+.ss-card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius, 6px);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+
+.ss-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.ss-league-name {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+/* The only responsive mechanism either page has: every cell is nowrap and the
+   table scrolls sideways rather than reflowing. */
+.ss-table-wrap {
+  overflow-x: auto;
+}
+
+.ss-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  color: hsl(var(--foreground));
+}
+
+.ss-table th {
+  text-align: left;
+  padding: 6px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: hsl(var(--muted-foreground));
+  border-bottom: 1px solid hsl(var(--border));
+  white-space: nowrap;
+}
+
+.ss-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  white-space: nowrap;
+}
+
+.ss-num,
+.ss-table th.ss-num {
+  text-align: right;
+}
+
+/* A narrow column of small numbers reads better centred than ranged right, and
+   the heading has to agree with it — th is left-aligned by default, which is
+   what left Pos and MPF looking out of line with their own values. */
+.ss-center,
+.ss-table th.ss-center,
+.ss-table td.ss-center {
+  text-align: center;
+}
+
+.ss-muted {
+  opacity: 0.45;
+}
+
+/* "Dynasty" / "Redraft". Both pages split their list the same way; this used to
+   be written twice, as .ss-group-header and .league-group-header, with the same
+   declarations and a grid-only `grid-column: 1 / -1` on the second. In a real
+   table that span is a colSpan on the cell instead. */
+.ss-group-header {
+  margin: 18px 0 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+  padding-bottom: 4px;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.ss-group-header:first-of-type {
+  margin-top: 4px;
+}
+
+/* The same heading as a row inside a table, where a margin would do nothing. */
+.ss-table .ss-group-row th {
+  padding-top: 16px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: hsl(var(--muted-foreground));
+}
+
+.ss-table tr:first-child .ss-group-row th,
+.ss-table .ss-group-row:first-child th {
+  padding-top: 6px;
+}

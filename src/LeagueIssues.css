@@ -1,0 +1,305 @@
+/* Issues worth acting on, above the league table.
+ *
+ * The panel renders nothing at all when there is nothing wrong — an empty
+ * "no issues" box is just a thing to scroll past every week.
+ */
+
+/* Placed by the page's own grid, in the table's column and the row above it —
+   so it is exactly the table's width without naming one, and the column beside
+   it still starts level with the table. See .league-main-content. */
+.li-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.li-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border: 1px solid hsl(38 70% 50% / 0.45);
+  border-left: 3px solid #d08a2f;
+  border-radius: var(--radius, 6px);
+  background: hsl(38 70% 50% / 0.08);
+}
+
+.li-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.li-card-headline {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+/* One league per line. Run together on one line they read as a single phrase,
+   and a manager with four affected leagues cannot pick out which. */
+.li-card-leagues {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Name and count sit together rather than at opposite edges — the card is full
+   width now, and spreading them apart would leave the count stranded. */
+.li-card-leagues li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.li-card-league {
+  color: hsl(var(--foreground) / 0.85);
+}
+
+.li-card-slots {
+  font-size: 0.75rem;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+
+.li-card-locked {
+  font-size: 0.8rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.li-fix {
+  flex: none;
+  padding: 5px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid hsl(38 70% 45%);
+  border-radius: 4px;
+  background: #d08a2f;
+  color: hsl(38 60% 12%);
+  cursor: pointer;
+}
+
+.li-fix:hover {
+  background: #e09a3f;
+}
+
+.li-fix:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+}
+
+/* ── The dialog ── */
+
+.li-overlay {
+  position: fixed;
+  inset: 0;
+  background: hsl(222 47% 4% / 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 1000;
+}
+
+/* A column, so the list between the heading and the buttons is the only part
+   that scrolls — the Continue button stays put however many leagues there are. */
+.li-modal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 460px;
+  max-height: 80vh;
+  padding: 18px 20px;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius, 6px);
+  color: hsl(var(--foreground));
+}
+
+.li-modal-head,
+.li-modal-foot {
+  flex: none;
+}
+
+/* min-height: 0 is what lets a flex child actually shrink and scroll. */
+.li-modal-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0 -4px;
+  padding: 0 4px;
+}
+
+.li-modal-title {
+  margin: 0 0 2px;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.li-modal-note {
+  margin: 0 0 12px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: hsl(var(--muted-foreground));
+}
+
+/* One block per league. The rule between them is what makes a long list
+   readable as separate rosters rather than one run of names. */
+.li-league + .li-league {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid hsl(var(--border));
+}
+
+.li-league-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.li-league-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.li-league-slots {
+  flex: none;
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.li-options {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.li-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.li-option:hover {
+  background: hsl(var(--muted) / 0.4);
+}
+
+/* Closed off, not hidden: you can still see who else qualifies. */
+.li-option-blocked {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.li-option-blocked:hover {
+  background: none;
+}
+
+.li-option-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.88rem;
+}
+
+.li-status {
+  flex: none;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #e07070;
+}
+
+.li-status-PUP,
+.li-status-NA,
+.li-status-DNR,
+.li-status-Sus,
+.li-status-COV {
+  color: #d0a52f;
+}
+
+.li-modal-warning {
+  margin: 12px 0 0;
+  font-size: 0.78rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.li-modal-error {
+  margin: 0 0 6px;
+  font-size: 0.82rem;
+  color: #e07070;
+}
+
+.li-modal-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.li-confirm,
+.li-cancel {
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.li-confirm {
+  border: 1px solid hsl(var(--primary));
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-weight: 600;
+}
+
+.li-confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.li-cancel {
+  border: 1px solid hsl(var(--border));
+  background: none;
+  color: hsl(var(--foreground));
+}
+
+.li-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Pushed away from Continue and Cancel: it changes the selection rather than
+   deciding what to do with it, and it should not sit where a confirm does. */
+.li-clear {
+  margin-left: auto;
+  padding: 6px 4px;
+  background: none;
+  border: 0;
+  font-size: 0.8rem;
+  color: hsl(var(--muted-foreground));
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.li-clear:hover:not(:disabled) {
+  color: hsl(var(--foreground));
+}
+
+.li-clear:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
