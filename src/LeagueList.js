@@ -1517,26 +1517,27 @@ function LeagueList() {
                           : ""
                       }`}
                     >
-                      <span
-                        className="toggle-button"
+                      <button
+                        type="button"
+                        className="league-expand"
                         onClick={() => handleToggle(league.league_id)}
-                        role="button"
-                        aria-label={
-                          expandedLeagueIds.has(league.league_id)
-                            ? "Collapse roster"
-                            : "Expand roster"
-                        }
                         aria-expanded={expandedLeagueIds.has(league.league_id)}
+                        title={
+                          expandedLeagueIds.has(league.league_id)
+                            ? "Hide this roster"
+                            : "Show this roster"
+                        }
                       >
                         <FontAwesomeIcon
+                          className="league-expand-icon"
                           icon={
                             expandedLeagueIds.has(league.league_id)
                               ? faChevronDown
                               : faChevronRight
                           }
                         />
-                      </span>
-                      {league.name}
+                        <span className="league-expand-name">{league.name}</span>
+                      </button>
                     </td>
 
                     <td>

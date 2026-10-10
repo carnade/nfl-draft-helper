@@ -180,29 +180,65 @@ body.dark .league-highlighted-league {
 /* Expand/collapse arrow */
 /* A chevron rather than a solid triangle, and sized down from the league name
    it sits beside so it reads as an affordance rather than as punctuation. */
-.toggle-button {
-  cursor: pointer;
-  margin-right: 5px;
-}
+/* .toggle-button used to be defined here too. This page no longer uses it —
+   the name cell is the control now — and BestballList.css carries an
+   identical copy for the one page that still does. */
 
-/* Scoped to this page's table: .toggle-button is global and BestballList uses
-   it too, where it is still a text triangle and would not survive being sized
-   down to a chevron's proportions. */
-.league-table .toggle-button,
+/* Scoped to this page: .toggle-button is global and BestballList uses it too,
+   where it is still a text triangle and would not survive a chevron's
+   proportions. */
 .league-expander {
+  cursor: pointer;
   margin-right: 7px;
   font-size: 0.72em;
   color: hsl(var(--muted-foreground));
   vertical-align: 0.1em;
 }
 
-.league-table .toggle-button:hover,
 .league-expander:hover {
   color: hsl(var(--foreground));
 }
 
-.league-expander {
+/* The whole name cell expands the row, not just the chevron.
+   The chevron on its own was about 7x12px of hit area — roughly a tenth of the
+   24x24 a target is meant to be — and a span with role="button" has no tab stop,
+   so it could not be reached from the keyboard at all. The name is what you aim
+   at anyway; the chevron is now only an indicator. */
+.league-expand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 4px 0;
+  background: none;
+  border: 0;
   cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+
+.league-expand-icon {
+  flex: none;
+  font-size: 0.72em;
+  color: hsl(var(--muted-foreground));
+}
+
+.league-expand:hover .league-expand-icon {
+  color: hsl(var(--foreground));
+}
+
+/* The name can be longer than its column; the chevron must not be squeezed. */
+.league-expand-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.league-expand:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+  border-radius: 3px;
 }
 
 /* Any additional .league-details you had (optional) */
