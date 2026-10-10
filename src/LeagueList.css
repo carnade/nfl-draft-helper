@@ -125,37 +125,25 @@ body.dark .medical-cross-icon {
   flex: 1;
 }
 
-/* The grid for league info */
-.league-grid {
-  display: grid;
-  /* name | record | waivers | pos | mpf | injuries | actions */
-  grid-template-columns: 3fr 1fr 1fr 0.6fr 0.6fr 1fr 1fr;
-  gap: 10px;
+/* The league list is a real table now; its shell lives in TableStyles.css,
+   shared with Start/Sit. Only the column widths are page-specific. */
+.league-table th:first-child,
+.league-table td:first-child {
+  width: 32%;
 }
 
-.league-grid-header {
-  font-weight: 600;
-  font-size: 0.875rem;
+/* Pos and MPF sort on click; the other five headers do not. */
+.league-table th.league-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+/* The expanded roster spans every column, so it needs no cell padding of
+   its own and no rule under it — the roster brings its own. */
+.league-table .league-details-row > td {
+  padding: 0 8px 10px;
   border-bottom: 1px solid hsl(var(--border));
-  padding: 0.75rem;
-  text-align: left;
-  border-radius: var(--radius) var(--radius) 0 0;
-  background-color: hsl(222 47% 8%);
-  color: hsl(var(--foreground));
-}
-
-body.light .league-grid-header {
-  background-color: hsl(220 14% 97%);
-}
-
-body.dark .league-grid-header {
-  background-color: hsl(222 47% 10%);
-}
-
-.league-grid-item {
-  padding: 0.75rem;
-  border-bottom: 1px solid hsl(var(--border));
-  color: hsl(var(--foreground));
+  white-space: normal;
 }
 
 /* The league name with possible highlighting */
@@ -166,10 +154,12 @@ body.dark .league-grid-header {
   color: hsl(var(--foreground));
 }
 
+/* An outline rather than a border, and no padding: both of those used to resize
+   the cell, so highlighting a league nudged everything in its row sideways. */
 .league-highlighted-league {
   background-color: #fff7e6; /* pale warm background */
-  border: 2px solid #ffb74d;
-  padding: 8px;
+  outline: 2px solid #ffb74d;
+  outline-offset: -2px;
   border-radius: 6px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
   font-weight: 600;
@@ -177,8 +167,8 @@ body.dark .league-grid-header {
 
 body.dark .league-highlighted-league {
   background-color: #3a3a3a;
-  border: 2px solid #ff9800;
-  padding: 8px;
+  outline: 2px solid #ff9800;
+  outline-offset: -2px;
   border-radius: 6px;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.25);
   font-weight: 600;
@@ -191,8 +181,9 @@ body.dark .league-highlighted-league {
 }
 
 /* Any additional .league-details you had (optional) */
+/* The expanded roster. It sits in a cell that already spans every column, so
+   the grid-column trick it used to need is gone. */
 .league-details {
-  grid-column: 1 / -1;
   padding: 10px 0;
   margin-left: 20px;
 }
@@ -254,10 +245,11 @@ body.dark .roster-header {
 }
 
 /* When a player is selected */
+/* Same reason as above: a border plus padding resized whatever it marked. */
 .selected-player {
-  border: 2px solid red; /* or your chosen highlight */
+  outline: 2px solid red;
+  outline-offset: -2px;
   border-radius: 5px;
-  padding: 5px;
   background-color: #ffe5e5;
 }
 
@@ -735,19 +727,8 @@ body.dark .selected-player {
   background-color: #661a1a; /* Darker red background for dark mode */
 }
 
-/* Light mode styles for highlighted-league */
-body.light .highlighted-league {
-  border: 2px solid #ff6666;
-  background-color: #ffb97c; /* Current light mode background */
-  border-radius: 5px;
-}
-
-/* Dark mode styles for highlighted-league */
-body.dark .highlighted-league {
-  border: 2px solid #661a1a;
-  background-color: #45454b; /* Darker orange for dark mode */
-  border-radius: 5px;
-}
+/* .highlighted-league used to be styled here, but the markup has always said
+   .league-highlighted-league, so these two rules never matched anything. */
 
 /* Align text to the right */
 .align_right {
@@ -939,25 +920,6 @@ body.dark .league-action-icon:hover {
 }
 .dvp-has-tooltip:hover::after {
   opacity: 1;
-}
-
-/* Format heading ("Dynasty" / "Redraft") shown when both formats are listed.
-   Spans the whole row so it reads as a divider rather than a first-column cell. */
-.league-group-header {
-  grid-column: 1 / -1;
-  font-weight: 700;
-  font-size: 0.8rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: hsl(var(--muted-foreground, var(--foreground)));
-  padding: 1rem 0.25rem 0.25rem;
-  border-bottom: 1px solid hsl(var(--border));
-}
-
-/* The first heading sits directly under the column headers, so it needs no
-   extra space above it. */
-.league-grid-header + .league-group-header {
-  padding-top: 0.5rem;
 }
 
 /* Waiver archive: previous weeks, folded away under this week's claims. */

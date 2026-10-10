@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./StartSit.css";
+import "./TableStyles.css";
 import { getDvpColor } from "./dvpColor";
 import {
   weekStatsUrl,

@@ -24,6 +24,8 @@ import {
 import { getCurrentWeek } from "./currentWeekCache";
 import { loadHiddenLeagues, visibleLeagues } from "./leagueVisibility";
 import "./LeagueList.css";
+import "./TableStyles.css";
+import PositionPill from "./PositionPill";
 import { positionClass } from "./positionColors";
 
 // The two Sleeper calls in this file have to agree about the season.
@@ -58,6 +60,10 @@ function waiverIsProcessed(t) {
 function waiverIsCurrent(t, periodStart) {
   return !waiverIsProcessed(t) || (t.created ?? 0) >= periodStart;
 }
+
+// League Name, Record, Waivers, Pos, MPF, Injuries, Actions. Used by the
+// group headings and the expanded roster, both of which span the whole row.
+const LEAGUE_COLUMNS = 7;
 
 function WaiverRows({ txns, names }) {
   return txns
@@ -1438,28 +1444,35 @@ function LeagueList() {
       <div className="league-main-content">
         {/* Left Side: Leagues */}
         <div className="league-list-container">
-          <div className="league-grid">
-            <div className="league-grid-header">League Name</div>
-            <div className="league-grid-header">Record</div>
-            <div className="league-grid-header">Waivers</div>
-            <div
-              className="league-grid-header"
+          <section className="ss-card">
+           <div className="ss-table-wrap">
+            <table className="ss-table league-table">
+             <thead>
+              <tr>
+            <th>League Name</th>
+            <th>Record</th>
+            <th>Waivers</th>
+            <th
+              className="league-sortable"
               style={{ cursor: "pointer" }}
               onClick={() => cycleLeagueSort("standingRank")}
               title="Position in the league standings. Click to sort: up, down, then back to Sleeper's order."
             >
               Pos {getLeagueSortIcon("standingRank")}
-            </div>
-            <div
-              className="league-grid-header"
+            </th>
+            <th
+              className="league-sortable"
               style={{ cursor: "pointer" }}
               onClick={() => cycleLeagueSort("maxPfRank")}
               title="Position by maximum points — what the roster could have scored with perfect lineups. Click to sort: up, down, then back to Sleeper's order."
             >
               MPF {getLeagueSortIcon("maxPfRank")}
-            </div>
-            <div className="league-grid-header">Injuries on starters</div>
-            <div className="league-grid-header">Actions</div>
+            </th>
+            <th>Injuries on starters</th>
+            <th>Actions</th>
+              </tr>
+             </thead>
+             <tbody>
 
             {leagues.length > 0 ? (
               orderedLeagues().map((league, index, visibleLeagues) => {
@@ -1478,10 +1491,13 @@ function LeagueList() {
                 return (
                   <React.Fragment key={index}>
                     {groupHeading && (
-                      <div className="league-group-header">{groupHeading}</div>
+                      <tr className="ss-group-row">
+                        <th colSpan={LEAGUE_COLUMNS}>{groupHeading}</th>
+                      </tr>
                     )}
-                    <div
-                      className={`league-grid-item league-name ${
+                    <tr className="ss-row league-row">
+                    <td
+                      className={`league-name ${
                         highlightedLeagues.has(league.league_id)
                           ? "league-highlighted-league"
                           : ""
@@ -1494,14 +1510,14 @@ function LeagueList() {
                         {expandedLeagueIds.has(league.league_id) ? "▼" : "►"}{" "}
                       </span>
                       {league.name}
-                    </div>
+                    </td>
 
-                    <div className="league-grid-item">
+                    <td>
                       {league.userRoster?.settings?.wins}-
                       {league.userRoster?.settings?.losses}-
                       {league.userRoster?.settings?.ties}
-                    </div>
-                    <div className="league-grid-item">
+                    </td>
+                    <td>
                       {waiverData[league.league_id] ? (() => {
                         const auth = (() => { try { return JSON.parse(localStorage.getItem("sleeper_auth") || "null"); } catch { return null; } })();
                         const isLinked = auth && auth.display_name?.toLowerCase() === userName?.toLowerCase();
@@ -1517,23 +1533,23 @@ function LeagueList() {
                           <span className="waiver-summary-item">L:<span className={`waiver-lost${zc(l)}`}>{l}</span></span>
                         </span>;
                       })() : "—"}
-                    </div>
+                    </td>
                     {[league.standingRank, league.maxPfRank].map((place, i) => {
                       // First place is the good end here, unlike the defence
                       // ranks this gradient was written for.
                       const colour = rankColor(place, league.rankTotal);
                       return (
-                        <div
+                        <td
                           key={i}
-                          className="league-grid-item"
+                          className="ss-num"
                           style={colour ? { color: colour, fontWeight: 600 } : undefined}
                           title={place ? `${place} of ${league.rankTotal}` : undefined}
                         >
                           {place || "—"}
-                        </div>
+                        </td>
                       );
                     })}
-                    <div className="league-grid-item">
+                    <td>
                       {redCount > 0 && (
                         <>
                           <img
@@ -1553,8 +1569,8 @@ function LeagueList() {
                           {orangeCount}
                         </>
                       )}
-                    </div>
-                    <div className="league-grid-item league-actions">
+                    </td>
+                    <td className="league-actions">
                       {/* Link to Sleeper league */}
                       <a
                         href={`https://sleeper.app/leagues/${league.league_id}`}
@@ -1571,8 +1587,11 @@ function LeagueList() {
                         className="league-action-icon"
                         onClick={() => handleOpenModal(league)}
                       />
-                    </div>
+                    </td>
+                    </tr>
                     {expandedLeagueIds.has(league.league_id) && (
+                      <tr className="league-details-row">
+                       <td colSpan={LEAGUE_COLUMNS}>
                       <div className="league-details">
                         {["starters", "uniquePlayers", "reserve", "taxi"].map(
                           (group, idx) =>
@@ -1647,7 +1666,7 @@ function LeagueList() {
                                         )}
                                       </div>
                                       <div className="roster-grid-item align_center">
-                                        {playerInfo?.position || ""}
+                                        <PositionPill position={playerInfo?.position} />
                                       </div>
                                       <div className="roster-grid-item align_center">
                                         {playerInfo?.pts_ppr && playerInfo?.gp && playerInfo.gp > 0
@@ -1739,14 +1758,23 @@ function LeagueList() {
                             )
                         )}
                       </div>
+                       </td>
+                      </tr>
                     )}
                   </React.Fragment>
                 );
               })
             ) : (
-              <div className="league-grid-item">No leagues found.</div>
+              <tr>
+                <td colSpan={LEAGUE_COLUMNS} className="ss-muted">
+                  No leagues found.
+                </td>
+              </tr>
             )}
-          </div>
+             </tbody>
+            </table>
+           </div>
+          </section>
         </div>
 
         {/* Modal */}
@@ -2047,7 +2075,7 @@ function LeagueList() {
                             {player.name}
                           </div>
                           <div className="league-portfolio-grid-item align_center">
-                            {player.position}
+                            <PositionPill position={player.position} />
                           </div>
                           <div className="league-portfolio-grid-item align_center">
                             <span className="count">{player.count}</span>{" "}

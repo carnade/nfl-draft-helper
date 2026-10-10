@@ -42,13 +42,16 @@ export default function Changelog() {
   const entries = [
     {
       date: "2026-10-10",
-      title: "Position colours, and a pill for every slot",
+      title: "Position colours, pills, and a rebuilt league table",
       items: [
         "Every page now agrees on what colour a position is. The draft board, DFS, the tournament results, the betting pages and the stats tables each had their own idea \u2014 a wide receiver was blue in one place and yellow in another, and a tight end orange or purple depending on where you looked.",
         "Kickers had no colour at all on the DFS page and were drawn in the running backs' green on the results page. They have their own colour now, and defences are coloured everywhere rather than only in some places.",
         "Start/Sit shows each slot as a coloured pill instead of plain text. A flex slot is split into a band per position it accepts, so FLEX reads across wide receiver, running back and tight end, and a superflex adds quarterback \u2014 you can see what fits a slot without reading the word.",
         "The bench list shows the same pills, listing a player\u2019s own position and the widest flex they fit rather than every flex separately.",
         "The DFS roster shows a flex the same way \u2014 the bands replace the flat purple, which said nothing about what the slot takes.",
+        "The Leagues page now uses the same table as Start/Sit, so the two read alike instead of each having their own spacing, headers and borders.",
+        "Positions in a league\u2019s roster and in the Portfolio tab are shown as pills too.",
+        "Highlighting a league, or picking a player out of a search, no longer nudges the rest of the row sideways.",
         "Position colours follow the light and dark themes properly now. Several pages had them fixed to one set of colours regardless of the theme.",
       ],
     },
