@@ -6,6 +6,7 @@ import {
   positionFill,
   positionLabel,
   compositeSlot,
+  compositeGradient,
   positionsForSlot,
   POSITION_KEYS,
   COMPOSITE_SLOTS,
@@ -222,5 +223,36 @@ describe("composite slots", () => {
         expect(COMPOSITE_SLOTS[slot]).toBeDefined();
       }
     }
+  });
+});
+
+describe("compositeGradient", () => {
+  it("knows the DFS roster's name for a flex", () => {
+    // The DFS scrape calls it FLX; Sleeper calls it FLEX.
+    expect(positionsForSlot("FLX")).toEqual(["WR", "RB", "TE"]);
+    expect(compositeSlot("SF")).toBe(compositeSlot("SUPER_FLEX"));
+  });
+
+  it("butts the bands together with hard stops and no fade", () => {
+    expect(compositeGradient("FLX", 0.8)).toBe(
+      "linear-gradient(to right, " +
+        "hsl(var(--pos-wr, var(--pos-default)) / 0.8) 0.000% 33.333%, " +
+        "hsl(var(--pos-rb, var(--pos-default)) / 0.8) 33.333% 66.667%, " +
+        "hsl(var(--pos-te, var(--pos-default)) / 0.8) 66.667% 100.000%)"
+    );
+  });
+
+  it("gives four equal bands for a superflex", () => {
+    const g = compositeGradient("SUPER_FLEX", 0.8);
+    expect(g).toContain("--pos-qb");
+    expect(g.match(/hsl\(/g)).toHaveLength(4); // one per band
+    expect(g).toContain("25.000%");
+    expect(g).toContain("75.000%");
+  });
+
+  it("is null for a plain position, so the caller uses a flat fill", () => {
+    expect(compositeGradient("QB")).toBeNull();
+    expect(compositeGradient("DST")).toBeNull();
+    expect(compositeGradient(null)).toBeNull();
   });
 });

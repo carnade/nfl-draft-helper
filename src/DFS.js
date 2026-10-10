@@ -7,7 +7,12 @@ import { PrivilegedOnly, loadSleeperAuth } from './auth';
 import { getCurrentWeek, peekCurrentWeek } from './currentWeekCache';
 import { effectiveUserName, rememberUserName } from './settingsUser';
 import './DFS.css';
-import { positionClass, positionFill, positionLabel } from "./positionColors";
+import {
+  positionClass,
+  positionFill,
+  positionLabel,
+  compositeGradient,
+} from "./positionColors";
 
 // Add a mock flag
 const mock = process.env.REACT_APP_MOCK === 'true';
@@ -1414,9 +1419,16 @@ function DFS({ userName }) {
               {Object.keys(roster).map((key) => (
                 <tr key={key}>
                   <td>
-                    <div 
+                    <div
                       className="position-badge"
-                      style={{ backgroundColor: positionFill(key, 0.8) }}
+                      // A flex shows the positions it accepts as bands rather
+                      // than a flat purple that says nothing. The badge keeps
+                      // its size and its label; only the fill changes.
+                      style={
+                        compositeGradient(key, 0.8)
+                          ? { background: compositeGradient(key, 0.8) }
+                          : { backgroundColor: positionFill(key, 0.8) }
+                      }
                     >
                       {positionLabel(key)}
                     </div>

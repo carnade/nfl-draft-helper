@@ -100,10 +100,40 @@ export const COMPOSITE_SLOTS = {
   WRRB_FLEX: { label: "WRB", bands: ["WR", "RB"] },
 };
 
+// The same slot under the other names the app uses for it. The DFS roster
+// calls a flex FLX; Sleeper calls it FLEX.
+const COMPOSITE_ALIASES = {
+  FLX: "FLEX",
+  SF: "SUPER_FLEX",
+  SUPERFLEX: "SUPER_FLEX",
+  RECFLEX: "REC_FLEX",
+};
+
 /** How to draw this slot as a split pill, or null if it is a plain one. */
 export function compositeSlot(slot) {
   if (slot == null) return null;
-  return COMPOSITE_SLOTS[String(slot).trim().toUpperCase()] || null;
+  const cleaned = String(slot).trim().toUpperCase();
+  return COMPOSITE_SLOTS[COMPOSITE_ALIASES[cleaned] || cleaned] || null;
+}
+
+/**
+ * The bands as a CSS gradient, for a chip that cannot be split into elements.
+ *
+ * Hard stops and no blending: Sleeper's icon butts the colours straight against
+ * each other with no divider and no fade. Used where a badge has to keep its
+ * existing size and text — the DFS roster — rather than becoming a lettered
+ * pill.
+ */
+export function compositeGradient(slot, alpha = 1) {
+  const composite = compositeSlot(slot);
+  if (!composite) return null;
+  const { bands } = composite;
+  const stops = bands.map((band, i) => {
+    const from = ((i * 100) / bands.length).toFixed(3);
+    const to = (((i + 1) * 100) / bands.length).toFixed(3);
+    return `${positionFill(band, alpha)} ${from}% ${to}%`;
+  });
+  return `linear-gradient(to right, ${stops.join(", ")})`;
 }
 
 /** The positions a composite slot accepts, in the order they are drawn. */

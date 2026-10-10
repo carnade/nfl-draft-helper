@@ -15,7 +15,7 @@ import { projectedPoints, hasProjection, fetchWeekProjectionsUrl } from "./leagu
 import { evaluateLineup, countActionable, isEligible, benchFrom } from "./startSitModel";
 import { lockedTeamsFor, byeTeamsFor } from "./nflSchedule";
 import PositionPill from "./PositionPill";
-import { compositeSlot } from "./positionColors";
+import { compositeSlot, positionKey } from "./positionColors";
 import { loadHiddenLeagues, visibleLeagues, useHiddenLeagues } from "./leagueVisibility";
 
 const SEASON = 2026;
@@ -207,6 +207,17 @@ function SuggestionCell({ row, canEdit, onSwap, busy }) {
   );
 }
 
+// Whether the position beside a player's name is telling you anything.
+//
+// In a QB slot the starter is a quarterback, so the slot pill and the position
+// pill are two identical chips sitting next to each other. Only a flex slot —
+// or the odd case where someone is in a slot their position does not match —
+// makes the second one worth drawing.
+function showPositionBeside(slot, position) {
+  if (!position) return false;
+  return positionKey(slot) !== positionKey(position);
+}
+
 function PlayerRow({ row, canEdit, onSwap, busy, formWindow }) {
   const p = row.starter;
   // Every unlocked slot with somewhere to go can be changed, not only the flagged
@@ -224,7 +235,7 @@ function PlayerRow({ row, canEdit, onSwap, busy, formWindow }) {
         ) : (
           <span className={p ? undefined : "ss-muted"}>{label}</span>
         )}
-        {p?.position && (
+        {showPositionBeside(row.slot, p?.position) && (
           <span className="ss-pos-pill">
             <PositionPill position={p.position} />
           </span>
@@ -295,14 +306,7 @@ function BenchRow({ player, slots, formWindow }) {
           <span className="ss-muted">—</span>
         )}
       </td>
-      <td className="ss-player">
-        {player.name}
-        {player.position && (
-          <span className="ss-pos-pill">
-            <PositionPill position={player.position} />
-          </span>
-        )}
-      </td>
+      <td className="ss-player">{player.name}</td>
       <td><TeamCell team={player.team} opponent={player.opponent} /></td>
       <td className="ss-num">{player.hasProjection ? fmt(player.proj) : <span className="ss-muted">—</span>}</td>
       <td className="ss-num">{fmt(player.fptsG)}</td>
