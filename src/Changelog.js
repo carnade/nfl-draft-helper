@@ -51,6 +51,8 @@ export default function Changelog() {
         "The DFS roster shows a flex the same way \u2014 the bands replace the flat purple, which said nothing about what the slot takes.",
         "The Leagues page now uses the same table as Start/Sit, so the two read alike instead of each having their own spacing, headers and borders.",
         "Positions in a league\u2019s roster and in the Portfolio tab are shown as pills too.",
+        "A new Empty bench column shows how many roster spots are still free. Players on injured reserve or the taxi squad do not take one up, so the count is what you can actually still add.",
+        "Standings position and max points sit beside the record now, where they are easier to compare, and both are centred under their headings.",
         "Highlighting a league, or picking a player out of a search, no longer nudges the rest of the row sideways.",
         "Position colours follow the light and dark themes properly now. Several pages had them fixed to one set of colours regardless of the theme.",
       ],

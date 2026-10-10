@@ -28,6 +28,7 @@ import { loadHiddenLeagues, visibleLeagues } from "./leagueVisibility";
 import "./LeagueList.css";
 import "./TableStyles.css";
 import PositionPill from "./PositionPill";
+import { emptyBenchSlots } from "./rosterSlots";
 import { positionClass } from "./positionColors";
 
 // The two Sleeper calls in this file have to agree about the season.
@@ -63,9 +64,10 @@ function waiverIsCurrent(t, periodStart) {
   return !waiverIsProcessed(t) || (t.created ?? 0) >= periodStart;
 }
 
-// League Name, Record, Waivers, Pos, MPF, Injuries, Actions. Used by the
+// League Name, Record, Pos, MPF, Waivers, Empty bench, Injuries, Actions.
+// Used by the
 // group headings and the expanded roster, both of which span the whole row.
-const LEAGUE_COLUMNS = 7;
+const LEAGUE_COLUMNS = 8;
 
 function WaiverRows({ txns, names }) {
   return txns
@@ -915,6 +917,12 @@ function LeagueList() {
           standingRank,
           maxPfRank,
           rankTotal: rostersData.length,
+          emptyBenchSlots: emptyBenchSlots({
+            rosterPositions: league.roster_positions,
+            players,
+            reserve,
+            taxi,
+          }),
           userRoster: {
             starters,
             uniquePlayers,
@@ -1453,22 +1461,26 @@ function LeagueList() {
               <tr>
             <th>League Name</th>
             <th>Record</th>
-            <th>Waivers</th>
             <th
-              className="league-sortable"
-              style={{ cursor: "pointer" }}
+              className="league-sortable ss-center"
               onClick={() => cycleLeagueSort("standingRank")}
               title="Position in the league standings. Click to sort: up, down, then back to Sleeper's order."
             >
               Pos {getLeagueSortIcon("standingRank")}
             </th>
             <th
-              className="league-sortable"
-              style={{ cursor: "pointer" }}
+              className="league-sortable ss-center"
               onClick={() => cycleLeagueSort("maxPfRank")}
               title="Position by maximum points — what the roster could have scored with perfect lineups. Click to sort: up, down, then back to Sleeper's order."
             >
               MPF {getLeagueSortIcon("maxPfRank")}
+            </th>
+            <th>Waivers</th>
+            <th
+              className="ss-center"
+              title="Active roster spots with nobody in them. Players on IR or the taxi squad do not take one up."
+            >
+              Empty bench
             </th>
             <th>Injuries on starters</th>
             <th>Actions</th>
@@ -1532,6 +1544,21 @@ function LeagueList() {
                       {league.userRoster?.settings?.losses}-
                       {league.userRoster?.settings?.ties}
                     </td>
+                    {[league.standingRank, league.maxPfRank].map((place, i) => {
+                      // First place is the good end here, unlike the defence
+                      // ranks this gradient was written for.
+                      const colour = rankColor(place, league.rankTotal);
+                      return (
+                        <td
+                          key={i}
+                          className="ss-center"
+                          style={colour ? { color: colour, fontWeight: 600 } : undefined}
+                          title={place ? `${place} of ${league.rankTotal}` : undefined}
+                        >
+                          {place || "—"}
+                        </td>
+                      );
+                    })}
                     <td>
                       {waiverData[league.league_id] ? (() => {
                         const auth = (() => { try { return JSON.parse(localStorage.getItem("sleeper_auth") || "null"); } catch { return null; } })();
@@ -1549,21 +1576,15 @@ function LeagueList() {
                         </span>;
                       })() : "—"}
                     </td>
-                    {[league.standingRank, league.maxPfRank].map((place, i) => {
-                      // First place is the good end here, unlike the defence
-                      // ranks this gradient was written for.
-                      const colour = rankColor(place, league.rankTotal);
-                      return (
-                        <td
-                          key={i}
-                          className="ss-num"
-                          style={colour ? { color: colour, fontWeight: 600 } : undefined}
-                          title={place ? `${place} of ${league.rankTotal}` : undefined}
-                        >
-                          {place || "—"}
-                        </td>
-                      );
-                    })}
+                    <td className="ss-center">
+                      {league.emptyBenchSlots == null ? (
+                        <span className="ss-muted">—</span>
+                      ) : league.emptyBenchSlots === 0 ? (
+                        <span className="ss-muted">0</span>
+                      ) : (
+                        league.emptyBenchSlots
+                      )}
+                    </td>
                     <td>
                       {redCount > 0 && (
                         <>

@@ -75,6 +75,15 @@
   text-align: right;
 }
 
+/* A narrow column of small numbers reads better centred than ranged right, and
+   the heading has to agree with it — th is left-aligned by default, which is
+   what left Pos and MPF looking out of line with their own values. */
+.ss-center,
+.ss-table th.ss-center,
+.ss-table td.ss-center {
+  text-align: center;
+}
+
 .ss-muted {
   opacity: 0.45;
 }
