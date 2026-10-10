@@ -1,0 +1,63 @@
+/* The chip itself. Colours come from the tone class on the element, which is
+ * why nothing here names a position.
+ *
+ * Sized against .odds-last5-chip, the existing small chip in a dense table:
+ * 11px type, 3px radius, 22px minimum. Start/Sit's rows are 6px of padding
+ * around 0.85rem text, so the pill has to sit inside that without changing the
+ * row height — otherwise rows stop lining up against the amber wash on a
+ * flagged row.
+ */
+.pos-pill {
+  display: inline-flex;
+  align-items: stretch;
+  height: 16px;
+  border-radius: 3px;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.pos-pill-solid {
+  justify-content: center;
+  min-width: 22px;
+  padding: 0 5px;
+  background: hsl(var(--pos));
+  color: hsl(var(--pos-ink));
+}
+
+/* A flex slot: one band per position it accepts, butted together with no
+   divider, which is how Sleeper draws it. */
+.pos-pill-split {
+  position: relative;
+}
+
+.pos-pill-band {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 13px;
+  flex: 1 0 auto;
+  background: hsl(var(--pos));
+  color: hsl(var(--pos-ink));
+}
+
+/* Used only when the label and the band count disagree, which no league this
+   app has seen actually produces. The bands stay as colour and the label is
+   centred over all of them. */
+.pos-pill-labelled .pos-pill-band {
+  min-width: 16px;
+}
+
+.pos-pill-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: hsl(var(--pos-default-ink));
+  text-shadow: 0 1px 2px hsl(var(--background) / 0.6);
+}

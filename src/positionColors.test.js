@@ -5,8 +5,12 @@ import {
   positionClass,
   positionFill,
   positionLabel,
+  compositeSlot,
+  positionsForSlot,
   POSITION_KEYS,
+  COMPOSITE_SLOTS,
 } from "./positionColors";
+import { eligiblePositions, SLOT_ELIGIBILITY } from "./startSitModel";
 
 const CSS_PATH = path.join(__dirname, "positionColors.css");
 const css = fs.readFileSync(CSS_PATH, "utf8");
@@ -178,4 +182,45 @@ describe("no position colour is written anywhere else", () => {
       expect(found).toEqual([]);
     });
   }
+});
+
+describe("composite slots", () => {
+  it("draws flex and superflex in Sleeper's band order", () => {
+    // WR, RB, TE, QB — not the order SLOT_ELIGIBILITY stores, which puts RB first.
+    expect(positionsForSlot("FLEX")).toEqual(["WR", "RB", "TE"]);
+    expect(positionsForSlot("SUPER_FLEX")).toEqual(["WR", "RB", "TE", "QB"]);
+  });
+
+  it("spells one character per band for the two slots that occur", () => {
+    expect(COMPOSITE_SLOTS.FLEX.label).toHaveLength(COMPOSITE_SLOTS.FLEX.bands.length);
+    expect(COMPOSITE_SLOTS.SUPER_FLEX.label).toHaveLength(
+      COMPOSITE_SLOTS.SUPER_FLEX.bands.length
+    );
+  });
+
+  it("leaves a plain slot alone", () => {
+    expect(compositeSlot("QB")).toBeNull();
+    expect(compositeSlot("RB")).toBeNull();
+    expect(positionsForSlot("TE")).toBeNull();
+    expect(compositeSlot(null)).toBeNull();
+  });
+
+  // The pill module deliberately does not import the lineup model — drawing a
+  // chip has no business knowing about eligibility rules. This is what stops
+  // the two descriptions of the same fact drifting apart anyway.
+  it("agrees with the lineup model about what fits each slot", () => {
+    for (const slot of Object.keys(COMPOSITE_SLOTS)) {
+      const drawn = [...positionsForSlot(slot)].sort();
+      const eligible = [...eligiblePositions(slot)].sort();
+      expect(drawn).toEqual(eligible);
+    }
+  });
+
+  it("covers every multi-position slot the model knows about", () => {
+    for (const [slot, positions] of Object.entries(SLOT_ELIGIBILITY)) {
+      if (positions.length > 1) {
+        expect(COMPOSITE_SLOTS[slot]).toBeDefined();
+      }
+    }
+  });
 });

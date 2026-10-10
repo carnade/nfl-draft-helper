@@ -78,3 +78,35 @@ export function positionLabel(slot) {
   if (/^WR[123]$/.test(cleaned)) return "WR";
   return String(slot);
 }
+
+/**
+ * The slots that hold more than one position, and how to draw them.
+ *
+ * Sleeper shows these as a split icon rather than a word, which is worth
+ * copying: "SUPER_FLEX" tells you nothing about what fits, while four coloured
+ * bands do. The band order is Sleeper's — WR, RB, TE, QB — which is not the
+ * order startSitModel stores eligibility in, so it is written out here.
+ *
+ * The label is spelled one character per band. FLX happens to be three
+ * characters against three bands and SFLX four against four; the two variants
+ * below do not line up, and fall back to the label centred across the pill.
+ * Neither of those occurs in any league this app has seen — they exist in
+ * SLOT_ELIGIBILITY and so must render something sane rather than nonsense.
+ */
+export const COMPOSITE_SLOTS = {
+  FLEX: { label: "FLX", bands: ["WR", "RB", "TE"] },
+  SUPER_FLEX: { label: "SFLX", bands: ["WR", "RB", "TE", "QB"] },
+  REC_FLEX: { label: "RFX", bands: ["WR", "TE"] },
+  WRRB_FLEX: { label: "WRB", bands: ["WR", "RB"] },
+};
+
+/** How to draw this slot as a split pill, or null if it is a plain one. */
+export function compositeSlot(slot) {
+  if (slot == null) return null;
+  return COMPOSITE_SLOTS[String(slot).trim().toUpperCase()] || null;
+}
+
+/** The positions a composite slot accepts, in the order they are drawn. */
+export function positionsForSlot(slot) {
+  return compositeSlot(slot)?.bands || null;
+}
