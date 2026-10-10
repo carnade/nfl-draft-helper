@@ -24,6 +24,7 @@ import {
 import { getCurrentWeek } from "./currentWeekCache";
 import { loadHiddenLeagues, visibleLeagues } from "./leagueVisibility";
 import "./LeagueList.css";
+import { positionClass } from "./positionColors";
 
 // The two Sleeper calls in this file have to agree about the season.
 const SEASON = 2026;
@@ -1915,7 +1916,9 @@ function LeagueList() {
                   <div className="filter-buttons">
                     <button
                       className={`filter-button ${
-                        selectedPosition === "QB" ? "qb-active" : ""
+                        selectedPosition === "QB"
+                          ? `pos-active ${positionClass("QB")}`
+                          : ""
                       }`}
                       onClick={() =>
                         setSelectedPosition((prev) =>
@@ -1927,7 +1930,9 @@ function LeagueList() {
                     </button>
                     <button
                       className={`filter-button ${
-                        selectedPosition === "RB" ? "rb-active" : ""
+                        selectedPosition === "RB"
+                          ? `pos-active ${positionClass("RB")}`
+                          : ""
                       }`}
                       onClick={() =>
                         setSelectedPosition((prev) =>
@@ -1939,7 +1944,9 @@ function LeagueList() {
                     </button>
                     <button
                       className={`filter-button ${
-                        selectedPosition === "WR" ? "wr-active" : ""
+                        selectedPosition === "WR"
+                          ? `pos-active ${positionClass("WR")}`
+                          : ""
                       }`}
                       onClick={() =>
                         setSelectedPosition((prev) =>
@@ -1951,7 +1958,9 @@ function LeagueList() {
                     </button>
                     <button
                       className={`filter-button ${
-                        selectedPosition === "TE" ? "te-active" : ""
+                        selectedPosition === "TE"
+                          ? `pos-active ${positionClass("TE")}`
+                          : ""
                       }`}
                       onClick={() =>
                         setSelectedPosition((prev) =>

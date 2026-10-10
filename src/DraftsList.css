@@ -99,26 +99,10 @@
 
 .draft-grid-positions .position-label {
   font-weight: 600;
-}
-
-.draft-grid-positions .position-label.qb {
-  color: hsl(339 44% 59%);
-}
-
-.draft-grid-positions .position-label.rb {
-  color: hsl(155 43% 64%);
-}
-
-.draft-grid-positions .position-label.wr {
-  color: hsl(201 54% 56%);
-}
-
-.draft-grid-positions .position-label.te {
-  color: hsl(30 61% 57%);
-}
-
-.draft-grid-positions .position-label.p {
-  color: hsl(280 81% 67%);
+  /* The tone class on the same element supplies --pos. The fallback is for a
+     label that somehow arrives without one: muted text, not an invalid
+     declaration that silently inherits whatever is around it. */
+  color: hsl(var(--pos, var(--muted-foreground)));
 }
 
 .draft-grid-positions .position-count {

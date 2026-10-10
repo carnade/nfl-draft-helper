@@ -7,6 +7,7 @@ import { PrivilegedOnly, loadSleeperAuth } from './auth';
 import { getCurrentWeek, peekCurrentWeek } from './currentWeekCache';
 import { effectiveUserName, rememberUserName } from './settingsUser';
 import './DFS.css';
+import { positionClass, positionFill, positionLabel } from "./positionColors";
 
 // Add a mock flag
 const mock = process.env.REACT_APP_MOCK === 'true';
@@ -1330,24 +1331,6 @@ function DFS({ userName }) {
     }, 0);
   };
 
-  const getPositionLabel = (key) => {
-    if (key === 'RB1' || key === 'RB2') return 'RB';
-    if (key === 'WR1' || key === 'WR2' || key === 'WR3') return 'WR';
-    return key;
-  };
-
-  const getPositionColor = (key) => {
-    const position = getPositionLabel(key);
-    const colors = {
-      QB: 'hsl(339 44% 59% / 0.8)',
-      RB: 'hsl(155 43% 64% / 0.8)',
-      WR: 'hsl(201 54% 56% / 0.8)',
-      TE: 'hsl(30 61% 57% / 0.8)',
-      FLX: 'hsl(280 81% 67% / 0.8)',
-      DST: 'hsl(12 86% 56% / 0.8)'
-    };
-    return colors[position] || '#ccc';
-  };
 
   if (loading) {
     return (
@@ -1433,9 +1416,9 @@ function DFS({ userName }) {
                   <td>
                     <div 
                       className="position-badge"
-                      style={{ backgroundColor: getPositionColor(key) }}
+                      style={{ backgroundColor: positionFill(key, 0.8) }}
                     >
-                      {getPositionLabel(key)}
+                      {positionLabel(key)}
                     </div>
                   </td>
                   <td className="player-name-cell">
@@ -1587,31 +1570,31 @@ function DFS({ userName }) {
           <label className="filter-label">Position:</label>
           <div className="filter-buttons">
             <button
-              className={`filter-button ${selectedPosition === 'QB' ? 'qb-active' : ''}`}
+              className={`filter-button ${selectedPosition === 'QB' ? `pos-active ${positionClass('QB')}` : ''}`}
               onClick={() => setSelectedPosition(prev => prev === 'QB' ? null : 'QB')}
             >
               QB
             </button>
             <button
-              className={`filter-button ${selectedPosition === 'RB' ? 'rb-active' : ''}`}
+              className={`filter-button ${selectedPosition === 'RB' ? `pos-active ${positionClass('RB')}` : ''}`}
               onClick={() => setSelectedPosition(prev => prev === 'RB' ? null : 'RB')}
             >
               RB
             </button>
             <button
-              className={`filter-button ${selectedPosition === 'WR' ? 'wr-active' : ''}`}
+              className={`filter-button ${selectedPosition === 'WR' ? `pos-active ${positionClass('WR')}` : ''}`}
               onClick={() => setSelectedPosition(prev => prev === 'WR' ? null : 'WR')}
             >
               WR
             </button>
             <button
-              className={`filter-button ${selectedPosition === 'TE' ? 'te-active' : ''}`}
+              className={`filter-button ${selectedPosition === 'TE' ? `pos-active ${positionClass('TE')}` : ''}`}
               onClick={() => setSelectedPosition(prev => prev === 'TE' ? null : 'TE')}
             >
               TE
             </button>
             <button
-              className={`filter-button ${selectedPosition === 'DST' ? 'dst-active' : ''}`}
+              className={`filter-button ${selectedPosition === 'DST' ? `pos-active ${positionClass('DST')}` : ''}`}
               onClick={() => setSelectedPosition(prev => prev === 'DST' ? null : 'DST')}
             >
               DST

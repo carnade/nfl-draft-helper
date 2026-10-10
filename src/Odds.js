@@ -9,6 +9,7 @@ import {
   EMPTY_KICKOFF_FILTER,
 } from "./kickoffFilter";
 import { PrivilegedOnly, loadSleeperAuth } from "./auth";
+import { positionClass } from "./positionColors";
 
 const mock = process.env.REACT_APP_MOCK === "true";
 const BASE_URL = mock
@@ -505,7 +506,7 @@ function PropsRows({ rows, sortConfig, onSort }) {
           <tr key={`${r.sleeper_id}-${r.market}-${i}`} className={r.value_flag ? `value-${r.value_flag}` : ""}>
             <td className="num odds-time">{fmtTime(r.commence_time)}</td>
             <td className="odds-player-name">{r.name}</td>
-            <td className={`pos-col pos-${r.position?.toLowerCase()}`}>{r.position}</td>
+            <td className={`pos-col ${positionClass(r.position)}`}>{r.position}</td>
             <td><TeamBadge team={r.team} /></td>
             <td className="odds-market-label">{r.market_label}</td>
             <td className="num">{r.market === "player_anytime_td" ? fmtPrice(r.line) : fmt(r.line)}</td>
@@ -1066,7 +1067,7 @@ function PropResultsTable({ data }) {
                 <td className="num">{r.nfl_week ?? "—"}</td>
                 <td className="num odds-time">{fmtTime(r.commence_time)}</td>
                 <td className="odds-player-name">{r.name}</td>
-                <td className={`pos-col pos-${r.position?.toLowerCase()}`}>{r.position}</td>
+                <td className={`pos-col ${positionClass(r.position)}`}>{r.position}</td>
                 <td><TeamBadge team={r.team} /></td>
                 <td className="odds-market-label">{MARKET_LABELS[r.market] || r.market}</td>
                 <td className="num">{fmt(r.line)}</td>

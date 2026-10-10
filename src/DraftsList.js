@@ -9,6 +9,7 @@ import { useParams } from "react-router-dom";
 import { Link } from "react-router-dom";
 import DraftModal from "./DraftModal";
 import "./DraftsList.css";
+import { positionClass } from "./positionColors";
 
 function DraftPage() {
   const { userName } = useParams();
@@ -47,20 +48,22 @@ function DraftPage() {
     if (!counts) return "";
 
     const chunks = [];
-    const addChunk = (key, labelClass, label, count) => {
+    // The position is passed rather than a class name so the P bucket's
+    // relationship to kickers is visible: it counts P, P/K and K alike.
+    const addChunk = (key, position, label, count) => {
       if (chunks.length > 0) chunks.push(<span key={`sep-${key}`} className="position-separator"> </span>);
       chunks.push(
         <span key={key} className="position-chunk">
-          <span className={`position-label ${labelClass}`}>{label}</span>
+          <span className={`position-label ${positionClass(position)}`}>{label}</span>
           <span className="position-count">: {count}</span>
         </span>
       );
     };
-    if (counts.QB > 0) addChunk("qb", "qb", "QB", counts.QB);
-    if (counts.RB > 0) addChunk("rb", "rb", "RB", counts.RB);
-    if (counts.WR > 0) addChunk("wr", "wr", "WR", counts.WR);
-    if (counts.TE > 0) addChunk("te", "te", "TE", counts.TE);
-    if (counts.P > 0) addChunk("p", "p", "P", counts.P);
+    if (counts.QB > 0) addChunk("qb", "QB", "QB", counts.QB);
+    if (counts.RB > 0) addChunk("rb", "RB", "RB", counts.RB);
+    if (counts.WR > 0) addChunk("wr", "WR", "WR", counts.WR);
+    if (counts.TE > 0) addChunk("te", "TE", "TE", counts.TE);
+    if (counts.P > 0) addChunk("p", "K", "P", counts.P);
 
     return chunks.length > 0 ? chunks : "";
   };

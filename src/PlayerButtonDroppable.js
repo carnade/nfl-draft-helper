@@ -1,31 +1,14 @@
 import React from "react";
 import PropTypes from "prop-types";
 import "./PlayerButton.css";
+import { positionClass } from "./positionColors";
 
 function PlayerButtonDroppable({ player }) {
-  const getPositionClass = () => {
-    switch (player.Position) {
-      case "WR":
-        return "wr";
-      case "RB":
-        return "rb";
-      case "TE":
-        return "te";
-      case "QB":
-        return "qb";
-      case "D/ST":
-        return "dst";
-      case "K":
-        return "k";
-      default:
-        return "default";
-    }
-  };
 
   return (
     <div
       data-id={player["Overall Rank"]}
-      className={`player-button droppable ${getPositionClass()}`}
+      className={`player-button droppable pos-glass ${positionClass(player.Position)}`}
     >
       <div className="grid-container small">
         <div className="grid-item">

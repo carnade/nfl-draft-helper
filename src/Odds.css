@@ -253,13 +253,11 @@
   color: hsl(var(--muted-foreground));
 }
 
-/* Position colors */
+/* Position colours live in positionColors.css. The palette here disagreed with
+   the rest of the app — a WR read yellow and a TE purple — and it silently
+   styled the Stats page too, which has no .pos-* rules of its own. Only the
+   geometry stays. */
 .pos-col { font-size: 11px; font-weight: 600; }
-.pos-qb  { color: #61afef; }
-.pos-rb  { color: #98c379; }
-.pos-wr  { color: #e5c07b; }
-.pos-te  { color: #c678dd; }
-.pos-k   { color: hsl(var(--muted-foreground)); }
 
 .odds-market-label {
   font-size: 12px;

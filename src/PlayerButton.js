@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import PropTypes from "prop-types";
 import "./PlayerButton.css";
+import { positionClass } from "./positionColors";
 
 function PlayerButton({ player, setPlayers, setRemovedPlayers, scoringType, showPtsMode = false, showPortfolio = true }) {
   const [isDisabled] = useState(false);
@@ -28,24 +29,6 @@ function PlayerButton({ player, setPlayers, setRemovedPlayers, scoringType, show
     );
   };
 
-  const getPositionClass = () => {
-    switch (player.Position) {
-      case "WR":
-        return "wr";
-      case "RB":
-        return "rb";
-      case "TE":
-        return "te";
-      case "QB":
-        return "qb";
-      case "D/ST":
-        return "dst";
-      case "K":
-        return "k";
-      default:
-        return "default";
-    }
-  };
 
   const renderPortfolioOrDynastyRankings = () => {
     if (showPtsMode) {
@@ -77,7 +60,7 @@ function PlayerButton({ player, setPlayers, setRemovedPlayers, scoringType, show
       data-id={player["Overall Rank"]}
       disabled={isDisabled}
       onClick={handleClick}
-      className={`player-button ${getPositionClass()}`}
+      className={`player-button pos-glass ${positionClass(player.Position)}`}
     >
       <div className="grid-container">
         <div className="grid-item">R:{player["Overall Rank"]}</div>

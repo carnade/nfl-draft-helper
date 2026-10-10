@@ -23,6 +23,7 @@ import Odds from "./Odds";
 import Gameday from "./Gameday";
 import StartSit from "./StartSit";
 import "./Layout.css";
+import "./positionColors.css";
 import "./LeftMenu.css";
 import "./GenericStyles.css";
 import { effectiveUserName } from "./settingsUser";

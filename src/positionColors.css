@@ -1,0 +1,165 @@
+/* The one place a position's colour is written down.
+ *
+ * Before this file the palette lived in eleven places across three mutually
+ * contradictory versions: the DFS page said a WR was blue, the Odds page said
+ * yellow, and a kicker had no colour at all on DFS while being accidentally
+ * identical to a running back on the results page. The values here are the DFS
+ * page's, which is the set that was kept.
+ *
+ * Bare HSL triplets, matching the convention in Layout.css: compose the alpha at
+ * the call site with `hsl(var(--pos-qb) / 0.8)`. That is also why `var()` inside
+ * an inline style works — `style={{ background: 'hsl(var(--pos-qb) / .8)' }}`
+ * resolves against these and so follows the theme, which the old JS colour maps
+ * could never do.
+ *
+ * Three ramps, because the files proved three were needed and no more:
+ *   --pos-X       fill. The same in both themes — every chip and header already
+ *                 used one background for light and dark.
+ *   --pos-X-edge  borders and gradient stops. Light is the fill five points
+ *                 darker, which is what every chip already did; dark is a flat
+ *                 49%, the number PlayerButton.css's own comment named.
+ *   --pos-X-ink   text on top of the fill.
+ */
+
+:root {
+  --pos-qb: 339 44% 59%;
+  --pos-rb: 155 43% 64%;
+  --pos-wr: 201 54% 56%;
+  --pos-te: 30 61% 57%;
+  --pos-k: 280 81% 67%;
+  --pos-dst: 12 86% 56%;
+  /* Flex keeps its own token although it currently equals K's. They collide on
+     screen today and still will; holding them apart means the split-pill work
+     can change flex without dragging kickers along with it. */
+  --pos-flx: 280 81% 67%;
+  /* A bench slot, not a position — TournamentResults is the only consumer. */
+  --pos-bn: 208 7% 46%;
+
+  --pos-qb-edge: 339 44% 54%;
+  --pos-rb-edge: 155 43% 59%;
+  --pos-wr-edge: 201 54% 51%;
+  --pos-te-edge: 30 61% 52%;
+  --pos-k-edge: 280 81% 62%;
+  --pos-dst-edge: 12 86% 51%;
+  --pos-flx-edge: 280 81% 62%;
+  --pos-bn-edge: 208 7% 41%;
+
+  --pos-qb-ink: 339 50% 20%;
+  --pos-rb-ink: 155 50% 20%;
+  --pos-wr-ink: 201 50% 20%;
+  --pos-te-ink: 30 50% 20%;
+  --pos-k-ink: 280 50% 20%;
+  --pos-dst-ink: 12 50% 20%;
+  --pos-flx-ink: 280 50% 20%;
+  --pos-bn-ink: 208 20% 20%;
+
+  /* An unrecognised position. Deliberately the neutral tokens rather than a
+     colour: a player whose position we do not know should look unknown, not
+     look like a flex. */
+  --pos-default: var(--muted);
+  --pos-default-edge: var(--border);
+  --pos-default-ink: var(--foreground);
+}
+
+body.dark {
+  --pos-qb-edge: 339 44% 49%;
+  --pos-rb-edge: 155 43% 49%;
+  --pos-wr-edge: 201 54% 49%;
+  --pos-te-edge: 30 61% 49%;
+  --pos-k-edge: 280 81% 49%;
+  --pos-dst-edge: 12 86% 49%;
+  --pos-flx-edge: 280 81% 49%;
+  --pos-bn-edge: 208 7% 49%;
+
+  --pos-qb-ink: 339 30% 90%;
+  --pos-rb-ink: 155 30% 90%;
+  --pos-wr-ink: 201 30% 90%;
+  --pos-te-ink: 30 30% 90%;
+  --pos-k-ink: 280 30% 90%;
+  --pos-dst-ink: 12 30% 90%;
+  --pos-flx-ink: 280 30% 90%;
+  --pos-bn-ink: 208 30% 90%;
+}
+
+/* The tone layer. A position class sets variables and nothing else; the
+ * component class that sits beside it owns the geometry. That split is the
+ * whole point — it is what stops a position's colour ever being written in a
+ * component stylesheet again.
+ *
+ * These names already existed in Odds.css, so Odds and Stats keep working.
+ */
+.pos-qb {
+  --pos: var(--pos-qb);
+  --pos-edge: var(--pos-qb-edge);
+  --pos-ink: var(--pos-qb-ink);
+}
+.pos-rb {
+  --pos: var(--pos-rb);
+  --pos-edge: var(--pos-rb-edge);
+  --pos-ink: var(--pos-rb-ink);
+}
+.pos-wr {
+  --pos: var(--pos-wr);
+  --pos-edge: var(--pos-wr-edge);
+  --pos-ink: var(--pos-wr-ink);
+}
+.pos-te {
+  --pos: var(--pos-te);
+  --pos-edge: var(--pos-te-edge);
+  --pos-ink: var(--pos-te-ink);
+}
+.pos-k {
+  --pos: var(--pos-k);
+  --pos-edge: var(--pos-k-edge);
+  --pos-ink: var(--pos-k-ink);
+}
+.pos-dst {
+  --pos: var(--pos-dst);
+  --pos-edge: var(--pos-dst-edge);
+  --pos-ink: var(--pos-dst-ink);
+}
+.pos-flx {
+  --pos: var(--pos-flx);
+  --pos-edge: var(--pos-flx-edge);
+  --pos-ink: var(--pos-flx-ink);
+}
+.pos-bn {
+  --pos: var(--pos-bn);
+  --pos-edge: var(--pos-bn-edge);
+  --pos-ink: var(--pos-bn-ink);
+}
+.pos-default {
+  --pos: var(--pos-default);
+  --pos-edge: var(--pos-default-edge);
+  --pos-ink: var(--pos-default-ink);
+}
+
+/* A position filter button in its active state.
+ *
+ * `.filter-button` is a global class used by the DFS, League and Bestball
+ * pages, and each of those stylesheets carried its own byte-identical copy of
+ * these colours — thirty rules for one idea. There is no single component sheet
+ * that owns the button, so the rule lives here beside the tones it uses.
+ */
+.filter-button.pos-active {
+  background-color: hsl(var(--pos));
+  border-color: hsl(var(--pos-edge));
+  color: hsl(var(--pos-ink));
+}
+
+/* The text-only variant, for a position shown as a word in a dense table rather
+ * than as a chip. Used by the Odds and Stats pages.
+ */
+.pos-col.pos-qb,
+.pos-col.pos-rb,
+.pos-col.pos-wr,
+.pos-col.pos-te,
+.pos-col.pos-k,
+.pos-col.pos-dst,
+.pos-col.pos-flx {
+  color: hsl(var(--pos));
+}
+
+.pos-col.pos-default {
+  color: hsl(var(--muted-foreground));
+}

@@ -355,57 +355,9 @@ body.dark .bestball-grid-header {
   color: hsl(var(--foreground));
 }
 
-/* Active button styles */
-.filter-button.qb-active {
-  background-color: hsl(339 44% 59%);
-  border-color: hsl(339 44% 54%);
-  color: hsl(339 50% 20%);
-}
+/* The active position filter is styled in positionColors.css. This file
+   used to carry its own byte-identical copy of the same eight rules. */
 
-body.dark .filter-button.qb-active {
-  background-color: hsl(339 44% 59%);
-  border-color: hsl(339 44% 54%);
-  color: hsl(339 30% 90%);
-}
-
-.filter-button.rb-active {
-  background-color: hsl(155 43% 64%);
-  border-color: hsl(155 43% 59%);
-  color: hsl(155 50% 20%);
-}
-
-body.dark .filter-button.rb-active {
-  background-color: hsl(155 43% 64%);
-  border-color: hsl(155 43% 59%);
-  color: hsl(155 30% 90%);
-}
-
-.filter-button.wr-active {
-  background-color: hsl(201 54% 56%);
-  border-color: hsl(201 54% 51%);
-  color: hsl(201 50% 20%);
-}
-
-body.dark .filter-button.wr-active {
-  background-color: hsl(201 54% 56%);
-  border-color: hsl(201 54% 51%);
-  color: hsl(201 30% 90%);
-}
-
-.filter-button.te-active {
-  background-color: hsl(30 61% 57%);
-  border-color: hsl(30 61% 52%);
-  color: hsl(30 50% 20%);
-}
-
-body.dark .filter-button.te-active {
-  background-color: hsl(30 61% 57%);
-  border-color: hsl(30 61% 52%);
-  color: hsl(30 30% 90%);
-}
-
-
-/* Flex container for the portfolio layout */
 .portfolio-container {
   display: flex;
   flex-direction: column; /* Stack items vertically */

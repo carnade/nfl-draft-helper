@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import './TournamentResults.css';
+import { positionFill, positionLabel } from "./positionColors";
 
 // Add a mock flag
 const mock = process.env.REACT_APP_MOCK === 'true';
@@ -698,29 +699,6 @@ function TournamentResults() {
     };
   };
 
-  // Position color helper (same as DFS)
-  const getPositionColor = (position) => {
-    const colors = {
-      QB: 'rgba(239, 116, 161, 0.8)',
-      RB: 'rgba(143, 242, 202, 0.8)',
-      WR: 'rgba(86, 201, 248, 0.8)',
-      TE: 'rgba(254, 174, 88, 0.8)',
-      FLX: 'rgb(235, 88, 254, 0.8)',
-      FLEX: 'rgb(235, 88, 254, 0.8)',
-      SUPER_FLEX: 'rgb(235, 88, 254, 0.8)',
-      DST: 'rgb(239, 91, 47, 0.8)',
-      K: 'rgba(143, 242, 202, 0.8)'
-    };
-    return colors[position] || '#ccc';
-  };
-
-  // Position label helper
-  const getPositionLabel = (slot) => {
-    if (slot === 'RB1' || slot === 'RB2') return 'RB';
-    if (slot === 'WR1' || slot === 'WR2' || slot === 'WR3') return 'WR';
-    return slot;
-  };
-
   // Get player name from player ID
   const getPlayerName = (playerId) => {
     return playerMetadata[playerId]?.name || `Player ${playerId}`;
@@ -738,47 +716,36 @@ function TournamentResults() {
     });
   };
 
-  // Render position badge with split color for special positions
+  // A badge saying what the slot is, and for a flex or bench slot, who is in it.
+  //
+  // The two split branches used to be written out separately although they
+  // differed only in the first colour. The comment above the old one claimed it
+  // was "same as DFS"; it was not — this file ran a different palette entirely,
+  // and its K was byte-identical to its RB, so every kicker was drawn green.
   const renderPositionBadge = (slot, actualPosition) => {
-    const label = slot === 'BN' ? 'BN' : getPositionLabel(slot);
-    
-    // FLEX and SUPER_FLEX: half pink (FLX color), half actual position color
-    if ((slot === 'FLEX' || slot === 'SUPER_FLEX') && actualPosition && actualPosition !== 'UNKNOWN') {
-      const flexColor = 'rgb(235, 88, 254, 0.8)'; // Pink FLX color
-      const positionColor = getPositionColor(actualPosition);
+    const label = slot === 'BN' ? 'BN' : positionLabel(slot);
+    const isBench = slot === 'BN';
+    const slotFill = isBench
+      ? 'hsl(var(--pos-bn) / 0.8)'
+      : positionFill('FLX', 0.8);
+    const known = actualPosition && actualPosition !== 'UNKNOWN';
+
+    if (known && (isBench || slot === 'FLEX' || slot === 'SUPER_FLEX')) {
+      const playerFill = positionFill(actualPosition, 0.8);
       return (
-        <div 
+        <div
           className="position-badge position-badge-split"
-          style={{ 
-            background: `linear-gradient(to right, ${flexColor} 50%, ${positionColor} 50%)`
-          }}
+          style={{ background: `linear-gradient(to right, ${slotFill} 50%, ${playerFill} 50%)` }}
         >
           {label}
         </div>
       );
     }
-    
-    // BN: half grey, half actual position color
-    if (slot === 'BN' && actualPosition && actualPosition !== 'UNKNOWN') {
-      const positionColor = getPositionColor(actualPosition);
-      return (
-        <div 
-          className="position-badge position-badge-split"
-          style={{ 
-            background: `linear-gradient(to right, #6c757d 50%, ${positionColor} 50%)`
-          }}
-        >
-          {label}
-        </div>
-      );
-    }
-    
-    // Regular badge for non-special positions
-    const color = slot === 'BN' ? '#6c757d' : getPositionColor(slot || actualPosition);
+
     return (
-      <div 
+      <div
         className="position-badge"
-        style={{ backgroundColor: color }}
+        style={{ backgroundColor: isBench ? slotFill : positionFill(slot || actualPosition, 0.8) }}
       >
         {label}
       </div>

@@ -8,6 +8,7 @@ import {
 import { useParams } from "react-router-dom";
 import "./BestballList.css";
 import DraftModal from "./DraftModal";
+import { positionClass } from "./positionColors";
 
 // Add a mock flag
 const mock = process.env.REACT_APP_MOCK === 'true';
@@ -1183,7 +1184,9 @@ function BestballList() {
                 <div className="filter-buttons">
                   <button
                     className={`filter-button ${
-                      selectedPosition === "QB" ? "qb-active" : ""
+                      selectedPosition === "QB"
+                        ? `pos-active ${positionClass("QB")}`
+                        : ""
                     }`}
                     onClick={() =>
                       setSelectedPosition((prev) =>
@@ -1195,7 +1198,9 @@ function BestballList() {
                   </button>
                   <button
                     className={`filter-button ${
-                      selectedPosition === "RB" ? "rb-active" : ""
+                      selectedPosition === "RB"
+                        ? `pos-active ${positionClass("RB")}`
+                        : ""
                     }`}
                     onClick={() =>
                       setSelectedPosition((prev) =>
@@ -1207,7 +1212,9 @@ function BestballList() {
                   </button>
                   <button
                     className={`filter-button ${
-                      selectedPosition === "WR" ? "wr-active" : ""
+                      selectedPosition === "WR"
+                        ? `pos-active ${positionClass("WR")}`
+                        : ""
                     }`}
                     onClick={() =>
                       setSelectedPosition((prev) =>
@@ -1219,7 +1226,9 @@ function BestballList() {
                   </button>
                   <button
                     className={`filter-button ${
-                      selectedPosition === "TE" ? "te-active" : ""
+                      selectedPosition === "TE"
+                        ? `pos-active ${positionClass("TE")}`
+                        : ""
                     }`}
                     onClick={() =>
                       setSelectedPosition((prev) =>
