@@ -4,7 +4,11 @@
  * "no issues" box is just a thing to scroll past every week.
  */
 
+/* .dashboard-container is a wrapping flex row, so without this the panel is a
+   flex item sized to its own content and sits narrow against the left edge.
+   .header-container above it solves the same problem the same way. */
 .li-panel {
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -46,6 +50,24 @@
   font-size: 0.8rem;
   line-height: 1.5;
   color: hsl(var(--muted-foreground));
+}
+
+/* Name and count sit together rather than at opposite edges — the card is full
+   width now, and spreading them apart would leave the count stranded. */
+.li-card-leagues li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.li-card-league {
+  color: hsl(var(--foreground) / 0.85);
+}
+
+.li-card-slots {
+  font-size: 0.75rem;
+  opacity: 0.8;
+  white-space: nowrap;
 }
 
 .li-card-locked {

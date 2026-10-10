@@ -63,9 +63,10 @@ describe("the panel", () => {
     expect(screen.getAllByRole("button", { name: "Fix" })).toHaveLength(1);
     expect(screen.getByText("4 players could be on injured reserve")).toBeInTheDocument();
     // One league per line, not run together into a single phrase.
+    // One league per line, each with the room it has, and the singular for one.
     expect(screen.getAllByRole("listitem").map((li) => li.textContent)).toEqual([
-      "Fantasy Fools",
-      "Swedish Dynasty Super League",
+      "Fantasy Fools2 slots free",
+      "Swedish Dynasty Super League1 slot free",
     ]);
   });
 

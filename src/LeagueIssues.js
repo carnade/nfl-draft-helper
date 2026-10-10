@@ -184,7 +184,12 @@ function LeagueIssues({ issues, canEdit, onApplyIr }) {
           </span>
           <ul className="li-card-leagues">
             {sorted.map((i) => (
-              <li key={i.leagueId}>{i.leagueName}</li>
+              <li key={i.leagueId}>
+                <span className="li-card-league">{i.leagueName}</span>
+                <span className="li-card-slots">
+                  {plural(i.freeSlots, "1 slot", "slots")} free
+                </span>
+              </li>
             ))}
           </ul>
         </div>
