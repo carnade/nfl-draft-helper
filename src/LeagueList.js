@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faQuestion,
@@ -29,6 +29,9 @@ import "./LeagueList.css";
 import "./TableStyles.css";
 import PositionPill from "./PositionPill";
 import { emptyBenchSlots } from "./rosterSlots";
+import LeagueIssues from "./LeagueIssues";
+import { findIrIssues } from "./irIssues";
+import { useSleeperAuth } from "./auth";
 import { positionClass } from "./positionColors";
 
 // The two Sleeper calls in this file have to agree about the season.
@@ -67,6 +70,59 @@ function waiverIsCurrent(t, periodStart) {
 // League Name, Record, Pos, MPF, Waivers, Empty bench, Injuries, Actions.
 // Used by the
 // group headings and the expanded roster, both of which span the whole row.
+/**
+ * Move players onto a roster's injured reserve.
+ *
+ * Same endpoint and header shape as the Start/Sit lineup change. `reserve` is
+ * declared String in Sleeper's schema but takes a list literal, exactly as
+ * `starters` does on update_matchup_leg — which is the call this app already
+ * makes successfully.
+ *
+ * The whole reserve list is sent, not a delta, so the players already on it
+ * have to be included or they come straight back off.
+ */
+async function submitReserve({ leagueId, rosterId, reserve, token, signal }) {
+  const list = reserve.map((id) => JSON.stringify(String(id))).join(",");
+  const query = `mutation roster_update_reserve {
+    roster_update_reserve(league_id: ${JSON.stringify(String(leagueId))},roster_id: ${Number(rosterId)},reserve: [${list}]){
+      league_id roster_id players starters reserve taxi
+    }
+  }`;
+
+  const res = await fetch("https://sleeper.com/graphql", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-platform": "web",
+      authorization: token,
+      "x-sleeper-graphql-op": "roster_update_reserve",
+    },
+    body: JSON.stringify({ operationName: "roster_update_reserve", variables: {}, query }),
+    signal,
+  });
+
+  const json = await res.json().catch(() => null);
+  // Sleeper answers 200 with an errors array rather than an HTTP error code.
+  if (json?.errors?.length) {
+    throw new Error(json.errors[0]?.message || "Sleeper rejected the change");
+  }
+  if (!res.ok) throw new Error(`Sleeper returned ${res.status}`);
+
+  const updated = json?.data?.roster_update_reserve;
+  if (!updated?.reserve) throw new Error("Sleeper returned no roster");
+
+  // Confirm it actually took. A silently ignored write would otherwise look
+  // like a success and the page would show a change that never happened.
+  const got = new Set(updated.reserve.map(String));
+  const missing = reserve.filter((id) => !got.has(String(id)));
+  if (missing.length) {
+    throw new Error(
+      `Sleeper accepted the request but did not move ${missing.length} of them. The roster has not changed.`
+    );
+  }
+  return updated;
+}
+
 const LEAGUE_COLUMNS = 8;
 
 function WaiverRows({ txns, names }) {
@@ -106,6 +162,7 @@ function LeagueList() {
   const { userName } = useParams();
   const [userId, setUserId] = useState(null);
   const [leagues, setLeagues] = useState([]);
+  const auth = useSleeperAuth();
   const [injuryReport, setInjuryReport] = useState({});
   const [teamStatsMap, setTeamStatsMap] = useState({});
   const [portfolioData, setPortfolioData] = useState([]); // State for portfolio data
@@ -928,6 +985,8 @@ function LeagueList() {
             uniquePlayers,
             reserve,
             taxi,
+            // The reserve mutation is addressed by roster_id, not owner_id.
+            rosterId: userRoster.roster_id,
             settings: userRoster.settings,
           },
         };
@@ -944,6 +1003,70 @@ function LeagueList() {
       console.error("Error fetching league data:", error);
     }
   }, [userName, fetchPlayerData]);
+
+  // Only the signed-in manager's own leagues can be changed, and only with a
+  // real Sleeper login — the free-text username field is not enough to write.
+  const canEditRosters =
+    !!auth?.token &&
+    !!auth?.display_name &&
+    auth.display_name.toLowerCase() === (userName || "").toLowerCase();
+
+  const irIssues = useMemo(
+    () =>
+      findIrIssues(
+        leagues,
+        (leagueId, playerId) => playerData[leagueId]?.players?.[playerId]
+      ),
+    [leagues, playerData]
+  );
+
+  const applyIr = useCallback(
+    async (issue, playerIds) => {
+      if (!playerIds.length) return;
+      // The whole list is sent, not a delta, so whoever is already on reserve
+      // has to go along with it.
+      const reserve = [...issue.reserve, ...playerIds];
+      await submitReserve({
+        leagueId: issue.leagueId,
+        rosterId: issue.rosterId,
+        reserve,
+        token: auth?.token,
+      });
+
+      // Reflect it without refetching every league. A player moving to reserve
+      // leaves the bench, which is also what frees the roster spot the Empty
+      // bench column counts.
+      setLeagues((prev) =>
+        prev.map((l) => {
+          if (l.league_id !== issue.leagueId) return l;
+          const moved = new Set(playerIds.map(String));
+          const userRoster = {
+            ...l.userRoster,
+            reserve,
+            uniquePlayers: (l.userRoster.uniquePlayers || []).filter(
+              (id) => !moved.has(String(id))
+            ),
+          };
+          return {
+            ...l,
+            userRoster,
+            emptyBenchSlots: emptyBenchSlots({
+              rosterPositions: l.roster_positions,
+              players: [
+                ...userRoster.starters,
+                ...userRoster.uniquePlayers,
+                ...userRoster.reserve,
+                ...userRoster.taxi,
+              ],
+              reserve: userRoster.reserve,
+              taxi: userRoster.taxi,
+            }),
+          };
+        })
+      );
+    },
+    [auth]
+  );
 
   const getOrdinalSuffix = (num) => {
     if (!num) return '';
@@ -1450,6 +1573,12 @@ function LeagueList() {
           </label>
         </div>
       </div>
+
+      <LeagueIssues
+        issues={irIssues}
+        canEdit={canEditRosters}
+        onApplyIr={applyIr}
+      />
 
       <div className="league-main-content">
         {/* Left Side: Leagues */}
