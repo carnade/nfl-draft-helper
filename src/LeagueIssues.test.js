@@ -39,7 +39,10 @@ const swedish = {
 const click = (el) => fireEvent.click(el);
 const fixButton = () => screen.getByRole("button", { name: "Fix" });
 const continueButton = () => screen.getByRole("button", { name: /Continue|Moving/ });
-const leagueBlock = (name) => screen.getByText(name).closest("section");
+// Scoped to the dialog: each league name now appears on the card as well, so
+// an unscoped lookup matches two elements.
+const leagueBlock = (name) =>
+  within(screen.getByRole("dialog")).getByText(name).closest("section");
 
 function setup({ issues = [fools, swedish], onApplyIr, ...rest } = {}) {
   const apply = onApplyIr || jest.fn().mockResolvedValue([]);
@@ -59,9 +62,11 @@ describe("the panel", () => {
     setup();
     expect(screen.getAllByRole("button", { name: "Fix" })).toHaveLength(1);
     expect(screen.getByText("4 players could be on injured reserve")).toBeInTheDocument();
-    expect(
-      screen.getByText("Fantasy Fools · Swedish Dynasty Super League")
-    ).toBeInTheDocument();
+    // One league per line, not run together into a single phrase.
+    expect(screen.getAllByRole("listitem").map((li) => li.textContent)).toEqual([
+      "Fantasy Fools",
+      "Swedish Dynasty Super League",
+    ]);
   });
 
   it("uses the singular for one player", () => {

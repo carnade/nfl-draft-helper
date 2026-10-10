@@ -182,9 +182,11 @@ function LeagueIssues({ issues, canEdit, onApplyIr }) {
           <span className="li-card-headline">
             {plural(playerCount, "1 player", "players")} could be on injured reserve
           </span>
-          <span className="li-card-detail">
-            {sorted.map((i) => i.leagueName).join(" · ")}
-          </span>
+          <ul className="li-card-leagues">
+            {sorted.map((i) => (
+              <li key={i.leagueId}>{i.leagueName}</li>
+            ))}
+          </ul>
         </div>
         {canEdit ? (
           <button
