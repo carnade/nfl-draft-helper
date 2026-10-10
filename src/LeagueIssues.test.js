@@ -216,6 +216,41 @@ describe("the dialog", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
+  it("clears every league at once", () => {
+    setup();
+    click(fixButton());
+    expect(screen.getAllByRole("checkbox").filter((b) => b.checked)).toHaveLength(3);
+
+    click(screen.getByRole("button", { name: "Clear all" }));
+
+    expect(screen.getAllByRole("checkbox").filter((b) => b.checked)).toHaveLength(0);
+    // Everything is reachable again, in both leagues.
+    expect(screen.getAllByRole("checkbox").every((b) => !b.disabled)).toBe(true);
+    expect(continueButton()).toBeDisabled();
+  });
+
+  it("lets you pick one after clearing", () => {
+    const { onApplyIr } = setup();
+    click(fixButton());
+    click(screen.getByRole("button", { name: "Clear all" }));
+
+    const swedish = within(leagueBlock("Swedish Dynasty Super League"));
+    click(swedish.getAllByRole("checkbox")[1]);
+    click(continueButton());
+
+    const picks = onApplyIr.mock.calls[0][0];
+    expect(picks).toHaveLength(1);
+    expect(picks[0].issue.leagueName).toBe("Swedish Dynasty Super League");
+    expect(picks[0].playerIds).toEqual(["d"]);
+  });
+
+  it("has nothing to clear once the selection is empty", () => {
+    setup();
+    click(fixButton());
+    click(screen.getByRole("button", { name: "Clear all" }));
+    expect(screen.getByRole("button", { name: "Clear all" })).toBeDisabled();
+  });
+
   it("closes on Cancel without applying anything", () => {
     const { onApplyIr } = setup();
     click(fixButton());

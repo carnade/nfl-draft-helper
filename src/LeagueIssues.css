@@ -281,3 +281,25 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Pushed away from Continue and Cancel: it changes the selection rather than
+   deciding what to do with it, and it should not sit where a confirm does. */
+.li-clear {
+  margin-left: auto;
+  padding: 6px 4px;
+  background: none;
+  border: 0;
+  font-size: 0.8rem;
+  color: hsl(var(--muted-foreground));
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.li-clear:hover:not(:disabled) {
+  color: hsl(var(--foreground));
+}
+
+.li-clear:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

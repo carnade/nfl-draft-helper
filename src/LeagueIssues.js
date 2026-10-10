@@ -33,6 +33,10 @@ function IrFixDialog({ issues, onClose, onConfirm, busy, failures }) {
     });
   };
 
+  // Reopening restores the pre-ticked state, so this needs no counterpart.
+  const clearAll = () =>
+    setSelected(Object.fromEntries(issues.map((i) => [i.leagueId, []])));
+
   const totalSelected = Object.values(selected).reduce((n, ids) => n + ids.length, 0);
   const failureFor = (leagueId) => failures.find((f) => f.leagueId === leagueId);
 
@@ -117,6 +121,16 @@ function IrFixDialog({ issues, onClose, onConfirm, busy, failures }) {
             </button>
             <button type="button" className="li-cancel" onClick={onClose} disabled={busy}>
               Cancel
+            </button>
+            {/* Apart from the other two: it changes the selection rather than
+                deciding what to do with it. */}
+            <button
+              type="button"
+              className="li-clear"
+              onClick={clearAll}
+              disabled={busy || totalSelected === 0}
+            >
+              Clear all
             </button>
           </div>
         </footer>
