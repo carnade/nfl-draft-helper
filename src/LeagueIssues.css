@@ -4,10 +4,9 @@
  * "no issues" box is just a thing to scroll past every week.
  */
 
-/* Sits inside the league column, above the table, so it is exactly as wide as
-   the table without naming a width. The column is flex: 1 beside a 35% panel
-   with a gap and padding either side — any percentage here would only ever be
-   approximately right, and would drift if that split changed. */
+/* Placed by the page's own grid, in the table's column and the row above it —
+   so it is exactly the table's width without naming one, and the column beside
+   it still starts level with the table. See .league-main-content. */
 .li-panel {
   display: flex;
   flex-direction: column;

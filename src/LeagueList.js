@@ -1525,7 +1525,7 @@ function LeagueList() {
         </div>
       </div>
 
-      <div className="search-container">
+      <div className="search-container league-search">
         <label className="search-label">Find a player</label>
         <div className="player-search">
           <input
@@ -1608,12 +1608,13 @@ function LeagueList() {
 
       <div className="league-main-content">
         {/* Left Side: Leagues */}
+        <LeagueIssues
+          issues={irIssues}
+          canEdit={canEditRosters}
+          onApplyIr={applyIr}
+        />
+
         <div className="league-list-container">
-          <LeagueIssues
-            issues={irIssues}
-            canEdit={canEditRosters}
-            onApplyIr={applyIr}
-          />
           <section className="ss-card">
            <div className="ss-table-wrap">
             <table className="ss-table league-table">

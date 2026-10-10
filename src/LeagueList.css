@@ -21,19 +21,23 @@
 }
 
 /* Search area */
+/* Was written out twice here, identically but for the margin and the gap, so
+   the second quietly won. */
 .search-container {
   display: flex;
   align-items: center;
-  margin-bottom: 10px;
-  overflow: visible; /* ensure dropdown is not clipped */
-}
-
-.search-container {
-  display: flex;
-  align-items: center;
-  margin-bottom: 12px;
   overflow: visible; /* ensure dropdown is not clipped */
   gap: 18px; /* spacing between search fields */
+}
+
+/* .search-container is global and TradeAnalyzer.css declares it too, with
+   `padding: 20px 0 20px 20px` — and that file loads later, so it won here and
+   put 20px above and below this page's search fields. Rather than restyle the
+   Trade Helper from this file, the page's own row carries a second class and
+   two of them beat one. */
+.search-container.league-search {
+  padding: 0;
+  margin-bottom: 2px;
 }
 
 .search-label {
@@ -110,22 +114,44 @@ body.dark .medical-cross-icon {
 }
 
 /* Main layout */
+/* A grid rather than a row, so the issue card can be the table's width while
+   the waivers/injuries column still starts level with the table itself.
+   As a flex row the card was the first thing in the left column, which pushed
+   that column's content down and left the tabs aligned to the card instead.
+
+   row-gap is 0 deliberately: with no issues to report the card renders nothing
+   at all, and a row gap would leave its empty row's spacing behind. The card
+   carries its own margin-bottom instead.
+
+   The top padding is gone too — it sat under the search fields and put 32px
+   between them and the table, counting the search's own margin. */
 .league-main-content {
-  display: flex;
-  justify-content: space-between;
-  gap: 1.25rem;
+  display: grid;
+  grid-template-columns: 1fr 35%;
+  grid-template-areas:
+    "issues ."
+    "table  tabs";
+  column-gap: 1.25rem;
+  row-gap: 0;
   width: 100%;
   margin: 0 auto;
-  padding: 1.25rem;
+  padding: 0 1.25rem 1.25rem;
   box-sizing: border-box;
   overflow-x: hidden;
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
 }
 
+.league-main-content > .li-panel {
+  grid-area: issues;
+}
+
 /* Left side: league list */
 .league-list-container {
-  flex: 1;
+  grid-area: table;
+  /* Lets the table shrink and scroll inside its own wrapper rather than
+     stretching the column; a grid item defaults to min-width: auto. */
+  min-width: 0;
 }
 
 /* The league list is a real table now; its shell lives in TableStyles.css,
@@ -317,7 +343,8 @@ body.dark .league-highlighted-league {
 
 /* Right-side container */
 .league-right-side-container {
-  width: 35%;
+  grid-area: tabs;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
