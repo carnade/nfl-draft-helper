@@ -5,6 +5,7 @@ import './DFSResults.css';
 import { loadSleeperAuth, useIsPrivilegedUser } from './auth';
 import { getCurrentWeek } from './currentWeekCache';
 import { effectiveUserName } from './settingsUser';
+import { positionFill } from "./positionColors";
 
 // Add a mock flag
 const mock = process.env.REACT_APP_MOCK === 'true';
@@ -1919,18 +1920,6 @@ function DFSResults() {
     }
   }, [loadedFromUrl, loadingPoints, fantasyPoints, dfsSalaryData, startRevealAnimation]);
 
-  const getPositionColor = (position) => {
-    const colors = {
-      QB: 'rgba(239, 116, 161, 0.8)',
-      RB: 'rgba(143, 242, 202, 0.8)',
-      WR: 'rgba(86, 201, 248, 0.8)',
-      TE: 'rgba(254, 174, 88, 0.8)',
-      FLX: 'rgb(235, 88, 254, 0.8)',
-      DST: 'rgb(239, 91, 47, 0.8)'
-    };
-    // Return purple (FLX color) for unknown positions
-    return colors[position] || 'rgb(235, 88, 254, 0.8)';
-  };
 
   const getPlayerInfo = useCallback((sleeperId) => {
     const fantasyInfo = fantasyPoints[sleeperId];
@@ -3180,32 +3169,15 @@ function DFSResults() {
                             
                             // Only get player info and normalize position if we're actually showing the player
                             const info = getPlayerInfo(player.sleeperId);
-                            // Normalize position - handle variations like 'D/ST', 'D_ST', etc.
-                            let position = info?.position || 'FLX';
-                            if (position && typeof position === 'string') {
-                              const upperPos = position.toUpperCase();
-                              if (upperPos === 'D/ST' || upperPos === 'D_ST' || upperPos === 'DST' || upperPos === 'DEF') {
-                                position = 'DST';
-                              } else {
-                                position = upperPos;
-                              }
-                            }
-                            
+                            // positionKey knows every spelling of a defence, so
+                            // the normalising that used to sit here is gone. A
+                            // player whose metadata has not arrived still falls
+                            // back to FLX, exactly as before.
+                            const position = info?.position || 'FLX';
                             const isOut = pointsDisplay === 'OUT';
-                            
-                            const backgroundColor = isOut 
-                              ? 'rgba(220, 53, 69, 0.8)' 
-                                : getPositionColor(position);
-                            console.log('Render info', {
-                              lineupUsername: lineup.username,
-                              sleeperId: player.sleeperId,
-                              info,
-                              pointsDisplay,
-                              position,
-                              isOut,
-                              gameHasStarted,
-                              isTBD
-                            });
+                            const backgroundColor = isOut
+                              ? 'rgba(220, 53, 69, 0.8)'
+                              : positionFill(position, 0.8);
                             return (
                               <div
                                 key={pIdx} 

@@ -1,4 +1,6 @@
 /* Design System Variables - Based on reference site */
+/* Position colours are not here: see positionColors.css, which is imported
+   immediately after this file. */
 :root {
   --radius: 0.625rem;
   --primary: 174 72% 40%;

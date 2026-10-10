@@ -14,6 +14,8 @@ import { useSleeperAuth } from "./auth";
 import { projectedPoints, hasProjection, fetchWeekProjectionsUrl } from "./leagueScoring";
 import { evaluateLineup, countActionable, isEligible, benchFrom } from "./startSitModel";
 import { lockedTeamsFor, byeTeamsFor } from "./nflSchedule";
+import PositionPill from "./PositionPill";
+import { compositeSlot, positionKey } from "./positionColors";
 import { loadHiddenLeagues, visibleLeagues, useHiddenLeagues } from "./leagueVisibility";
 
 const SEASON = 2026;
@@ -205,6 +207,17 @@ function SuggestionCell({ row, canEdit, onSwap, busy }) {
   );
 }
 
+// Whether the position beside a player's name is telling you anything.
+//
+// In a QB slot the starter is a quarterback, so the slot pill and the position
+// pill are two identical chips sitting next to each other. Only a flex slot —
+// or the odd case where someone is in a slot their position does not match —
+// makes the second one worth drawing.
+function showPositionBeside(slot, position) {
+  if (!position) return false;
+  return positionKey(slot) !== positionKey(position);
+}
+
 function PlayerRow({ row, canEdit, onSwap, busy, formWindow }) {
   const p = row.starter;
   // Every unlocked slot with somewhere to go can be changed, not only the flagged
@@ -213,7 +226,7 @@ function PlayerRow({ row, canEdit, onSwap, busy, formWindow }) {
   const label = p ? p.name : "empty";
   return (
     <tr className={`ss-row ss-row-${row.verdict}`}>
-      <td className="ss-slot">{row.slot}</td>
+      <td className="ss-slot"><PositionPill position={row.slot} /></td>
       <td className="ss-player">
         {changeable ? (
           <button type="button" className="ss-player-btn" onClick={onSwap} title="Change this slot">
@@ -222,7 +235,11 @@ function PlayerRow({ row, canEdit, onSwap, busy, formWindow }) {
         ) : (
           <span className={p ? undefined : "ss-muted"}>{label}</span>
         )}
-        {p?.position && <span className="ss-pos"> {p.position}</span>}
+        {showPositionBeside(row.slot, p?.position) && (
+          <span className="ss-pos-pill">
+            <PositionPill position={p.position} />
+          </span>
+        )}
       </td>
       <td><TeamCell team={p?.team} opponent={p?.opponent} /></td>
       <td className="ss-num" title={p && !p.hasProjection ? "Sleeper has no projection for this player" : undefined}>
@@ -260,15 +277,36 @@ function FormCell({ average, games, window }) {
   );
 }
 
+// Which of the slots a bench player fits are worth drawing.
+//
+// A wide receiver fits WR, FLEX and SUPER_FLEX, and three chips in one cell is
+// noise. The widest flex contains the narrower ones, so only it is shown
+// alongside the player's own position.
+function benchSlotPills(fits) {
+  const plain = fits.filter((slot) => !compositeSlot(slot));
+  const widest = fits
+    .map((slot) => [slot, compositeSlot(slot)])
+    .filter(([, composite]) => composite)
+    .sort((a, b) => b[1].bands.length - a[1].bands.length)[0];
+  return widest ? [...plain, widest[0]] : plain;
+}
+
 function BenchRow({ player, slots, formWindow }) {
   const fits = [...new Set(slots.filter((slot) => isEligible(slot, player)))];
   return (
     <tr className="ss-row ss-row-bench">
-      <td className="ss-slot ss-muted">{fits.length ? fits.join(", ") : "—"}</td>
-      <td className="ss-player">
-        {player.name}
-        {player.position && <span className="ss-pos"> {player.position}</span>}
+      <td className="ss-slot">
+        {fits.length ? (
+          <span className="ss-slot-pills">
+            {benchSlotPills(fits).map((slot) => (
+              <PositionPill key={slot} position={slot} />
+            ))}
+          </span>
+        ) : (
+          <span className="ss-muted">—</span>
+        )}
       </td>
+      <td className="ss-player">{player.name}</td>
       <td><TeamCell team={player.team} opponent={player.opponent} /></td>
       <td className="ss-num">{player.hasProjection ? fmt(player.proj) : <span className="ss-muted">—</span>}</td>
       <td className="ss-num">{fmt(player.fptsG)}</td>

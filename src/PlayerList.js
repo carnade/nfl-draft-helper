@@ -1,6 +1,17 @@
 import React from "react";
 import PlayerButton from "./PlayerButton";
 import "./PlayerList.css";
+import { positionKey } from "./positionColors";
+
+// "ALL" is a column heading, not a position, and has never had a colour. Asking
+// for a tone class unconditionally would hand it the neutral one and give it a
+// grey bar it never had.
+function headerClassName(title) {
+  const key = positionKey(title);
+  return key === "default"
+    ? "player-list-header"
+    : `player-list-header pos-fill pos-${key}`;
+}
 
 function PlayerList({
   title,
@@ -35,7 +46,7 @@ function PlayerList({
 
   return (
     <div className="player-list">
-      <h2 className={`player-list-header ${title.toLowerCase()}-header`}>{title}</h2>
+      <h2 className={headerClassName(title)}>{title}</h2>
       {Object.keys(groupedPlayers).map((tier) => {
         const tierHasPlayers = groupedPlayers[tier].some(
           (player) => !removedPlayers.has(`${player.Name}`)

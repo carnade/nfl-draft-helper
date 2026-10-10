@@ -88,82 +88,18 @@
   line-height: 1;
 }
 
-/* Position colors (dark mode default) */
-.grid-player-card.qb {
-  background: linear-gradient(135deg, hsl(339 44% 49% / 0.3) 0%, hsl(339 44% 49% / 0.15) 100%);
-  border-color: hsl(339 44% 49%);
-  color: hsl(339 30% 90%);
+/* Position colours.
+ *
+ * Two rules instead of thirteen. Light is the base and dark the override, which
+ * is the other way round from how this file had it — see PlayerButton.css.
+ * D/ST and K gain the gradient the other four always had.
+ */
+.grid-player-card.pos-glass {
+  background: linear-gradient(135deg, hsl(var(--pos-edge) / 0.35) 0%, hsl(var(--pos-edge) / 0.18) 100%);
+  border-color: hsl(var(--pos-edge));
+  color: hsl(var(--pos-ink));
 }
 
-.grid-player-card.rb {
-  background: linear-gradient(135deg, hsl(155 30% 49% / 0.3) 0%, hsl(155 30% 49% / 0.15) 100%);
-  border-color: hsl(155 30% 49%);
-  color: hsl(155 30% 90%);
-}
-
-.grid-player-card.wr {
-  background: linear-gradient(135deg, hsl(201 54% 49% / 0.3) 0%, hsl(201 54% 49% / 0.15) 100%);
-  border-color: hsl(201 54% 49%);
-  color: hsl(201 30% 90%);
-}
-
-.grid-player-card.te {
-  background: linear-gradient(135deg, hsl(30 61% 49% / 0.3) 0%, hsl(30 61% 49% / 0.15) 100%);
-  border-color: hsl(30 61% 49%);
-  color: hsl(30 30% 90%);
-}
-
-.grid-player-card.dst {
-  background: hsl(12 86% 49% / 0.3);
-  border-color: hsl(12 86% 49%);
-  color: hsl(12 30% 90%);
-}
-
-.grid-player-card.k {
-  background: hsl(280 60% 49% / 0.3);
-  border-color: hsl(280 60% 49%);
-  color: hsl(280 30% 90%);
-}
-
-.grid-player-card.default {
-  background: hsl(var(--muted) / 0.3);
-  border-color: hsl(var(--border));
-  color: hsl(var(--foreground));
-}
-
-/* Light mode overrides */
-body.light .grid-player-card.qb {
-  background: linear-gradient(135deg, hsl(339 44% 54% / 0.35) 0%, hsl(339 44% 54% / 0.18) 100%);
-  border-color: hsl(339 44% 54%);
-  color: hsl(339 50% 18%);
-}
-
-body.light .grid-player-card.rb {
-  background: linear-gradient(135deg, hsl(155 30% 54% / 0.35) 0%, hsl(155 30% 54% / 0.18) 100%);
-  border-color: hsl(155 30% 54%);
-  color: hsl(155 50% 18%);
-}
-
-body.light .grid-player-card.wr {
-  background: linear-gradient(135deg, hsl(201 54% 51% / 0.35) 0%, hsl(201 54% 51% / 0.18) 100%);
-  border-color: hsl(201 54% 51%);
-  color: hsl(201 50% 18%);
-}
-
-body.light .grid-player-card.te {
-  background: linear-gradient(135deg, hsl(30 61% 52% / 0.35) 0%, hsl(30 61% 52% / 0.18) 100%);
-  border-color: hsl(30 61% 52%);
-  color: hsl(30 50% 18%);
-}
-
-body.light .grid-player-card.dst {
-  background: hsl(12 86% 51% / 0.35);
-  border-color: hsl(12 86% 51%);
-  color: hsl(12 50% 18%);
-}
-
-body.light .grid-player-card.k {
-  background: hsl(280 60% 45% / 0.35);
-  border-color: hsl(280 60% 45%);
-  color: hsl(280 50% 18%);
+body.dark .grid-player-card.pos-glass {
+  background: linear-gradient(135deg, hsl(var(--pos-edge) / 0.3) 0%, hsl(var(--pos-edge) / 0.15) 100%);
 }

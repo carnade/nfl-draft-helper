@@ -9,6 +9,7 @@ import { GiAmericanFootballPlayer, GiSheep, GiTurd } from "react-icons/gi";
 import { GiFireworkRocket } from "react-icons/gi";
 import { TbArrowsLeftRight } from "react-icons/tb";
 import { FaTrashAlt, FaCopy } from "react-icons/fa";
+import { positionClass } from "./positionColors";
 
 // Add a mock flag
 const mock = process.env.REACT_APP_MOCK === 'true';
@@ -934,9 +935,9 @@ function DraftModal({ league, draftId, onClose, userId }) {
   const renderPlayerCard = (pick, player, metadata, teamsCount, formattedRank) => (
     <div
       key={pick.pick_no}
-      className={`player-card ${
-        metadata.position?.toLowerCase() || "unknown"
-      } ${pick.isDimmed ? "player-card-dimmed" : ""}`}
+      className={`player-card pos-glass ${positionClass(
+        metadata.position
+      )} ${pick.isDimmed ? "player-card-dimmed" : ""}`}
       data-picked-by={pick.picked_by}
       data-pick-no={pick.pick_no}
       style={{

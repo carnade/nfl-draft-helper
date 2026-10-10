@@ -1,19 +1,8 @@
 import React from "react";
 import "./DraftGrid.css";
+import { positionClass } from "./positionColors";
 
 const TEAM_COUNT = 12;
-
-function getPositionClass(player) {
-  switch (player.Position) {
-    case "WR": return "wr";
-    case "RB": return "rb";
-    case "TE": return "te";
-    case "QB": return "qb";
-    case "D/ST": return "dst";
-    case "K": return "k";
-    default: return "default";
-  }
-}
 
 function DraftGrid({ initialPlayers, removedPlayers, setPlayers, setRemovedPlayers, draftFormat }) {
   if (!initialPlayers || initialPlayers.length === 0) return null;
@@ -77,7 +66,7 @@ function DraftGrid({ initialPlayers, removedPlayers, setPlayers, setRemovedPlaye
             <div key={colIndex} className="draft-grid-cell">
               {player ? (
                 <button
-                  className={`grid-player-card ${getPositionClass(player)}${removedPlayers.has(player.Name) ? " drafted" : ""}`}
+                  className={`grid-player-card pos-glass ${positionClass(player.Position)}${removedPlayers.has(player.Name) ? " drafted" : ""}`}
                   onClick={() => handlePickClick(player)}
                   title={`${player.Name} · ${player.Position} · ${player.Team}`}
                 >

@@ -15,45 +15,13 @@
   color: hsl(var(--foreground));
 }
 
-/* Position-specific header colors */
-.player-list h2.qb-header {
-  background-color: hsl(339 44% 59%);
-  color: hsl(339 50% 20%);
-}
-
-.player-list h2.rb-header {
-  background-color: hsl(155 43% 64%);
-  color: hsl(155 50% 20%);
-}
-
-.player-list h2.wr-header {
-  background-color: hsl(201 54% 56%);
-  color: hsl(201 50% 20%);
-}
-
-.player-list h2.te-header {
-  background-color: hsl(30 61% 57%);
-  color: hsl(30 50% 20%);
-}
-
-body.dark .player-list h2.qb-header {
-  background-color: hsl(339 44% 59%);
-  color: hsl(339 30% 90%);
-}
-
-body.dark .player-list h2.rb-header {
-  background-color: hsl(155 43% 64%);
-  color: hsl(155 30% 90%);
-}
-
-body.dark .player-list h2.wr-header {
-  background-color: hsl(201 54% 56%);
-  color: hsl(201 30% 90%);
-}
-
-body.dark .player-list h2.te-header {
-  background-color: hsl(30 61% 57%);
-  color: hsl(30 30% 90%);
+/* Position-specific header colours.
+   One rule now: the tone class beside this one supplies the variables, and the
+   ALL column deliberately gets no tone class at all, so it keeps the plain
+   heading it has always had. */
+.player-list h2.pos-fill {
+  background-color: hsl(var(--pos));
+  color: hsl(var(--pos-ink));
 }
 
 .tier-group {

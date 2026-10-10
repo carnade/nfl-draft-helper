@@ -236,110 +236,32 @@ body.dark .close-modal-button:hover {
   grid-column: span 2; /* Take less space */
 }
 
-/* Glass cards by position – lighter body for larger cards (light) */
-body.light .draft-modal-content .player-card.qb {
-  background: linear-gradient(135deg, hsl(339 44% 62% / 0.55) 0%, hsl(339 44% 59% / 0.38) 100%);
-  border: 2px solid hsl(339 44% 49%);
-  color: hsl(339 50% 20%);
-  box-shadow: 0 4px 8px hsl(339 44% 49% / 0.2), inset 0 1px 1px hsl(339 44% 49% / 0.2);
+/* Glass cards by position.
+ *
+ * Two rules where there were fourteen, one per theme. The tone class beside
+ * this one carries the colour.
+ *
+ * The old light rules bordered with the *dark* edge, and graded between two
+ * lightnesses three points apart — invisible under a 0.55 alpha. Both are
+ * normalised onto the shared ramps.
+ */
+body.light .draft-modal-content .player-card.pos-glass {
+  background: linear-gradient(135deg, hsl(var(--pos) / 0.55) 0%, hsl(var(--pos) / 0.38) 100%);
+  border: 2px solid hsl(var(--pos-edge));
+  color: hsl(var(--pos-ink));
+  box-shadow: 0 4px 8px hsl(var(--pos-edge) / 0.2), inset 0 1px 1px hsl(var(--pos-edge) / 0.2);
 }
 
-body.light .draft-modal-content .player-card.rb {
-  background: linear-gradient(135deg, hsl(155 43% 67% / 0.55) 0%, hsl(155 43% 64% / 0.38) 100%);
-  border: 2px solid hsl(155 30% 49%);
-  color: hsl(155 50% 20%);
-  box-shadow: 0 4px 8px hsl(155 30% 49% / 0.2), inset 0 1px 1px hsl(155 30% 49% / 0.2);
-}
-
-body.light .draft-modal-content .player-card.wr {
-  background: linear-gradient(135deg, hsl(201 54% 59% / 0.55) 0%, hsl(201 54% 56% / 0.38) 100%);
-  border: 2px solid hsl(201 54% 49%);
-  color: hsl(201 50% 20%);
-  box-shadow: 0 4px 8px hsl(201 54% 49% / 0.2), inset 0 1px 1px hsl(201 54% 49% / 0.2);
-}
-
-body.light .draft-modal-content .player-card.te {
-  background: linear-gradient(135deg, hsl(30 61% 60% / 0.55) 0%, hsl(30 61% 57% / 0.38) 100%);
-  border: 2px solid hsl(30 61% 49%);
-  color: hsl(30 50% 20%);
-  box-shadow: 0 4px 8px hsl(30 61% 49% / 0.2), inset 0 1px 1px hsl(30 61% 49% / 0.2);
-}
-
-body.light .draft-modal-content .player-card.dst {
-  background: linear-gradient(135deg, hsl(12 86% 59% / 0.55) 0%, hsl(12 86% 56% / 0.38) 100%);
-  border: 2px solid hsl(12 86% 49%);
-  color: hsl(12 50% 20%);
-  box-shadow: 0 4px 8px hsl(12 86% 49% / 0.2), inset 0 1px 1px hsl(12 86% 49% / 0.2);
-}
-
-body.light .draft-modal-content .player-card.k {
-  background: linear-gradient(135deg, hsl(280 60% 55% / 0.55) 0%, hsl(280 60% 50% / 0.38) 100%);
-  border: 2px solid hsl(280 60% 45%);
-  color: hsl(280 50% 20%);
-  box-shadow: 0 4px 8px hsl(280 60% 45% / 0.2), inset 0 1px 1px hsl(280 60% 45% / 0.2);
-}
-
-body.light .draft-modal-content .player-card.default {
-  background: linear-gradient(135deg, hsl(var(--muted) / 0.75) 0%, hsl(var(--muted) / 0.55) 100%);
-  border: 2px solid hsl(var(--border));
-  color: hsl(var(--foreground));
-  box-shadow: 0 2px 6px hsl(var(--foreground) / 0.08);
-}
-
-/* Dark mode styles */
 body.dark .draftmodal-player-name,
 body.dark .player-info {
   color: hsl(var(--foreground));
 }
 
-/* Glass cards by position – lighter body for larger cards (dark) */
-body.dark .draft-modal-content .player-card.qb {
-  background: linear-gradient(135deg, hsl(339 44% 52% / 0.42) 0%, hsl(339 44% 49% / 0.28) 100%);
-  border: 2px solid hsl(339 44% 49%);
-  color: hsl(339 30% 90%);
-  box-shadow: 0 4px 8px hsl(339 44% 49% / 0.25), inset 0 1px 1px hsl(339 44% 49% / 0.3);
-}
-
-body.dark .draft-modal-content .player-card.rb {
-  background: linear-gradient(135deg, hsl(155 30% 52% / 0.42) 0%, hsl(155 30% 49% / 0.28) 100%);
-  border: 2px solid hsl(155 30% 49%);
-  color: hsl(155 30% 90%);
-  box-shadow: 0 4px 8px hsl(155 30% 49% / 0.25), inset 0 1px 1px hsl(155 30% 49% / 0.3);
-}
-
-body.dark .draft-modal-content .player-card.wr {
-  background: linear-gradient(135deg, hsl(201 54% 52% / 0.42) 0%, hsl(201 54% 49% / 0.28) 100%);
-  border: 2px solid hsl(201 54% 49%);
-  color: hsl(201 30% 90%);
-  box-shadow: 0 4px 8px hsl(201 54% 49% / 0.25), inset 0 1px 1px hsl(201 54% 49% / 0.3);
-}
-
-body.dark .draft-modal-content .player-card.te {
-  background: linear-gradient(135deg, hsl(30 61% 52% / 0.42) 0%, hsl(30 61% 49% / 0.28) 100%);
-  border: 2px solid hsl(30 61% 49%);
-  color: hsl(30 30% 90%);
-  box-shadow: 0 4px 8px hsl(30 61% 49% / 0.25), inset 0 1px 1px hsl(30 61% 49% / 0.3);
-}
-
-body.dark .draft-modal-content .player-card.dst {
-  background: linear-gradient(135deg, hsl(12 86% 52% / 0.42) 0%, hsl(12 86% 49% / 0.28) 100%);
-  border: 2px solid hsl(12 86% 49%);
-  color: hsl(12 30% 90%);
-  box-shadow: 0 4px 8px hsl(12 86% 49% / 0.25), inset 0 1px 1px hsl(12 86% 49% / 0.3);
-}
-
-body.dark .draft-modal-content .player-card.k {
-  background: linear-gradient(135deg, hsl(280 60% 53% / 0.42) 0%, hsl(280 60% 50% / 0.28) 100%);
-  border: 2px solid hsl(280 60% 50%);
-  color: hsl(280 30% 90%);
-  box-shadow: 0 4px 8px hsl(280 60% 50% / 0.25), inset 0 1px 1px hsl(280 60% 50% / 0.3);
-}
-
-body.dark .draft-modal-content .player-card.default {
-  background: linear-gradient(135deg, hsl(var(--muted) / 0.62) 0%, hsl(var(--muted) / 0.42) 100%);
-  border: 2px solid hsl(var(--border));
-  color: hsl(var(--foreground));
-  box-shadow: 0 2px 6px hsl(var(--foreground) / 0.1);
+body.dark .draft-modal-content .player-card.pos-glass {
+  background: linear-gradient(135deg, hsl(var(--pos-edge) / 0.42) 0%, hsl(var(--pos-edge) / 0.28) 100%);
+  border: 2px solid hsl(var(--pos-edge));
+  color: hsl(var(--pos-ink));
+  box-shadow: 0 4px 8px hsl(var(--pos-edge) / 0.25), inset 0 1px 1px hsl(var(--pos-edge) / 0.3);
 }
 
 .modal-title {

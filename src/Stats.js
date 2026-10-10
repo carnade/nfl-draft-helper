@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import "./Stats.css";
 import { getDvpColor } from "./dvpColor";
+import { positionClass } from "./positionColors";
 
 const mock = process.env.REACT_APP_MOCK === "true";
 const BASE_URL = mock
@@ -331,7 +332,7 @@ function PlayersTable({ players, advancedData, onTeamClick, position, perGame })
                   );
                 }
                 if (c.key === "position") {
-                  return <td key={c.key} className={`${c.cls || ""} pos-${p.position?.toLowerCase()}`}>{p.position}</td>;
+                  return <td key={c.key} className={`${c.cls || ""} ${positionClass(p.position)}`}>{p.position}</td>;
                 }
                 const raw = p[c.key];
                 const isNum = c.cls && c.cls.includes("num");
@@ -409,7 +410,7 @@ function TeamDetailTable({ players, advancedData }) {
             return (
               <tr key={p.sleeper_id}>
                 <td>{p.name}</td>
-                <td className={`pos-col pos-${p.position?.toLowerCase()}`}>{p.position}</td>
+                <td className={`pos-col ${positionClass(p.position)}`}>{p.position}</td>
                 <td className="num">{fmt(p.fantasy_points_ppr)}</td>
                 <td className="num">{fmtPct(p.snap_pct_avg)}</td>
                 <td className="num">{fmt(p.expected_fp_avg)}</td>

@@ -135,6 +135,17 @@
   font-weight: 500;
 }
 
+/* The pill sits beside the name rather than the old faded abbreviation. */
+.ss-pos-pill {
+  margin-left: 6px;
+}
+
+/* A bench player fits their own slot and a flex; the two chips need a gap. */
+.ss-slot-pills {
+  display: inline-flex;
+  gap: 3px;
+}
+
 .ss-pos {
   font-size: 0.72rem;
   opacity: 0.6;
