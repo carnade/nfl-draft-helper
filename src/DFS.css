@@ -162,8 +162,11 @@ body.dark .check-results-button:hover {
   border-bottom: 1px solid hsl(var(--border));
 }
 
+/* Tighter top and bottom than the sides. The kickoff line under each name
+   added height these rows did not have, and the position badge already sets a
+   floor on how short a row can get. */
 .dfs-team-table tbody td {
-  padding: 0.625rem;
+  padding: 0.425rem 0.625rem;
   color: hsl(var(--foreground));
   border-bottom: 1px solid hsl(var(--border));
 }
