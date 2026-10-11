@@ -5,6 +5,8 @@ import {
   findIrIssues,
   preselectIds,
   selectionIsFull,
+  irReturnIssueFor,
+  findIrReturnIssues,
 } from "./irIssues";
 
 // Shaped like the league objects LeagueList builds.
@@ -15,17 +17,23 @@ function league({
   flags = {},
   reserve = [],
   bench = [],
+  starters = [],
+  taxi = [],
   rosterId = 7,
+  // Active capacity. Only the length matters.
+  rosterPositions = Array.from({ length: 25 }, (_, i) => `slot${i}`),
 } = {}) {
   return {
     league_id: id,
     name,
     settings: { reserve_slots: slots, ...flags },
-    userRoster: { reserve, uniquePlayers: bench, starters: [], taxi: [], rosterId },
+    roster_positions: rosterPositions,
+    userRoster: { reserve, uniquePlayers: bench, starters, taxi, rosterId },
   };
 }
 
 const PLAYERS = {
+  healthy: { first_name: "Fully", last_name: "Fit", position: "WR", injury_status: null },
   ir1: { first_name: "Xavier", last_name: "Legette", position: "WR", injury_status: "IR" },
   ir2: { first_name: "Michael", last_name: "Pittman", position: "WR", injury_status: "IR" },
   pup: { first_name: "Pup", last_name: "Player", position: "RB", injury_status: "PUP" },
@@ -139,6 +147,33 @@ describe("irIssueFor", () => {
     expect(issue.oversubscribed).toBe(true);
   });
 
+  it("never offers a taxi-squad player, however the bench list was built", () => {
+    // uniquePlayers already subtracts taxi, so a correct page never puts one
+    // here. The rule says so itself now: Sleeper will not take a taxi player
+    // into a reserve slot, and the taxi spot is what makes them cheap to hold.
+    const l = league({ slots: 5, bench: ["ir1", "ir2"], taxi: ["ir1"] });
+    const issue = irIssueFor(l, getPlayer);
+    expect(issue.candidates.map((c) => c.id)).toEqual(["ir2"]);
+  });
+
+  it("never offers somebody already on reserve, or a starter", () => {
+    const l = league({
+      slots: 5,
+      bench: ["ir1", "ir2", "pup"],
+      reserve: ["ir1"],
+      starters: ["pup"],
+    });
+    expect(irIssueFor(l, getPlayer).candidates.map((c) => c.id)).toEqual(["ir2"]);
+  });
+
+  it("says nothing at all when the only candidate is on taxi", () => {
+    // Dårarnas Kamp (9) in October 2026: three reserve slots free and the only
+    // IR player on the roster sitting on the taxi squad.
+    expect(
+      irIssueFor(league({ slots: 5, bench: ["ir1"], taxi: ["ir1"] }), getPlayer)
+    ).toBeNull();
+  });
+
   it("survives a player the page has no metadata for", () => {
     expect(irIssueFor(league({ slots: 5, bench: ["nobody"] }), () => undefined)).toBeNull();
   });
@@ -182,5 +217,101 @@ describe("preselectIds and selectionIsFull", () => {
   it("closes the rest off once the slots are spoken for", () => {
     expect(selectionIsFull(["a", "b"], 2)).toBe(true);
     expect(selectionIsFull(["a"], 2)).toBe(false);
+  });
+});
+
+describe("irReturnIssueFor", () => {
+  it("flags somebody on reserve who has recovered", () => {
+    const issue = irReturnIssueFor(
+      league({ reserve: ["healthy", "ir1"], bench: [] }),
+      getPlayer
+    );
+    expect(issue.candidates).toHaveLength(1);
+    expect(issue.candidates[0]).toMatchObject({ id: "healthy", status: null });
+  });
+
+  it("flags one who is merely questionable, which a reserve slot does not accept", () => {
+    const issue = irReturnIssueFor(league({ reserve: ["qn"] }), getPlayer);
+    expect(issue.candidates[0].id).toBe("qn");
+  });
+
+  it("leaves alone anybody still entitled to the slot", () => {
+    expect(irReturnIssueFor(league({ reserve: ["ir1", "pup"] }), getPlayer)).toBeNull();
+  });
+
+  it("respects a league that does allow Out on reserve", () => {
+    expect(
+      irReturnIssueFor(
+        league({ reserve: ["out"], flags: { reserve_allow_out: 1 } }),
+        getPlayer
+      )
+    ).toBeNull();
+    // ...and flags the same player where the league does not.
+    expect(irReturnIssueFor(league({ reserve: ["out"] }), getPlayer).candidates[0].id).toBe(
+      "out"
+    );
+  });
+
+  it("does not mistake a player it has no record of for a recovered one", () => {
+    // This is the failure that matters. The other direction fails safe when
+    // metadata is missing; this one would report every reserve slot as a
+    // problem while the page was still loading.
+    expect(irReturnIssueFor(league({ reserve: ["nobody"] }), () => undefined)).toBeNull();
+  });
+
+  it("reports it even with nowhere to put them", () => {
+    // Unlike the move to reserve, this is worth saying when it cannot be
+    // acted on: the roster is wrong either way.
+    const full = Array.from({ length: 25 }, (_, i) => `p${i}`);
+    const issue = irReturnIssueFor(
+      league({ reserve: ["healthy"], starters: full }),
+      getPlayer
+    );
+    expect(issue).not.toBeNull();
+    expect(issue.freeBench).toBe(0);
+    expect(issue.blocked).toBe(true);
+  });
+
+  it("is not blocked when the bench has room", () => {
+    const issue = irReturnIssueFor(
+      league({ reserve: ["healthy"], bench: ["fit"] }),
+      getPlayer
+    );
+    expect(issue.freeBench).toBeGreaterThan(0);
+    expect(issue.blocked).toBe(false);
+  });
+
+  it("does not count the reserve players themselves against the bench", () => {
+    // They are on `players` but outside roster_positions, so they must not
+    // make the roster look fuller than it is.
+    const issue = irReturnIssueFor(
+      league({
+        rosterPositions: Array.from({ length: 10 }, (_, i) => `s${i}`),
+        starters: ["a", "b", "c"],
+        bench: ["d", "e"],
+        reserve: ["healthy"],
+        taxi: ["t1", "t2"],
+      }),
+      getPlayer
+    );
+    expect(issue.freeBench).toBe(5);
+  });
+});
+
+describe("findIrReturnIssues", () => {
+  it("returns only the leagues holding somebody who should not be there", () => {
+    const issues = findIrReturnIssues(
+      [
+        league({ id: "A", name: "Recovered", reserve: ["healthy"] }),
+        league({ id: "B", name: "All proper", reserve: ["ir1", "pup"] }),
+        league({ id: "C", name: "Empty reserve", reserve: [] }),
+      ],
+      getPlayer
+    );
+    expect(issues.map((i) => i.leagueName)).toEqual(["Recovered"]);
+  });
+
+  it("is empty rather than undefined with no leagues", () => {
+    expect(findIrReturnIssues(null, getPlayer)).toEqual([]);
   });
 });

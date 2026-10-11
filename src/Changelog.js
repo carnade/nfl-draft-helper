@@ -48,6 +48,13 @@ export default function Changelog() {
         "It only clears when the player actually went in \u2014 if there was no slot left or no room under the cap, what you typed stays put.",
         "My Team shows when each player kicks off, and when the first of them does. That first kickoff is when the lineup starts locking, so it sits beside the heading where it is hard to miss.",
         "Those times are in your own timezone rather than the American one the salary data quotes. A Sunday night game reads as Monday morning here, which is when it actually is.",
+      title: "Players stuck on injured reserve",
+      items: [
+        "A second card above the league table points out the opposite problem: somebody sitting on injured reserve who has recovered and no longer qualifies for the slot.",
+        "This one is reported even when it cannot be fixed. Moving a player back needs a free bench spot, and if there is none the card still says so \u2014 the roster is wrong either way, and a league that needs a drop is worth knowing about.",
+        "In that case the players are listed but greyed out, with a line saying why.",
+        "Which players count as no longer qualifying follows the same league rules as the other direction, so a league that allows Out players on reserve will not flag them.",
+        "Both cards list the first few leagues and offer to show the rest. With enough teams this can apply in dozens of leagues at once, and a card naming all of them was unreadable.",
       ],
     },
     {
