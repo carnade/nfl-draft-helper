@@ -47,6 +47,7 @@ export default function Changelog() {
         "Typing a name to find a player now clears the search as soon as that player is added, so the next search starts from an empty box instead of needing the old one deleted first.",
         "It only clears when the player actually went in \u2014 if there was no slot left or no room under the cap, what you typed stays put.",
         "My Team shows when each player kicks off, and when the first of them does. That first kickoff is when the lineup starts locking, so it sits beside the heading where it is hard to miss.",
+        "Those times are in your own timezone rather than the American one the salary data quotes. A Sunday night game reads as Monday morning here, which is when it actually is.",
       ],
     },
     {
