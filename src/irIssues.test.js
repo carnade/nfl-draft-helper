@@ -147,6 +147,33 @@ describe("irIssueFor", () => {
     expect(issue.oversubscribed).toBe(true);
   });
 
+  it("never offers a taxi-squad player, however the bench list was built", () => {
+    // uniquePlayers already subtracts taxi, so a correct page never puts one
+    // here. The rule says so itself now: Sleeper will not take a taxi player
+    // into a reserve slot, and the taxi spot is what makes them cheap to hold.
+    const l = league({ slots: 5, bench: ["ir1", "ir2"], taxi: ["ir1"] });
+    const issue = irIssueFor(l, getPlayer);
+    expect(issue.candidates.map((c) => c.id)).toEqual(["ir2"]);
+  });
+
+  it("never offers somebody already on reserve, or a starter", () => {
+    const l = league({
+      slots: 5,
+      bench: ["ir1", "ir2", "pup"],
+      reserve: ["ir1"],
+      starters: ["pup"],
+    });
+    expect(irIssueFor(l, getPlayer).candidates.map((c) => c.id)).toEqual(["ir2"]);
+  });
+
+  it("says nothing at all when the only candidate is on taxi", () => {
+    // Dårarnas Kamp (9) in October 2026: three reserve slots free and the only
+    // IR player on the roster sitting on the taxi squad.
+    expect(
+      irIssueFor(league({ slots: 5, bench: ["ir1"], taxi: ["ir1"] }), getPlayer)
+    ).toBeNull();
+  });
+
   it("survives a player the page has no metadata for", () => {
     expect(irIssueFor(league({ slots: 5, bench: ["nobody"] }), () => undefined)).toBeNull();
   });

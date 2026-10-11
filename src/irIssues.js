@@ -63,9 +63,22 @@ export function irIssueFor(league, getPlayer) {
   if (!freeSlots) return null;
 
   const allowed = reserveEligibleStatuses(league?.settings);
-  const bench = league?.userRoster?.uniquePlayers || [];
+  const roster = league?.userRoster || {};
 
-  const candidates = bench
+  // Said here rather than relied on from elsewhere. uniquePlayers is already
+  // built by subtracting starters, reserve and taxi, so this changes nothing
+  // today — but that is a property of how the page happens to derive the list,
+  // not of this rule, and a taxi player must never be offered a reserve slot:
+  // Sleeper will not take them, and the taxi spot is what makes them cheap to
+  // hold in the first place.
+  const unavailable = new Set(
+    [...(roster.taxi || []), ...(roster.reserve || []), ...(roster.starters || [])]
+      .filter((id) => id != null)
+      .map(String)
+  );
+
+  const candidates = (roster.uniquePlayers || [])
+    .filter((id) => !unavailable.has(String(id)))
     .map((id) => {
       const info = getPlayer(league.league_id, id) || {};
       const status = info.injury_status;
