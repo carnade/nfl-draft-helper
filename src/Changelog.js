@@ -48,6 +48,7 @@ export default function Changelog() {
         "This one is reported even when it cannot be fixed. Moving a player back needs a free bench spot, and if there is none the card still says so \u2014 the roster is wrong either way, and a league that needs a drop is worth knowing about.",
         "In that case the players are listed but greyed out, with a line saying why.",
         "Which players count as no longer qualifying follows the same league rules as the other direction, so a league that allows Out players on reserve will not flag them.",
+        "Both cards list the first few leagues and offer to show the rest. With enough teams this can apply in dozens of leagues at once, and a card naming all of them was unreadable.",
       ],
     },
     {

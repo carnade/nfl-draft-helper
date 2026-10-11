@@ -171,19 +171,38 @@ ReserveDialog.propTypes = {
   failures: PropTypes.array,
 };
 
+// A manager with sixty teams can have this fire in forty leagues at once, and a
+// card that lists all forty stops being an alert and becomes a wall. Four is
+// enough to see what kind of leagues these are; the rest are a click away.
+const CARD_LEAGUE_LIMIT = 4;
+
 function IssueCard({ headline, issues, detailFor, canEdit, onFix, actionable }) {
+  const [expanded, setExpanded] = useState(false);
+  const shown = expanded ? issues : issues.slice(0, CARD_LEAGUE_LIMIT);
+  const hidden = issues.length - shown.length;
+
   return (
     <div className="li-card">
       <div className="li-card-body">
         <span className="li-card-headline">{headline}</span>
         <ul className="li-card-leagues">
-          {issues.map((i) => (
+          {shown.map((i) => (
             <li key={i.leagueId}>
               <span className="li-card-league">{i.leagueName}</span>
               <span className="li-card-slots">{detailFor(i)}</span>
             </li>
           ))}
         </ul>
+        {(hidden > 0 || expanded) && (
+          <button
+            type="button"
+            className="li-card-more"
+            onClick={() => setExpanded((prev) => !prev)}
+            aria-expanded={expanded}
+          >
+            {expanded ? "show fewer" : `and ${hidden} more`}
+          </button>
+        )}
       </div>
       {!canEdit ? (
         <span

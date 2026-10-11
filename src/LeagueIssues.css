@@ -63,6 +63,22 @@
   color: hsl(var(--foreground) / 0.85);
 }
 
+.li-card-more {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 2px 0;
+  background: none;
+  border: 0;
+  font-size: 0.78rem;
+  color: hsl(var(--muted-foreground));
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.li-card-more:hover {
+  color: hsl(var(--foreground));
+}
+
 .li-card-slots {
   font-size: 0.75rem;
   opacity: 0.8;

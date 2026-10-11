@@ -414,3 +414,57 @@ describe("players who no longer qualify for IR", () => {
     expect(continueButton()).toBeEnabled();
   });
 });
+
+// ── A manager with sixty teams ──
+
+const manyLeagues = (n) =>
+  Array.from({ length: n }, (_, i) => ({
+    leagueId: `M${i}`,
+    leagueName: `League ${String(i).padStart(2, "0")}`,
+    rosterId: i,
+    reserve: [],
+    freeSlots: 2,
+    oversubscribed: false,
+    candidates: [{ id: `p${i}`, name: `Player ${i}`, status: "IR", position: "WR" }],
+  }));
+
+describe("a card with more leagues than fit", () => {
+  const names = () =>
+    screen.getAllByRole("listitem").map((li) => li.querySelector(".li-card-league").textContent);
+
+  it("lists only the first few, and says how many are left", () => {
+    setup({ issues: manyLeagues(39) });
+    expect(names()).toHaveLength(4);
+    expect(screen.getByRole("button", { name: "and 35 more" })).toBeInTheDocument();
+  });
+
+  it("shows them all when asked, and folds back up", () => {
+    setup({ issues: manyLeagues(39) });
+    click(screen.getByRole("button", { name: "and 35 more" }));
+    expect(names()).toHaveLength(39);
+
+    click(screen.getByRole("button", { name: "show fewer" }));
+    expect(names()).toHaveLength(4);
+  });
+
+  it("does not offer an expander when everything already fits", () => {
+    setup({ issues: manyLeagues(3) });
+    expect(names()).toHaveLength(3);
+    expect(screen.queryByRole("button", { name: /more/ })).not.toBeInTheDocument();
+  });
+
+  it("does not offer one at exactly the limit either", () => {
+    setup({ issues: manyLeagues(4) });
+    expect(screen.queryByRole("button", { name: /more/ })).not.toBeInTheDocument();
+  });
+
+  it("still hands every league to the dialog, not just the shown ones", () => {
+    // The cap is about reading the card; it must not quietly limit what gets
+    // fixed.
+    const { onApplyIr } = setup({ issues: manyLeagues(39) });
+    click(fixButton());
+    expect(screen.getAllByRole("checkbox")).toHaveLength(39);
+    click(continueButton());
+    expect(onApplyIr.mock.calls[0][0]).toHaveLength(39);
+  });
+});
