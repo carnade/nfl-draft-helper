@@ -53,7 +53,7 @@ function setup({ issues = [fools, swedish], onApplyIr, ...rest } = {}) {
 describe("the panel", () => {
   it("renders nothing when there is nothing wrong", () => {
     const { container } = render(
-      <LeagueIssues issues={[]} canEdit onApplyIr={jest.fn()} />
+      <LeagueIssues issues={[]} returnIssues={[]} canEdit onApplyIr={jest.fn()} />
     );
     expect(container).toBeEmptyDOMElement();
   });
@@ -266,5 +266,151 @@ describe("the dialog", () => {
     expect(block.getByText("IR")).toBeInTheDocument();
     expect(block.getByText("PUP")).toBeInTheDocument();
     expect(block.getAllByTitle("WR")).toHaveLength(2);
+  });
+});
+
+// ── The other direction: somebody on IR who no longer qualifies ──
+
+const recovered = {
+  leagueId: "R1",
+  leagueName: "Trötta Farsor Dynasty",
+  rosterId: 9,
+  reserve: ["keep1", "gone1"],
+  freeBench: 2,
+  blocked: false,
+  candidates: [{ id: "gone1", name: "Travis Etienne", status: null, position: "RB" }],
+};
+
+const noRoom = {
+  leagueId: "R2",
+  leagueName: "Money Mills (2)",
+  rosterId: 4,
+  reserve: ["keep2", "gone2"],
+  freeBench: 0,
+  blocked: true,
+  candidates: [{ id: "gone2", name: "Zay Flowers", status: "Questionable", position: "WR" }],
+};
+
+const reviewButton = () => screen.getByRole("button", { name: /Fix|Review/ });
+
+function setupReturn({ returnIssues = [recovered], onApplyReturn, ...rest } = {}) {
+  const apply = onApplyReturn || jest.fn().mockResolvedValue([]);
+  render(
+    <LeagueIssues
+      issues={[]}
+      returnIssues={returnIssues}
+      canEdit
+      onApplyIr={jest.fn()}
+      onApplyReturn={apply}
+      {...rest}
+    />
+  );
+  return { onApplyReturn: apply };
+}
+
+describe("players who no longer qualify for IR", () => {
+  it("gets its own card, separate from the other direction", () => {
+    render(
+      <LeagueIssues
+        issues={[fools]}
+        returnIssues={[recovered]}
+        canEdit
+        onApplyIr={jest.fn()}
+        onApplyReturn={jest.fn()}
+      />
+    );
+    expect(screen.getByText("2 players could be on injured reserve")).toBeInTheDocument();
+    expect(
+      screen.getByText("1 player on injured reserve no longer qualifies")
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Fix|Review/ })).toHaveLength(2);
+  });
+
+  it("uses the plural properly", () => {
+    setupReturn({
+      returnIssues: [
+        {
+          ...recovered,
+          candidates: [
+            { id: "a", name: "One", status: null, position: "RB" },
+            { id: "b", name: "Two", status: null, position: "WR" },
+          ],
+        },
+      ],
+    });
+    expect(
+      screen.getByText("2 players on injured reserve no longer qualify")
+    ).toBeInTheDocument();
+  });
+
+  it("is reported even with nowhere to put them", () => {
+    // Unlike the other direction, this is worth saying when it cannot be
+    // acted on — the roster is wrong either way.
+    setupReturn({ returnIssues: [noRoom] });
+    expect(screen.getByText("no bench room")).toBeInTheDocument();
+    // Nothing to do, so the button says so.
+    expect(screen.getByRole("button", { name: "Review" })).toBeInTheDocument();
+  });
+
+  it("shows a blocked league's players disabled, with the reason", () => {
+    setupReturn({ returnIssues: [noRoom] });
+    click(reviewButton());
+
+    expect(screen.getAllByRole("checkbox").every((b) => b.disabled)).toBe(true);
+    expect(screen.getAllByRole("checkbox").every((b) => !b.checked)).toBe(true);
+    expect(
+      screen.getByText(/no free bench spot in this league/)
+    ).toBeInTheDocument();
+    expect(continueButton()).toBeDisabled();
+  });
+
+  it("pre-ticks up to the free bench spots where there is room", () => {
+    setupReturn();
+    click(reviewButton());
+    expect(screen.getAllByRole("checkbox").every((b) => b.checked)).toBe(true);
+    expect(continueButton()).toBeEnabled();
+  });
+
+  it("calls the return handler, not the one for the other direction", () => {
+    const onApplyIr = jest.fn();
+    const onApplyReturn = jest.fn().mockResolvedValue([]);
+    render(
+      <LeagueIssues
+        issues={[]}
+        returnIssues={[recovered]}
+        canEdit
+        onApplyIr={onApplyIr}
+        onApplyReturn={onApplyReturn}
+      />
+    );
+    click(reviewButton());
+    click(continueButton());
+
+    expect(onApplyIr).not.toHaveBeenCalled();
+    const picks = onApplyReturn.mock.calls[0][0];
+    expect(picks).toHaveLength(1);
+    expect(picks[0].issue.leagueName).toBe("Trötta Farsor Dynasty");
+    expect(picks[0].playerIds).toEqual(["gone1"]);
+    // The handler needs the current reserve to subtract from.
+    expect(picks[0].issue.reserve).toEqual(["keep1", "gone1"]);
+  });
+
+  it("shows a recovered player as fit rather than blank", () => {
+    setupReturn();
+    click(reviewButton());
+    expect(within(screen.getByRole("dialog")).getByText("fit")).toBeInTheDocument();
+  });
+
+  it("mixes a blocked league and an actionable one in one dialog", () => {
+    setupReturn({ returnIssues: [recovered, noRoom] });
+    click(reviewButton());
+
+    const ok = within(leagueBlock("Trötta Farsor Dynasty")).getAllByRole("checkbox");
+    const blocked = within(leagueBlock("Money Mills (2)")).getAllByRole("checkbox");
+    expect(ok[0].checked).toBe(true);
+    expect(ok[0]).toBeEnabled();
+    expect(blocked[0]).toBeDisabled();
+    // The one that can move still can.
+    expect(continueButton()).toBeEnabled();
   });
 });
