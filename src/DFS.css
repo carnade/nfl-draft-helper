@@ -94,6 +94,39 @@ body.dark .check-results-button:hover {
   flex-shrink: 0;
 }
 
+/* The heading and the lock time share a line, so the time costs no height. */
+.dfs-team-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 0.9375rem;
+}
+
+.dfs-team-head h2 {
+  margin: 0;
+}
+
+/* When the lineup locks. The first game to kick off is the one that matters —
+   after it, that player cannot be changed. */
+.dfs-first-kickoff {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #d08a2f;
+  white-space: nowrap;
+}
+
+/* Under the name rather than beside it: names here run long, and a second
+   short line reads better than a wrap in the middle of one. */
+.dfs-kickoff {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.3;
+}
+
 .dfs-team-section h2 {
   margin: 0 0 0.9375rem 0;
   font-size: 1.5rem;

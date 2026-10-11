@@ -7,6 +7,7 @@ import { PrivilegedOnly, loadSleeperAuth } from './auth';
 import { getCurrentWeek, peekCurrentWeek } from './currentWeekCache';
 import { effectiveUserName, rememberUserName } from './settingsUser';
 import './DFS.css';
+import { kickoffLabel, earliestKickoff } from "./dfsKickoff";
 import {
   positionClass,
   positionFill,
@@ -1197,6 +1198,9 @@ function DFS({ userName }) {
     });
   };
 
+  // Whoever on this roster plays first — the lineup is locked from then on.
+  const firstKickoff = earliestKickoff(Object.values(roster));
+
   const removePlayerFromRoster = (slotKey) => {
     setRoster(prev => ({ ...prev, [slotKey]: null }));
   };
@@ -1305,15 +1309,21 @@ function DFS({ userName }) {
         setPlayerToAddAfterConfirm(player);
         setShowGameStartedModal(true);
       } else {
-        // Add to roster normally
-      addPlayerToRoster(player);
+        // Asked before adding, not after: addPlayerToRoster silently does
+        // nothing when there is no slot or no cap room, and the search should
+        // only clear when the player actually landed somewhere.
+        const added = canAddPlayer(player);
+        addPlayerToRoster(player);
+        if (added) setNameFilter('');
       }
     }
   };
 
   const handleConfirmAddAfterGameStart = () => {
     if (playerToAddAfterConfirm) {
+      const added = canAddPlayer(playerToAddAfterConfirm, true);
       addPlayerToRoster(playerToAddAfterConfirm);
+      if (added) setNameFilter('');
       setShowGameStartedModal(false);
       setPlayerToAddAfterConfirm(null);
     }
@@ -1404,7 +1414,19 @@ function DFS({ userName }) {
 
       <div className="dfs-top-section">
         <div className="dfs-team-section">
-          <h2>My Team</h2>
+          <div className="dfs-team-head">
+            <h2>My Team</h2>
+            {firstKickoff && (
+              <span
+                className="dfs-first-kickoff"
+                title={`${firstKickoff.name} plays first${
+                  firstKickoff.game_month_day ? ` on ${firstKickoff.game_month_day}` : ""
+                }`}
+              >
+                first kickoff {kickoffLabel(firstKickoff)}
+              </span>
+            )}
+          </div>
           <table className="dfs-team-table">
             <thead>
               <tr>
@@ -1434,7 +1456,16 @@ function DFS({ userName }) {
                     </div>
                   </td>
                   <td className="player-name-cell">
-                    {roster[key] ? roster[key].name : '-'}
+                    {roster[key] ? (
+                      <>
+                        {roster[key].name}
+                        {kickoffLabel(roster[key]) && (
+                          <span className="dfs-kickoff">{kickoffLabel(roster[key])}</span>
+                        )}
+                      </>
+                    ) : (
+                      '-'
+                    )}
                   </td>
                   <td className="salary-cell">
                     {roster[key] ? `$${roster[key].salary.toLocaleString()}` : '-'}
