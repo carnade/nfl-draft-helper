@@ -13,6 +13,8 @@
 // "Out" player is not IR-eligible in any of them. Offering one would produce a
 // move Sleeper rejects.
 
+import { emptyBenchSlots } from "./rosterSlots";
+
 export const BASE_RESERVE_STATUSES = ["IR", "PUP"];
 
 // league.settings flag -> the injury_status it additionally permits.
@@ -61,9 +63,22 @@ export function irIssueFor(league, getPlayer) {
   if (!freeSlots) return null;
 
   const allowed = reserveEligibleStatuses(league?.settings);
-  const bench = league?.userRoster?.uniquePlayers || [];
+  const roster = league?.userRoster || {};
 
-  const candidates = bench
+  // Said here rather than relied on from elsewhere. uniquePlayers is already
+  // built by subtracting starters, reserve and taxi, so this changes nothing
+  // today — but that is a property of how the page happens to derive the list,
+  // not of this rule, and a taxi player must never be offered a reserve slot:
+  // Sleeper will not take them, and the taxi spot is what makes them cheap to
+  // hold in the first place.
+  const unavailable = new Set(
+    [...(roster.taxi || []), ...(roster.reserve || []), ...(roster.starters || [])]
+      .filter((id) => id != null)
+      .map(String)
+  );
+
+  const candidates = (roster.uniquePlayers || [])
+    .filter((id) => !unavailable.has(String(id)))
     .map((id) => {
       const info = getPlayer(league.league_id, id) || {};
       const status = info.injury_status;
@@ -119,4 +134,75 @@ export function preselectIds(candidates = [], freeSlots = 0) {
  */
 export function selectionIsFull(selectedIds = [], freeSlots = 0) {
   return selectedIds.length >= freeSlots;
+}
+
+/**
+ * The other direction: somebody on reserve who no longer qualifies to be there.
+ *
+ * A player who has recovered keeps occupying a reserve slot they are not
+ * entitled to, which Sleeper can refuse at lock. Unlike the move *to* reserve,
+ * this is worth saying even when it cannot be acted on — the roster is wrong
+ * either way, and knowing is the point.
+ *
+ * Coming off reserve means going back onto the active roster, so it needs a
+ * free bench spot, which is the same count the Empty bench column shows.
+ */
+export function irReturnIssueFor(league, getPlayer) {
+  const allowed = reserveEligibleStatuses(league?.settings);
+  const reserve = league?.userRoster?.reserve || [];
+
+  const candidates = reserve
+    .map((id) => {
+      const info = getPlayer(league.league_id, id);
+      // No record at all means the page has not loaded this player yet, which
+      // is not the same as a player with nothing wrong with them. Flagging it
+      // would report every reserve slot as a problem while the page settles.
+      if (!info) return null;
+      const status = info.injury_status || null;
+      if (status && allowed.has(status)) return null;
+      return {
+        id,
+        status,
+        position: info.position || null,
+        name:
+          [info.first_name, info.last_name].filter(Boolean).join(" ").trim() || String(id),
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  if (candidates.length === 0) return null;
+
+  const userRoster = league?.userRoster || {};
+  const freeBench =
+    emptyBenchSlots({
+      rosterPositions: league?.roster_positions,
+      players: [
+        ...(userRoster.starters || []),
+        ...(userRoster.uniquePlayers || []),
+        ...(userRoster.reserve || []),
+        ...(userRoster.taxi || []),
+      ],
+      reserve: userRoster.reserve,
+      taxi: userRoster.taxi,
+    }) ?? 0;
+
+  return {
+    leagueId: league.league_id,
+    leagueName: league.name,
+    rosterId: userRoster.rosterId ?? null,
+    reserve,
+    freeBench,
+    candidates,
+    // Reported anyway. There is nowhere to put them, and that is the thing
+    // worth knowing rather than a reason to stay quiet.
+    blocked: freeBench === 0,
+  };
+}
+
+/** Every league holding somebody on reserve who should not be there. */
+export function findIrReturnIssues(leagues, getPlayer) {
+  return (leagues || [])
+    .map((league) => irReturnIssueFor(league, getPlayer))
+    .filter(Boolean);
 }

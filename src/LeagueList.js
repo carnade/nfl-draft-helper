@@ -30,7 +30,7 @@ import "./TableStyles.css";
 import PositionPill from "./PositionPill";
 import { emptyBenchSlots } from "./rosterSlots";
 import LeagueIssues from "./LeagueIssues";
-import { findIrIssues } from "./irIssues";
+import { findIrIssues, findIrReturnIssues } from "./irIssues";
 import { useSleeperAuth } from "./auth";
 import { positionClass } from "./positionColors";
 
@@ -111,13 +111,17 @@ async function submitReserve({ leagueId, rosterId, reserve, token, signal }) {
   const updated = json?.data?.roster_update_reserve;
   if (!updated?.reserve) throw new Error("Sleeper returned no roster");
 
-  // Confirm it actually took. A silently ignored write would otherwise look
-  // like a success and the page would show a change that never happened.
+  // Confirm it actually took, in both directions. A silently ignored write
+  // would otherwise look like success and the page would show a change that
+  // never happened — and for a removal, checking only that the ones we sent
+  // are present would pass while nobody had actually come off.
   const got = new Set(updated.reserve.map(String));
-  const missing = reserve.filter((id) => !got.has(String(id)));
-  if (missing.length) {
+  const want = new Set(reserve.map(String));
+  const missing = [...want].filter((id) => !got.has(id));
+  const stillThere = [...got].filter((id) => !want.has(id));
+  if (missing.length || stillThere.length) {
     throw new Error(
-      `Sleeper accepted the request but did not move ${missing.length} of them. The roster has not changed.`
+      "Sleeper accepted the request but the reserve list came back different. The roster has not changed."
     );
   }
   return updated;
@@ -1090,6 +1094,81 @@ function LeagueList() {
     [auth]
   );
 
+  const irReturnIssues = useMemo(
+    () =>
+      findIrReturnIssues(
+        leagues,
+        (leagueId, playerId) => playerData[leagueId]?.players?.[playerId]
+      ),
+    [leagues, playerData]
+  );
+
+  const applyReturn = useCallback(
+    async (picks) => {
+      const results = [];
+      const applied = [];
+
+      for (const { issue, playerIds } of picks) {
+        if (!playerIds.length) continue;
+        try {
+          const moved = new Set(playerIds.map(String));
+          // The whole list is sent, not a delta — here that means the ones
+          // staying put, with the selected players taken out of it.
+          const reserve = issue.reserve.filter((id) => !moved.has(String(id)));
+          await submitReserve({
+            leagueId: issue.leagueId,
+            rosterId: issue.rosterId,
+            reserve,
+            token: auth?.token,
+          });
+          applied.push({ leagueId: issue.leagueId, reserve, playerIds });
+          results.push({ leagueId: issue.leagueId, leagueName: issue.leagueName });
+        } catch (err) {
+          results.push({
+            leagueId: issue.leagueId,
+            leagueName: issue.leagueName,
+            error: err?.message || String(err),
+          });
+        }
+      }
+
+      // Coming off reserve means going back onto the bench, which is the
+      // mirror of applyIr: the roster spot they now take up is one the Empty
+      // bench column was counting as free.
+      if (applied.length) {
+        setLeagues((prev) =>
+          prev.map((l) => {
+            const change = applied.find((a) => a.leagueId === l.league_id);
+            if (!change) return l;
+            const userRoster = {
+              ...l.userRoster,
+              reserve: change.reserve,
+              uniquePlayers: [...(l.userRoster.uniquePlayers || []), ...change.playerIds],
+            };
+            return {
+              ...l,
+              userRoster,
+              emptyBenchSlots: emptyBenchSlots({
+                rosterPositions: l.roster_positions,
+                players: [
+                  ...userRoster.starters,
+                  ...userRoster.uniquePlayers,
+                  ...userRoster.reserve,
+                  ...userRoster.taxi,
+                ],
+                reserve: userRoster.reserve,
+                taxi: userRoster.taxi,
+              }),
+            };
+          })
+        );
+      }
+
+      return results;
+    },
+    [auth]
+  );
+
   const getOrdinalSuffix = (num) => {
     if (!num) return '';
     const j = num % 10;
@@ -1610,8 +1689,10 @@ function LeagueList() {
         {/* Left Side: Leagues */}
         <LeagueIssues
           issues={irIssues}
+          returnIssues={irReturnIssues}
           canEdit={canEditRosters}
           onApplyIr={applyIr}
+          onApplyReturn={applyReturn}
         />
 
         <div className="league-list-container">

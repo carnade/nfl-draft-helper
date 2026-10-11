@@ -4,20 +4,40 @@ import "./LeagueIssues.css";
 import PositionPill from "./PositionPill";
 import { preselectIds, selectionIsFull } from "./irIssues";
 
-// Things worth fixing across every league — one card, however many leagues are
-// affected, and one dialog that clears all of them in a single pass.
+// Things worth fixing across every league. One card per kind of problem,
+// however many leagues it affects, and one dialog that clears all of them in a
+// single pass.
 //
-// Only one kind so far: somebody on the bench who could be on injured reserve
-// while that roster has a reserve slot free.
+// Two kinds so far, in opposite directions: somebody on the bench who could be
+// on injured reserve, and somebody on injured reserve who no longer qualifies
+// to be there.
 
 const plural = (n, one, many) => (n === 1 ? one : `${n} ${many}`);
 
-function IrFixDialog({ issues, onClose, onConfirm, busy, failures }) {
-  // Selection is per league, because the slot limit is: four free slots in one
-  // league says nothing about another.
+/**
+ * The selection dialog, shared by both directions.
+ *
+ * `limitFor` is what makes it work for both: the number of players this league
+ * can take. A blocked league returns 0, and everything then falls out of the
+ * same rule that stops you over-filling a league — nothing pre-ticked, every
+ * box closed off.
+ */
+function ReserveDialog({
+  issues,
+  title,
+  intro,
+  limitFor,
+  limitText,
+  blockedNote,
+  onClose,
+  onConfirm,
+  busy,
+  failures,
+}) {
+  // Per league, because one league's limit says nothing about another's.
   const [selected, setSelected] = useState(() =>
     Object.fromEntries(
-      issues.map((i) => [i.leagueId, preselectIds(i.candidates, i.freeSlots)])
+      issues.map((i) => [i.leagueId, preselectIds(i.candidates, limitFor(i))])
     )
   );
 
@@ -46,38 +66,37 @@ function IrFixDialog({ issues, onClose, onConfirm, busy, failures }) {
         className="li-modal"
         role="dialog"
         aria-modal="true"
-        aria-label="Move players to injured reserve"
+        aria-label={title}
         onClick={(e) => e.stopPropagation()}
       >
         <header className="li-modal-head">
-          <h2 className="li-modal-title">Move to injured reserve</h2>
-          <p className="li-modal-note">
-            Each league is limited to the slots it has free. Everything selected
-            here is applied in one go.
-          </p>
+          <h2 className="li-modal-title">{title}</h2>
+          <p className="li-modal-note">{intro}</p>
         </header>
 
         <div className="li-modal-scroll">
           {issues.map((issue) => {
             const picked = selected[issue.leagueId] || [];
-            const full = selectionIsFull(picked, issue.freeSlots);
+            const limit = limitFor(issue);
+            const full = selectionIsFull(picked, limit);
             const failure = failureFor(issue.leagueId);
             return (
               <section className="li-league" key={issue.leagueId}>
                 <header className="li-league-head">
                   <span className="li-league-name">{issue.leagueName}</span>
-                  <span className="li-league-slots">
-                    {picked.length} of {issue.freeSlots} free
-                  </span>
+                  <span className="li-league-slots">{limitText(issue, picked.length)}</span>
                 </header>
 
+                {issue.blocked && blockedNote && (
+                  <p className="li-league-blocked">{blockedNote}</p>
+                )}
                 {failure && <p className="li-modal-error">{failure.error}</p>}
 
                 <ul className="li-options">
                   {issue.candidates.map((c) => {
                     const checked = picked.includes(c.id);
-                    // Closed off rather than hidden: you can see who else
-                    // qualifies, and unticking somebody brings them back.
+                    // Closed off rather than hidden: you can see who else is
+                    // involved, and unticking somebody brings them back.
                     const blocked = !checked && full;
                     return (
                       <li key={c.id}>
@@ -92,8 +111,8 @@ function IrFixDialog({ issues, onClose, onConfirm, busy, failures }) {
                           />
                           <PositionPill position={c.position} />
                           <span className="li-option-name">{c.name}</span>
-                          <span className={`li-status li-status-${c.status}`}>
-                            {c.status}
+                          <span className={`li-status li-status-${c.status || "none"}`}>
+                            {c.status || "fit"}
                           </span>
                         </label>
                       </li>
@@ -139,36 +158,98 @@ function IrFixDialog({ issues, onClose, onConfirm, busy, failures }) {
   );
 }
 
-IrFixDialog.propTypes = {
+ReserveDialog.propTypes = {
   issues: PropTypes.array.isRequired,
+  title: PropTypes.string.isRequired,
+  intro: PropTypes.node.isRequired,
+  limitFor: PropTypes.func.isRequired,
+  limitText: PropTypes.func.isRequired,
+  blockedNote: PropTypes.string,
   onClose: PropTypes.func.isRequired,
   onConfirm: PropTypes.func.isRequired,
   busy: PropTypes.bool,
   failures: PropTypes.array,
 };
 
-function LeagueIssues({ issues, canEdit, onApplyIr }) {
-  const [open, setOpen] = useState(false);
+// A manager with sixty teams can have this fire in forty leagues at once, and a
+// card that lists all forty stops being an alert and becomes a wall. Four is
+// enough to see what kind of leagues these are; the rest are a click away.
+const CARD_LEAGUE_LIMIT = 4;
+
+function IssueCard({ headline, issues, detailFor, canEdit, onFix, actionable }) {
+  const [expanded, setExpanded] = useState(false);
+  const shown = expanded ? issues : issues.slice(0, CARD_LEAGUE_LIMIT);
+  const hidden = issues.length - shown.length;
+
+  return (
+    <div className="li-card">
+      <div className="li-card-body">
+        <span className="li-card-headline">{headline}</span>
+        <ul className="li-card-leagues">
+          {shown.map((i) => (
+            <li key={i.leagueId}>
+              <span className="li-card-league">{i.leagueName}</span>
+              <span className="li-card-slots">{detailFor(i)}</span>
+            </li>
+          ))}
+        </ul>
+        {(hidden > 0 || expanded) && (
+          <button
+            type="button"
+            className="li-card-more"
+            onClick={() => setExpanded((prev) => !prev)}
+            aria-expanded={expanded}
+          >
+            {expanded ? "show fewer" : `and ${hidden} more`}
+          </button>
+        )}
+      </div>
+      {!canEdit ? (
+        <span
+          className="li-card-locked"
+          title="Sign in with Sleeper in Settings to make changes"
+        >
+          sign in to fix
+        </span>
+      ) : (
+        <button type="button" className="li-fix" onClick={onFix}>
+          {actionable ? "Fix" : "Review"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+IssueCard.propTypes = {
+  headline: PropTypes.string.isRequired,
+  issues: PropTypes.array.isRequired,
+  detailFor: PropTypes.func.isRequired,
+  canEdit: PropTypes.bool,
+  onFix: PropTypes.func.isRequired,
+  actionable: PropTypes.bool,
+};
+
+function LeagueIssues({ issues, returnIssues, canEdit, onApplyIr, onApplyReturn }) {
+  const [open, setOpen] = useState(null);
   const [busy, setBusy] = useState(false);
   const [failures, setFailures] = useState([]);
 
-  const sorted = useMemo(
-    () => [...(issues || [])].sort((a, b) => a.leagueName.localeCompare(b.leagueName)),
-    [issues]
-  );
+  const byName = (a, b) => a.leagueName.localeCompare(b.leagueName);
+  const toReserve = useMemo(() => [...(issues || [])].sort(byName), [issues]);
+  const fromReserve = useMemo(() => [...(returnIssues || [])].sort(byName), [returnIssues]);
 
-  const playerCount = sorted.reduce((n, i) => n + i.candidates.length, 0);
-
-  if (sorted.length === 0) return null;
+  if (toReserve.length === 0 && fromReserve.length === 0) return null;
 
   const close = () => {
     if (busy) return;
-    setOpen(false);
+    setOpen(null);
     setFailures([]);
   };
 
   const confirm = async (selected) => {
-    const picks = sorted
+    const source = open === "toReserve" ? toReserve : fromReserve;
+    const apply = open === "toReserve" ? onApplyIr : onApplyReturn;
+    const picks = source
       .map((issue) => ({ issue, playerIds: selected[issue.leagueId] || [] }))
       .filter((p) => p.playerIds.length > 0);
     if (picks.length === 0) return;
@@ -176,61 +257,83 @@ function LeagueIssues({ issues, canEdit, onApplyIr }) {
     setBusy(true);
     setFailures([]);
     try {
-      const results = await onApplyIr(picks);
+      const results = await apply(picks);
       const failed = (results || []).filter((r) => r.error);
       // Anything that worked has already left the issue list, so only the
       // leagues that refused stay on screen with their reason.
-      if (failed.length === 0) setOpen(false);
+      if (failed.length === 0) setOpen(null);
       else setFailures(failed);
     } catch (err) {
-      setFailures([{ leagueId: sorted[0].leagueId, error: err?.message || String(err) }]);
+      setFailures([{ leagueId: source[0].leagueId, error: err?.message || String(err) }]);
     } finally {
       setBusy(false);
     }
   };
 
+  const openKind = (kind) => {
+    setFailures([]);
+    setOpen(kind);
+  };
+
+  const returnCount = fromReserve.reduce((n, i) => n + i.candidates.length, 0);
+  const anyRoom = fromReserve.some((i) => !i.blocked);
+
   return (
     <div className="li-panel">
-      <div className="li-card">
-        <div className="li-card-body">
-          <span className="li-card-headline">
-            {plural(playerCount, "1 player", "players")} could be on injured reserve
-          </span>
-          <ul className="li-card-leagues">
-            {sorted.map((i) => (
-              <li key={i.leagueId}>
-                <span className="li-card-league">{i.leagueName}</span>
-                <span className="li-card-slots">
-                  {plural(i.freeSlots, "1 slot", "slots")} free
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        {canEdit ? (
-          <button
-            type="button"
-            className="li-fix"
-            onClick={() => {
-              setFailures([]);
-              setOpen(true);
-            }}
-          >
-            Fix
-          </button>
-        ) : (
-          <span
-            className="li-card-locked"
-            title="Sign in with Sleeper in Settings to make changes"
-          >
-            sign in to fix
-          </span>
-        )}
-      </div>
+      {toReserve.length > 0 && (
+        <IssueCard
+          headline={`${plural(
+            toReserve.reduce((n, i) => n + i.candidates.length, 0),
+            "1 player",
+            "players"
+          )} could be on injured reserve`}
+          issues={toReserve}
+          detailFor={(i) => `${plural(i.freeSlots, "1 slot", "slots")} free`}
+          canEdit={canEdit}
+          actionable
+          onFix={() => openKind("toReserve")}
+        />
+      )}
 
-      {open && (
-        <IrFixDialog
-          issues={sorted}
+      {fromReserve.length > 0 && (
+        <IssueCard
+          headline={`${plural(returnCount, "1 player", "players")} on injured reserve ${
+            returnCount === 1 ? "no longer qualifies" : "no longer qualify"
+          }`}
+          issues={fromReserve}
+          detailFor={(i) =>
+            i.blocked ? "no bench room" : `${plural(i.freeBench, "1 spot", "spots")} free`
+          }
+          canEdit={canEdit}
+          actionable={anyRoom}
+          onFix={() => openKind("fromReserve")}
+        />
+      )}
+
+      {open === "toReserve" && (
+        <ReserveDialog
+          issues={toReserve}
+          title="Move to injured reserve"
+          intro="Each league is limited to the slots it has free. Everything selected here is applied in one go."
+          limitFor={(i) => i.freeSlots}
+          limitText={(i, picked) => `${picked} of ${i.freeSlots} free`}
+          busy={busy}
+          failures={failures}
+          onClose={close}
+          onConfirm={confirm}
+        />
+      )}
+
+      {open === "fromReserve" && (
+        <ReserveDialog
+          issues={fromReserve}
+          title="Move off injured reserve"
+          intro="These players no longer qualify for the reserve slot they are in. Moving one back needs a free bench spot."
+          limitFor={(i) => i.freeBench}
+          limitText={(i, picked) =>
+            i.blocked ? "no bench room" : `${picked} of ${i.freeBench} free`
+          }
+          blockedNote="There is no free bench spot in this league, so these cannot be moved until you drop somebody."
           busy={busy}
           failures={failures}
           onClose={close}
@@ -243,8 +346,10 @@ function LeagueIssues({ issues, canEdit, onApplyIr }) {
 
 LeagueIssues.propTypes = {
   issues: PropTypes.array,
+  returnIssues: PropTypes.array,
   canEdit: PropTypes.bool,
   onApplyIr: PropTypes.func.isRequired,
+  onApplyReturn: PropTypes.func,
 };
 
 export default LeagueIssues;
