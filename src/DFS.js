@@ -8,6 +8,12 @@ import { getCurrentWeek, peekCurrentWeek } from './currentWeekCache';
 import { effectiveUserName, rememberUserName } from './settingsUser';
 import './DFS.css';
 import {
+  kickoffLabel,
+  earliestKickoff,
+  kickoffAt,
+  parseGameStartToUtc,
+} from "./dfsKickoff";
+import {
   positionClass,
   positionFill,
   positionLabel,
@@ -35,68 +41,6 @@ function sleeperAuthHeaders() {
 const NAME_TRANSLATIONS = {
   'Hollywood Brown': 'Marquise Brown',
   // Add more translations here as needed
-};
-
-// Helper functions for parsing game start times
-const getUsdDstBoundsUtc = (year) => {
-  const march1Utc = Date.UTC(year, 2, 1);
-  const march1Day = new Date(march1Utc).getUTCDay();
-  const firstSundayMarch = march1Day === 0 ? 1 : 8 - march1Day;
-  const secondSundayMarch = firstSundayMarch + 7;
-  const dstStartUtc = Date.UTC(year, 2, secondSundayMarch, 7, 0); // 2 AM local -> 7 AM UTC
-
-  const nov1Utc = Date.UTC(year, 10, 1);
-  const nov1Day = new Date(nov1Utc).getUTCDay();
-  const firstSundayNovember = nov1Day === 0 ? 1 : 8 - nov1Day;
-  const dstEndUtc = Date.UTC(year, 10, firstSundayNovember, 6, 0); // 2 AM local -> 6 AM UTC
-
-  return { dstStartUtc, dstEndUtc };
-};
-
-const convertEasternLocalToUtc = (year, monthIndex, day, hour24, minute) => {
-  const { dstStartUtc, dstEndUtc } = getUsdDstBoundsUtc(year);
-  const dstCandidateUtc = Date.UTC(year, monthIndex, day, hour24 + 4, minute);
-  const stdCandidateUtc = Date.UTC(year, monthIndex, day, hour24 + 5, minute);
-  const isDst = dstCandidateUtc >= dstStartUtc && dstCandidateUtc < dstEndUtc;
-  return new Date(isDst ? dstCandidateUtc : stdCandidateUtc);
-};
-
-const parseGameStartToUtc = (gameDate, gameStartTime) => {
-  if (!gameDate) return null;
-
-  let timeStr = typeof gameStartTime === 'string' && gameStartTime.trim().length > 0
-    ? gameStartTime.trim()
-    : '6:00PM';
-
-  const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-  if (!timeMatch) {
-    // Unexpected format—fallback to default 6:00PM Eastern
-    timeStr = '6:00PM';
-  }
-
-  const parsedMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-  if (!parsedMatch) return null;
-
-  let [ , hourStr, minuteStr, ampm ] = parsedMatch;
-  let hours = parseInt(hourStr, 10);
-  const minutes = parseInt(minuteStr, 10);
-  const meridiem = ampm.toUpperCase();
-
-  if (meridiem === 'PM' && hours !== 12) {
-    hours += 12;
-  } else if (meridiem === 'AM' && hours === 12) {
-    hours = 0;
-  }
-
-  const year = parseInt(gameDate.slice(0, 4), 10);
-  const monthIndex = parseInt(gameDate.slice(5, 7), 10) - 1;
-  const day = parseInt(gameDate.slice(8, 10), 10);
-
-  if (Number.isNaN(year) || Number.isNaN(monthIndex) || Number.isNaN(day) || Number.isNaN(hours) || Number.isNaN(minutes)) {
-    return null;
-  }
-
-  return convertEasternLocalToUtc(year, monthIndex, day, hours, minutes);
 };
 
 // Get 03:00 CET on the day after game date (CET is UTC+1, so 03:00 CET = 02:00 UTC)
@@ -1197,6 +1141,9 @@ function DFS({ userName }) {
     });
   };
 
+  // Whoever on this roster plays first — the lineup is locked from then on.
+  const firstKickoff = earliestKickoff(Object.values(roster));
+
   const removePlayerFromRoster = (slotKey) => {
     setRoster(prev => ({ ...prev, [slotKey]: null }));
   };
@@ -1305,15 +1252,21 @@ function DFS({ userName }) {
         setPlayerToAddAfterConfirm(player);
         setShowGameStartedModal(true);
       } else {
-        // Add to roster normally
-      addPlayerToRoster(player);
+        // Asked before adding, not after: addPlayerToRoster silently does
+        // nothing when there is no slot or no cap room, and the search should
+        // only clear when the player actually landed somewhere.
+        const added = canAddPlayer(player);
+        addPlayerToRoster(player);
+        if (added) setNameFilter('');
       }
     }
   };
 
   const handleConfirmAddAfterGameStart = () => {
     if (playerToAddAfterConfirm) {
+      const added = canAddPlayer(playerToAddAfterConfirm, true);
       addPlayerToRoster(playerToAddAfterConfirm);
+      if (added) setNameFilter('');
       setShowGameStartedModal(false);
       setPlayerToAddAfterConfirm(null);
     }
@@ -1404,7 +1357,30 @@ function DFS({ userName }) {
 
       <div className="dfs-top-section">
         <div className="dfs-team-section">
-          <h2>My Team</h2>
+          <div className="dfs-team-head">
+            <h2>My Team</h2>
+            {firstKickoff && (
+              <span
+                className="dfs-first-kickoff"
+                // The scrape's game_month_day is the American date, which can be
+                // the day before the one shown here.
+                title={`${firstKickoff.name} plays first${
+                  kickoffAt(firstKickoff)
+                    ? ` — ${kickoffAt(firstKickoff).toLocaleString(undefined, {
+                        weekday: "long",
+                        day: "numeric",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                      })} your time`
+                    : ""
+                }`}
+              >
+                first kickoff {kickoffLabel(firstKickoff)}
+              </span>
+            )}
+          </div>
           <table className="dfs-team-table">
             <thead>
               <tr>
@@ -1434,7 +1410,16 @@ function DFS({ userName }) {
                     </div>
                   </td>
                   <td className="player-name-cell">
-                    {roster[key] ? roster[key].name : '-'}
+                    {roster[key] ? (
+                      <>
+                        {roster[key].name}
+                        {kickoffLabel(roster[key]) && (
+                          <span className="dfs-kickoff">{kickoffLabel(roster[key])}</span>
+                        )}
+                      </>
+                    ) : (
+                      '-'
+                    )}
                   </td>
                   <td className="salary-cell">
                     {roster[key] ? `$${roster[key].salary.toLocaleString()}` : '-'}

@@ -3,6 +3,7 @@ import "./Gameday.css";
 
 import { projectedPoints, PROJECTION_POSITIONS } from "./leagueScoring";
 import { loadHiddenLeagues, visibleLeagues } from "./leagueVisibility";
+import { finalOutcome } from "./gamedayOutcome";
 
 const SEASON = 2026;
 // How often to re-read scores while games are on. Projections are left alone —
@@ -178,13 +179,16 @@ function buildMatchupResult(gqlData, userId, { scoring, projections, playerPoint
   const mine = legTotals(myLeg);
   const opp = legTotals(oppLeg);
 
+  const myLive = mine.started > 0 ? mine.live : myProj;
+  const oppLive = opp.started > 0 ? opp.live : oppProj;
+
   return {
     myProj,
     oppProj,
     // Each side stands on its own: a side with nobody played is still just its
     // projection, whatever the other side has done.
-    myLive: mine.started > 0 ? mine.live : myProj,
-    oppLive: opp.started > 0 ? opp.live : oppProj,
+    myLive,
+    oppLive,
     myPlayed: mine.played,
     myStarters: mine.starters,
     oppPlayed: opp.played,
@@ -192,9 +196,18 @@ function buildMatchupResult(gqlData, userId, { scoring, projections, playerPoint
     myStarted: mine.started > 0,
     oppStarted: opp.started > 0,
     oppName,
-    predictedWin: oppLeg
-      ? (mine.started > 0 ? mine.live : myProj) > (opp.started > 0 ? opp.live : oppProj)
-      : null,
+    predictedWin: oppLeg ? myLive > oppLive : null,
+    // Null until every starter on both sides has played. Once it is set the
+    // score is no longer a projection of anything.
+    final: finalOutcome({
+      hasOpponent: !!oppLeg,
+      myPlayed: mine.played,
+      myStarters: mine.starters,
+      oppPlayed: opp.played,
+      oppStarters: opp.starters,
+      myLive,
+      oppLive,
+    }),
   };
 }
 
@@ -373,7 +386,10 @@ export default function Gameday() {
     return (
       <div className="gameday-leagues-grid">
         {group.map(({ leagueName, matchup }, i) => (
-          <div key={i} className="gameday-card">
+          <div
+            key={i}
+            className={`gameday-card${matchup?.final ? ` gameday-final-${matchup.final}` : ""}`}
+          >
             <div className="gameday-card-title">{leagueName}</div>
             {!matchup ? (
               <div className="gameday-no-matchup">No matchup data</div>
@@ -425,7 +441,12 @@ export default function Gameday() {
           <div className="gameday-list-header">Result</div>
         </div>
         {group.map(({ leagueName, leagueId, matchup }, i) => (
-          <div key={i} className="gameday-list-grid gameday-list-row">
+          <div
+            key={i}
+            className={`gameday-list-grid gameday-list-row${
+              matchup?.final ? ` gameday-final-${matchup.final}` : ""
+            }`}
+          >
             <div className="gameday-list-item gameday-list-name">
               <a
                 href={`https://sleeper.app/leagues/${leagueId}`}
@@ -458,8 +479,13 @@ export default function Gameday() {
                   {matchup.myStarters > 0 ? `${matchup.myPlayed}/${matchup.myStarters}` : "—"}
                 </div>
                 <div className="gameday-list-item">{matchup.oppName}</div>
-                <div className={`gameday-list-item ${matchup.predictedWin ? "gameday-win-label" : "gameday-loss-label"}`}>
-                  {matchup.predictedWin ? "W" : "L"}
+                <div
+                  className={`gameday-list-item ${
+                    matchup.predictedWin ? "gameday-win-label" : "gameday-loss-label"
+                  }`}
+                  title={matchup.final ? "Final" : "Projected"}
+                >
+                  {matchup.final === "tie" ? "T" : matchup.predictedWin ? "W" : "L"}
                 </div>
               </>
             )}

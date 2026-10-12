@@ -105,6 +105,42 @@
   background: hsl(var(--background));
 }
 
+/* A finished matchup: every starter on both sides has played, so the number is
+   no longer a projection of anything.
+ *
+ * The same green and red the scores already use. Thickness comes from an inset
+ * ring rather than a wider border, so a card does not shift by a pixel the
+ * moment the last game ends.
+ */
+.gameday-card.gameday-final-win {
+  border-color: hsl(140 50% 45% / 0.9);
+  box-shadow: inset 0 0 0 1px hsl(140 50% 45% / 0.5);
+}
+
+.gameday-card.gameday-final-loss {
+  border-color: hsl(0 65% 55% / 0.85);
+  box-shadow: inset 0 0 0 1px hsl(0 65% 55% / 0.45);
+}
+
+/* Drawn. Neither colour would be honest. */
+.gameday-card.gameday-final-tie {
+  border-color: hsl(var(--muted-foreground) / 0.75);
+  box-shadow: inset 0 0 0 1px hsl(var(--muted-foreground) / 0.35);
+}
+
+/* In the list a ring would fight the cell borders, so the row takes an edge. */
+.gameday-list-row.gameday-final-win {
+  box-shadow: inset 3px 0 0 hsl(140 50% 45%);
+}
+
+.gameday-list-row.gameday-final-loss {
+  box-shadow: inset 3px 0 0 hsl(0 65% 55%);
+}
+
+.gameday-list-row.gameday-final-tie {
+  box-shadow: inset 3px 0 0 hsl(var(--muted-foreground) / 0.8);
+}
+
 .gameday-card-title {
   font-size: 0.85rem;
   font-weight: 600;

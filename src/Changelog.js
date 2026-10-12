@@ -41,6 +41,25 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2026-10-12",
+      title: "Gameday: finished matchups stand out",
+      items: [
+        "A matchup whose players have all finished gets a green or red edge, so a settled result is visible without reading the numbers.",
+        "It waits for both sides. A matchup where your own players are done but the opponent still has a Monday night game is not a result yet, however far ahead you are.",
+        "A drawn matchup gets a neutral edge rather than being called a loss, and reads T instead of L.",
+      ],
+    },
+    {
+      date: "2026-10-11",
+      title: "DFS: clearer picking",
+      items: [
+        "Typing a name to find a player now clears the search as soon as that player is added, so the next search starts from an empty box instead of needing the old one deleted first.",
+        "It only clears when the player actually went in \u2014 if there was no slot left or no room under the cap, what you typed stays put.",
+        "My Team shows when each player kicks off, and when the first of them does. That first kickoff is when the lineup starts locking, so it sits beside the heading where it is hard to miss.",
+        "Those times are in your own timezone rather than the American one the salary data quotes. A Sunday night game reads as Monday morning here, which is when it actually is.",
+      ],
+    },
+    {
       date: "2026-10-11",
       title: "Players stuck on injured reserve",
       items: [
