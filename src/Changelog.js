@@ -41,6 +41,15 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2026-10-12",
+      title: "Gameday: finished matchups stand out",
+      items: [
+        "A matchup whose players have all finished gets a green or red edge, so a settled result is visible without reading the numbers.",
+        "It waits for both sides. A matchup where your own players are done but the opponent still has a Monday night game is not a result yet, however far ahead you are.",
+        "A drawn matchup gets a neutral edge rather than being called a loss, and reads T instead of L.",
+      ],
+    },
+    {
       date: "2026-10-11",
       title: "DFS: clearer picking",
       items: [
