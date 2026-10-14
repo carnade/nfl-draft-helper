@@ -490,3 +490,118 @@ body.dark .gameday-loss-label {
 .gameday-live-toggle input {
   cursor: pointer;
 }
+
+/* ── Season view ── */
+
+.gameday-season-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.gameday-season-note {
+  font-size: 0.8rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.gameday-load-all {
+  padding: 5px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  border: 1px solid hsl(var(--primary));
+  border-radius: 4px;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  cursor: pointer;
+}
+
+.gameday-load-all:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Two or three across depending on the room, rather than a fixed count: at
+   320px a card is readable, and the browser decides how many fit. */
+.gameday-season-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+}
+
+.gameday-season-card {
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: hsl(var(--background));
+}
+
+.gameday-season-title {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gameday-season-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  color: hsl(var(--foreground));
+}
+
+.gameday-season-table th {
+  text-align: left;
+  padding: 3px 6px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: hsl(var(--muted-foreground));
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.gameday-season-table td {
+  padding: 3px 6px;
+  border-bottom: 1px solid hsl(var(--border) / 0.4);
+}
+
+.gameday-season-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The average is the line worth reading, so it carries weight and a rule
+   above it rather than being one more row. */
+.gameday-season-total td {
+  border-top: 1px solid hsl(var(--border));
+  border-bottom: 0;
+  padding-top: 5px;
+  font-weight: 700;
+}
+
+.gameday-season-table .is-unloaded td,
+.gameday-season-table .is-empty td {
+  color: hsl(var(--muted-foreground));
+}
+
+.gameday-load-week {
+  padding: 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.gameday-load-week:hover {
+  color: hsl(var(--foreground));
+}

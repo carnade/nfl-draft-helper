@@ -12,6 +12,7 @@ import {
 } from "./gamedayWeek";
 import { bestLineupPoints } from "./bestLineup";
 import { readFinalWeek, writeFinalWeek } from "./finalWeekCache";
+import { summariseWeek, summariseSeason, missingWeeks } from "./seasonSummary";
 
 const SEASON = 2026;
 // How often to re-read scores while games are on. Projections are left alone —
@@ -272,6 +273,11 @@ export default function Gameday() {
   const [chosenWeek, setChosenWeek] = useState(() => pinnedWeek(window.location.search));
   const [currentWeek, setCurrentWeek] = useState(null);
   const [statuses, setStatuses] = useState({});
+  // Everything the season view needs that the per-week load already knows.
+  const [season, setSeason] = useState({ leagues: [], userId: null });
+  // leagueId -> week -> { points, max, pct } | null when that roster did not play
+  const [seasonWeeks, setSeasonWeeks] = useState({});
+  const [seasonBusy, setSeasonBusy] = useState(false);
   // Off by default: most visits are not during a game, and polling a dozen
   // leagues for a number that cannot change is pure waste.
   const [pollEnabled, setPollEnabled] = useState(false);
@@ -327,6 +333,15 @@ export default function Gameday() {
       }
 
       // One request for the whole week, shared by every league.
+      setSeason({
+        userId,
+        leagues: filtered.map((l) => ({
+          leagueId: l.league_id,
+          leagueName: l.name,
+          rosterPositions: l.roster_positions || [],
+        })),
+      });
+
       // Whether the week being shown is over, which is what makes its scores
       // safe to keep.
       const weekIsFinal = weekStatuses(games)[week] === "done";
@@ -491,6 +506,67 @@ export default function Gameday() {
     };
   }, [auth, pollEnabled, load, chosenWeek]);
 
+  // roster_id for this user in a league. Stable all season, so it is asked for
+  // once per league per tab.
+  const rosterIdRef = useRef({});
+
+  const myRosterId = useCallback(async (leagueId, userId, signal) => {
+    if (rosterIdRef.current[leagueId] !== undefined) return rosterIdRef.current[leagueId];
+    const rosters = await fetch(
+      `https://api.sleeper.app/v1/league/${leagueId}/rosters`,
+      { signal }
+    ).then((r) => r.json());
+    const mine = (Array.isArray(rosters) ? rosters : []).find((r) => r.owner_id === userId);
+    rosterIdRef.current[leagueId] = mine?.roster_id ?? null;
+    return rosterIdRef.current[leagueId];
+  }, []);
+
+  /** Load one finished week for one league. Nothing if it is already there. */
+  const loadSeasonWeek = useCallback(
+    async (league, week) => {
+      const rosterId = await myRosterId(league.leagueId, season.userId);
+      if (rosterId == null) return;
+
+      const cached = readFinalWeek(league.leagueId, week);
+      const rows =
+        cached ??
+        (await fetch(
+          `https://api.sleeper.app/v1/league/${league.leagueId}/matchups/${week}`
+        ).then((r) => r.json()));
+      if (!cached) writeFinalWeek(league.leagueId, week, rows, { isFinal: true });
+
+      const summary = summariseWeek({
+        rows,
+        rosterId,
+        rosterPositions: league.rosterPositions,
+        positionsOf: (id) => positionsRef.current[id] || [],
+      });
+
+      setSeasonWeeks((prev) => ({
+        ...prev,
+        [league.leagueId]: { ...(prev[league.leagueId] || {}), [week]: summary },
+      }));
+    },
+    [myRosterId, season.userId]
+  );
+
+  const loadEverything = useCallback(async () => {
+    setSeasonBusy(true);
+    try {
+      // One league at a time rather than all at once: a manager with sixty of
+      // them should not open sixty connections because they pressed a button.
+      for (const league of season.leagues) {
+        const weeks = missingWeeks(statuses, seasonWeeks[league.leagueId] || {});
+        for (const week of weeks) {
+          // eslint-disable-next-line no-await-in-loop
+          await loadSeasonWeek(league, week);
+        }
+      }
+    } finally {
+      setSeasonBusy(false);
+    }
+  }, [season.leagues, statuses, seasonWeeks, loadSeasonWeek]);
+
   if (!auth) {
     return (
       <div className="gameday-container">
@@ -527,6 +603,113 @@ export default function Gameday() {
     const url = next ? `${window.location.pathname}?week=${next}` : window.location.pathname;
     window.history.replaceState(null, "", url);
   };
+
+  // Every league at once, two or three across depending on the width. A week
+  // that has not been loaded says so and loads on click, because fetching a
+  // season for sixty leagues without being asked would be rude.
+  function renderSeason() {
+    const finished = Object.keys(statuses)
+      .map(Number)
+      .filter((w) => statuses[w] === "done")
+      .sort((a, b) => a - b);
+
+    if (season.leagues.length === 0) return null;
+    const outstanding = season.leagues.reduce(
+      (n, l) => n + missingWeeks(statuses, seasonWeeks[l.leagueId] || {}).length,
+      0
+    );
+
+    return (
+      <>
+        <div className="gameday-season-bar">
+          <span className="gameday-season-note">
+            {finished.length === 0
+              ? "No finished weeks yet."
+              : outstanding === 0
+              ? `${finished.length} finished ${finished.length === 1 ? "week" : "weeks"}, all loaded.`
+              : `${outstanding} of ${season.leagues.length * finished.length} not loaded.`}
+          </span>
+          {outstanding > 0 && (
+            <button
+              type="button"
+              className="gameday-load-all"
+              onClick={loadEverything}
+              disabled={seasonBusy}
+            >
+              {seasonBusy ? "Loading…" : `Load all (${outstanding})`}
+            </button>
+          )}
+        </div>
+
+        <div className="gameday-season-grid">
+          {season.leagues.map((league) => {
+            const loaded = seasonWeeks[league.leagueId] || {};
+            const totals = summariseSeason(finished.map((w) => loaded[w]));
+            return (
+              <section className="gameday-season-card" key={league.leagueId}>
+                <h3 className="gameday-season-title">{league.leagueName}</h3>
+                <table className="gameday-season-table">
+                  <thead>
+                    <tr>
+                      <th>Wk</th>
+                      <th className="num">Points</th>
+                      <th className="num">Max</th>
+                      <th className="num">%</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {finished.map((w) => {
+                      const cell = loaded[w];
+                      if (cell === undefined) {
+                        return (
+                          <tr key={w} className="is-unloaded">
+                            <td>{w}</td>
+                            <td colSpan={3}>
+                              <button
+                                type="button"
+                                className="gameday-load-week"
+                                onClick={() => loadSeasonWeek(league, w)}
+                              >
+                                not loaded
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      }
+                      if (cell === null) {
+                        return (
+                          <tr key={w} className="is-empty">
+                            <td>{w}</td>
+                            <td colSpan={3}>did not play</td>
+                          </tr>
+                        );
+                      }
+                      return (
+                        <tr key={w}>
+                          <td>{w}</td>
+                          <td className="num">{cell.points.toFixed(2)}</td>
+                          <td className="num">{cell.max == null ? "—" : cell.max.toFixed(2)}</td>
+                          <td className="num">{cell.pct == null ? "—" : `${cell.pct}%`}</td>
+                        </tr>
+                      );
+                    })}
+                    {totals && (
+                      <tr className="gameday-season-total">
+                        <td>Avg</td>
+                        <td className="num">{totals.points.toFixed(2)}</td>
+                        <td className="num">{totals.max == null ? "—" : totals.max.toFixed(2)}</td>
+                        <td className="num">{totals.pct == null ? "—" : `${totals.pct}%`}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </section>
+            );
+          })}
+        </div>
+      </>
+    );
+  }
 
   function renderWeekPicker() {
     if (!currentWeek) return null;
@@ -707,7 +890,7 @@ export default function Gameday() {
 
   return (
     <div className="gameday-container">
-      {renderWeekPicker()}
+      {view !== "season" && renderWeekPicker()}
       <div className="gameday-header">
         <div className="gameday-header-left">
           <h2 className="gameday-title">Gameday</h2>
@@ -755,13 +938,21 @@ export default function Gameday() {
           >
             List
           </button>
+          <button
+            className={`gameday-pill${view === "season" ? " active" : ""}`}
+            onClick={() => setView("season")}
+          >
+            Season
+          </button>
         </div>
       </div>
 
       {loading && <div className="gameday-loading">Loading matchups…</div>}
       {error && <div className="gameday-error">{error}</div>}
 
-      {!loading && (
+      {!loading && view === "season" && renderSeason()}
+
+      {!loading && view !== "season" && (
         <>
           {dynasty.length > 0 && (
             <div className="gameday-section">
