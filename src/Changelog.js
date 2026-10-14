@@ -49,6 +49,7 @@ export default function Changelog() {
         "A Monday night game still being played is never hidden, even though it falls on a Tuesday morning here.",
         "A tab left open across the rollover picks the new week up on its own, where before it sat on the old one until the page was reloaded.",
         "The heading says which week is being shown, since on a Tuesday that is no longer the one you would assume.",
+        "On the Leagues page, the Empty bench and Injuries headings sit on two lines. Their length was setting the width of two narrow columns and pushing the whole table into sideways scrolling on smaller screens.",
       ],
     },
     {
