@@ -1719,12 +1719,18 @@ function LeagueList() {
             </th>
             <th>Waivers</th>
             <th
-              className="ss-center"
+              className="ss-center ss-th-stack"
               title="Active roster spots with nobody in them. Players on IR or the taxi squad do not take one up."
             >
-              Empty bench
+              Empty
+              <br />
+              bench
             </th>
-            <th>Injuries on starters</th>
+            <th className="ss-th-stack" title="Injured players in your starting lineup">
+              Injuries
+              <br />
+              on starters
+            </th>
             <th>Actions</th>
               </tr>
              </thead>

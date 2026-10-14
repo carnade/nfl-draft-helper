@@ -62,6 +62,18 @@
   color: hsl(var(--muted-foreground));
   border-bottom: 1px solid hsl(var(--border));
   white-space: nowrap;
+  /* So a heading that wraps sits on the same line as the ones that do not. */
+  vertical-align: bottom;
+}
+
+/* A heading over two lines. th is nowrap by default, which is right for the
+   short ones — but a long heading on a narrow column sets that column's
+   minimum width, and two or three words of heading can push a whole table into
+   sideways scrolling on a laptop. Stacking costs one row of header height once
+   and gives the width back to every row below it. */
+.ss-table th.ss-th-stack {
+  white-space: normal;
+  line-height: 1.2;
 }
 
 .ss-table td {

@@ -41,6 +41,18 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2026-10-14",
+      title: "Gameday keeps the finished week through Tuesday",
+      items: [
+        "Sleeper moves to the next week as soon as Monday night football ends, so from Tuesday morning Gameday was showing an empty upcoming fixture and the result you watched the night before had gone.",
+        "The finished week now stays up through Tuesday, and the new one arrives on Wednesday.",
+        "A Monday night game still being played is never hidden, even though it falls on a Tuesday morning here.",
+        "A tab left open across the rollover picks the new week up on its own, where before it sat on the old one until the page was reloaded.",
+        "The heading says which week is being shown, since on a Tuesday that is no longer the one you would assume.",
+        "On the Leagues page, the Empty bench and Injuries headings sit on two lines. Their length was setting the width of two narrow columns and pushing the whole table into sideways scrolling on smaller screens.",
+      ],
+    },
+    {
       date: "2026-10-12",
       title: "Gameday: finished matchups stand out",
       items: [
