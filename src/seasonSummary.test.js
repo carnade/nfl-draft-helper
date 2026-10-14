@@ -3,6 +3,8 @@ import {
   percentOfMax,
   summariseSeason,
   missingWeeks,
+  weekResult,
+  pctTone,
 } from "./seasonSummary";
 
 const positionsOf = (id) =>
@@ -23,7 +25,7 @@ describe("summariseWeek", () => {
   it("reports what was scored and what was available", () => {
     const w = summariseWeek({ rows, rosterId: 3, rosterPositions: SLOTS, positionsOf });
     // Best lineup is qb 20 + rb1 10 + bench 25 in the WR slot.
-    expect(w).toEqual({ points: 40, max: 55, pct: 72.7 });
+    expect(w).toEqual({ points: 40, max: 55, pct: 72.7, result: null });
   });
 
   it("is null for a roster that did not play", () => {
@@ -113,5 +115,81 @@ describe("missingWeeks", () => {
   it("counts a week that loaded to nothing as loaded", () => {
     // A bye or a roster that did not play must not be asked for again.
     expect(missingWeeks(statuses, { 1: null, 2: null, 3: null })).toEqual([]);
+  });
+});
+
+describe("weekResult", () => {
+  const paired = [
+    { roster_id: 3, matchup_id: 1, points: 110.5 },
+    { roster_id: 9, matchup_id: 1, points: 100.25 },
+    { roster_id: 4, matchup_id: 2, points: 90 },
+  ];
+  const mine = (id) => paired.find((r) => r.roster_id === id);
+
+  it("calls the week", () => {
+    expect(weekResult(paired, mine(3))).toBe("W");
+    expect(weekResult(paired, mine(9))).toBe("L");
+  });
+
+  it("calls a draw a draw", () => {
+    const tied = [
+      { roster_id: 1, matchup_id: 5, points: 100 },
+      { roster_id: 2, matchup_id: 5, points: 100 },
+    ];
+    expect(weekResult(tied, tied[0])).toBe("T");
+  });
+
+  it("agrees with the two decimals shown", () => {
+    const close = [
+      { roster_id: 1, matchup_id: 5, points: 100.004 },
+      { roster_id: 2, matchup_id: 5, points: 100 },
+    ];
+    // Both print 100.00, so the letter must not say one of them won.
+    expect(weekResult(close, close[0])).toBe("T");
+  });
+
+  it("is null on a bye", () => {
+    expect(weekResult(paired, mine(4))).toBeNull();
+    expect(weekResult(paired, { roster_id: 7, matchup_id: null, points: 5 })).toBeNull();
+    expect(weekResult([], null)).toBeNull();
+  });
+});
+
+describe("pctTone", () => {
+  it("leaves the middle alone", () => {
+    expect(pctTone(75)).toBe("");
+    expect(pctTone(77.5)).toBe("");
+    expect(pctTone(80)).toBe("");
+  });
+
+  it("steps towards red below it, reaching full at 55", () => {
+    expect(pctTone(74.9)).toBe("r1");
+    expect(pctTone(70)).toBe("r1");
+    expect(pctTone(69.9)).toBe("r2");
+    expect(pctTone(60)).toBe("r3");
+    expect(pctTone(55)).toBe("r4");
+    expect(pctTone(20)).toBe("r4");
+    expect(pctTone(0)).toBe("r4");
+  });
+
+  it("steps towards green above it, reaching full at 95", () => {
+    expect(pctTone(80.1)).toBe("g1");
+    expect(pctTone(85)).toBe("g1");
+    expect(pctTone(85.1)).toBe("g2");
+    expect(pctTone(90)).toBe("g2");
+    expect(pctTone(95)).toBe("g3");
+    expect(pctTone(99.9)).toBe("g3");
+  });
+
+  it("gives a perfect week its own colour", () => {
+    // Gold rather than simply the greenest: starting the best possible lineup
+    // is a different thing from nearly doing so.
+    expect(pctTone(100)).toBe("gold");
+    expect(pctTone(120)).toBe("gold");
+  });
+
+  it("has no tone for an unknown percentage", () => {
+    expect(pctTone(null)).toBe("");
+    expect(pctTone(undefined)).toBe("");
   });
 });

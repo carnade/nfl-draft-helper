@@ -605,3 +605,55 @@ body.dark .gameday-loss-label {
 .gameday-load-week:hover {
   color: hsl(var(--foreground));
 }
+
+.gameday-season-table .mid {
+  text-align: center;
+}
+
+.gameday-season-table .wl-W {
+  color: hsl(140 50% 45%);
+  font-weight: 700;
+}
+
+.gameday-season-table .wl-L {
+  color: hsl(0 65% 55%);
+  font-weight: 700;
+}
+
+.gameday-season-table .wl-T,
+.gameday-season-table .wl-none {
+  color: hsl(var(--muted-foreground));
+}
+
+/* Share of the available points, as a background wash rather than coloured
+ * text: the figure stays legible in both themes and the column can be read
+ * down as a shape.
+ *
+ * 75-80 is untinted. Below that it steps to full red at 55, above it to full
+ * green at 95 — the ends are where they are expected rather than the two sides
+ * having the same number of steps. A perfect week is gold, because starting
+ * the best lineup available is a different thing from nearly doing so.
+ */
+.gameday-season-table .pct {
+  font-weight: 600;
+  border-radius: 3px;
+}
+
+.gameday-season-table .pct-r1 { background: hsl(0 65% 55% / 0.12); }
+.gameday-season-table .pct-r2 { background: hsl(0 65% 55% / 0.24); }
+.gameday-season-table .pct-r3 { background: hsl(0 65% 55% / 0.36); }
+.gameday-season-table .pct-r4 { background: hsl(0 65% 55% / 0.48); }
+
+.gameday-season-table .pct-g1 { background: hsl(140 50% 45% / 0.16); }
+.gameday-season-table .pct-g2 { background: hsl(140 50% 45% / 0.32); }
+.gameday-season-table .pct-g3 { background: hsl(140 50% 45% / 0.48); }
+
+.gameday-season-table .pct-gold {
+  background: hsl(44 90% 52% / 0.55);
+  color: hsl(44 70% 12%);
+  font-weight: 700;
+}
+
+body.dark .gameday-season-table .pct-gold {
+  color: hsl(44 90% 92%);
+}

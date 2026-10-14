@@ -44,7 +44,8 @@ export default function Changelog() {
       date: "2026-10-14",
       title: "Gameday shows what a lineup could have scored",
       items: [
-        "A Season view lists every league side by side, with each week\u2019s points, the best that roster could have started, and how much of it you actually got \u2014 averaged at the foot of each table.",
+        "A Season view lists every league side by side, with each week\u2019s result, points, the best that roster could have started, and how much of it you actually got \u2014 averaged at the foot of each table, with your record for the weeks loaded.",
+        "The percentage column is shaded: around three quarters reads neutral, and it moves towards red or green from there. A week where you started the best lineup available is gold.",
         "Weeks load when you ask for them. Each unloaded week says so and fetches on click, or Load all fetches the lot. Nothing is pulled down before you want it.",
         "You can move between weeks from a bar across the top, and a finished week is only ever fetched once.",
         "Once every player in a matchup has finished, each score carries a quiet second line showing the best that roster could have started \u2014 yours and your opponent\u2019s.",

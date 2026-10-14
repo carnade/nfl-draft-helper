@@ -23,7 +23,63 @@ export function summariseWeek({ rows, rosterId, rosterPositions, positionsOf } =
     positionsOf,
   });
 
-  return { points, max, pct: percentOfMax(points, max) };
+  return {
+    points,
+    max,
+    pct: percentOfMax(points, max),
+    result: weekResult(rows, mine),
+  };
+}
+
+/**
+ * W, L or T for the week, or null on a bye.
+ *
+ * The opponent is whoever else carries the same matchup_id. A roster with no
+ * pairing that week had nobody to beat.
+ */
+export function weekResult(rows, mine) {
+  if (mine?.matchup_id == null) return null;
+  const opponent = (Array.isArray(rows) ? rows : []).find(
+    (r) => r !== mine && r?.matchup_id === mine.matchup_id
+  );
+  if (!opponent) return null;
+
+  // Compared at the two decimals the scores are quoted to, so the letter
+  // cannot disagree with the numbers beside it.
+  const round = (n) => Math.round((Number(n) || 0) * 100);
+  const ours = round(mine.points);
+  const theirs = round(opponent.points);
+  if (ours > theirs) return "W";
+  if (ours < theirs) return "L";
+  return "T";
+}
+
+// Anchors, chosen so the ends are where they are expected rather than so the
+// two sides have the same number of steps: 75 to 80 reads neutral, 55 is as
+// red as it gets, 95 as green, and a perfect week is gold rather than simply
+// the greenest.
+const NEUTRAL_LOW = 75;
+const NEUTRAL_HIGH = 80;
+const RED_STEPS = 4; // 75 down to 55
+const GREEN_STEPS = 3; // 80 up to 95
+
+/**
+ * A tone for a percentage: "gold", "g1".."g3", "", or "r1".."r4".
+ *
+ * Stepped rather than continuous. A table of numbers is easier to read down
+ * when two similar figures share a colour than when every cell is a slightly
+ * different shade.
+ */
+export function pctTone(pct) {
+  if (pct == null) return "";
+  if (pct >= 100) return "gold";
+  if (pct >= NEUTRAL_LOW && pct <= NEUTRAL_HIGH) return "";
+  if (pct < NEUTRAL_LOW) {
+    const step = Math.min(RED_STEPS, Math.ceil((NEUTRAL_LOW - pct) / 5));
+    return `r${step}`;
+  }
+  const step = Math.min(GREEN_STEPS, Math.ceil((pct - NEUTRAL_HIGH) / 5));
+  return `g${step}`;
 }
 
 /**

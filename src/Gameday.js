@@ -12,7 +12,12 @@ import {
 } from "./gamedayWeek";
 import { bestLineupPoints } from "./bestLineup";
 import { readFinalWeek, writeFinalWeek } from "./finalWeekCache";
-import { summariseWeek, summariseSeason, missingWeeks } from "./seasonSummary";
+import {
+  summariseWeek,
+  summariseSeason,
+  missingWeeks,
+  pctTone,
+} from "./seasonSummary";
 
 const SEASON = 2026;
 // How often to re-read scores while games are on. Projections are left alone —
@@ -649,6 +654,22 @@ export default function Gameday() {
     window.history.replaceState(null, "", url);
   };
 
+  // W-L across the weeks that have been loaded. Ties only appear if one
+  // happened, since a trailing "-0" on every row is noise.
+  const record = (loaded, weeks) => {
+    let w = 0;
+    let l = 0;
+    let t = 0;
+    for (const week of weeks) {
+      const r = loaded[week]?.result;
+      if (r === "W") w += 1;
+      else if (r === "L") l += 1;
+      else if (r === "T") t += 1;
+    }
+    if (w + l + t === 0) return "—";
+    return t > 0 ? `${w}-${l}-${t}` : `${w}-${l}`;
+  };
+
   // Every league at once, two or three across depending on the width. A week
   // that has not been loaded says so and loads on click, because fetching a
   // season for sixty leagues without being asked would be rude.
@@ -697,6 +718,7 @@ export default function Gameday() {
                   <thead>
                     <tr>
                       <th>Wk</th>
+                      <th className="mid">W/L</th>
                       <th className="num">Points</th>
                       <th className="num">Max</th>
                       <th className="num">%</th>
@@ -709,7 +731,7 @@ export default function Gameday() {
                         return (
                           <tr key={w} className="is-unloaded">
                             <td>{w}</td>
-                            <td colSpan={3}>
+                            <td colSpan={4}>
                               <button
                                 type="button"
                                 className="gameday-load-week"
@@ -725,25 +747,33 @@ export default function Gameday() {
                         return (
                           <tr key={w} className="is-empty">
                             <td>{w}</td>
-                            <td colSpan={3}>did not play</td>
+                            <td colSpan={4}>did not play</td>
                           </tr>
                         );
                       }
                       return (
                         <tr key={w}>
                           <td>{w}</td>
+                          <td className={`mid wl-${cell.result || "none"}`}>
+                            {cell.result || "—"}
+                          </td>
                           <td className="num">{cell.points.toFixed(2)}</td>
                           <td className="num">{cell.max == null ? "—" : cell.max.toFixed(2)}</td>
-                          <td className="num">{cell.pct == null ? "—" : `${cell.pct}%`}</td>
+                          <td className={`num pct pct-${pctTone(cell.pct)}`}>
+                            {cell.pct == null ? "—" : `${cell.pct.toFixed(1)}%`}
+                          </td>
                         </tr>
                       );
                     })}
                     {totals && (
                       <tr className="gameday-season-total">
                         <td>Avg</td>
+                        <td className="mid">{record(loaded, finished)}</td>
                         <td className="num">{totals.points.toFixed(2)}</td>
                         <td className="num">{totals.max == null ? "—" : totals.max.toFixed(2)}</td>
-                        <td className="num">{totals.pct == null ? "—" : `${totals.pct}%`}</td>
+                        <td className={`num pct pct-${pctTone(totals.pct)}`}>
+                          {totals.pct == null ? "—" : `${totals.pct.toFixed(1)}%`}
+                        </td>
                       </tr>
                     )}
                   </tbody>
