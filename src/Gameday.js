@@ -4,6 +4,7 @@ import "./Gameday.css";
 import { projectedPoints, PROJECTION_POSITIONS } from "./leagueScoring";
 import { loadHiddenLeagues, visibleLeagues } from "./leagueVisibility";
 import { finalOutcome } from "./gamedayOutcome";
+import { weekToShow } from "./gamedayWeek";
 
 const SEASON = 2026;
 // How often to re-read scores while games are on. Projections are left alone —
@@ -57,18 +58,29 @@ async function fetchGameClocks(week, token, signal) {
   return byTeam;
 }
 
-// Whether any game in this week has actually kicked off and not yet finished.
-// 27 KB for the season, so it is a cheap thing to ask before deciding to refresh
-// a dozen leagues.
-async function anyGameInProgress(week, signal) {
+// Whether any game in this week has kicked off, finished or otherwise left the
+// schedule alone. Distinguishes "the week Sleeper has moved on to" from "the
+// week being played", which is what decides whether a Tuesday still belongs to
+// the result you were watching last night.
+// 27 KB for the season, so it is a cheap thing to ask before deciding to
+// refresh a dozen leagues.
+async function fetchSchedule(signal) {
   const games = await fetch(
     `https://api.sleeper.app/schedule/nfl/regular/${SEASON}`,
     { signal }
   ).then((r) => r.json());
-  return (Array.isArray(games) ? games : []).some(
-    (g) => g.week === week && !IDLE_GAME_STATUSES.has(g.status)
-  );
+  return Array.isArray(games) ? games : [];
 }
+
+// Kicked off and not yet finished.
+const anyGameInProgress = (games, week) =>
+  games.some((g) => g.week === week && !IDLE_GAME_STATUSES.has(g.status));
+
+// Kicked off at all, finished or not. Distinguishes the week Sleeper has moved
+// on to from the week being played, which is what decides whether a Tuesday
+// still belongs to the result being watched the night before.
+const anyGameStarted = (games, week) =>
+  games.some((g) => g.week === week && g.status && g.status !== "pre_game");
 
 function getAuth() {
   try {
@@ -218,6 +230,9 @@ export default function Gameday() {
   const [matchups, setMatchups] = useState([]);
   const [view, setView] = useState("cards");
   const [updatedAt, setUpdatedAt] = useState(null);
+  // Worth saying out loud now that it is not always the week you would assume:
+  // on a Tuesday this is the week that just finished.
+  const [shownWeek, setShownWeek] = useState(null);
   // Off by default: most visits are not during a game, and polling a dozen
   // leagues for a number that cannot change is pure waste.
   const [pollEnabled, setPollEnabled] = useState(false);
@@ -238,8 +253,17 @@ export default function Gameday() {
         fetch("https://api.sleeper.app/v1/state/nfl", { signal }).then((r) => r.json()),
       ]);
 
-      const week = state?.week || 1;
+      // Sleeper's `week` is the week whose games come next, and it advances the
+      // moment Monday night ends — so following it alone loses the result being
+      // watched. weekToShow keeps that week up through Tuesday.
+      const upcoming = state?.week || 1;
+      const week = weekToShow({
+        week: upcoming,
+        displayWeek: state?.display_week,
+        upcomingWeekHasStarted: anyGameStarted(await fetchSchedule(signal), upcoming),
+      });
       weekRef.current = week;
+      setShownWeek(week);
       const playable = Array.isArray(leagues)
         ? leagues.filter((l) => {
             const t = l.settings?.type;
@@ -333,10 +357,31 @@ export default function Gameday() {
     const tick = async () => {
       if (document.visibilityState !== "visible") return;
       try {
-        const live = await anyGameInProgress(weekRef.current || 1, controller.signal);
+        const [games, state] = await Promise.all([
+          fetchSchedule(controller.signal),
+          fetch("https://api.sleeper.app/v1/state/nfl", { signal: controller.signal }).then(
+            (r) => r.json()
+          ),
+        ]);
         if (cancelled) return;
+
+        const live = anyGameInProgress(games, weekRef.current || 1);
         setGamesLive(live);
-        if (live) await load(auth, controller.signal, { showSpinner: false });
+
+        // The week rolls over on a Tuesday morning, when nothing is live — so a
+        // reload gated purely on live games would never see it and a tab left
+        // open would sit on the old week for good. Checking costs two small
+        // requests; reloading a dozen leagues only happens when it changed.
+        const upcoming = state?.week || 1;
+        const shouldShow = weekToShow({
+          week: upcoming,
+          displayWeek: state?.display_week,
+          upcomingWeekHasStarted: anyGameStarted(games, upcoming),
+        });
+
+        if (live || shouldShow !== weekRef.current) {
+          await load(auth, controller.signal, { showSpinner: false });
+        }
       } catch (e) {
         if (e.name !== "AbortError") setGamesLive(null);
       }
@@ -502,7 +547,7 @@ export default function Gameday() {
           <h2 className="gameday-title">Gameday</h2>
           {!loading && matchups.length > 0 && (
             <div className="gameday-summary">
-              Weekly Predictions —{" "}
+              {shownWeek ? `Week ${shownWeek} predictions` : "Weekly Predictions"} —{" "}
               <span className="gameday-wins">{wins}W</span>
               {" / "}
               <span className="gameday-losses">{losses}L</span>
