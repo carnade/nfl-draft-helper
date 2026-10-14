@@ -20,6 +20,11 @@ import {
 } from "./seasonSummary";
 
 const SEASON = 2026;
+// Which way the share-of-maximum column is coloured, remembered between
+// visits. Not a setting worth a page in Settings, but resetting it on every
+// visit makes it impossible to live with either treatment long enough to
+// judge it.
+const PCT_STYLE_KEY = "gameday_pct_style";
 // How often to re-read scores while games are on. Projections are left alone —
 // they move with injury news, not with play — so a poll only costs two small
 // requests per league.
@@ -286,10 +291,25 @@ export default function Gameday() {
   // leagueId -> week -> { points, max, pct } | null when that roster did not play
   const [seasonWeeks, setSeasonWeeks] = useState({});
   const [seasonBusy, setSeasonBusy] = useState(false);
-  // Which way the share-of-maximum column is coloured. A toggle rather than a
-  // decision, because the two read differently enough to be worth comparing on
-  // real numbers.
-  const [pctStyle, setPctStyle] = useState("wash");
+  // A toggle rather than a decision, because the two read differently enough
+  // to be worth comparing on real numbers over more than one sitting.
+  const [pctStyle, setPctStyle] = useState(() => {
+    try {
+      return localStorage.getItem(PCT_STYLE_KEY) === "text" ? "text" : "wash";
+    } catch {
+      // Storage can be blocked; the toggle still works for this visit.
+      return "wash";
+    }
+  });
+
+  const choosePctStyle = (style) => {
+    setPctStyle(style);
+    try {
+      localStorage.setItem(PCT_STYLE_KEY, style);
+    } catch {
+      /* nothing to do — the choice simply does not outlive the visit */
+    }
+  };
   // Off by default: most visits are not during a game, and polling a dozen
   // leagues for a number that cannot change is pure waste.
   const [pollEnabled, setPollEnabled] = useState(false);
@@ -719,7 +739,7 @@ export default function Gameday() {
                   key={style}
                   type="button"
                   className={`gameday-pill${pctStyle === style ? " active" : ""}`}
-                  onClick={() => setPctStyle(style)}
+                  onClick={() => choosePctStyle(style)}
                   title={
                     style === "wash"
                       ? "Shade the percentage cell"
