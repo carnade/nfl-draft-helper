@@ -629,10 +629,9 @@ body.dark .gameday-loss-label {
  * text: the figure stays legible in both themes and the column can be read
  * down as a shape.
  *
- * 75-80 is untinted. Below that it steps to full red at 55, above it to full
- * green at 95 — the ends are where they are expected rather than the two sides
- * having the same number of steps. A perfect week is gold, because starting
- * the best lineup available is a different thing from nearly doing so.
+ * 75-80 is untinted, and it steps away in fives, four each way: full red below
+ * 60, full green from 95. A perfect week is gold, because starting the best
+ * lineup available is a different thing from nearly doing so.
  */
 .gameday-season-table .pct {
   font-weight: 600;
@@ -644,9 +643,10 @@ body.dark .gameday-loss-label {
 .gameday-season-table .pct-r3 { background: hsl(0 65% 55% / 0.36); }
 .gameday-season-table .pct-r4 { background: hsl(0 65% 55% / 0.48); }
 
-.gameday-season-table .pct-g1 { background: hsl(140 50% 45% / 0.16); }
-.gameday-season-table .pct-g2 { background: hsl(140 50% 45% / 0.32); }
-.gameday-season-table .pct-g3 { background: hsl(140 50% 45% / 0.48); }
+.gameday-season-table .pct-g1 { background: hsl(140 50% 45% / 0.12); }
+.gameday-season-table .pct-g2 { background: hsl(140 50% 45% / 0.24); }
+.gameday-season-table .pct-g3 { background: hsl(140 50% 45% / 0.36); }
+.gameday-season-table .pct-g4 { background: hsl(140 50% 45% / 0.48); }
 
 .gameday-season-table .pct-gold {
   background: hsl(44 90% 52% / 0.55);

@@ -162,23 +162,35 @@ describe("pctTone", () => {
     expect(pctTone(80)).toBe("");
   });
 
-  it("steps towards red below it, reaching full at 55", () => {
+  it("steps towards red in fives, full below 60", () => {
     expect(pctTone(74.9)).toBe("r1");
     expect(pctTone(70)).toBe("r1");
     expect(pctTone(69.9)).toBe("r2");
+    expect(pctTone(65)).toBe("r2");
+    expect(pctTone(64.9)).toBe("r3");
     expect(pctTone(60)).toBe("r3");
-    expect(pctTone(55)).toBe("r4");
+    expect(pctTone(59.9)).toBe("r4");
     expect(pctTone(20)).toBe("r4");
     expect(pctTone(0)).toBe("r4");
   });
 
-  it("steps towards green above it, reaching full at 95", () => {
+  it("steps towards green in fives, full from 95", () => {
     expect(pctTone(80.1)).toBe("g1");
     expect(pctTone(85)).toBe("g1");
     expect(pctTone(85.1)).toBe("g2");
     expect(pctTone(90)).toBe("g2");
+    expect(pctTone(90.1)).toBe("g3");
     expect(pctTone(95)).toBe("g3");
-    expect(pctTone(99.9)).toBe("g3");
+    expect(pctTone(95.1)).toBe("g4");
+    expect(pctTone(99.9)).toBe("g4");
+  });
+
+  it("is a mirror image either side of the middle", () => {
+    // Four steps each way, the same distance out.
+    expect(pctTone(74.9)).toBe("r1");
+    expect(pctTone(80.1)).toBe("g1");
+    expect(pctTone(59.9)).toBe("r4");
+    expect(pctTone(95.1)).toBe("g4");
   });
 
   it("gives a perfect week its own colour", () => {

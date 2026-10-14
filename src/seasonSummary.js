@@ -54,17 +54,21 @@ export function weekResult(rows, mine) {
   return "T";
 }
 
-// Anchors, chosen so the ends are where they are expected rather than so the
-// two sides have the same number of steps: 75 to 80 reads neutral, 55 is as
-// red as it gets, 95 as green, and a perfect week is gold rather than simply
-// the greenest.
+// 75 to 80 reads neutral, and it steps away in fives, four each way:
+//
+//   r1 70-75   g1 80-85
+//   r2 65-70   g2 85-90
+//   r3 60-65   g3 90-95
+//   r4 below 60 (full)    g4 95 and up (full)
+//
+// A hundred percent is gold rather than simply the greenest, because starting
+// the best lineup available is a different thing from nearly doing so.
 const NEUTRAL_LOW = 75;
 const NEUTRAL_HIGH = 80;
-const RED_STEPS = 4; // 75 down to 55
-const GREEN_STEPS = 3; // 80 up to 95
+const STEPS = 4;
 
 /**
- * A tone for a percentage: "gold", "g1".."g3", "", or "r1".."r4".
+ * A tone for a percentage: "gold", "g1".."g4", "", or "r1".."r4".
  *
  * Stepped rather than continuous. A table of numbers is easier to read down
  * when two similar figures share a colour than when every cell is a slightly
@@ -75,10 +79,10 @@ export function pctTone(pct) {
   if (pct >= 100) return "gold";
   if (pct >= NEUTRAL_LOW && pct <= NEUTRAL_HIGH) return "";
   if (pct < NEUTRAL_LOW) {
-    const step = Math.min(RED_STEPS, Math.ceil((NEUTRAL_LOW - pct) / 5));
+    const step = Math.min(STEPS, Math.ceil((NEUTRAL_LOW - pct) / 5));
     return `r${step}`;
   }
-  const step = Math.min(GREEN_STEPS, Math.ceil((pct - NEUTRAL_HIGH) / 5));
+  const step = Math.min(STEPS, Math.ceil((pct - NEUTRAL_HIGH) / 5));
   return `g${step}`;
 }
 
