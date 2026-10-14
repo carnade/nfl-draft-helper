@@ -366,6 +366,93 @@ body.dark .gameday-loss-label {
   white-space: nowrap;
 }
 
+/* One bar rather than eighteen buttons: the season is a single thing, and the
+   parts butt together so it reads as a strip you move along. */
+.gameday-weeks {
+  display: flex;
+  margin-bottom: 14px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.gameday-week {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: inherit;
+  background: none;
+  border: 0;
+  border-right: 1px solid hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+}
+
+.gameday-week:last-child {
+  border-right: 0;
+}
+
+.gameday-week:hover:not(:disabled) {
+  background: hsl(var(--muted) / 0.5);
+  color: hsl(var(--foreground));
+}
+
+/* Played, so there is something to look at. */
+.gameday-week.is-done {
+  color: hsl(var(--foreground));
+}
+
+.gameday-week.is-live {
+  color: #d08a2f;
+}
+
+/* Not played. Flat rather than hidden, so the shape of the season stays
+   visible and the weeks do not move about as the season goes on. */
+.gameday-week:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* The week being shown is filled, not merely tinted — it is the one thing on
+   this bar you need to find at a glance. */
+.gameday-week.is-shown {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-weight: 700;
+}
+
+.gameday-week.is-shown:hover:not(:disabled) {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+/* Where "now" is, when you are looking at some other week. Without it there is
+   nothing on the bar saying which one you came from. */
+.gameday-week.is-current:not(.is-shown) {
+  box-shadow: inset 0 -2px 0 hsl(var(--primary) / 0.7);
+}
+
+/* The three numbers in a list row stack, as they do on a card. Inline they
+   made every row long enough to need sideways scrolling. */
+.gameday-list-item .gameday-score-initial,
+.gameday-list-item .gameday-score-max {
+  display: block;
+  margin-top: 0;
+}
+
+/* Looking at a week on purpose rather than the current one. Said plainly,
+   because every number on the page means something different. */
+.gameday-pinned {
+  color: #d08a2f;
+  font-weight: 600;
+}
+
+.gameday-pinned a {
+  color: inherit;
+}
+
 /* What the roster could have scored, shown only once the games are over.
    Quieter than the projection line above it: this is a curiosity after the
    fact, not something to act on, and it should not compete with the score. */

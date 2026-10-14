@@ -4,7 +4,12 @@ import "./Gameday.css";
 import { projectedPoints, PROJECTION_POSITIONS } from "./leagueScoring";
 import { loadHiddenLeagues, visibleLeagues } from "./leagueVisibility";
 import { finalOutcome } from "./gamedayOutcome";
-import { weekToShow } from "./gamedayWeek";
+import {
+  weekToShow,
+  pinnedWeek,
+  weekStatuses,
+  weekIsSelectable,
+} from "./gamedayWeek";
 import { bestLineupPoints } from "./bestLineup";
 
 const SEASON = 2026;
@@ -261,6 +266,11 @@ export default function Gameday() {
   // Worth saying out loud now that it is not always the week you would assume:
   // on a Tuesday this is the week that just finished.
   const [shownWeek, setShownWeek] = useState(null);
+  // The week being looked at, when it is not simply the current one. Starts
+  // from the URL so a link to a particular week still works.
+  const [chosenWeek, setChosenWeek] = useState(() => pinnedWeek(window.location.search));
+  const [currentWeek, setCurrentWeek] = useState(null);
+  const [statuses, setStatuses] = useState({});
   // Off by default: most visits are not during a game, and polling a dozen
   // leagues for a number that cannot change is pure waste.
   const [pollEnabled, setPollEnabled] = useState(false);
@@ -286,13 +296,20 @@ export default function Gameday() {
       // moment Monday night ends — so following it alone loses the result being
       // watched. weekToShow keeps that week up through Tuesday.
       const upcoming = state?.week || 1;
-      const week = weekToShow({
+      // ?week= wins, for looking back at a finished week — the max-lineup
+      // figures only appear once every game is over, and midweek there is
+      // nothing finished to look at.
+      const games = await fetchSchedule(signal);
+      const live = weekToShow({
         week: upcoming,
         displayWeek: state?.display_week,
-        upcomingWeekHasStarted: anyGameStarted(await fetchSchedule(signal), upcoming),
+        upcomingWeekHasStarted: anyGameStarted(games, upcoming),
       });
+      const week = chosenWeek ?? live;
       weekRef.current = week;
       setShownWeek(week);
+      setCurrentWeek(live);
+      setStatuses(weekStatuses(games));
       const playable = Array.isArray(leagues)
         ? leagues.filter((l) => {
             const t = l.settings?.type;
@@ -311,7 +328,11 @@ export default function Gameday() {
       // One request for the whole week, shared by every league.
       const gameClocks = await fetchGameClocks(week, auth.token, signal);
 
-      if (!projectionsRef.current) {
+      // Keyed by week. Fetched once per week rather than once per page: these
+      // are week-specific, and before the week could be changed the distinction
+      // did not exist. Landing on a past week and then switching to the live
+      // one would otherwise price it with the wrong week's projections.
+      if (projectionsRef.current?.week !== week) {
         const rows = await fetch(
           `https://api.sleeper.com/projections/nfl/${SEASON}/${week}?season_type=regular&${PROJECTION_POSITIONS}`,
           { signal }
@@ -327,8 +348,9 @@ export default function Gameday() {
           const single = row.player?.position;
           positions[id] = fp?.length ? fp : single ? [single] : [];
         }
-        projectionsRef.current = byPlayer;
-        positionsRef.current = positions;
+        projectionsRef.current = { week, byPlayer };
+        // Positions do not change from week to week, so these accumulate.
+        positionsRef.current = { ...positionsRef.current, ...positions };
       }
 
       const results = await Promise.all(
@@ -353,7 +375,7 @@ export default function Gameday() {
 
             const matchup = buildMatchupResult(gqlData, userId, {
               scoring: league.scoring_settings,
-              projections: projectionsRef.current,
+              projections: projectionsRef.current.byPlayer,
               playerPoints,
               gameClocks,
               squadByRoster,
@@ -375,7 +397,7 @@ export default function Gameday() {
     } finally {
       if (!signal.aborted && showSpinner) setLoading(false);
     }
-  }, []);
+  }, [chosenWeek]);
 
   useEffect(() => {
     const a = getAuth();
@@ -423,7 +445,12 @@ export default function Gameday() {
           upcomingWeekHasStarted: anyGameStarted(games, upcoming),
         });
 
-        if (live || shouldShow !== weekRef.current) {
+        // A pinned week is not stale, it is chosen — comparing it against the
+        // real one would reload on every tick, for ever.
+        // A week chosen on purpose is not stale — comparing it against the
+        // live one would reload on every tick, for ever.
+        const weekChanged = chosenWeek == null && shouldShow !== weekRef.current;
+        if (live || weekChanged) {
           await load(auth, controller.signal, { showSpinner: false });
         }
       } catch (e) {
@@ -446,7 +473,7 @@ export default function Gameday() {
       clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [auth, pollEnabled, load]);
+  }, [auth, pollEnabled, load, chosenWeek]);
 
   if (!auth) {
     return (
@@ -470,6 +497,52 @@ export default function Gameday() {
   );
   const wins = validMatchups.filter((m) => m.matchup.predictedWin).length;
   const losses = validMatchups.filter((m) => !m.matchup.predictedWin).length;
+
+  // One bar, eighteen parts. Weeks that have not happened are flat and
+  // unclickable rather than hidden, so the shape of the season stays visible.
+  const chooseWeek = (week) => {
+    // Null rather than the number when it is the current week, so the page goes
+    // back to following the rollover on its own instead of pinning to whatever
+    // was current when it was clicked.
+    const next = week === currentWeek ? null : week;
+    setChosenWeek(next);
+    // Kept in the address bar so the view can be linked to or reloaded, but
+    // without a history entry per click.
+    const url = next ? `${window.location.pathname}?week=${next}` : window.location.pathname;
+    window.history.replaceState(null, "", url);
+  };
+
+  function renderWeekPicker() {
+    if (!currentWeek) return null;
+    return (
+      <div className="gameday-weeks" role="group" aria-label="Week">
+        {Array.from({ length: 18 }, (_, i) => i + 1).map((w) => {
+          const status = statuses[w] || "upcoming";
+          const selectable = weekIsSelectable(status, w, currentWeek);
+          const shown = w === shownWeek;
+          return (
+            <button
+              key={w}
+              type="button"
+              className={`gameday-week${shown ? " is-shown" : ""}${
+                w === currentWeek ? " is-current" : ""
+              } is-${status}`}
+              disabled={!selectable}
+              aria-current={shown ? "true" : undefined}
+              title={
+                selectable
+                  ? `Week ${w}${status === "done" ? " — final" : status === "live" ? " — in progress" : ""}`
+                  : `Week ${w} has not been played`
+              }
+              onClick={() => chooseWeek(w)}
+            >
+              {w}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
 
   function renderCards(group) {
     return (
@@ -618,12 +691,16 @@ export default function Gameday() {
 
   return (
     <div className="gameday-container">
+      {renderWeekPicker()}
       <div className="gameday-header">
         <div className="gameday-header-left">
           <h2 className="gameday-title">Gameday</h2>
           {!loading && matchups.length > 0 && (
             <div className="gameday-summary">
               {shownWeek ? `Week ${shownWeek} predictions` : "Weekly Predictions"} —{" "}
+              {chosenWeek != null && chosenWeek !== currentWeek && (
+                <span className="gameday-pinned">past week · </span>
+              )}
               <span className="gameday-wins">{wins}W</span>
               {" / "}
               <span className="gameday-losses">{losses}L</span>
