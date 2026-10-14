@@ -1,4 +1,4 @@
-import { finalOutcome } from "./gamedayOutcome";
+import { finalOutcome, remainingForStarter } from "./gamedayOutcome";
 
 const done = (over = {}) => ({
   hasOpponent: true,
@@ -51,5 +51,40 @@ describe("finalOutcome", () => {
   it("survives missing scores rather than throwing", () => {
     expect(finalOutcome(done({ myLive: undefined, oppLive: undefined }))).toBe("tie");
     expect(finalOutcome()).toBeNull();
+  });
+});
+
+describe("remainingForStarter", () => {
+  const teamsPlaying = new Set(["KC", "BUF", "DAL"]);
+
+  it("is whatever the clock says for a team that is playing", () => {
+    expect(
+      remainingForStarter({ team: "BUF", teamsPlaying, gameClocks: { BUF: 0.4 } })
+    ).toBe(0.4);
+    expect(
+      remainingForStarter({ team: "BUF", teamsPlaying, gameClocks: { BUF: 0 } })
+    ).toBe(0);
+  });
+
+  it("counts a starter on a bye as finished, not pending", () => {
+    // Left in the lineup through their bye. They can never score, so a matchup
+    // containing one must still be able to resolve.
+    expect(remainingForStarter({ team: "SEA", teamsPlaying, gameClocks: {} })).toBe(0);
+  });
+
+  it("counts a starter with no team as finished", () => {
+    expect(remainingForStarter({ team: undefined, teamsPlaying })).toBe(0);
+  });
+
+  it("is pending for a playing team the clock says nothing about", () => {
+    expect(remainingForStarter({ team: "DAL", teamsPlaying, gameClocks: {} })).toBe(1);
+  });
+
+  it("claims nothing when the schedule did not load", () => {
+    // Declaring everyone finished would announce results that have not
+    // happened.
+    expect(remainingForStarter({ team: "SEA", teamsPlaying: new Set() })).toBe(1);
+    expect(remainingForStarter({ team: "SEA" })).toBe(1);
+    expect(remainingForStarter()).toBe(1);
   });
 });

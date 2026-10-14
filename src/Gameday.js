@@ -3,7 +3,7 @@ import "./Gameday.css";
 
 import { projectedPoints, PROJECTION_POSITIONS } from "./leagueScoring";
 import { loadHiddenLeagues, visibleLeagues } from "./leagueVisibility";
-import { finalOutcome } from "./gamedayOutcome";
+import { finalOutcome, remainingForStarter } from "./gamedayOutcome";
 import {
   weekToShow,
   pinnedWeek,
@@ -155,6 +155,7 @@ function buildMatchupResult(
     projections,
     playerPoints,
     gameClocks,
+    teamsPlaying,
     squadByRoster = {},
     rosterPositions = [],
     positionsOf = () => [],
@@ -202,9 +203,11 @@ function buildMatchupResult(
     let started = 0;
     for (const playerId of starters) {
       const team = playerMap[playerId]?.team;
-      // A player with no game this week keeps their (zero) projection rather than
-      // being treated as still to play.
-      const remaining = team in gameClocks ? gameClocks[team] : 1;
+      // A starter whose team is not playing this week — left in the lineup
+      // through their bye — is finished rather than pending. Sleeper publishes
+      // no projection for a bye team, so this does not move the score; what it
+      // moves is whether the matchup can ever be called.
+      const remaining = remainingForStarter({ team, teamsPlaying, gameClocks });
       const actual = playerPoints[playerId] || 0;
       live += actual + projectedPoints(projections[playerId], scoring) * remaining;
       if (remaining === 0) finished += 1;
@@ -355,6 +358,15 @@ export default function Gameday() {
       // safe to keep.
       const weekIsFinal = weekStatuses(games)[week] === "done";
 
+      // Who has a game at all this week. A starter whose team is absent cannot
+      // score, which is a different thing from not having played yet.
+      const teamsPlaying = new Set(
+        games
+          .filter((g) => g.week === week)
+          .flatMap((g) => [g.home, g.away])
+          .filter(Boolean)
+      );
+
       const gameClocks = await fetchGameClocks(week, auth.token, signal);
 
       // Keyed by week. Fetched once per week rather than once per page: these
@@ -425,6 +437,7 @@ export default function Gameday() {
               projections: projectionsRef.current.byPlayer,
               playerPoints,
               gameClocks,
+              teamsPlaying,
               squadByRoster,
               rosterPositions: league.roster_positions,
               positionsOf: (id) => positionsRef.current[id] || [],
@@ -943,28 +956,31 @@ export default function Gameday() {
             ) : (
               <>
                 <div className={`gameday-list-item gameday-list-proj ${matchup.predictedWin ? "win" : "loss"}`}>
-                  {matchup.myLive.toFixed(2)}
-                  {matchup.myStarted && (
-                    <span className="gameday-score-initial"> from {matchup.myProj.toFixed(2)}</span>
-                  )}
-                  {matchup.myMax != null && (
-                    <span className="gameday-score-max" title="Best lineup available">
-                      {" "}
-                      max {matchup.myMax.toFixed(2)}
-                    </span>
-                  )}
+                  {/* Just the score here. The projection and the best lineup
+                      live on the cards; three numbers a side turned every row
+                      into a paragraph. The title keeps them reachable. */}
+                  <span
+                    title={[
+                      matchup.myStarted && `from ${matchup.myProj.toFixed(2)}`,
+                      matchup.myMax != null && `max ${matchup.myMax.toFixed(2)}`,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  >
+                    {matchup.myLive.toFixed(2)}
+                  </span>
                 </div>
                 <div className="gameday-list-item">
-                  {matchup.oppLive.toFixed(2)}
-                  {matchup.oppStarted && (
-                    <span className="gameday-score-initial"> from {matchup.oppProj.toFixed(2)}</span>
-                  )}
-                  {matchup.oppMax != null && (
-                    <span className="gameday-score-max" title="Best lineup available">
-                      {" "}
-                      max {matchup.oppMax.toFixed(2)}
-                    </span>
-                  )}
+                  <span
+                    title={[
+                      matchup.oppStarted && `from ${matchup.oppProj.toFixed(2)}`,
+                      matchup.oppMax != null && `max ${matchup.oppMax.toFixed(2)}`,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  >
+                    {matchup.oppLive.toFixed(2)}
+                  </span>
                 </div>
                 <div className="gameday-list-item gameday-list-played">
                   {matchup.myStarters > 0 ? `${matchup.myPlayed}/${matchup.myStarters}` : "—"}

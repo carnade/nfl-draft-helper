@@ -434,13 +434,8 @@ body.dark .gameday-loss-label {
   box-shadow: inset 0 -2px 0 hsl(var(--primary) / 0.7);
 }
 
-/* The three numbers in a list row stack, as they do on a card. Inline they
-   made every row long enough to need sideways scrolling. */
-.gameday-list-item .gameday-score-initial,
-.gameday-list-item .gameday-score-max {
-  display: block;
-  margin-top: 0;
-}
+/* The list shows the score alone; the projection and the best lineup are on
+   the cards, and in a tooltip here. */
 
 /* Looking at a week on purpose rather than the current one. Said plainly,
    because every number on the page means something different. */
