@@ -404,6 +404,13 @@ export default function Gameday() {
               squadByRoster[m.roster_id] = m.players || [];
             }
 
+            // Already fetched for the matchup, and the season view would
+            // otherwise spend a request per league rediscovering it.
+            const mineHere = (gqlData?.league_rosters || []).find(
+              (r) => r.owner_id === userId
+            );
+            if (mineHere) rosterIdRef.current[league.league_id] = mineHere.roster_id;
+
             const matchup = buildMatchupResult(gqlData, userId, {
               scoring: league.scoring_settings,
               projections: projectionsRef.current.byPlayer,
@@ -566,6 +573,44 @@ export default function Gameday() {
       setSeasonBusy(false);
     }
   }, [season.leagues, statuses, seasonWeeks, loadSeasonWeek]);
+
+  // Weeks already in the cache, because they were looked at in another view,
+  // are filled in without asking the network for anything. Without this a week
+  // just viewed still reads "not loaded", which is true of the table and a lie
+  // about the data.
+  useEffect(() => {
+    const finished = Object.keys(statuses)
+      .map(Number)
+      .filter((w) => statuses[w] === "done");
+    if (season.leagues.length === 0 || finished.length === 0) return;
+
+    setSeasonWeeks((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const league of season.leagues) {
+        const rosterId = rosterIdRef.current[league.leagueId];
+        if (rosterId == null) continue;
+        for (const week of finished) {
+          if (next[league.leagueId]?.[week] !== undefined) continue;
+          const rows = readFinalWeek(league.leagueId, week);
+          if (!rows) continue;
+          next[league.leagueId] = {
+            ...(next[league.leagueId] || {}),
+            [week]: summariseWeek({
+              rows,
+              rosterId,
+              rosterPositions: league.rosterPositions,
+              positionsOf: (id) => positionsRef.current[id] || [],
+            }),
+          };
+          changed = true;
+        }
+      }
+      // The same object back when there was nothing to add, so this does not
+      // re-trigger itself.
+      return changed ? next : prev;
+    });
+  }, [season.leagues, statuses, matchups]);
 
   if (!auth) {
     return (
