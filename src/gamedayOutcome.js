@@ -39,3 +39,23 @@ export function finalOutcome({
   if (mine < theirs) return "loss";
   return "tie";
 }
+
+/**
+ * How much of this starter's game is still to come: 1 before kickoff, 0 after.
+ *
+ * The case worth naming is a starter whose team is not playing at all — a
+ * manager who left somebody in the lineup through their bye. They can never
+ * score, so they are finished, not pending. Treating them as pending left the
+ * matchup permanently unresolved: it was never "every starter has played", so
+ * it never read as a result and never showed a best lineup.
+ *
+ * `teamsPlaying` empty means the schedule did not load. Then nothing is known,
+ * and claiming everyone has finished would declare results that have not
+ * happened — so it falls back to pending.
+ */
+export function remainingForStarter({ team, teamsPlaying, gameClocks = {} } = {}) {
+  const knowSchedule = teamsPlaying instanceof Set && teamsPlaying.size > 0;
+  if (knowSchedule && (!team || !teamsPlaying.has(team))) return 0;
+  if (team && team in gameClocks) return gameClocks[team];
+  return 1;
+}

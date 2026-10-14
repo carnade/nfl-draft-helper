@@ -18,6 +18,25 @@
 
 const TUESDAY = 2;
 
+// A regular season is 18 weeks. Anything outside that is not a week to pin to.
+const MAX_WEEK = 18;
+
+/**
+ * A week asked for explicitly, via ?week= on the URL, or null.
+ *
+ * Mostly for looking back at a finished week: parts of the page only appear
+ * once every game is over, and on a Wednesday there is nothing finished to
+ * look at. Validated rather than trusted — a bad value should fall back to the
+ * real week, not ask Sleeper for week 900.
+ */
+export function pinnedWeek(search) {
+  const raw = new URLSearchParams(search || "").get("week");
+  if (raw === null) return null;
+  const week = Number(raw);
+  if (!Number.isInteger(week) || week < 1 || week > MAX_WEEK) return null;
+  return week;
+}
+
 /**
  * The week to show.
  *
@@ -44,4 +63,32 @@ export function weekToShow({
   if (upcomingWeekHasStarted) return current;
 
   return now.getDay() === TUESDAY ? previous : current;
+}
+
+/**
+ * Each week's state, from the season schedule: "done", "live" or "upcoming".
+ *
+ * A week with no games at all is upcoming rather than done — an empty list
+ * should not read as a completed week.
+ */
+export function weekStatuses(games = [], maxWeek = MAX_WEEK) {
+  const out = {};
+  for (let week = 1; week <= maxWeek; week += 1) {
+    const inWeek = (games || []).filter((g) => g?.week === week);
+    if (inWeek.length === 0) {
+      out[week] = "upcoming";
+    } else if (inWeek.every((g) => g.status === "complete")) {
+      out[week] = "done";
+    } else if (inWeek.some((g) => g.status && g.status !== "pre_game")) {
+      out[week] = "live";
+    } else {
+      out[week] = "upcoming";
+    }
+  }
+  return out;
+}
+
+/** The weeks worth offering: ones with something to show, plus the live one. */
+export function weekIsSelectable(status, week, currentWeek) {
+  return status === "done" || status === "live" || week === currentWeek;
 }

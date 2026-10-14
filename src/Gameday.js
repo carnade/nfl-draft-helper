@@ -3,10 +3,28 @@ import "./Gameday.css";
 
 import { projectedPoints, PROJECTION_POSITIONS } from "./leagueScoring";
 import { loadHiddenLeagues, visibleLeagues } from "./leagueVisibility";
-import { finalOutcome } from "./gamedayOutcome";
-import { weekToShow } from "./gamedayWeek";
+import { finalOutcome, remainingForStarter } from "./gamedayOutcome";
+import {
+  weekToShow,
+  pinnedWeek,
+  weekStatuses,
+  weekIsSelectable,
+} from "./gamedayWeek";
+import { bestLineupPoints } from "./bestLineup";
+import { readFinalWeek, writeFinalWeek } from "./finalWeekCache";
+import {
+  summariseWeek,
+  summariseSeason,
+  missingWeeks,
+  pctTone,
+} from "./seasonSummary";
 
 const SEASON = 2026;
+// Which way the share-of-maximum column is coloured, remembered between
+// visits. Not a setting worth a page in Settings, but resetting it on every
+// visit makes it impossible to live with either treatment long enough to
+// judge it.
+const PCT_STYLE_KEY = "gameday_pct_style";
 // How often to re-read scores while games are on. Projections are left alone —
 // they move with injury news, not with play — so a poll only costs two small
 // requests per league.
@@ -134,7 +152,20 @@ async function fetchLeagueMatchup(leagueId, token, signal, week) {
   return json.data;
 }
 
-function buildMatchupResult(gqlData, userId, { scoring, projections, playerPoints, gameClocks }) {
+function buildMatchupResult(
+  gqlData,
+  userId,
+  {
+    scoring,
+    projections,
+    playerPoints,
+    gameClocks,
+    teamsPlaying,
+    squadByRoster = {},
+    rosterPositions = [],
+    positionsOf = () => [],
+  }
+) {
   const rosters = gqlData.league_rosters || [];
   const users = gqlData.league_users || [];
   const legs = gqlData.matchup_legs || [];
@@ -177,9 +208,11 @@ function buildMatchupResult(gqlData, userId, { scoring, projections, playerPoint
     let started = 0;
     for (const playerId of starters) {
       const team = playerMap[playerId]?.team;
-      // A player with no game this week keeps their (zero) projection rather than
-      // being treated as still to play.
-      const remaining = team in gameClocks ? gameClocks[team] : 1;
+      // A starter whose team is not playing this week — left in the lineup
+      // through their bye — is finished rather than pending. Sleeper publishes
+      // no projection for a bye team, so this does not move the score; what it
+      // moves is whether the matchup can ever be called.
+      const remaining = remainingForStarter({ team, teamsPlaying, gameClocks });
       const actual = playerPoints[playerId] || 0;
       live += actual + projectedPoints(projections[playerId], scoring) * remaining;
       if (remaining === 0) finished += 1;
@@ -193,6 +226,27 @@ function buildMatchupResult(gqlData, userId, { scoring, projections, playerPoint
 
   const myLive = mine.started > 0 ? mine.live : myProj;
   const oppLive = opp.started > 0 ? opp.live : oppProj;
+
+  // Only worth computing once the games are over. Mid-week this is "the best
+  // of what has been played so far", which keeps rising and reads as a claim
+  // it is not.
+  const bestFor = (leg) =>
+    bestLineupPoints({
+      rosterPositions,
+      players: squadByRoster[leg?.roster_id] || [],
+      playerPoints,
+      positionsOf,
+    });
+
+  const final = finalOutcome({
+    hasOpponent: !!oppLeg,
+    myPlayed: mine.played,
+    myStarters: mine.starters,
+    oppPlayed: opp.played,
+    oppStarters: opp.starters,
+    myLive,
+    oppLive,
+  });
 
   return {
     myProj,
@@ -208,18 +262,12 @@ function buildMatchupResult(gqlData, userId, { scoring, projections, playerPoint
     myStarted: mine.started > 0,
     oppStarted: opp.started > 0,
     oppName,
+    myMax: final ? bestFor(myLeg) : null,
+    oppMax: final ? bestFor(oppLeg) : null,
     predictedWin: oppLeg ? myLive > oppLive : null,
     // Null until every starter on both sides has played. Once it is set the
     // score is no longer a projection of anything.
-    final: finalOutcome({
-      hasOpponent: !!oppLeg,
-      myPlayed: mine.played,
-      myStarters: mine.starters,
-      oppPlayed: opp.played,
-      oppStarters: opp.starters,
-      myLive,
-      oppLive,
-    }),
+    final,
   };
 }
 
@@ -233,11 +281,41 @@ export default function Gameday() {
   // Worth saying out loud now that it is not always the week you would assume:
   // on a Tuesday this is the week that just finished.
   const [shownWeek, setShownWeek] = useState(null);
+  // The week being looked at, when it is not simply the current one. Starts
+  // from the URL so a link to a particular week still works.
+  const [chosenWeek, setChosenWeek] = useState(() => pinnedWeek(window.location.search));
+  const [currentWeek, setCurrentWeek] = useState(null);
+  const [statuses, setStatuses] = useState({});
+  // Everything the season view needs that the per-week load already knows.
+  const [season, setSeason] = useState({ leagues: [], userId: null });
+  // leagueId -> week -> { points, max, pct } | null when that roster did not play
+  const [seasonWeeks, setSeasonWeeks] = useState({});
+  const [seasonBusy, setSeasonBusy] = useState(false);
+  // A toggle rather than a decision, because the two read differently enough
+  // to be worth comparing on real numbers over more than one sitting.
+  const [pctStyle, setPctStyle] = useState(() => {
+    try {
+      return localStorage.getItem(PCT_STYLE_KEY) === "text" ? "text" : "wash";
+    } catch {
+      // Storage can be blocked; the toggle still works for this visit.
+      return "wash";
+    }
+  });
+
+  const choosePctStyle = (style) => {
+    setPctStyle(style);
+    try {
+      localStorage.setItem(PCT_STYLE_KEY, style);
+    } catch {
+      /* nothing to do — the choice simply does not outlive the visit */
+    }
+  };
   // Off by default: most visits are not during a game, and polling a dozen
   // leagues for a number that cannot change is pure waste.
   const [pollEnabled, setPollEnabled] = useState(false);
   const [gamesLive, setGamesLive] = useState(null);
   const weekRef = useRef(null);
+  const positionsRef = useRef({});
   // Projections change with news rather than with play, so they are fetched once
   // and reused by every poll.
   const projectionsRef = useRef(null);
@@ -257,13 +335,20 @@ export default function Gameday() {
       // moment Monday night ends — so following it alone loses the result being
       // watched. weekToShow keeps that week up through Tuesday.
       const upcoming = state?.week || 1;
-      const week = weekToShow({
+      // ?week= wins, for looking back at a finished week — the max-lineup
+      // figures only appear once every game is over, and midweek there is
+      // nothing finished to look at.
+      const games = await fetchSchedule(signal);
+      const live = weekToShow({
         week: upcoming,
         displayWeek: state?.display_week,
-        upcomingWeekHasStarted: anyGameStarted(await fetchSchedule(signal), upcoming),
+        upcomingWeekHasStarted: anyGameStarted(games, upcoming),
       });
+      const week = chosenWeek ?? live;
       weekRef.current = week;
       setShownWeek(week);
+      setCurrentWeek(live);
+      setStatuses(weekStatuses(games));
       const playable = Array.isArray(leagues)
         ? leagues.filter((l) => {
             const t = l.settings?.type;
@@ -280,18 +365,53 @@ export default function Gameday() {
       }
 
       // One request for the whole week, shared by every league.
+      setSeason({
+        userId,
+        leagues: filtered.map((l) => ({
+          leagueId: l.league_id,
+          leagueName: l.name,
+          rosterPositions: l.roster_positions || [],
+        })),
+      });
+
+      // Whether the week being shown is over, which is what makes its scores
+      // safe to keep.
+      const weekIsFinal = weekStatuses(games)[week] === "done";
+
+      // Who has a game at all this week. A starter whose team is absent cannot
+      // score, which is a different thing from not having played yet.
+      const teamsPlaying = new Set(
+        games
+          .filter((g) => g.week === week)
+          .flatMap((g) => [g.home, g.away])
+          .filter(Boolean)
+      );
+
       const gameClocks = await fetchGameClocks(week, auth.token, signal);
 
-      if (!projectionsRef.current) {
+      // Keyed by week. Fetched once per week rather than once per page: these
+      // are week-specific, and before the week could be changed the distinction
+      // did not exist. Landing on a past week and then switching to the live
+      // one would otherwise price it with the wrong week's projections.
+      if (projectionsRef.current?.week !== week) {
         const rows = await fetch(
           `https://api.sleeper.com/projections/nfl/${SEASON}/${week}?season_type=regular&${PROJECTION_POSITIONS}`,
           { signal }
         ).then((r) => r.json());
         const byPlayer = {};
+        const positions = {};
         for (const row of Array.isArray(rows) ? rows : []) {
-          byPlayer[String(row.player_id)] = row.stats || {};
+          const id = String(row.player_id);
+          byPlayer[id] = row.stats || {};
+          // Carried on the same rows and previously thrown away. Needed to know
+          // which slots a player could have filled.
+          const fp = row.player?.fantasy_positions;
+          const single = row.player?.position;
+          positions[id] = fp?.length ? fp : single ? [single] : [];
         }
-        projectionsRef.current = byPlayer;
+        projectionsRef.current = { week, byPlayer };
+        // Positions do not change from week to week, so these accumulate.
+        positionsRef.current = { ...positionsRef.current, ...positions };
       }
 
       const results = await Promise.all(
@@ -299,22 +419,48 @@ export default function Gameday() {
           const leagueType = league.settings?.type === 2 ? "Dynasty" : "Redraft";
           const base = { leagueName: league.name, leagueType, leagueId: league.league_id };
           try {
+            // A finished week never changes, so it is only ever fetched once
+            // per tab. The pairing still comes from GraphQL: it carries the
+            // projections and the opponent's name, neither of which is in the
+            // scores payload.
+            const cached = weekIsFinal ? readFinalWeek(league.league_id, week) : null;
             const [gqlData, weekMatchups] = await Promise.all([
               fetchLeagueMatchup(league.league_id, auth.token, signal, week),
-              fetch(`https://api.sleeper.app/v1/league/${league.league_id}/matchups/${week}`, { signal })
-                .then((r) => r.json()),
+              cached ??
+                fetch(
+                  `https://api.sleeper.app/v1/league/${league.league_id}/matchups/${week}`,
+                  { signal }
+                ).then((r) => r.json()),
             ]);
+            if (!cached) {
+              writeFinalWeek(league.league_id, week, weekMatchups, { isFinal: weekIsFinal });
+            }
 
             const playerPoints = {};
+            const squadByRoster = {};
             for (const m of Array.isArray(weekMatchups) ? weekMatchups : []) {
               Object.assign(playerPoints, m.players_points || {});
+              // The week's roster as it stood, bench included — a snapshot, not
+              // today's squad, so a past week is right too.
+              squadByRoster[m.roster_id] = m.players || [];
             }
+
+            // Already fetched for the matchup, and the season view would
+            // otherwise spend a request per league rediscovering it.
+            const mineHere = (gqlData?.league_rosters || []).find(
+              (r) => r.owner_id === userId
+            );
+            if (mineHere) rosterIdRef.current[league.league_id] = mineHere.roster_id;
 
             const matchup = buildMatchupResult(gqlData, userId, {
               scoring: league.scoring_settings,
-              projections: projectionsRef.current,
+              projections: projectionsRef.current.byPlayer,
               playerPoints,
               gameClocks,
+              teamsPlaying,
+              squadByRoster,
+              rosterPositions: league.roster_positions,
+              positionsOf: (id) => positionsRef.current[id] || [],
             });
             return { ...base, matchup };
           } catch {
@@ -331,7 +477,7 @@ export default function Gameday() {
     } finally {
       if (!signal.aborted && showSpinner) setLoading(false);
     }
-  }, []);
+  }, [chosenWeek]);
 
   useEffect(() => {
     const a = getAuth();
@@ -379,7 +525,12 @@ export default function Gameday() {
           upcomingWeekHasStarted: anyGameStarted(games, upcoming),
         });
 
-        if (live || shouldShow !== weekRef.current) {
+        // A pinned week is not stale, it is chosen — comparing it against the
+        // real one would reload on every tick, for ever.
+        // A week chosen on purpose is not stale — comparing it against the
+        // live one would reload on every tick, for ever.
+        const weekChanged = chosenWeek == null && shouldShow !== weekRef.current;
+        if (live || weekChanged) {
           await load(auth, controller.signal, { showSpinner: false });
         }
       } catch (e) {
@@ -402,7 +553,106 @@ export default function Gameday() {
       clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [auth, pollEnabled, load]);
+  }, [auth, pollEnabled, load, chosenWeek]);
+
+  // roster_id for this user in a league. Stable all season, so it is asked for
+  // once per league per tab.
+  const rosterIdRef = useRef({});
+
+  const myRosterId = useCallback(async (leagueId, userId, signal) => {
+    if (rosterIdRef.current[leagueId] !== undefined) return rosterIdRef.current[leagueId];
+    const rosters = await fetch(
+      `https://api.sleeper.app/v1/league/${leagueId}/rosters`,
+      { signal }
+    ).then((r) => r.json());
+    const mine = (Array.isArray(rosters) ? rosters : []).find((r) => r.owner_id === userId);
+    rosterIdRef.current[leagueId] = mine?.roster_id ?? null;
+    return rosterIdRef.current[leagueId];
+  }, []);
+
+  /** Load one finished week for one league. Nothing if it is already there. */
+  const loadSeasonWeek = useCallback(
+    async (league, week) => {
+      const rosterId = await myRosterId(league.leagueId, season.userId);
+      if (rosterId == null) return;
+
+      const cached = readFinalWeek(league.leagueId, week);
+      const rows =
+        cached ??
+        (await fetch(
+          `https://api.sleeper.app/v1/league/${league.leagueId}/matchups/${week}`
+        ).then((r) => r.json()));
+      if (!cached) writeFinalWeek(league.leagueId, week, rows, { isFinal: true });
+
+      const summary = summariseWeek({
+        rows,
+        rosterId,
+        rosterPositions: league.rosterPositions,
+        positionsOf: (id) => positionsRef.current[id] || [],
+      });
+
+      setSeasonWeeks((prev) => ({
+        ...prev,
+        [league.leagueId]: { ...(prev[league.leagueId] || {}), [week]: summary },
+      }));
+    },
+    [myRosterId, season.userId]
+  );
+
+  const loadEverything = useCallback(async () => {
+    setSeasonBusy(true);
+    try {
+      // One league at a time rather than all at once: a manager with sixty of
+      // them should not open sixty connections because they pressed a button.
+      for (const league of season.leagues) {
+        const weeks = missingWeeks(statuses, seasonWeeks[league.leagueId] || {});
+        for (const week of weeks) {
+          // eslint-disable-next-line no-await-in-loop
+          await loadSeasonWeek(league, week);
+        }
+      }
+    } finally {
+      setSeasonBusy(false);
+    }
+  }, [season.leagues, statuses, seasonWeeks, loadSeasonWeek]);
+
+  // Weeks already in the cache, because they were looked at in another view,
+  // are filled in without asking the network for anything. Without this a week
+  // just viewed still reads "not loaded", which is true of the table and a lie
+  // about the data.
+  useEffect(() => {
+    const finished = Object.keys(statuses)
+      .map(Number)
+      .filter((w) => statuses[w] === "done");
+    if (season.leagues.length === 0 || finished.length === 0) return;
+
+    setSeasonWeeks((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const league of season.leagues) {
+        const rosterId = rosterIdRef.current[league.leagueId];
+        if (rosterId == null) continue;
+        for (const week of finished) {
+          if (next[league.leagueId]?.[week] !== undefined) continue;
+          const rows = readFinalWeek(league.leagueId, week);
+          if (!rows) continue;
+          next[league.leagueId] = {
+            ...(next[league.leagueId] || {}),
+            [week]: summariseWeek({
+              rows,
+              rosterId,
+              rosterPositions: league.rosterPositions,
+              positionsOf: (id) => positionsRef.current[id] || [],
+            }),
+          };
+          changed = true;
+        }
+      }
+      // The same object back when there was nothing to add, so this does not
+      // re-trigger itself.
+      return changed ? next : prev;
+    });
+  }, [season.leagues, statuses, matchups]);
 
   if (!auth) {
     return (
@@ -427,6 +677,203 @@ export default function Gameday() {
   const wins = validMatchups.filter((m) => m.matchup.predictedWin).length;
   const losses = validMatchups.filter((m) => !m.matchup.predictedWin).length;
 
+  // One bar, eighteen parts. Weeks that have not happened are flat and
+  // unclickable rather than hidden, so the shape of the season stays visible.
+  const chooseWeek = (week) => {
+    // Null rather than the number when it is the current week, so the page goes
+    // back to following the rollover on its own instead of pinning to whatever
+    // was current when it was clicked.
+    const next = week === currentWeek ? null : week;
+    setChosenWeek(next);
+    // Kept in the address bar so the view can be linked to or reloaded, but
+    // without a history entry per click.
+    const url = next ? `${window.location.pathname}?week=${next}` : window.location.pathname;
+    window.history.replaceState(null, "", url);
+  };
+
+  // W-L across the weeks that have been loaded. Ties only appear if one
+  // happened, since a trailing "-0" on every row is noise.
+  const record = (loaded, weeks) => {
+    let w = 0;
+    let l = 0;
+    let t = 0;
+    for (const week of weeks) {
+      const r = loaded[week]?.result;
+      if (r === "W") w += 1;
+      else if (r === "L") l += 1;
+      else if (r === "T") t += 1;
+    }
+    if (w + l + t === 0) return "—";
+    return t > 0 ? `${w}-${l}-${t}` : `${w}-${l}`;
+  };
+
+  // Every league at once, two or three across depending on the width. A week
+  // that has not been loaded says so and loads on click, because fetching a
+  // season for sixty leagues without being asked would be rude.
+  function renderSeason() {
+    const finished = Object.keys(statuses)
+      .map(Number)
+      .filter((w) => statuses[w] === "done")
+      .sort((a, b) => a - b);
+
+    if (season.leagues.length === 0) return null;
+    const outstanding = season.leagues.reduce(
+      (n, l) => n + missingWeeks(statuses, seasonWeeks[l.leagueId] || {}).length,
+      0
+    );
+
+    return (
+      <>
+        <div className="gameday-season-bar">
+          <span className="gameday-season-note">
+            {finished.length === 0
+              ? "No finished weeks yet."
+              : outstanding === 0
+              ? `${finished.length} finished ${finished.length === 1 ? "week" : "weeks"}, all loaded.`
+              : `${outstanding} of ${season.leagues.length * finished.length} not loaded.`}
+          </span>
+          <div className="gameday-season-actions">
+            <span className="gameday-season-toggle">
+              {["wash", "text"].map((style) => (
+                <button
+                  key={style}
+                  type="button"
+                  className={`gameday-pill${pctStyle === style ? " active" : ""}`}
+                  onClick={() => choosePctStyle(style)}
+                  title={
+                    style === "wash"
+                      ? "Shade the percentage cell"
+                      : "Colour the percentage itself, as the matchup ranks are"
+                  }
+                >
+                  {style === "wash" ? "Shaded" : "Coloured"}
+                </button>
+              ))}
+            </span>
+            {outstanding > 0 && (
+            <button
+              type="button"
+              className="gameday-load-all"
+              onClick={loadEverything}
+              disabled={seasonBusy}
+            >
+              {seasonBusy ? "Loading…" : `Load all (${outstanding})`}
+            </button>
+            )}
+          </div>
+        </div>
+
+        <div className="gameday-season-grid">
+          {season.leagues.map((league) => {
+            const loaded = seasonWeeks[league.leagueId] || {};
+            const totals = summariseSeason(finished.map((w) => loaded[w]));
+            return (
+              <section className="gameday-season-card" key={league.leagueId}>
+                <h3 className="gameday-season-title">{league.leagueName}</h3>
+                <table className={`gameday-season-table pct-as-${pctStyle}`}>
+                  <thead>
+                    <tr>
+                      <th>Wk</th>
+                      <th className="mid">W/L</th>
+                      <th className="num">Points</th>
+                      <th className="num">Max</th>
+                      <th className="num">%</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {finished.map((w) => {
+                      const cell = loaded[w];
+                      if (cell === undefined) {
+                        return (
+                          <tr key={w} className="is-unloaded">
+                            <td>{w}</td>
+                            <td colSpan={4}>
+                              <button
+                                type="button"
+                                className="gameday-load-week"
+                                onClick={() => loadSeasonWeek(league, w)}
+                              >
+                                not loaded
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      }
+                      if (cell === null) {
+                        return (
+                          <tr key={w} className="is-empty">
+                            <td>{w}</td>
+                            <td colSpan={4}>did not play</td>
+                          </tr>
+                        );
+                      }
+                      return (
+                        <tr key={w}>
+                          <td>{w}</td>
+                          <td className={`mid wl-${cell.result || "none"}`}>
+                            {cell.result || "—"}
+                          </td>
+                          <td className="num">{cell.points.toFixed(2)}</td>
+                          <td className="num">{cell.max == null ? "—" : cell.max.toFixed(2)}</td>
+                          <td className={`num pct pct-${pctTone(cell.pct)}`}>
+                            {cell.pct == null ? "—" : `${cell.pct.toFixed(1)}%`}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {totals && (
+                      <tr className="gameday-season-total">
+                        <td>Avg</td>
+                        <td className="mid">{record(loaded, finished)}</td>
+                        <td className="num">{totals.points.toFixed(2)}</td>
+                        <td className="num">{totals.max == null ? "—" : totals.max.toFixed(2)}</td>
+                        <td className={`num pct pct-${pctTone(totals.pct)}`}>
+                          {totals.pct == null ? "—" : `${totals.pct.toFixed(1)}%`}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </section>
+            );
+          })}
+        </div>
+      </>
+    );
+  }
+
+  function renderWeekPicker() {
+    if (!currentWeek) return null;
+    return (
+      <div className="gameday-weeks" role="group" aria-label="Week">
+        {Array.from({ length: 18 }, (_, i) => i + 1).map((w) => {
+          const status = statuses[w] || "upcoming";
+          const selectable = weekIsSelectable(status, w, currentWeek);
+          const shown = w === shownWeek;
+          return (
+            <button
+              key={w}
+              type="button"
+              className={`gameday-week${shown ? " is-shown" : ""}${
+                w === currentWeek ? " is-current" : ""
+              } is-${status}`}
+              disabled={!selectable}
+              aria-current={shown ? "true" : undefined}
+              title={
+                selectable
+                  ? `Week ${w}${status === "done" ? " — final" : status === "live" ? " — in progress" : ""}`
+                  : `Week ${w} has not been played`
+              }
+              onClick={() => chooseWeek(w)}
+            >
+              {w}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
   function renderCards(group) {
     return (
       <div className="gameday-leagues-grid">
@@ -449,6 +896,16 @@ export default function Gameday() {
                       from {matchup.myProj.toFixed(2)}
                     </div>
                   )}
+                  {matchup.myMax != null && (
+                    <div
+                      className="gameday-score-max"
+                      title={`Best lineup available: ${matchup.myMax.toFixed(
+                        2
+                      )} — ${(matchup.myMax - matchup.myLive).toFixed(2)} left on the bench`}
+                    >
+                      max {matchup.myMax.toFixed(2)}
+                    </div>
+                  )}
                   <div className="gameday-score-label">
                     You{matchup.myStarters > 0 && ` · ${matchup.myPlayed}/${matchup.myStarters}`}
                   </div>
@@ -459,6 +916,16 @@ export default function Gameday() {
                   {matchup.oppStarted && (
                     <div className="gameday-score-initial" title="Projection before kickoff">
                       from {matchup.oppProj.toFixed(2)}
+                    </div>
+                  )}
+                  {matchup.oppMax != null && (
+                    <div
+                      className="gameday-score-max"
+                      title={`Best lineup available: ${matchup.oppMax.toFixed(
+                        2
+                      )} — ${(matchup.oppMax - matchup.oppLive).toFixed(2)} left on the bench`}
+                    >
+                      max {matchup.oppMax.toFixed(2)}
                     </div>
                   )}
                   <div className="gameday-score-label">
@@ -509,16 +976,31 @@ export default function Gameday() {
             ) : (
               <>
                 <div className={`gameday-list-item gameday-list-proj ${matchup.predictedWin ? "win" : "loss"}`}>
-                  {matchup.myLive.toFixed(2)}
-                  {matchup.myStarted && (
-                    <span className="gameday-score-initial"> from {matchup.myProj.toFixed(2)}</span>
-                  )}
+                  {/* Just the score here. The projection and the best lineup
+                      live on the cards; three numbers a side turned every row
+                      into a paragraph. The title keeps them reachable. */}
+                  <span
+                    title={[
+                      matchup.myStarted && `from ${matchup.myProj.toFixed(2)}`,
+                      matchup.myMax != null && `max ${matchup.myMax.toFixed(2)}`,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  >
+                    {matchup.myLive.toFixed(2)}
+                  </span>
                 </div>
                 <div className="gameday-list-item">
-                  {matchup.oppLive.toFixed(2)}
-                  {matchup.oppStarted && (
-                    <span className="gameday-score-initial"> from {matchup.oppProj.toFixed(2)}</span>
-                  )}
+                  <span
+                    title={[
+                      matchup.oppStarted && `from ${matchup.oppProj.toFixed(2)}`,
+                      matchup.oppMax != null && `max ${matchup.oppMax.toFixed(2)}`,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  >
+                    {matchup.oppLive.toFixed(2)}
+                  </span>
                 </div>
                 <div className="gameday-list-item gameday-list-played">
                   {matchup.myStarters > 0 ? `${matchup.myPlayed}/${matchup.myStarters}` : "—"}
@@ -542,12 +1024,16 @@ export default function Gameday() {
 
   return (
     <div className="gameday-container">
+      {view !== "season" && renderWeekPicker()}
       <div className="gameday-header">
         <div className="gameday-header-left">
           <h2 className="gameday-title">Gameday</h2>
           {!loading && matchups.length > 0 && (
             <div className="gameday-summary">
               {shownWeek ? `Week ${shownWeek} predictions` : "Weekly Predictions"} —{" "}
+              {chosenWeek != null && chosenWeek !== currentWeek && (
+                <span className="gameday-pinned">past week · </span>
+              )}
               <span className="gameday-wins">{wins}W</span>
               {" / "}
               <span className="gameday-losses">{losses}L</span>
@@ -586,13 +1072,21 @@ export default function Gameday() {
           >
             List
           </button>
+          <button
+            className={`gameday-pill${view === "season" ? " active" : ""}`}
+            onClick={() => setView("season")}
+          >
+            Season
+          </button>
         </div>
       </div>
 
       {loading && <div className="gameday-loading">Loading matchups…</div>}
       {error && <div className="gameday-error">{error}</div>}
 
-      {!loading && (
+      {!loading && view === "season" && renderSeason()}
+
+      {!loading && view !== "season" && (
         <>
           {dynasty.length > 0 && (
             <div className="gameday-section">

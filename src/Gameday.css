@@ -366,6 +366,99 @@ body.dark .gameday-loss-label {
   white-space: nowrap;
 }
 
+/* One bar rather than eighteen buttons: the season is a single thing, and the
+   parts butt together so it reads as a strip you move along. */
+.gameday-weeks {
+  display: flex;
+  margin-bottom: 14px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.gameday-week {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: inherit;
+  background: none;
+  border: 0;
+  border-right: 1px solid hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+}
+
+.gameday-week:last-child {
+  border-right: 0;
+}
+
+.gameday-week:hover:not(:disabled) {
+  background: hsl(var(--muted) / 0.5);
+  color: hsl(var(--foreground));
+}
+
+/* Played, so there is something to look at. */
+.gameday-week.is-done {
+  color: hsl(var(--foreground));
+}
+
+.gameday-week.is-live {
+  color: #d08a2f;
+}
+
+/* Not played. Flat rather than hidden, so the shape of the season stays
+   visible and the weeks do not move about as the season goes on. */
+.gameday-week:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* The week being shown is filled, not merely tinted — it is the one thing on
+   this bar you need to find at a glance. */
+.gameday-week.is-shown {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-weight: 700;
+}
+
+.gameday-week.is-shown:hover:not(:disabled) {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+/* Where "now" is, when you are looking at some other week. Without it there is
+   nothing on the bar saying which one you came from. */
+.gameday-week.is-current:not(.is-shown) {
+  box-shadow: inset 0 -2px 0 hsl(var(--primary) / 0.7);
+}
+
+/* The list shows the score alone; the projection and the best lineup are on
+   the cards, and in a tooltip here. */
+
+/* Looking at a week on purpose rather than the current one. Said plainly,
+   because every number on the page means something different. */
+.gameday-pinned {
+  color: #d08a2f;
+  font-weight: 600;
+}
+
+.gameday-pinned a {
+  color: inherit;
+}
+
+/* What the roster could have scored, shown only once the games are over.
+   Quieter than the projection line above it: this is a curiosity after the
+   fact, not something to act on, and it should not compete with the score. */
+.gameday-score-max {
+  font-size: 0.68rem;
+  color: hsl(var(--muted-foreground));
+  opacity: 0.6;
+  margin-top: 1px;
+  white-space: nowrap;
+}
+
 .gameday-list-played {
   font-variant-numeric: tabular-nums;
   color: hsl(var(--muted-foreground));
@@ -391,4 +484,221 @@ body.dark .gameday-loss-label {
 
 .gameday-live-toggle input {
   cursor: pointer;
+}
+
+/* ── Season view ── */
+
+.gameday-season-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.gameday-season-note {
+  font-size: 0.8rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.gameday-load-all {
+  padding: 5px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  border: 1px solid hsl(var(--primary));
+  border-radius: 4px;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  cursor: pointer;
+}
+
+.gameday-load-all:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Two or three across depending on the room, rather than a fixed count: at
+   320px a card is readable, and the browser decides how many fit. */
+.gameday-season-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+}
+
+.gameday-season-card {
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: hsl(var(--background));
+}
+
+.gameday-season-title {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gameday-season-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  color: hsl(var(--foreground));
+}
+
+.gameday-season-table th {
+  text-align: left;
+  padding: 3px 6px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: hsl(var(--muted-foreground));
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.gameday-season-table td {
+  padding: 3px 6px;
+  border-bottom: 1px solid hsl(var(--border) / 0.4);
+}
+
+.gameday-season-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The average is the line worth reading, so it carries weight and a rule
+   above it rather than being one more row. */
+.gameday-season-total td {
+  border-top: 1px solid hsl(var(--border));
+  border-bottom: 0;
+  padding-top: 5px;
+  font-weight: 700;
+}
+
+.gameday-season-table .is-unloaded td,
+.gameday-season-table .is-empty td {
+  color: hsl(var(--muted-foreground));
+}
+
+.gameday-load-week {
+  padding: 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.gameday-load-week:hover {
+  color: hsl(var(--foreground));
+}
+
+.gameday-season-table .mid {
+  text-align: center;
+}
+
+.gameday-season-table .wl-W {
+  color: hsl(140 50% 45%);
+  font-weight: 700;
+}
+
+.gameday-season-table .wl-L {
+  color: hsl(0 65% 55%);
+  font-weight: 700;
+}
+
+.gameday-season-table .wl-T,
+.gameday-season-table .wl-none {
+  color: hsl(var(--muted-foreground));
+}
+
+/* Share of the available points, as a background wash rather than coloured
+ * text: the figure stays legible in both themes and the column can be read
+ * down as a shape.
+ *
+ * 84-86 is untinted — a lineup within a sixth of its ceiling is par. Four
+ * steps either side, to full red below 73.5 and full green from 96.5. A
+ * perfect week is gold.
+ *
+ * Two treatments, because they read differently and the choice is worth
+ * making on real numbers: a wash behind the cell, or the figure itself
+ * coloured, as the matchup ranks are.
+ */
+.gameday-season-table .pct {
+  font-weight: 600;
+  border-radius: 3px;
+}
+
+/* The first step starts high enough to be seen at a glance. At 0.12 it was
+   indistinguishable from no tint at all, which made a one-step cell look
+   neutral and wasted the step. */
+.pct-as-wash .pct-r1 { background: hsl(0 72% 55% / 0.22); }
+.pct-as-wash .pct-r2 { background: hsl(0 72% 55% / 0.36); }
+.pct-as-wash .pct-r3 { background: hsl(0 72% 55% / 0.50); }
+.pct-as-wash .pct-r4 { background: hsl(0 72% 55% / 0.64); }
+
+.pct-as-wash .pct-g1 { background: hsl(140 55% 45% / 0.22); }
+.pct-as-wash .pct-g2 { background: hsl(140 55% 45% / 0.36); }
+.pct-as-wash .pct-g3 { background: hsl(140 55% 45% / 0.50); }
+.pct-as-wash .pct-g4 { background: hsl(140 55% 45% / 0.64); }
+
+/* The figure itself, the way a defence-vs-position rank is coloured. Lighter
+   in dark mode so each step stays apart from the one beside it. */
+.pct-as-text .pct-r1 { color: hsl(0 60% 48%); }
+.pct-as-text .pct-r2 { color: hsl(0 68% 45%); }
+.pct-as-text .pct-r3 { color: hsl(0 74% 42%); }
+.pct-as-text .pct-r4 { color: hsl(0 80% 38%); }
+
+.pct-as-text .pct-g1 { color: hsl(140 45% 40%); }
+.pct-as-text .pct-g2 { color: hsl(140 52% 35%); }
+.pct-as-text .pct-g3 { color: hsl(140 60% 30%); }
+.pct-as-text .pct-g4 { color: hsl(140 68% 26%); }
+
+body.dark .pct-as-text .pct-r1 { color: hsl(0 70% 64%); }
+body.dark .pct-as-text .pct-r2 { color: hsl(0 74% 60%); }
+body.dark .pct-as-text .pct-r3 { color: hsl(0 78% 56%); }
+body.dark .pct-as-text .pct-r4 { color: hsl(0 84% 52%); }
+
+body.dark .pct-as-text .pct-g1 { color: hsl(140 45% 58%); }
+body.dark .pct-as-text .pct-g2 { color: hsl(140 52% 52%); }
+body.dark .pct-as-text .pct-g3 { color: hsl(140 60% 46%); }
+body.dark .pct-as-text .pct-g4 { color: hsl(140 68% 42%); }
+
+.pct-as-text .pct-gold {
+  background: none;
+  color: hsl(44 90% 38%);
+}
+
+body.dark .pct-as-text .pct-gold {
+  background: none;
+  color: hsl(44 95% 58%);
+}
+
+.pct-as-wash .pct-gold {
+  background: hsl(44 90% 52% / 0.62);
+  color: hsl(44 70% 12%);
+  font-weight: 700;
+}
+
+body.dark .pct-as-wash .pct-gold {
+  color: hsl(44 90% 92%);
+}
+
+.gameday-season-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gameday-season-toggle {
+  display: inline-flex;
+  gap: 4px;
 }
