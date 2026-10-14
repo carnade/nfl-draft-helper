@@ -42,6 +42,15 @@ export default function Changelog() {
   const entries = [
     {
       date: "2026-10-14",
+      title: "Gameday shows what a lineup could have scored",
+      items: [
+        "Once every player in a matchup has finished, each score carries a quiet second line showing the best that roster could have started \u2014 yours and your opponent\u2019s.",
+        "Hovering it says how many points were left on the bench.",
+        "It only appears when the matchup is settled. Part way through, a best lineup only means the best of what has been played so far, and it would keep climbing all weekend.",
+      ],
+    },
+    {
+      date: "2026-10-14",
       title: "Gameday keeps the finished week through Tuesday",
       items: [
         "Sleeper moves to the next week as soon as Monday night football ends, so from Tuesday morning Gameday was showing an empty upcoming fixture and the result you watched the night before had gone.",

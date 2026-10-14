@@ -366,6 +366,17 @@ body.dark .gameday-loss-label {
   white-space: nowrap;
 }
 
+/* What the roster could have scored, shown only once the games are over.
+   Quieter than the projection line above it: this is a curiosity after the
+   fact, not something to act on, and it should not compete with the score. */
+.gameday-score-max {
+  font-size: 0.68rem;
+  color: hsl(var(--muted-foreground));
+  opacity: 0.6;
+  margin-top: 1px;
+  white-space: nowrap;
+}
+
 .gameday-list-played {
   font-variant-numeric: tabular-nums;
   color: hsl(var(--muted-foreground));

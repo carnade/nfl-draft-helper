@@ -5,6 +5,7 @@ import { projectedPoints, PROJECTION_POSITIONS } from "./leagueScoring";
 import { loadHiddenLeagues, visibleLeagues } from "./leagueVisibility";
 import { finalOutcome } from "./gamedayOutcome";
 import { weekToShow } from "./gamedayWeek";
+import { bestLineupPoints } from "./bestLineup";
 
 const SEASON = 2026;
 // How often to re-read scores while games are on. Projections are left alone —
@@ -134,7 +135,19 @@ async function fetchLeagueMatchup(leagueId, token, signal, week) {
   return json.data;
 }
 
-function buildMatchupResult(gqlData, userId, { scoring, projections, playerPoints, gameClocks }) {
+function buildMatchupResult(
+  gqlData,
+  userId,
+  {
+    scoring,
+    projections,
+    playerPoints,
+    gameClocks,
+    squadByRoster = {},
+    rosterPositions = [],
+    positionsOf = () => [],
+  }
+) {
   const rosters = gqlData.league_rosters || [];
   const users = gqlData.league_users || [];
   const legs = gqlData.matchup_legs || [];
@@ -194,6 +207,27 @@ function buildMatchupResult(gqlData, userId, { scoring, projections, playerPoint
   const myLive = mine.started > 0 ? mine.live : myProj;
   const oppLive = opp.started > 0 ? opp.live : oppProj;
 
+  // Only worth computing once the games are over. Mid-week this is "the best
+  // of what has been played so far", which keeps rising and reads as a claim
+  // it is not.
+  const bestFor = (leg) =>
+    bestLineupPoints({
+      rosterPositions,
+      players: squadByRoster[leg?.roster_id] || [],
+      playerPoints,
+      positionsOf,
+    });
+
+  const final = finalOutcome({
+    hasOpponent: !!oppLeg,
+    myPlayed: mine.played,
+    myStarters: mine.starters,
+    oppPlayed: opp.played,
+    oppStarters: opp.starters,
+    myLive,
+    oppLive,
+  });
+
   return {
     myProj,
     oppProj,
@@ -208,18 +242,12 @@ function buildMatchupResult(gqlData, userId, { scoring, projections, playerPoint
     myStarted: mine.started > 0,
     oppStarted: opp.started > 0,
     oppName,
+    myMax: final ? bestFor(myLeg) : null,
+    oppMax: final ? bestFor(oppLeg) : null,
     predictedWin: oppLeg ? myLive > oppLive : null,
     // Null until every starter on both sides has played. Once it is set the
     // score is no longer a projection of anything.
-    final: finalOutcome({
-      hasOpponent: !!oppLeg,
-      myPlayed: mine.played,
-      myStarters: mine.starters,
-      oppPlayed: opp.played,
-      oppStarters: opp.starters,
-      myLive,
-      oppLive,
-    }),
+    final,
   };
 }
 
@@ -238,6 +266,7 @@ export default function Gameday() {
   const [pollEnabled, setPollEnabled] = useState(false);
   const [gamesLive, setGamesLive] = useState(null);
   const weekRef = useRef(null);
+  const positionsRef = useRef({});
   // Projections change with news rather than with play, so they are fetched once
   // and reused by every poll.
   const projectionsRef = useRef(null);
@@ -288,10 +317,18 @@ export default function Gameday() {
           { signal }
         ).then((r) => r.json());
         const byPlayer = {};
+        const positions = {};
         for (const row of Array.isArray(rows) ? rows : []) {
-          byPlayer[String(row.player_id)] = row.stats || {};
+          const id = String(row.player_id);
+          byPlayer[id] = row.stats || {};
+          // Carried on the same rows and previously thrown away. Needed to know
+          // which slots a player could have filled.
+          const fp = row.player?.fantasy_positions;
+          const single = row.player?.position;
+          positions[id] = fp?.length ? fp : single ? [single] : [];
         }
         projectionsRef.current = byPlayer;
+        positionsRef.current = positions;
       }
 
       const results = await Promise.all(
@@ -306,8 +343,12 @@ export default function Gameday() {
             ]);
 
             const playerPoints = {};
+            const squadByRoster = {};
             for (const m of Array.isArray(weekMatchups) ? weekMatchups : []) {
               Object.assign(playerPoints, m.players_points || {});
+              // The week's roster as it stood, bench included — a snapshot, not
+              // today's squad, so a past week is right too.
+              squadByRoster[m.roster_id] = m.players || [];
             }
 
             const matchup = buildMatchupResult(gqlData, userId, {
@@ -315,6 +356,9 @@ export default function Gameday() {
               projections: projectionsRef.current,
               playerPoints,
               gameClocks,
+              squadByRoster,
+              rosterPositions: league.roster_positions,
+              positionsOf: (id) => positionsRef.current[id] || [],
             });
             return { ...base, matchup };
           } catch {
@@ -449,6 +493,16 @@ export default function Gameday() {
                       from {matchup.myProj.toFixed(2)}
                     </div>
                   )}
+                  {matchup.myMax != null && (
+                    <div
+                      className="gameday-score-max"
+                      title={`Best lineup available: ${matchup.myMax.toFixed(
+                        2
+                      )} — ${(matchup.myMax - matchup.myLive).toFixed(2)} left on the bench`}
+                    >
+                      max {matchup.myMax.toFixed(2)}
+                    </div>
+                  )}
                   <div className="gameday-score-label">
                     You{matchup.myStarters > 0 && ` · ${matchup.myPlayed}/${matchup.myStarters}`}
                   </div>
@@ -459,6 +513,16 @@ export default function Gameday() {
                   {matchup.oppStarted && (
                     <div className="gameday-score-initial" title="Projection before kickoff">
                       from {matchup.oppProj.toFixed(2)}
+                    </div>
+                  )}
+                  {matchup.oppMax != null && (
+                    <div
+                      className="gameday-score-max"
+                      title={`Best lineup available: ${matchup.oppMax.toFixed(
+                        2
+                      )} — ${(matchup.oppMax - matchup.oppLive).toFixed(2)} left on the bench`}
+                    >
+                      max {matchup.oppMax.toFixed(2)}
                     </div>
                   )}
                   <div className="gameday-score-label">
@@ -513,11 +577,23 @@ export default function Gameday() {
                   {matchup.myStarted && (
                     <span className="gameday-score-initial"> from {matchup.myProj.toFixed(2)}</span>
                   )}
+                  {matchup.myMax != null && (
+                    <span className="gameday-score-max" title="Best lineup available">
+                      {" "}
+                      max {matchup.myMax.toFixed(2)}
+                    </span>
+                  )}
                 </div>
                 <div className="gameday-list-item">
                   {matchup.oppLive.toFixed(2)}
                   {matchup.oppStarted && (
                     <span className="gameday-score-initial"> from {matchup.oppProj.toFixed(2)}</span>
+                  )}
+                  {matchup.oppMax != null && (
+                    <span className="gameday-score-max" title="Best lineup available">
+                      {" "}
+                      max {matchup.oppMax.toFixed(2)}
+                    </span>
                   )}
                 </div>
                 <div className="gameday-list-item gameday-list-played">
