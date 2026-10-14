@@ -283,6 +283,10 @@ export default function Gameday() {
   // leagueId -> week -> { points, max, pct } | null when that roster did not play
   const [seasonWeeks, setSeasonWeeks] = useState({});
   const [seasonBusy, setSeasonBusy] = useState(false);
+  // Which way the share-of-maximum column is coloured. A toggle rather than a
+  // decision, because the two read differently enough to be worth comparing on
+  // real numbers.
+  const [pctStyle, setPctStyle] = useState("wash");
   // Off by default: most visits are not during a game, and polling a dozen
   // leagues for a number that cannot change is pure waste.
   const [pollEnabled, setPollEnabled] = useState(false);
@@ -695,7 +699,25 @@ export default function Gameday() {
               ? `${finished.length} finished ${finished.length === 1 ? "week" : "weeks"}, all loaded.`
               : `${outstanding} of ${season.leagues.length * finished.length} not loaded.`}
           </span>
-          {outstanding > 0 && (
+          <div className="gameday-season-actions">
+            <span className="gameday-season-toggle">
+              {["wash", "text"].map((style) => (
+                <button
+                  key={style}
+                  type="button"
+                  className={`gameday-pill${pctStyle === style ? " active" : ""}`}
+                  onClick={() => setPctStyle(style)}
+                  title={
+                    style === "wash"
+                      ? "Shade the percentage cell"
+                      : "Colour the percentage itself, as the matchup ranks are"
+                  }
+                >
+                  {style === "wash" ? "Shaded" : "Coloured"}
+                </button>
+              ))}
+            </span>
+            {outstanding > 0 && (
             <button
               type="button"
               className="gameday-load-all"
@@ -704,7 +726,8 @@ export default function Gameday() {
             >
               {seasonBusy ? "Loading…" : `Load all (${outstanding})`}
             </button>
-          )}
+            )}
+          </div>
         </div>
 
         <div className="gameday-season-grid">
@@ -714,7 +737,7 @@ export default function Gameday() {
             return (
               <section className="gameday-season-card" key={league.leagueId}>
                 <h3 className="gameday-season-title">{league.leagueName}</h3>
-                <table className="gameday-season-table">
+                <table className={`gameday-season-table pct-as-${pctStyle}`}>
                   <thead>
                     <tr>
                       <th>Wk</th>

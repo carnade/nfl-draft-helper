@@ -54,18 +54,27 @@ export function weekResult(rows, mine) {
   return "T";
 }
 
-// 75 to 80 reads neutral, and it steps away in fives, four each way:
+// 84 to 86 reads neutral — managing a lineup to within a sixth of its ceiling
+// is par, not praiseworthy. Four steps either side of that, to full red at 70
+// and full green at 100. The two sides take different sized steps because the
+// bands are different widths; what matters is that the extremes land where
+// they are expected.
 //
-//   r1 70-75   g1 80-85
-//   r2 65-70   g2 85-90
-//   r3 60-65   g3 90-95
-//   r4 below 60 (full)    g4 95 and up (full)
+//   r1 80.5-84    g1 86-89.5
+//   r2 77-80.5    g2 89.5-93
+//   r3 73.5-77    g3 93-96.5
+//   r4 below 73.5 g4 96.5 and up
 //
 // A hundred percent is gold rather than simply the greenest, because starting
 // the best lineup available is a different thing from nearly doing so.
-const NEUTRAL_LOW = 75;
-const NEUTRAL_HIGH = 80;
+const NEUTRAL_LOW = 84;
+const NEUTRAL_HIGH = 86;
+const RED_FLOOR = 70;
+const GREEN_CEIL = 100;
 const STEPS = 4;
+
+const RED_STEP = (NEUTRAL_LOW - RED_FLOOR) / STEPS;
+const GREEN_STEP = (GREEN_CEIL - NEUTRAL_HIGH) / STEPS;
 
 /**
  * A tone for a percentage: "gold", "g1".."g4", "", or "r1".."r4".
@@ -79,10 +88,10 @@ export function pctTone(pct) {
   if (pct >= 100) return "gold";
   if (pct >= NEUTRAL_LOW && pct <= NEUTRAL_HIGH) return "";
   if (pct < NEUTRAL_LOW) {
-    const step = Math.min(STEPS, Math.ceil((NEUTRAL_LOW - pct) / 5));
+    const step = Math.min(STEPS, Math.ceil((NEUTRAL_LOW - pct) / RED_STEP));
     return `r${step}`;
   }
-  const step = Math.min(STEPS, Math.ceil((pct - NEUTRAL_HIGH) / 5));
+  const step = Math.min(STEPS, Math.ceil((pct - NEUTRAL_HIGH) / GREEN_STEP));
   return `g${step}`;
 }
 

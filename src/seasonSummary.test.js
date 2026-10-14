@@ -157,40 +157,41 @@ describe("weekResult", () => {
 
 describe("pctTone", () => {
   it("leaves the middle alone", () => {
-    expect(pctTone(75)).toBe("");
-    expect(pctTone(77.5)).toBe("");
-    expect(pctTone(80)).toBe("");
+    // Within a sixth of the ceiling is par, not praiseworthy.
+    expect(pctTone(84)).toBe("");
+    expect(pctTone(85)).toBe("");
+    expect(pctTone(86)).toBe("");
   });
 
-  it("steps towards red in fives, full below 60", () => {
-    expect(pctTone(74.9)).toBe("r1");
-    expect(pctTone(70)).toBe("r1");
-    expect(pctTone(69.9)).toBe("r2");
-    expect(pctTone(65)).toBe("r2");
-    expect(pctTone(64.9)).toBe("r3");
-    expect(pctTone(60)).toBe("r3");
-    expect(pctTone(59.9)).toBe("r4");
-    expect(pctTone(20)).toBe("r4");
+  it("steps towards red, full below 73.5", () => {
+    expect(pctTone(83.9)).toBe("r1");
+    expect(pctTone(80.5)).toBe("r1");
+    expect(pctTone(80.4)).toBe("r2");
+    expect(pctTone(77)).toBe("r2");
+    expect(pctTone(76.9)).toBe("r3");
+    expect(pctTone(73.5)).toBe("r3");
+    expect(pctTone(73.4)).toBe("r4");
+    expect(pctTone(70)).toBe("r4");
     expect(pctTone(0)).toBe("r4");
   });
 
-  it("steps towards green in fives, full from 95", () => {
-    expect(pctTone(80.1)).toBe("g1");
-    expect(pctTone(85)).toBe("g1");
-    expect(pctTone(85.1)).toBe("g2");
-    expect(pctTone(90)).toBe("g2");
-    expect(pctTone(90.1)).toBe("g3");
-    expect(pctTone(95)).toBe("g3");
-    expect(pctTone(95.1)).toBe("g4");
+  it("steps towards green, full from 96.5", () => {
+    expect(pctTone(86.1)).toBe("g1");
+    expect(pctTone(89.5)).toBe("g1");
+    expect(pctTone(89.6)).toBe("g2");
+    expect(pctTone(93)).toBe("g2");
+    expect(pctTone(93.1)).toBe("g3");
+    expect(pctTone(96.5)).toBe("g3");
+    expect(pctTone(96.6)).toBe("g4");
     expect(pctTone(99.9)).toBe("g4");
   });
 
-  it("is a mirror image either side of the middle", () => {
-    // Four steps each way, the same distance out.
-    expect(pctTone(74.9)).toBe("r1");
-    expect(pctTone(80.1)).toBe("g1");
-    expect(pctTone(59.9)).toBe("r4");
-    expect(pctTone(95.1)).toBe("g4");
+  it("takes the same number of steps either way", () => {
+    // The bands are not the same width, but both ends are four steps out.
+    expect(pctTone(83.9)).toBe("r1");
+    expect(pctTone(86.1)).toBe("g1");
+    expect(pctTone(73.4)).toBe("r4");
+    expect(pctTone(96.6)).toBe("g4");
   });
 
   it("gives a perfect week its own colour", () => {

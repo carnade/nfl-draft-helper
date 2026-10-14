@@ -629,31 +629,81 @@ body.dark .gameday-loss-label {
  * text: the figure stays legible in both themes and the column can be read
  * down as a shape.
  *
- * 75-80 is untinted, and it steps away in fives, four each way: full red below
- * 60, full green from 95. A perfect week is gold, because starting the best
- * lineup available is a different thing from nearly doing so.
+ * 84-86 is untinted — a lineup within a sixth of its ceiling is par. Four
+ * steps either side, to full red below 73.5 and full green from 96.5. A
+ * perfect week is gold.
+ *
+ * Two treatments, because they read differently and the choice is worth
+ * making on real numbers: a wash behind the cell, or the figure itself
+ * coloured, as the matchup ranks are.
  */
 .gameday-season-table .pct {
   font-weight: 600;
   border-radius: 3px;
 }
 
-.gameday-season-table .pct-r1 { background: hsl(0 65% 55% / 0.12); }
-.gameday-season-table .pct-r2 { background: hsl(0 65% 55% / 0.24); }
-.gameday-season-table .pct-r3 { background: hsl(0 65% 55% / 0.36); }
-.gameday-season-table .pct-r4 { background: hsl(0 65% 55% / 0.48); }
+/* The first step starts high enough to be seen at a glance. At 0.12 it was
+   indistinguishable from no tint at all, which made a one-step cell look
+   neutral and wasted the step. */
+.pct-as-wash .pct-r1 { background: hsl(0 72% 55% / 0.22); }
+.pct-as-wash .pct-r2 { background: hsl(0 72% 55% / 0.36); }
+.pct-as-wash .pct-r3 { background: hsl(0 72% 55% / 0.50); }
+.pct-as-wash .pct-r4 { background: hsl(0 72% 55% / 0.64); }
 
-.gameday-season-table .pct-g1 { background: hsl(140 50% 45% / 0.12); }
-.gameday-season-table .pct-g2 { background: hsl(140 50% 45% / 0.24); }
-.gameday-season-table .pct-g3 { background: hsl(140 50% 45% / 0.36); }
-.gameday-season-table .pct-g4 { background: hsl(140 50% 45% / 0.48); }
+.pct-as-wash .pct-g1 { background: hsl(140 55% 45% / 0.22); }
+.pct-as-wash .pct-g2 { background: hsl(140 55% 45% / 0.36); }
+.pct-as-wash .pct-g3 { background: hsl(140 55% 45% / 0.50); }
+.pct-as-wash .pct-g4 { background: hsl(140 55% 45% / 0.64); }
 
-.gameday-season-table .pct-gold {
-  background: hsl(44 90% 52% / 0.55);
+/* The figure itself, the way a defence-vs-position rank is coloured. Lighter
+   in dark mode so each step stays apart from the one beside it. */
+.pct-as-text .pct-r1 { color: hsl(0 60% 48%); }
+.pct-as-text .pct-r2 { color: hsl(0 68% 45%); }
+.pct-as-text .pct-r3 { color: hsl(0 74% 42%); }
+.pct-as-text .pct-r4 { color: hsl(0 80% 38%); }
+
+.pct-as-text .pct-g1 { color: hsl(140 45% 40%); }
+.pct-as-text .pct-g2 { color: hsl(140 52% 35%); }
+.pct-as-text .pct-g3 { color: hsl(140 60% 30%); }
+.pct-as-text .pct-g4 { color: hsl(140 68% 26%); }
+
+body.dark .pct-as-text .pct-r1 { color: hsl(0 70% 64%); }
+body.dark .pct-as-text .pct-r2 { color: hsl(0 74% 60%); }
+body.dark .pct-as-text .pct-r3 { color: hsl(0 78% 56%); }
+body.dark .pct-as-text .pct-r4 { color: hsl(0 84% 52%); }
+
+body.dark .pct-as-text .pct-g1 { color: hsl(140 45% 58%); }
+body.dark .pct-as-text .pct-g2 { color: hsl(140 52% 52%); }
+body.dark .pct-as-text .pct-g3 { color: hsl(140 60% 46%); }
+body.dark .pct-as-text .pct-g4 { color: hsl(140 68% 42%); }
+
+.pct-as-text .pct-gold {
+  background: none;
+  color: hsl(44 90% 38%);
+}
+
+body.dark .pct-as-text .pct-gold {
+  background: none;
+  color: hsl(44 95% 58%);
+}
+
+.pct-as-wash .pct-gold {
+  background: hsl(44 90% 52% / 0.62);
   color: hsl(44 70% 12%);
   font-weight: 700;
 }
 
-body.dark .gameday-season-table .pct-gold {
+body.dark .pct-as-wash .pct-gold {
   color: hsl(44 90% 92%);
+}
+
+.gameday-season-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gameday-season-toggle {
+  display: inline-flex;
+  gap: 4px;
 }
