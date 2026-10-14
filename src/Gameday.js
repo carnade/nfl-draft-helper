@@ -11,6 +11,7 @@ import {
   weekIsSelectable,
 } from "./gamedayWeek";
 import { bestLineupPoints } from "./bestLineup";
+import { readFinalWeek, writeFinalWeek } from "./finalWeekCache";
 
 const SEASON = 2026;
 // How often to re-read scores while games are on. Projections are left alone —
@@ -326,6 +327,10 @@ export default function Gameday() {
       }
 
       // One request for the whole week, shared by every league.
+      // Whether the week being shown is over, which is what makes its scores
+      // safe to keep.
+      const weekIsFinal = weekStatuses(games)[week] === "done";
+
       const gameClocks = await fetchGameClocks(week, auth.token, signal);
 
       // Keyed by week. Fetched once per week rather than once per page: these
@@ -358,11 +363,22 @@ export default function Gameday() {
           const leagueType = league.settings?.type === 2 ? "Dynasty" : "Redraft";
           const base = { leagueName: league.name, leagueType, leagueId: league.league_id };
           try {
+            // A finished week never changes, so it is only ever fetched once
+            // per tab. The pairing still comes from GraphQL: it carries the
+            // projections and the opponent's name, neither of which is in the
+            // scores payload.
+            const cached = weekIsFinal ? readFinalWeek(league.league_id, week) : null;
             const [gqlData, weekMatchups] = await Promise.all([
               fetchLeagueMatchup(league.league_id, auth.token, signal, week),
-              fetch(`https://api.sleeper.app/v1/league/${league.league_id}/matchups/${week}`, { signal })
-                .then((r) => r.json()),
+              cached ??
+                fetch(
+                  `https://api.sleeper.app/v1/league/${league.league_id}/matchups/${week}`,
+                  { signal }
+                ).then((r) => r.json()),
             ]);
+            if (!cached) {
+              writeFinalWeek(league.league_id, week, weekMatchups, { isFinal: weekIsFinal });
+            }
 
             const playerPoints = {};
             const squadByRoster = {};
