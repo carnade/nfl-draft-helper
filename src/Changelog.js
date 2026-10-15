@@ -41,6 +41,15 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2026-10-15",
+      title: "Start/Sit bench tidy-up",
+      items: [
+        "The bench control now sits between the starters and the bench, so the bench opens below it instead of pushing it off the bottom — closing a long bench no longer means scrolling to find the button again.",
+        "Bench players show their own position only. In a SuperFlex league every one of them carried an SFLX beside it, which was true of all of them and so told you nothing.",
+        "The SuperFlex icon leads with the quarterback, the band a plain flex does not have, so the two read as the same icon with one added.",
+      ],
+    },
+    {
       date: "2026-10-14",
       title: "Gameday shows what a lineup could have scored",
       items: [

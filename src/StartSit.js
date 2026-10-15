@@ -13,10 +13,10 @@ import {
 } from "./playerForm";
 import { useSleeperAuth } from "./auth";
 import { projectedPoints, hasProjection, fetchWeekProjectionsUrl } from "./leagueScoring";
-import { evaluateLineup, countActionable, isEligible, benchFrom } from "./startSitModel";
+import { evaluateLineup, countActionable, benchFrom } from "./startSitModel";
 import { lockedTeamsFor, byeTeamsFor } from "./nflSchedule";
 import PositionPill from "./PositionPill";
-import { compositeSlot, positionKey } from "./positionColors";
+import { positionKey } from "./positionColors";
 import { loadHiddenLeagues, visibleLeagues, useHiddenLeagues } from "./leagueVisibility";
 
 const SEASON = 2026;
@@ -278,31 +278,18 @@ function FormCell({ average, games, window }) {
   );
 }
 
-// Which of the slots a bench player fits are worth drawing.
+// A bench player's own position, and only that.
 //
-// A wide receiver fits WR, FLEX and SUPER_FLEX, and three chips in one cell is
-// noise. The widest flex contains the narrower ones, so only it is shown
-// alongside the player's own position.
-function benchSlotPills(fits) {
-  const plain = fits.filter((slot) => !compositeSlot(slot));
-  const widest = fits
-    .map((slot) => [slot, compositeSlot(slot)])
-    .filter(([, composite]) => composite)
-    .sort((a, b) => b[1].bands.length - a[1].bands.length)[0];
-  return widest ? [...plain, widest[0]] : plain;
-}
-
-function BenchRow({ player, slots, formWindow }) {
-  const fits = [...new Set(slots.filter((slot) => isEligible(slot, player)))];
+// This cell used to list the slots he fits, which in a SuperFlex league meant
+// every bench player carried an SFLX beside his position — true of all of them,
+// so it distinguished nobody and read as part of the furniture. What a bench is
+// scanned for is who is on it, and the position answers that.
+function BenchRow({ player, formWindow }) {
   return (
     <tr className="ss-row ss-row-bench">
       <td className="ss-slot">
-        {fits.length ? (
-          <span className="ss-slot-pills">
-            {benchSlotPills(fits).map((slot) => (
-              <PositionPill key={slot} position={slot} />
-            ))}
-          </span>
+        {player.position ? (
+          <PositionPill position={player.position} />
         ) : (
           <span className="ss-muted">—</span>
         )}
@@ -320,8 +307,11 @@ function BenchRow({ player, slots, formWindow }) {
   );
 }
 
+// Columns in the lineup table, for the rows that span the whole of it.
+const COLUMNS = 10;
+
 function LeagueCard({ league, onlyActionable, benchOpen, onToggleBench, canEdit, onSwap, busyRow, formWindow }) {
-  const { rows, bench, slots, flagged } = league;
+  const { rows, bench, flagged } = league;
   const shown = onlyActionable ? rows.filter((r) => r.verdict === "sit") : rows;
 
   return (
@@ -367,15 +357,26 @@ function LeagueCard({ league, onlyActionable, benchOpen, onToggleBench, canEdit,
                 onSwap={() => onSwap(league, row)}
               />
             ))}
-            {benchOpen && bench.map((p) => <BenchRow key={p.id} player={p} slots={slots} formWindow={formWindow} />)}
+            {/*
+              The toggle is a row of its own, between the starters and the bench,
+              rather than a button under the table. Under the table it was pushed
+              down by whatever it had just revealed, so closing a long bench meant
+              scrolling to find the control that had been under the cursor a
+              moment earlier. Here it stays put and the bench opens beneath it.
+            */}
+            {bench.length > 0 && (
+              <tr className="ss-bench-row">
+                <td colSpan={COLUMNS}>
+                  <button className="ss-bench-toggle" onClick={onToggleBench} aria-expanded={benchOpen}>
+                    {benchOpen ? "▼" : "►"} Bench ({bench.length})
+                  </button>
+                </td>
+              </tr>
+            )}
+            {benchOpen && bench.map((p) => <BenchRow key={p.id} player={p} formWindow={formWindow} />)}
           </tbody>
         </table>
       </div>
-      {bench.length > 0 && (
-        <button className="ss-bench-toggle" onClick={onToggleBench} aria-expanded={benchOpen}>
-          {benchOpen ? "▼" : "►"} Bench ({bench.length})
-        </button>
-      )}
     </section>
   );
 }
@@ -664,7 +665,6 @@ function StartSit({ userName }) {
           starterIds: starters,
           benchIds: bench,
           playerById,
-          slots: rows.map((r) => r.slot),
           rows,
           bench: bench.map((id) => playerById[id]).filter(Boolean).sort((a, b) => (b.proj ?? 0) - (a.proj ?? 0)),
           flagged: countActionable(rows),
@@ -772,7 +772,6 @@ function StartSit({ userName }) {
             starterIds: confirmedStarters,
             benchIds,
             rows,
-            slots: rows.map((r) => r.slot),
             bench: benchIds
               .map((id) => l.playerById[id])
               .filter(Boolean)

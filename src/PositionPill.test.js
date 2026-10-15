@@ -33,13 +33,13 @@ describe("PositionPill", () => {
     const { container } = render(<PositionPill position="SUPER_FLEX" />);
     const bands = bandsOf(container);
     expect(bands.map((b) => b.textContent)).toEqual(["S", "F", "L", "X"]);
-    // Quarterback last, which is the band the other flex does not have.
-    expect(bands[3]).toHaveClass("pos-qb");
+    // Quarterback first: it is the band a plain flex does not have.
+    expect(bands[0]).toHaveClass("pos-qb");
   });
 
   it("says what a flex accepts, since the letters do not", () => {
     render(<PositionPill position="SUPER_FLEX" />);
-    expect(screen.getByTitle("SFLX: WR, RB, TE or QB")).toBeInTheDocument();
+    expect(screen.getByTitle("SFLX: QB, WR, RB or TE")).toBeInTheDocument();
   });
 
   it("centres the label when it does not line up with the bands", () => {
