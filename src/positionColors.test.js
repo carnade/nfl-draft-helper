@@ -186,10 +186,11 @@ describe("no position colour is written anywhere else", () => {
 });
 
 describe("composite slots", () => {
-  it("draws flex and superflex in Sleeper's band order", () => {
-    // WR, RB, TE, QB — not the order SLOT_ELIGIBILITY stores, which puts RB first.
+  it("leads a superflex with the quarterback", () => {
+    // The band a plain flex does not have goes first, so the two icons read as
+    // the same thing with one added rather than reshuffled.
     expect(positionsForSlot("FLEX")).toEqual(["WR", "RB", "TE"]);
-    expect(positionsForSlot("SUPER_FLEX")).toEqual(["WR", "RB", "TE", "QB"]);
+    expect(positionsForSlot("SUPER_FLEX")).toEqual(["QB", "WR", "RB", "TE"]);
   });
 
   it("spells one character per band for the two slots that occur", () => {

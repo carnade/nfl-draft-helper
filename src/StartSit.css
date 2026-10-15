@@ -79,11 +79,6 @@
   margin-left: 6px;
 }
 
-/* A bench player fits their own slot and a flex; the two chips need a gap. */
-.ss-slot-pills {
-  display: inline-flex;
-  gap: 3px;
-}
 
 .ss-pos {
   font-size: 0.72rem;
@@ -176,8 +171,16 @@
   color: #d08a2f;
 }
 
+/*
+ * The bench control is a row inside the table, so the cell carries the spacing
+ * and the rule that separates the starters from what opens below.
+ */
+.ss-bench-row > td {
+  padding: 6px 8px;
+  border-top: 1px solid hsl(var(--border));
+}
+
 .ss-bench-toggle {
-  margin-top: 8px;
   background: none;
   border: none;
   padding: 0;

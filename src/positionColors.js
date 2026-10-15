@@ -84,8 +84,12 @@ export function positionLabel(slot) {
  *
  * Sleeper shows these as a split icon rather than a word, which is worth
  * copying: "SUPER_FLEX" tells you nothing about what fits, while four coloured
- * bands do. The band order is Sleeper's — WR, RB, TE, QB — which is not the
- * order startSitModel stores eligibility in, so it is written out here.
+ * bands do.
+ *
+ * A superflex leads with the quarterback, because that is the thing that makes
+ * it a superflex: the band that is not in a plain flex should be the one the
+ * eye lands on first, not the one tacked on the end. The rest follow a flex's
+ * own order, so the two read as the same icon with a band added.
  *
  * The label is spelled one character per band. FLX happens to be three
  * characters against three bands and SFLX four against four; the two variants
@@ -95,7 +99,7 @@ export function positionLabel(slot) {
  */
 export const COMPOSITE_SLOTS = {
   FLEX: { label: "FLX", bands: ["WR", "RB", "TE"] },
-  SUPER_FLEX: { label: "SFLX", bands: ["WR", "RB", "TE", "QB"] },
+  SUPER_FLEX: { label: "SFLX", bands: ["QB", "WR", "RB", "TE"] },
   REC_FLEX: { label: "RFX", bands: ["WR", "TE"] },
   WRRB_FLEX: { label: "WRB", bands: ["WR", "RB"] },
 };
