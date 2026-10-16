@@ -82,11 +82,23 @@ export function buildTradeView(transaction, context = {}) {
   };
 }
 
-/** Every trade of mine in one league, soonest to lapse first. */
+/**
+ * Whether an offer can still be acted on.
+ *
+ * Sleeper leaves a lapsed offer sitting at status "proposed" rather than
+ * moving it on, so the status alone would keep dead trades on the page for as
+ * long as nobody tidied them up. A trade with no expiry at all never lapses.
+ */
+export function isLive(trade, now = Date.now()) {
+  return !trade?.expiresAt || trade.expiresAt > now;
+}
+
+/** Every trade of mine in one league still worth answering, soonest to lapse first. */
 export function buildLeagueView(league, transactions = [], context = {}) {
+  const now = context.now ?? Date.now();
   const trades = (transactions || [])
     .map((t) => buildTradeView(t, context))
-    .filter(Boolean)
+    .filter((t) => t && isLive(t, now))
     .sort(compareTrades);
 
   return {

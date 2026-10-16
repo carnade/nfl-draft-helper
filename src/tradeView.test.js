@@ -1,4 +1,4 @@
-import { buildTradeView, buildLeagueView, comparisons } from "./tradeView";
+import { buildTradeView, buildLeagueView, comparisons, isLive } from "./tradeView";
 import { draftOrder } from "./draftOrder";
 
 const roster = (id, wins, fpts, ppts, ownerId) => ({
@@ -41,6 +41,9 @@ const context = (myRosterId) => ({
   projections: { 11576: { pts_ppr: 160, gp: 16 }, 9997: { pts_ppr: 180, gp: 15 } },
   stats: { 11576: { pts_ppr: 60, gp: 6 }, 9997: { pts_ppr: 84, gp: 7 } },
   currentSeason: 2026,
+  // Pinned before the fixture's expires_at, so the sample trade reads as live
+  // rather than being filtered out as a lapsed offer.
+  now: 1791000000000,
   nameFor: (id) => `Team ${id}`,
 });
 
@@ -118,6 +121,13 @@ describe("buildLeagueView", () => {
     expect(view.name).toBe("Fantasy Fools");
   });
 
+  it("leaves out an offer that has already lapsed", () => {
+    const dead = { ...TXN, transaction_id: "t9", settings: { expires_at: 1000 } };
+    const view = buildLeagueView(league, [TXN, dead], { ...context(2), now: 1791000000000 });
+    expect(view.trades.map((t) => t.id)).toEqual(["t1"]);
+    expect(view.incoming).toBe(1);
+  });
+
   it("sorts the soonest to lapse first", () => {
     const later = { ...TXN, transaction_id: "t3", settings: { expires_at: 1891551096 } };
     const view = buildLeagueView(league, [later, TXN], context(2));
@@ -141,5 +151,23 @@ describe("comparisons", () => {
   it("has nothing to say when a side has no value at all", () => {
     const rows = comparisons({ ktc: null, fc: null, projPg: null, actualPg: null, avgAge: null }, {});
     expect(rows.every((r) => r.delta === null)).toBe(true);
+  });
+});
+
+describe("isLive", () => {
+  const now = Date.UTC(2026, 9, 16, 12, 0, 0);
+
+  it("keeps an offer that has time left", () => {
+    expect(isLive({ expiresAt: now + 3600000 }, now)).toBe(true);
+  });
+
+  it("drops one that has lapsed", () => {
+    // Sleeper leaves a lapsed offer sitting at "proposed", so the status
+    // alone would keep dead trades on the page indefinitely.
+    expect(isLive({ expiresAt: now - 1 }, now)).toBe(false);
+  });
+
+  it("keeps an offer with no expiry at all", () => {
+    expect(isLive({ expiresAt: null }, now)).toBe(true);
   });
 });

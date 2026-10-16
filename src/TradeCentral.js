@@ -237,7 +237,7 @@ export function LeagueTrades({ league, now }) {
 
   return (
     <section className="ss-card">
-      <header className="ss-card-head">
+      <header className="ss-card-head tc-league-head">
         <h3 className="ss-league-name">{league.name}</h3>
         <span className="tc-summary">{summary}</span>
       </header>
@@ -427,6 +427,10 @@ function TradeCentral() {
               projections,
               stats,
               currentSeason: SEASON,
+              // An offer that has already lapsed stays at "proposed" on
+              // Sleeper's side, so it is dropped here rather than listed as
+              // something to answer.
+              now: Date.now(),
               nameFor: (rosterId) => {
                 const roster = rosters.find((r) => r.roster_id === rosterId);
                 return names[roster?.owner_id] || null;
