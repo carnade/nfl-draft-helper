@@ -29,8 +29,10 @@ describe("tradesDocument", () => {
     expect(doc).toContain("l0: league_transactions_filtered(");
     expect(doc).toContain("l1: league_transactions_filtered(");
     expect(doc).toContain('league_id: "111"');
-    expect(doc).toContain('status_filters: ["proposed"]');
     expect(doc).toContain('type_filters: ["trade"]');
+    // Status is narrowed here rather than by Sleeper: a server-side filter
+    // that matches nothing looks exactly like having no pending trades.
+    expect(doc).toContain("status_filters: []");
     // player_map is what covers a player the backend's own list has dropped.
     expect(doc).toContain("player_map");
   });

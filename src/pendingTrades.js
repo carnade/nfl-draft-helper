@@ -1,12 +1,17 @@
 // Every trade still awaiting a decision, across every league.
 //
-// Sleeper will filter by status server-side, so this asks only for the
-// proposed ones rather than pulling a season of history and discarding it.
-// It does not filter by roster: which roster is mine is not known until the
-// rosters are fetched, and that fetch is worth making only for the leagues
-// that turned out to have a trade in them. Proposed trades are rare — a
-// handful out of forty leagues — so asking the question broadly and narrowing
-// afterwards costs less than the other order.
+// The filtering is done here rather than by Sleeper. The endpoint takes a
+// status_filters argument and it is tempting to pass ["proposed"], but the one
+// call site in this app that already uses this query sends an empty list and
+// narrows afterwards, and a filter that quietly matches nothing is
+// indistinguishable from a manager with no pending trades. So the request asks
+// for a league's recent trades and this module keeps the proposed ones.
+//
+// It does not filter by roster either: which roster is mine is not known until
+// the rosters are fetched, and that fetch is worth making only for the leagues
+// that turned out to have a trade in them. Proposed trades are rare — a handful
+// out of forty leagues — so asking broadly and narrowing afterwards costs less
+// than the other order.
 
 import { sleeperGraphqlPartial, aliasedDocument } from "./sleeperGraphql";
 
@@ -14,6 +19,9 @@ import { sleeperGraphqlPartial, aliasedDocument } from "./sleeperGraphql";
 // point of failure and one slow league would hold up every other; eight keeps
 // the round trips to a handful while letting results paint as they arrive.
 export const CHUNK_SIZE = 8;
+
+// The only status that means "still waiting on somebody".
+const PROPOSED = "proposed";
 
 // Everything needed to render a trade without a second request. player_map is
 // in here deliberately: it is the only source of name and position for a
@@ -49,10 +57,12 @@ export function tradesDocument(leagueIds = []) {
       args: {
         league_id: String(leagueId),
         type_filters: ["trade"],
-        status_filters: ["proposed"],
+        status_filters: [],
         leg_filters: [],
         roster_id_filters: [],
-        limit: 50,
+        // Newest first, so a pending offer is never pushed out of the window
+        // by a league's back catalogue of completed trades.
+        limit: 100,
       },
       selection: TRADE_FIELDS,
     }))
@@ -117,7 +127,7 @@ export async function fetchPendingTrades(
         failed.push(leagueId);
         return;
       }
-      byLeague[leagueId] = rows.filter((t) => t?.status === "proposed");
+      byLeague[leagueId] = rows.filter((t) => t?.status === PROPOSED);
     });
 
     if (onChunk) onChunk({ byLeague, failed });

@@ -270,7 +270,7 @@ function TradeCentral() {
   // An expired token answers every GraphQL query with "unauthorized", which
   // would render as "no pending trades anywhere" — true-looking and wrong.
   const token = auth?.token || null;
-  const userId = auth?.user_id || null;
+  const displayName = auth?.display_name || null;
   const live = token && (!auth.exp || auth.exp * 1000 > Date.now());
 
   const load = useCallback(
@@ -281,6 +281,18 @@ function TradeCentral() {
       const failed = [];
 
       try {
+        // The stored token carries a user_id, but Gameday pointedly resolves
+        // this over REST instead and that is the page known to work against an
+        // authenticated Sleeper. The id is what every roster is matched on, so
+        // a missing one does not fail loudly — it just stops matching, and
+        // every league reads as having nothing pending.
+        const userId =
+          (await fetch(`https://api.sleeper.app/v1/user/${displayName}`, { signal })
+            .then((r) => r.json())
+            .then((u) => u?.user_id)
+            .catch(() => null)) || auth?.user_id;
+        if (!userId) throw new Error(`Sleeper has no user called "${displayName}"`);
+
         const allLeagues = await cachedJson(
           `tc_leagues_${userId}_${SEASON}`,
           LEAGUES_TTL,
@@ -432,7 +444,7 @@ function TradeCentral() {
         if (!signal.aborted) setLoading(false);
       }
     },
-    [token, userId]
+    [token, displayName, auth?.user_id]
   );
 
   useEffect(() => {
