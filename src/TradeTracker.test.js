@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import TradeCentral, { AssetRow, SideTable, TradeBlock, LeagueTrades, expiryLabel } from "./TradeCentral";
+import TradeTracker, { AssetRow, SideTable, TradeBlock, LeagueTrades, expiryLabel } from "./TradeTracker";
 
 // user-event here is v13: no .setup(), and it does not flush React 18 state.
 // Nothing in these tests interacts, so plain render is enough.
@@ -149,9 +149,9 @@ describe("LeagueTrades", () => {
   });
 });
 
-describe("TradeCentral", () => {
+describe("TradeTracker", () => {
   it("asks for a login when there is no token", () => {
-    render(<TradeCentral />);
+    render(<TradeTracker />);
     expect(screen.getByText(/must be logged in/i)).toBeInTheDocument();
   });
 
@@ -162,7 +162,7 @@ describe("TradeCentral", () => {
       "sleeper_auth",
       JSON.stringify({ token: "stale", user_id: "u1", exp: Math.floor(Date.now() / 1000) - 60 })
     );
-    render(<TradeCentral />);
+    render(<TradeTracker />);
     expect(screen.getByText(/sign-in has expired/i)).toBeInTheDocument();
   });
 });

@@ -15,7 +15,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import "./TableStyles.css";
-import "./TradeCentral.css";
+import "./TradeTracker.css";
 import PositionPill from "./PositionPill";
 import { useSleeperAuth } from "./auth";
 import { loadHiddenLeagues, visibleLeagues, useHiddenLeagues } from "./leagueVisibility";
@@ -96,11 +96,11 @@ export function AssetRow({ asset }) {
 
   return (
     <tr className="ss-row">
-      <td className="tc-asset">
-        <span className="tc-asset-name">{asset.name}</span>
-        {sub && <span className="tc-asset-sub">{sub}</span>}
+      <td className="tt-asset">
+        <span className="tt-asset-name">{asset.name}</span>
+        {sub && <span className="tt-asset-sub">{sub}</span>}
       </td>
-      <td className="tc-pos">
+      <td className="tt-pos">
         {asset.position ? <PositionPill position={asset.position} /> : <span className="ss-muted">—</span>}
       </td>
       <td className="ss-center">{asset.team || <span className="ss-muted">—</span>}</td>
@@ -116,12 +116,12 @@ export function AssetRow({ asset }) {
 export function SideTable({ title, side }) {
   const { assets, totals } = side;
   return (
-    <div className="tc-side">
-      <h4 className="tc-side-title">
+    <div className="tt-side">
+      <h4 className="tt-side-title">
         {title}
         {totals.unknown > 0 && (
           <span
-            className="tc-side-note"
+            className="tt-side-note"
             title={`${totals.unknown} asset${totals.unknown === 1 ? "" : "s"} have no published value, so the totals leave them out`}
           >
             {totals.unknown} unpriced
@@ -153,7 +153,7 @@ export function SideTable({ title, side }) {
           </tbody>
           {assets.length > 0 && (
             <tfoot>
-              <tr className="tc-totals-row">
+              <tr className="tt-totals-row">
                 <td colSpan={4}>Total</td>
                 <td className="ss-num">{fmt(totals.projPg)}</td>
                 <td className="ss-num">{fmt(totals.actualPg)}</td>
@@ -170,11 +170,11 @@ export function SideTable({ title, side }) {
 
 export function Comparison({ rows }) {
   return (
-    <div className="tc-compare">
+    <div className="tt-compare">
       {rows.map((row) => (
-        <div key={row.key} className={`tc-compare-cell tc-favours-${row.favours || "none"}`}>
-          <span className="tc-compare-label">{row.label}</span>
-          <span className="tc-compare-value">
+        <div key={row.key} className={`tt-compare-cell tt-favours-${row.favours || "none"}`}>
+          <span className="tt-compare-label">{row.label}</span>
+          <span className="tt-compare-value">
             {row.delta == null
               ? "—"
               : row.favours === "even"
@@ -193,18 +193,18 @@ export function TradeBlock({ trade, now }) {
   const unreadablePicks = trade.unreadable.draftPicks.length;
 
   return (
-    <article className="tc-trade">
-      <header className="tc-trade-head">
-        <span className={`tc-badge tc-badge-${trade.direction}`}>
+    <article className="tt-trade">
+      <header className="tt-trade-head">
+        <span className={`tt-badge tt-badge-${trade.direction}`}>
           {trade.direction === "incoming" ? "Awaiting you" : "Waiting on them"}
         </span>
-        <span className="tc-with">{names}</span>
-        {trade.isCounter && <span className="tc-tag">counter</span>}
-        {trade.multiTeam && <span className="tc-tag">{trade.counterparties.length + 1}-team</span>}
-        {expiry && <span className="tc-expiry">{expiry}</span>}
+        <span className="tt-with">{names}</span>
+        {trade.isCounter && <span className="tt-tag">counter</span>}
+        {trade.multiTeam && <span className="tt-tag">{trade.counterparties.length + 1}-team</span>}
+        {expiry && <span className="tt-expiry">{expiry}</span>}
       </header>
 
-      <div className="tc-sides">
+      <div className="tt-sides">
         <SideTable title="You get" side={trade.receive} />
         <SideTable title="You give" side={trade.give} />
       </div>
@@ -212,7 +212,7 @@ export function TradeBlock({ trade, now }) {
       <Comparison rows={trade.comparisons} />
 
       {(unreadablePicks > 0 || trade.unreadable.faab) && (
-        <p className="tc-warn">
+        <p className="tt-warn">
           This trade also includes{" "}
           {[
             unreadablePicks > 0 && `${unreadablePicks} draft pick${unreadablePicks === 1 ? "" : "s"}`,
@@ -237,12 +237,12 @@ export function LeagueTrades({ league, now }) {
 
   return (
     <section className="ss-card">
-      <header className="ss-card-head tc-league-head">
+      <header className="ss-card-head tt-league-head">
         <h3 className="ss-league-name">{league.name}</h3>
-        <span className="tc-summary">{summary}</span>
+        <span className="tt-summary">{summary}</span>
       </header>
       {league.confidence !== "ok" && (
-        <p className="tc-note">
+        <p className="tt-note">
           {league.confidence === "none"
             ? "No projected draft order yet, so picks show without a band or slot."
             : "This league has not set a playoff count, so the projected order is max points for alone."}
@@ -255,7 +255,7 @@ export function LeagueTrades({ league, now }) {
   );
 }
 
-function TradeCentral() {
+function TradeTracker() {
   const auth = useSleeperAuth();
   const hidden = useHiddenLeagues();
 
@@ -294,7 +294,7 @@ function TradeCentral() {
         if (!userId) throw new Error(`Sleeper has no user called "${displayName}"`);
 
         const allLeagues = await cachedJson(
-          `tc_leagues_${userId}_${SEASON}`,
+          `tt_leagues_${userId}_${SEASON}`,
           LEAGUES_TTL,
           `https://api.sleeper.app/v1/user/${userId}/leagues/nfl/${SEASON}`,
           signal
@@ -328,7 +328,7 @@ function TradeCentral() {
           Promise.all(
             withTrades.map((l) =>
               cachedJson(
-                `tc_rosters_${l.league_id}`,
+                `tt_rosters_${l.league_id}`,
                 ROSTERS_TTL,
                 `https://api.sleeper.app/v1/league/${l.league_id}/rosters`,
                 signal
@@ -338,7 +338,7 @@ function TradeCentral() {
           Promise.all(
             withTrades.map((l) =>
               cachedJson(
-                `tc_users_${l.league_id}`,
+                `tt_users_${l.league_id}`,
                 ROSTERS_TTL,
                 `https://api.sleeper.app/v1/league/${l.league_id}/users`,
                 signal
@@ -380,7 +380,7 @@ function TradeCentral() {
         if (playerIds.size > 0) {
           [projections, stats] = await Promise.all([
             cachedJson(
-              `tc_proj_${SEASON}`,
+              `tt_proj_${SEASON}`,
               POINTS_TTL,
               `https://api.sleeper.com/projections/nfl/${SEASON}?season_type=regular&${POSITIONS}&order_by=adp_ppr`,
               signal,
@@ -390,7 +390,7 @@ function TradeCentral() {
               return {};
             }),
             cachedJson(
-              `tc_stats_${SEASON}`,
+              `tt_stats_${SEASON}`,
               POINTS_TTL,
               `https://api.sleeper.com/stats/nfl/${SEASON}?season_type=regular&${POSITIONS}&order_by=adp_ppr`,
               signal,
@@ -473,14 +473,14 @@ function TradeCentral() {
 
   if (!live) {
     return (
-      <div className="tc-page">
-        <h1>Trade Central</h1>
-        <p className="tc-gate">
+      <div className="tt-page">
+        <h1>Trade Tracker</h1>
+        <p className="tt-gate">
           {token
             ? "Your Sleeper sign-in has expired. Head to Settings to sign in again."
             : "You must be logged in to see your pending trades."}
         </p>
-        <p className="tc-gate-sub">
+        <p className="tt-gate-sub">
           Sleeper only shows a proposed trade to the managers in it, so this page needs your
           account. Head to <strong>Settings</strong> to log in.
         </p>
@@ -489,41 +489,41 @@ function TradeCentral() {
   }
 
   return (
-    <div className="tc-page">
-      <h1>Trade Central</h1>
-      <p className="tc-sub">
+    <div className="tt-page">
+      <h1>Trade Tracker</h1>
+      <p className="tt-sub">
         Every trade still waiting on a decision, across all your leagues. Draft picks are placed
         using each manager&apos;s max points for, so a pick&apos;s band and slot are a projection
         rather than a fact.
       </p>
 
       {expired && (
-        <p className="tc-error">
+        <p className="tt-error">
           Your Sleeper sign-in has expired, so no league could be checked. Sign in again in
           Settings.
         </p>
       )}
-      {error && <p className="tc-error">{error}</p>}
+      {error && <p className="tt-error">{error}</p>}
 
       {loading && (
-        <p className="tc-loading">
+        <p className="tt-loading">
           Checking your leagues{checked.total ? ` — ${checked.done} of ${checked.total}` : ""}…
         </p>
       )}
 
       {!loading && problems.length > 0 && (
-        <p className="tc-warn" title={BASE_URL}>
+        <p className="tt-warn" title={BASE_URL}>
           Couldn&apos;t reach {problems.join(", ")}, so some columns show &ldquo;—&rdquo;.
           Everything else is unaffected.
         </p>
       )}
 
       {!loading && !expired && views.length === 0 && (
-        <p className="tc-empty">No pending trades in any of your leagues.</p>
+        <p className="tt-empty">No pending trades in any of your leagues.</p>
       )}
 
       {!loading && views.length > 0 && (
-        <p className="tc-tally">
+        <p className="tt-tally">
           {totals.incoming} awaiting you · {totals.outgoing} waiting on them, across{" "}
           {views.length} league{views.length === 1 ? "" : "s"}.
         </p>
@@ -536,4 +536,4 @@ function TradeCentral() {
   );
 }
 
-export default TradeCentral;
+export default TradeTracker;

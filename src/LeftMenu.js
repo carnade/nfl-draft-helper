@@ -149,9 +149,9 @@ function LeftMenu({ userName, setUserName }) {
           </Link>
         </li>
         <li>
-          <Link to="/trade-central" className="menu-link">
+          <Link to="/trade-tracker" className="menu-link">
             <FontAwesomeIcon icon={faHandshake} className="menu-icon" />
-            <span>Trade Central</span>
+            <span>Trade Tracker</span>
           </Link>
         </li>
         <li>

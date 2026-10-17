@@ -42,7 +42,7 @@ export default function Changelog() {
   const entries = [
     {
       date: "2026-10-16",
-      title: "Trade Central",
+      title: "Trade Tracker",
       items: [
         "A new page under Trade Helper listing every trade still waiting on a decision, across all your leagues at once, grouped by league and badged as awaiting you or waiting on them.",
         "Each offer shows the same detail the Trade Helper does — KeepTradeCut and FantasyCalc values, age, projected and actual points per game — with totals for both sides and the gap between them.",

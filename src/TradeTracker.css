@@ -1,6 +1,6 @@
-/* Trade Central.
+/* Trade Tracker.
  *
- * Every class here is `tc-` prefixed on purpose. Create React App serves all
+ * Every class here is `tt-` prefixed on purpose. Create React App serves all
  * imported CSS as one global sheet, so an unscoped class name is a change to
  * every page at once — TradeAnalyzer.css leaves `.search-container`,
  * `.player-name` and half a dozen others bare, and LeagueList.css carries a
@@ -10,17 +10,17 @@
  * alongside this file rather than copied into it.
  */
 
-.tc-page {
+.tt-page {
   padding: 16px;
   max-width: 1500px;
 }
 
-.tc-page h1 {
+.tt-page h1 {
   margin: 0 0 4px;
   font-size: 1.5rem;
 }
 
-.tc-sub {
+.tt-sub {
   margin: 0 0 16px;
   max-width: 70ch;
   font-size: 0.85rem;
@@ -28,39 +28,39 @@
   color: hsl(var(--muted-foreground));
 }
 
-.tc-tally {
+.tt-tally {
   margin: 0 0 12px;
   font-size: 0.85rem;
   font-weight: 600;
 }
 
-.tc-loading,
-.tc-empty,
-.tc-gate {
+.tt-loading,
+.tt-empty,
+.tt-gate {
   color: hsl(var(--muted-foreground));
   font-size: 0.9rem;
 }
 
-.tc-gate {
+.tt-gate {
   font-size: 1rem;
   font-weight: 600;
   color: hsl(var(--foreground));
 }
 
-.tc-gate-sub {
+.tt-gate-sub {
   max-width: 60ch;
   font-size: 0.85rem;
   line-height: 1.5;
   color: hsl(var(--muted-foreground));
 }
 
-.tc-error {
+.tt-error {
   font-size: 0.9rem;
   color: #e07070;
 }
 
-.tc-warn,
-.tc-note {
+.tt-warn,
+.tt-note {
   margin: 0 0 10px;
   max-width: 78ch;
   font-size: 0.78rem;
@@ -77,7 +77,7 @@
  *
  * A modifier rather than a change to .ss-card-head, which TableStyles.css
  * shares with Start/Sit and the League page. */
-.tc-league-head {
+.tt-league-head {
   margin: -12px -14px 12px;
   padding: 9px 14px;
   /* --muted sits lighter than --card in dark and darker in light, so the one
@@ -89,13 +89,13 @@
   border-radius: calc(var(--radius, 6px) - 1px) calc(var(--radius, 6px) - 1px) 0 0;
 }
 
-.tc-league-head .ss-league-name {
+.tt-league-head .ss-league-name {
   font-size: 1.15rem;
   font-weight: 700;
   letter-spacing: -0.01em;
 }
 
-.tc-summary {
+.tt-summary {
   font-size: 0.78rem;
   font-weight: 600;
   color: hsl(var(--muted-foreground));
@@ -103,13 +103,13 @@
 
 /* One offer. Separated from the next by a rule rather than a box, so a league
  * with three pending trades reads as one card and not three. */
-.tc-trade + .tc-trade {
+.tt-trade + .tt-trade {
   margin-top: 14px;
   padding-top: 14px;
   border-top: 1px solid hsl(var(--border));
 }
 
-.tc-trade-head {
+.tt-trade-head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -117,7 +117,7 @@
   margin-bottom: 8px;
 }
 
-.tc-badge {
+.tt-badge {
   padding: 2px 8px;
   border-radius: 999px;
   font-size: 0.7rem;
@@ -127,24 +127,24 @@
 }
 
 /* Incoming is the one that needs an answer, so it is the one that is loud. */
-.tc-badge-incoming {
+.tt-badge-incoming {
   background: hsl(var(--pos-qb) / 0.22);
   color: hsl(var(--pos-qb-ink));
   border: 1px solid hsl(var(--pos-qb-edge) / 0.6);
 }
 
-.tc-badge-outgoing {
+.tt-badge-outgoing {
   background: hsl(var(--muted) / 0.5);
   color: hsl(var(--muted-foreground));
   border: 1px solid hsl(var(--border));
 }
 
-.tc-with {
+.tt-with {
   font-weight: 600;
   font-size: 0.9rem;
 }
 
-.tc-tag {
+.tt-tag {
   padding: 1px 6px;
   border: 1px solid hsl(var(--border));
   border-radius: 4px;
@@ -152,7 +152,7 @@
   color: hsl(var(--muted-foreground));
 }
 
-.tc-expiry {
+.tt-expiry {
   margin-left: auto;
   font-size: 0.75rem;
   font-weight: 600;
@@ -161,14 +161,14 @@
 
 /* Side by side while there is room, stacked when there is not. The two halves
  * are the comparison, so they want to be level with each other. */
-.tc-sides {
+.tt-sides {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
   align-items: start;
 }
 
-.tc-side-title {
+.tt-side-title {
   display: flex;
   align-items: baseline;
   gap: 8px;
@@ -180,7 +180,7 @@
   letter-spacing: 0.03em;
 }
 
-.tc-side-note {
+.tt-side-note {
   font-size: 0.68rem;
   font-weight: 600;
   text-transform: none;
@@ -189,37 +189,37 @@
   cursor: help;
 }
 
-.tc-asset-name {
+.tt-asset-name {
   display: block;
   font-weight: 600;
 }
 
 /* The pick's projected slot, or the reason there isn't one. Small and quiet:
  * it is a qualifier on the line above, not a second fact. */
-.tc-asset-sub {
+.tt-asset-sub {
   display: block;
   font-size: 0.7rem;
   color: hsl(var(--muted-foreground));
 }
 
-.tc-pos {
+.tt-pos {
   text-align: center;
 }
 
-.tc-totals-row td {
+.tt-totals-row td {
   font-weight: 700;
   border-top: 1px solid hsl(var(--border));
 }
 
 /* The five measures, as one strip under both tables. */
-.tc-compare {
+.tt-compare {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
   margin-top: 10px;
 }
 
-.tc-compare-cell {
+.tt-compare-cell {
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -229,14 +229,14 @@
   background: hsl(var(--background) / 0.4);
 }
 
-.tc-compare-label {
+.tt-compare-label {
   font-size: 0.66rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   color: hsl(var(--muted-foreground));
 }
 
-.tc-compare-value {
+.tt-compare-value {
   font-size: 0.95rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -245,37 +245,37 @@
 /* Which way a measure leans. Deliberately not red and green across the board:
  * these are five different units and a trade that wins three and loses two is
  * not a trade a colour can summarise. */
-.tc-favours-receive .tc-compare-value {
+.tt-favours-receive .tt-compare-value {
   color: #4fa97a;
 }
 
-.tc-favours-give .tc-compare-value {
+.tt-favours-give .tt-compare-value {
   color: #d1697a;
 }
 
-.tc-favours-even .tc-compare-value,
-.tc-favours-none .tc-compare-value {
+.tt-favours-even .tt-compare-value,
+.tt-favours-none .tt-compare-value {
   color: hsl(var(--muted-foreground));
 }
 
-body.light .tc-favours-receive .tc-compare-value {
+body.light .tt-favours-receive .tt-compare-value {
   color: #2f7d55;
 }
 
-body.light .tc-favours-give .tc-compare-value {
+body.light .tt-favours-give .tt-compare-value {
   color: #b24455;
 }
 
 @media (max-width: 900px) {
-  .tc-sides {
+  .tt-sides {
     grid-template-columns: 1fr;
   }
 
-  .tc-compare {
+  .tt-compare {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .tc-expiry {
+  .tt-expiry {
     margin-left: 0;
   }
 }
