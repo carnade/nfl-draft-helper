@@ -1,0 +1,281 @@
+/* Trade Tracker.
+ *
+ * Every class here is `tt-` prefixed on purpose. Create React App serves all
+ * imported CSS as one global sheet, so an unscoped class name is a change to
+ * every page at once — TradeAnalyzer.css leaves `.search-container`,
+ * `.player-name` and half a dozen others bare, and LeagueList.css carries a
+ * documented workaround for the collision that caused.
+ *
+ * The card and table shell comes from TableStyles.css, which is imported
+ * alongside this file rather than copied into it.
+ */
+
+.tt-page {
+  padding: 16px;
+  max-width: 1500px;
+}
+
+.tt-page h1 {
+  margin: 0 0 4px;
+  font-size: 1.5rem;
+}
+
+.tt-sub {
+  margin: 0 0 16px;
+  max-width: 70ch;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: hsl(var(--muted-foreground));
+}
+
+.tt-tally {
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.tt-loading,
+.tt-empty,
+.tt-gate {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.9rem;
+}
+
+.tt-gate {
+  font-size: 1rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.tt-gate-sub {
+  max-width: 60ch;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: hsl(var(--muted-foreground));
+}
+
+.tt-error {
+  font-size: 0.9rem;
+  color: #e07070;
+}
+
+.tt-warn,
+.tt-note {
+  margin: 0 0 10px;
+  max-width: 78ch;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: hsl(var(--muted-foreground));
+}
+
+/* The league name was competing with the badges and totals inside the card
+ * and losing. Rather than lift it out — which would leave a floating heading
+ * above a card holding exactly that league's trades, saying the same thing
+ * twice — the card's head becomes an actual header: a tinted bar bled out to
+ * the card's edges, with the name a size up and the rule underneath doing the
+ * separating. The grouping stays visible, which is the point of the card.
+ *
+ * A modifier rather than a change to .ss-card-head, which TableStyles.css
+ * shares with Start/Sit and the League page. */
+.tt-league-head {
+  margin: -12px -14px 12px;
+  padding: 9px 14px;
+  /* --muted sits lighter than --card in dark and darker in light, so the one
+   * alpha lifts the bar off the card either way. 0.7 rather than 0.5 is about
+   * a point and a half of lightness in dark mode — enough to catch the eye,
+   * not enough to read as a separate panel. */
+  background: hsl(var(--muted) / 0.7);
+  border-bottom: 1px solid hsl(var(--border));
+  border-radius: calc(var(--radius, 6px) - 1px) calc(var(--radius, 6px) - 1px) 0 0;
+}
+
+.tt-league-head .ss-league-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.tt-summary {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+}
+
+/* One offer. Separated from the next by a rule rather than a box, so a league
+ * with three pending trades reads as one card and not three. */
+.tt-trade + .tt-trade {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid hsl(var(--border));
+}
+
+.tt-trade-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.tt-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+/* Incoming is the one that needs an answer, so it is the one that is loud. */
+.tt-badge-incoming {
+  background: hsl(var(--pos-qb) / 0.22);
+  color: hsl(var(--pos-qb-ink));
+  border: 1px solid hsl(var(--pos-qb-edge) / 0.6);
+}
+
+.tt-badge-outgoing {
+  background: hsl(var(--muted) / 0.5);
+  color: hsl(var(--muted-foreground));
+  border: 1px solid hsl(var(--border));
+}
+
+.tt-with {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.tt-tag {
+  padding: 1px 6px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 4px;
+  font-size: 0.68rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.tt-expiry {
+  margin-left: auto;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Side by side while there is room, stacked when there is not. The two halves
+ * are the comparison, so they want to be level with each other. */
+.tt-sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.tt-side-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 4px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: hsl(var(--muted-foreground));
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.tt-side-note {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #d08a4a;
+  cursor: help;
+}
+
+.tt-asset-name {
+  display: block;
+  font-weight: 600;
+}
+
+/* The pick's projected slot, or the reason there isn't one. Small and quiet:
+ * it is a qualifier on the line above, not a second fact. */
+.tt-asset-sub {
+  display: block;
+  font-size: 0.7rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.tt-pos {
+  text-align: center;
+}
+
+.tt-totals-row td {
+  font-weight: 700;
+  border-top: 1px solid hsl(var(--border));
+}
+
+/* The five measures, as one strip under both tables. */
+.tt-compare {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.tt-compare-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 5px 8px;
+  border: 1px solid hsl(var(--border));
+  border-radius: calc(var(--radius) - 2px);
+  background: hsl(var(--background) / 0.4);
+}
+
+.tt-compare-label {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: hsl(var(--muted-foreground));
+}
+
+.tt-compare-value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Which way a measure leans. Deliberately not red and green across the board:
+ * these are five different units and a trade that wins three and loses two is
+ * not a trade a colour can summarise. */
+.tt-favours-receive .tt-compare-value {
+  color: #4fa97a;
+}
+
+.tt-favours-give .tt-compare-value {
+  color: #d1697a;
+}
+
+.tt-favours-even .tt-compare-value,
+.tt-favours-none .tt-compare-value {
+  color: hsl(var(--muted-foreground));
+}
+
+body.light .tt-favours-receive .tt-compare-value {
+  color: #2f7d55;
+}
+
+body.light .tt-favours-give .tt-compare-value {
+  color: #b24455;
+}
+
+@media (max-width: 900px) {
+  .tt-sides {
+    grid-template-columns: 1fr;
+  }
+
+  .tt-compare {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tt-expiry {
+    margin-left: 0;
+  }
+}

@@ -10,6 +10,7 @@ import DraftsList from "./DraftsList";
 import LeagueList from "./LeagueList";
 import BestballList from "./BestballList";
 import TradeAnalyzer from "./TradeAnalyzer";
+import TradeTracker from "./TradeTracker";
 import DFS from "./DFS";
 import DFSResults from "./DFSResults";
 import DFSManage from "./DFSManage";
@@ -123,6 +124,7 @@ function App() {
 
               <Route path="/bestball/:userName" element={<BestballList />} />
               <Route path="/trade-analyzer" element={<TradeAnalyzer userName={userName} setUserName={setUserName} />} />
+              <Route path="/trade-tracker" element={<TradeTracker />} />
               <Route path="/dfs" element={<DFS userName={userName} />} />
               <Route path="/dfs/manage" element={<DFSManage />} />
               <Route path="/dfs/results/tinyurl/:name" element={<DFSResults />} />
