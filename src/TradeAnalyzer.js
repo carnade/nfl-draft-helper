@@ -98,6 +98,11 @@ function TradeAnalyzer({ userName, setUserName }) {
   const [usernameMap, setUsernameMap] = useState({});
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [playerDataCache, setPlayerDataCache] = useState({}); // Cache for additional player data
+  const [myUserId, setMyUserId] = useState(null); // whose picks the "Mine" column shows
+  // Both pick columns show the same season, chosen here. Two columns of one
+  // season each told you about one manager twice; one season of two managers
+  // is the comparison a trade actually turns on.
+  const [pickSeason, setPickSeason] = useState(PICK_SEASONS[0]);
 
   // Resolve a username to a sleeper user_id using cached map or API
   const resolveUsernameToId = async (username) => {
@@ -229,8 +234,10 @@ function TradeAnalyzer({ userName, setUserName }) {
         setLeaguesData([]);
         setTeamsData({});
         setRosterData({});
+        setMyUserId(null);
         return;
       }
+      setMyUserId(resolvedUserId);
       
       
       const response = await fetch(
@@ -830,8 +837,7 @@ function TradeAnalyzer({ userName, setUserName }) {
     );
   };
 
-  const renderPickStrip = (leagueGroup, playerData, season) => {
-    const rosterId = playerData.roster.roster_id;
+  const renderPickStrip = (leagueGroup, rosterId, season) => {
     const holdings = rosterId != null ? leagueGroup.picks?.[season]?.[rosterId] : null;
     if (!holdings) return <span className="trade-league-picks-none">—</span>;
 
@@ -951,6 +957,10 @@ function TradeAnalyzer({ userName, setUserName }) {
         allSameOwner,
         ranks: getLeagueRanks(leagueGroup.league.league_id),
         picks: getLeaguePicks(leagueGroup.league),
+        myRosterId:
+          (rosterData[leagueGroup.league.league_id] || []).find(
+            (r) => r.owner_id === myUserId
+          )?.roster_id ?? null,
         ownerMatches: leagueGroup.players.map(playerData => {
           const playerOwner = playerData.roster.owner_id;
           if (!playerOwner) return false; // Available players don't match
@@ -1400,35 +1410,49 @@ function TradeAnalyzer({ userName, setUserName }) {
                     </div>
                     <div className="trade-league-rank-header" title="Position in the league standings">Pos</div>
                     <div className="trade-league-rank-header" title="Position by maximum points — what the roster could have scored with perfect lineups">Max PF</div>
-                    {PICK_SEASONS.map((season, seasonIndex) => (
-                      <div key={season} className="trade-league-picks-header">
-                        <span title={`Draft picks held in ${season}, by round`}>{season}</span>
-                        {/* One legend for both columns, on the first. */}
-                        {seasonIndex === 0 && (
-                          <span className="trade-pick-legend-trigger" tabIndex={0}
-                                aria-label="What the pick colours mean">
-                            i
-                            <span className="trade-pick-legend" role="tooltip">
-                              <span className="trade-pick-legend-title">
-                                Picks held, one box per round
-                              </span>
-                              <span className="trade-pick-legend-row">
-                                <span className="trade-pick-square green">1</span>
-                                still has their own pick
-                              </span>
-                              <span className="trade-pick-legend-row">
-                                <span className="trade-pick-square yellow">2</span>
-                                holds picks, but not their own
-                              </span>
-                              <span className="trade-pick-legend-row">
-                                <span className="trade-pick-square red">0</span>
-                                no pick that round
-                              </span>
+                    {/* One header across both pick columns: the two labels sit
+                        over their own column, and the season the pair is showing
+                        is chosen once underneath rather than twice. */}
+                    <div className="trade-league-picks-head">
+                      <div className="trade-league-picks-labels">
+                        <span title={`Your draft picks in ${pickSeason}, by round`}>Mine</span>
+                        <span title={`Their draft picks in ${pickSeason}, by round`}>Theirs</span>
+                      </div>
+                      <div className="trade-league-picks-controls">
+                        <div className="trade-pick-season-toggle" role="group"
+                             aria-label="Which season's picks to show">
+                          {PICK_SEASONS.map(season => (
+                            <button key={season} type="button"
+                                    className={`trade-pick-season-btn ${season === pickSeason ? 'active' : ''}`}
+                                    aria-pressed={season === pickSeason}
+                                    onClick={() => setPickSeason(season)}>
+                              {season}
+                            </button>
+                          ))}
+                        </div>
+                        <span className="trade-pick-legend-trigger" tabIndex={0}
+                              aria-label="What the pick colours mean">
+                          i
+                          <span className="trade-pick-legend" role="tooltip">
+                            <span className="trade-pick-legend-title">
+                              Picks held, one box per round
+                            </span>
+                            <span className="trade-pick-legend-row">
+                              <span className="trade-pick-square green">1</span>
+                              still has their own pick
+                            </span>
+                            <span className="trade-pick-legend-row">
+                              <span className="trade-pick-square yellow">2</span>
+                              holds picks, but not their own
+                            </span>
+                            <span className="trade-pick-legend-row">
+                              <span className="trade-pick-square red">0</span>
+                              no pick that round
                             </span>
                           </span>
-                        )}
+                        </span>
                       </div>
-                    ))}
+                    </div>
                   </div>
                   {getSortedPlayersByLeague().map((leagueGroup, groupIndex) => (
                     <React.Fragment key={leagueGroup.league.league_id}>
@@ -1449,11 +1473,17 @@ function TradeAnalyzer({ userName, setUserName }) {
                           </div>
                           {renderRankCell(leagueGroup, playerData, 'standing')}
                           {renderRankCell(leagueGroup, playerData, 'maxPf')}
-                          {PICK_SEASONS.map(season => (
-                            <div key={season} className="trade-league-picks">
-                              {renderPickStrip(leagueGroup, playerData, season)}
-                            </div>
-                          ))}
+                          {/* My holdings are a property of the league, not of
+                              the player, so they are drawn once per league the
+                              way the league name is. */}
+                          <div className="trade-league-picks">
+                            {playerIndex === 0
+                              ? renderPickStrip(leagueGroup, leagueGroup.myRosterId, pickSeason)
+                              : null}
+                          </div>
+                          <div className="trade-league-picks">
+                            {renderPickStrip(leagueGroup, playerData.roster.roster_id, pickSeason)}
+                          </div>
                         </div>
                       ))}
                     </React.Fragment>

@@ -41,6 +41,14 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2026-10-20",
+      title: "Trade Helper compares pick holdings side by side",
+      items: [
+        "The two draft pick columns in League Info were both the other manager's, one per season. They are now yours and theirs, so you can see at a glance who is actually richer in picks.",
+        "Which season they show is chosen by a pair of connected pills under the heading, so you can flip between next year and the year after without losing the comparison.",
+      ],
+    },
+    {
       date: "2026-10-16",
       title: "Trade Tracker",
       items: [
