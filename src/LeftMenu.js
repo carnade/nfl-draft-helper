@@ -15,6 +15,7 @@ import {
   faScroll,
   faCog, // <-- import the cog icon
   faArrowRightArrowLeft,
+  faHandshake,
   faDollarSign,
   faTrophy,
   faChartSimple,
@@ -145,6 +146,12 @@ function LeftMenu({ userName, setUserName }) {
           <Link to="/trade-analyzer" className="menu-link">
             <FontAwesomeIcon icon={faArrowRightArrowLeft} className="menu-icon" />
             <span>Trade Helper</span>
+          </Link>
+        </li>
+        <li>
+          <Link to="/trade-tracker" className="menu-link">
+            <FontAwesomeIcon icon={faHandshake} className="menu-icon" />
+            <span>Trade Tracker</span>
           </Link>
         </li>
         <li>

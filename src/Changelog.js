@@ -49,6 +49,16 @@ export default function Changelog() {
       ],
     },
     {
+      date: "2026-10-16",
+      title: "Trade Tracker",
+      items: [
+        "A new page under Trade Helper listing every trade still waiting on a decision, across all your leagues at once, grouped by league and badged as awaiting you or waiting on them.",
+        "Each offer shows the same detail the Trade Helper does — KeepTradeCut and FantasyCalc values, age, projected and actual points per game — with totals for both sides and the gap between them.",
+        "Draft picks are placed using each manager's max points for: the lowest ceiling drafts first, with projected playoff teams pushed to the back. That gives every pick an Early/Mid/Late band and a projected slot like 1.04, which is what prices it.",
+        "Where a pick cannot be placed — nobody has scored yet, or the roster has left the league — it says so rather than guessing a value.",
+      ],
+    },
+    {
       date: "2026-10-15",
       title: "Start/Sit bench tidy-up",
       items: [
