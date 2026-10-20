@@ -136,7 +136,7 @@ body.dark .league-info-header {
   position: relative;
   z-index: 2; /* so the picks legend opens over the rows, not behind them */
   display: grid;
-  /* name | # | owner | record | pos | max pf | season+1 | season+2
+  /* name | # | owner | record | pos | max pf | my picks | their picks
      Header and row must stay in step. */
   grid-template-columns: 4fr 1fr 3fr 2fr 1fr 1.5fr 3.3fr 3.3fr;
   gap: 0.625rem;
@@ -150,7 +150,7 @@ body.dark .league-info-header {
 
 .trade-league-row {
   display: grid;
-  /* name | # | owner | record | pos | max pf | season+1 | season+2
+  /* name | # | owner | record | pos | max pf | my picks | their picks
      Header and row must stay in step. */
   grid-template-columns: 4fr 1fr 3fr 2fr 1fr 1.5fr 3.3fr 3.3fr;
   gap: 0.625rem;
@@ -169,7 +169,7 @@ body.dark .league-info-header {
 .trade-league-owner-header,
 .trade-league-record-header,
 .trade-league-rank-header,
-.trade-league-picks-header {
+.trade-league-picks-head {
   font-weight: 600;
   color: hsl(var(--foreground));
 }
@@ -179,11 +179,62 @@ body.dark .league-info-header {
   white-space: nowrap;
 }
 
-.trade-league-picks-header {
+/* One header cell across both pick columns. It spans exactly the two the body
+ * draws separately, and the label row inside repeats the outer grid's gap so
+ * "Mine" and "Theirs" land over their own column. */
+.trade-league-picks-head {
+  grid-column: span 2;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.trade-league-picks-labels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.625rem;
+}
+
+.trade-league-picks-controls {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 6px;
+}
+
+/* Two connected pills, one per season — the same segmented control Gameday
+ * uses for its views, at the size a table header can carry. */
+.trade-pick-season-toggle {
+  display: inline-flex;
+  border: 1px solid hsl(var(--border));
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.trade-pick-season-btn {
+  padding: 1px 9px;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: hsl(var(--muted-foreground));
+  transition: background 0.15s, color 0.15s;
+}
+
+.trade-pick-season-btn + .trade-pick-season-btn {
+  border-left: 1px solid hsl(var(--border));
+}
+
+.trade-pick-season-btn.active {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.trade-pick-season-btn:hover:not(.active) {
+  background: hsl(var(--muted) / 0.5);
+  color: hsl(var(--foreground));
 }
 
 .sortable {
@@ -799,6 +850,16 @@ body.dark .panel-header {
   .trade-league-row {
     grid-template-columns: 1fr;
     gap: 5px;
+  }
+
+  /* The grid is one column here, so a two-column span would conjure a second
+     one and put this row out of step with the others. */
+  .trade-league-picks-head {
+    grid-column: span 1;
+  }
+
+  .trade-league-picks-labels {
+    grid-template-columns: 1fr;
   }
   
   .analysis-content {
