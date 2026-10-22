@@ -42,6 +42,14 @@ export default function Changelog() {
   const entries = [
     {
       date: "2026-10-22",
+      title: "Gameday's season table remembers finished weeks",
+      items: [
+        "The season view kept its figures only for as long as the browser tab stayed open, so coming back a day or two later meant loading every league again. Finished weeks are now kept properly and are there when you return.",
+        "Only the four numbers each row shows are kept, not the raw scores behind them — about thirty kilobytes for a whole season rather than four megabytes, which is what makes keeping them possible at all.",
+      ],
+    },
+    {
+      date: "2026-10-22",
       title: "Find a player lights up the right player",
       items: [
         "Searching a surname on the League page could light up leagues that did not hold the player it named. Searching \"etienne\" lit four leagues and named Travis Etienne, who was in one of them — the other three held Trevor Etienne. The leagues lit are now always the ones holding the player shown.",
