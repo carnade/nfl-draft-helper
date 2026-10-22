@@ -68,6 +68,15 @@ const BINARY_MARKETS = new Set(["player_anytime_td"]);
 // is not comparable with, so "All" means every yardage market and Anytime TD is
 // picked on its own.
 const ANYTIME_TD = "player_anytime_td";
+
+// Markets the backend has stopped buying. It already filters these out of what
+// it serves, so the only thing left to do here is not offer a tab that would
+// open on an empty table. The handling below is left in place rather than torn
+// out: it is still correct if a market comes back, which keeps re-enabling one
+// line here and one in each of the backend's two lists.
+const RETIRED_MARKETS = new Set([ANYTIME_TD]);
+
+const LIVE_MARKETS = Object.keys(MARKET_LABELS).filter((m) => !RETIRED_MARKETS.has(m));
 function fmtStat(val, market) {
   if (val == null || val === "" || isNaN(val)) return "—";
   if (BINARY_MARKETS.has(market)) return `${(Number(val) * 100).toFixed(0)}%`;
@@ -1308,7 +1317,7 @@ export default function Odds() {
             ))}
           </div>
           <div className="odds-market-tabs">
-            {["ALL", ...Object.keys(MARKET_LABELS)].map(m => (
+            {["ALL", ...LIVE_MARKETS].map(m => (
               <React.Fragment key={m}>
                 {m === ANYTIME_TD && <span className="odds-market-sep" aria-hidden="true" />}
                 <button

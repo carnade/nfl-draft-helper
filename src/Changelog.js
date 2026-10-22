@@ -50,6 +50,14 @@ export default function Changelog() {
       ],
     },
     {
+      date: "2026-10-22",
+      title: "Anytime TD props retired",
+      items: [
+        "Anytime TD is no longer fetched, shown or graded. It cost the same per game as any other prop market and was the least trustworthy of them: its projection is a scoring rate guessed from a handful of games, and no bookmaker offers the other side of it, so a good share of its flagged calls were never bets you could have placed.",
+        "The Odds page no longer offers an Anytime TD tab, and the results page leaves it out of the hit rates so the numbers stay comparable week to week.",
+      ],
+    },
+    {
       date: "2026-10-20",
       title: "Trade Helper compares pick holdings side by side",
       items: [
