@@ -40,6 +40,16 @@
   margin-bottom: 2px;
 }
 
+/* Which player a search settled on, when the query described more than one.
+ * Without it an ambiguous surname reads as the wrong player being lit. */
+.league-search-note {
+  margin: 2px 0 6px;
+  max-width: 46ch;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: hsl(var(--muted-foreground));
+}
+
 .search-label {
   margin-right: 0.375rem;
   font-weight: 600;

@@ -41,6 +41,15 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2026-10-22",
+      title: "Find a player lights up the right player",
+      items: [
+        "Searching a surname on the League page could light up leagues that did not hold the player it named. Searching \"etienne\" lit four leagues and named Travis Etienne, who was in one of them — the other three held Trevor Etienne. The leagues lit are now always the ones holding the player shown.",
+        "A search no longer matches the middle of a word, so \"dell\" finds Tank Dell rather than Odell Beckham, and a single word is treated as a surname, so \"chase\" finds Ja'Marr Chase rather than Chase Brown.",
+        "When a query still describes more than one player, the page says which one it picked and how many others matched, instead of quietly choosing.",
+      ],
+    },
+    {
       date: "2026-10-20",
       title: "Trade Helper compares pick holdings side by side",
       items: [
