@@ -33,6 +33,7 @@ import LeagueIssues from "./LeagueIssues";
 import { findIrIssues, findIrReturnIssues } from "./irIssues";
 import { useSleeperAuth } from "./auth";
 import { positionClass } from "./positionColors";
+import { resolvePlayerSearch, leaguesWithPlayer, playerKey } from "./playerSearch";
 
 // The two Sleeper calls in this file have to agree about the season.
 const SEASON = 2026;
@@ -176,6 +177,9 @@ function LeagueList() {
   const [expandedTeams, setExpandedTeams] = useState(new Set());
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [highlightedLeagues, setHighlightedLeagues] = useState(new Set());
+  // Set when a query described more than one player, so the page can say which
+  // one it picked rather than appearing to light up the wrong man.
+  const [searchNote, setSearchNote] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   // Player fuzzy search state
   const [playerFilteredList, setPlayerFilteredList] = useState([]);
@@ -240,7 +244,7 @@ function LeagueList() {
   };
 
   const handlePlayerClick = (player) => {
-    const playerId = `${player.first_name}-${player.last_name}`;
+    const playerId = playerKey(player.first_name, player.last_name);
 
     if (selectedPlayer === playerId) {
       setSelectedPlayer(null);
@@ -253,6 +257,7 @@ function LeagueList() {
       setShowOwnerDropdown(false);
       setOwnerSelectedIndex(-1);
 
+      setSearchNote(null);
       setSelectedPlayer(playerId);
       highlightLeaguesWithPlayer(player.first_name, player.last_name);
     }
@@ -271,20 +276,9 @@ function LeagueList() {
   };
 
   const highlightLeaguesWithPlayer = (firstName, lastName) => {
-    console.log(`Highlighting leagues with player ${firstName} ${lastName}`);
-    const highlightedLeaguesSet = new Set();
-    leagues.forEach((league) => {
-      Object.keys(playerData[league.league_id]?.players || {}).forEach((p) => {
-        const leaguePlayer = playerData[league.league_id]?.players[p];
-        if (
-          leaguePlayer?.first_name === firstName &&
-          leaguePlayer?.last_name === lastName
-        ) {
-          highlightedLeaguesSet.add(league.league_id);
-        }
-      });
-    });
-    setHighlightedLeagues(highlightedLeaguesSet);
+    setHighlightedLeagues(
+      new Set(leaguesWithPlayer(firstName, lastName, playerData))
+    );
   };
 
   const handleSearchInputChange = (e) => {
@@ -307,6 +301,7 @@ function LeagueList() {
     if (query.trim().length < 3) {
       setSelectedPlayer(null);
       setHighlightedLeagues(new Set());
+      setSearchNote(null);
     } else {
       if (searchTimeout) {
         clearTimeout(searchTimeout); // Clear the previous timeout
@@ -639,38 +634,28 @@ function LeagueList() {
     loadLocalUsernames();
   }, []);
 
+  // Resolves to one player and lights only that player's leagues. It used to
+  // collect the leagues of every player whose name contained the query and
+  // then highlight whichever match the loops reached last, so "etienne" lit
+  // four leagues while naming Travis Etienne, who was in one of them.
   const searchPlayer = (query) => {
-    const searchTerms = query.toLowerCase().split(" ").filter(Boolean);
-    const highlightedLeaguesSet = new Set();
-    let foundPlayerId = null;
+    const hit = resolvePlayerSearch(query, playerData);
 
-    leagues.forEach((league) => {
-      Object.keys(playerData[league.league_id]?.players || {}).forEach(
-        (playerId) => {
-          const player = playerData[league.league_id]?.players[playerId];
-          const playerName =
-            `${player.first_name} ${player.last_name}`.toLowerCase();
-
-          const matches = searchTerms.every((term) =>
-            playerName.includes(term)
-          );
-
-          if (matches) {
-            highlightedLeaguesSet.add(league.league_id);
-            foundPlayerId = `${player.first_name}-${player.last_name}`; // Construct playerId properly with names
-          }
-        }
-      );
-    });
-
-    if (foundPlayerId) {
-      setHighlightedLeagues(highlightedLeaguesSet);
-      setSelectedPlayer(foundPlayerId);
-    } else {
-      // If no player matches, clear highlights
+    if (!hit) {
       setSelectedPlayer(null);
       setHighlightedLeagues(new Set());
+      setSearchNote(null);
+      return;
     }
+
+    setSelectedPlayer(hit.key);
+    setHighlightedLeagues(new Set(hit.leagueIds));
+    setSearchNote(
+      hit.otherMatches > 0
+        ? `Showing ${hit.firstName} ${hit.lastName} — ${hit.otherMatches} other ` +
+          `player${hit.otherMatches === 1 ? "" : "s"} also match. Pick from the list to change.`
+        : null
+    );
   };
 
   const fetchPlayerData = useCallback(
@@ -1640,6 +1625,7 @@ function LeagueList() {
             </div>
           )}
         </div>
+        {searchNote && <p className="league-search-note">{searchNote}</p>}
         <label className="search-label">Find an owner</label>
         <div className="owner-search">
           <input
