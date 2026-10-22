@@ -41,6 +41,14 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2026-10-22",
+      title: "Gameday's season table remembers finished weeks",
+      items: [
+        "The season view kept its figures only for as long as the browser tab stayed open, so coming back a day or two later meant loading every league again. Finished weeks are now kept properly and are there when you return.",
+        "Only the four numbers each row shows are kept, not the raw scores behind them — about thirty kilobytes for a whole season rather than four megabytes, which is what makes keeping them possible at all.",
+      ],
+    },
+    {
       date: "2026-10-20",
       title: "Trade Helper compares pick holdings side by side",
       items: [

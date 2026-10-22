@@ -12,6 +12,7 @@ import {
 } from "./gamedayWeek";
 import { bestLineupPoints } from "./bestLineup";
 import { readFinalWeek, writeFinalWeek } from "./finalWeekCache";
+import { readSeasonWeek, writeSeasonWeek, readSeasonWeeks } from "./seasonCache";
 import {
   summariseWeek,
   summariseSeason,
@@ -573,6 +574,18 @@ export default function Gameday() {
   /** Load one finished week for one league. Nothing if it is already there. */
   const loadSeasonWeek = useCallback(
     async (league, week) => {
+      // The stored summary answers this outright — no roster id to look up, no
+      // positions to have learnt, nothing to ask the network for. Checked
+      // before anything else for that reason.
+      const stored = readSeasonWeek(league.leagueId, week);
+      if (stored !== undefined) {
+        setSeasonWeeks((prev) => ({
+          ...prev,
+          [league.leagueId]: { ...(prev[league.leagueId] || {}), [week]: stored },
+        }));
+        return;
+      }
+
       const rosterId = await myRosterId(league.leagueId, season.userId);
       if (rosterId == null) return;
 
@@ -590,6 +603,10 @@ export default function Gameday() {
         rosterPositions: league.rosterPositions,
         positionsOf: (id) => positionsRef.current[id] || [],
       });
+
+      // Only for a week this view was told is finished, which is the only kind
+      // it asks for. A live week's figures would be frozen half-played.
+      writeSeasonWeek(league.leagueId, week, summary, { isFinal: true });
 
       setSeasonWeeks((prev) => ({
         ...prev,
@@ -626,9 +643,26 @@ export default function Gameday() {
       .filter((w) => statuses[w] === "done");
     if (season.leagues.length === 0 || finished.length === 0) return;
 
+    const stored = readSeasonWeeks(
+      season.leagues.map((l) => l.leagueId),
+      finished
+    );
+
     setSeasonWeeks((prev) => {
       let changed = false;
       const next = { ...prev };
+
+      // Summaries kept from previous visits. These need neither a roster id nor
+      // the positions a projections fetch would have taught us, so they land
+      // whatever else is known yet.
+      for (const [leagueId, weeks] of Object.entries(stored)) {
+        for (const [week, summary] of Object.entries(weeks)) {
+          if (next[leagueId]?.[week] !== undefined) continue;
+          next[leagueId] = { ...(next[leagueId] || {}), [week]: summary };
+          changed = true;
+        }
+      }
+
       for (const league of season.leagues) {
         const rosterId = rosterIdRef.current[league.leagueId];
         if (rosterId == null) continue;
@@ -636,15 +670,16 @@ export default function Gameday() {
           if (next[league.leagueId]?.[week] !== undefined) continue;
           const rows = readFinalWeek(league.leagueId, week);
           if (!rows) continue;
-          next[league.leagueId] = {
-            ...(next[league.leagueId] || {}),
-            [week]: summariseWeek({
-              rows,
-              rosterId,
-              rosterPositions: league.rosterPositions,
-              positionsOf: (id) => positionsRef.current[id] || [],
-            }),
-          };
+          const summary = summariseWeek({
+            rows,
+            rosterId,
+            rosterPositions: league.rosterPositions,
+            positionsOf: (id) => positionsRef.current[id] || [],
+          });
+          // Kept as well as shown, so a week recovered from this session's raw
+          // rows is still there on the next visit.
+          writeSeasonWeek(league.leagueId, week, summary, { isFinal: true });
+          next[league.leagueId] = { ...(next[league.leagueId] || {}), [week]: summary };
           changed = true;
         }
       }
