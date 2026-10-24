@@ -6,6 +6,7 @@ import LZString from 'lz-string';
 import { PrivilegedOnly, loadSleeperAuth } from './auth';
 import { getCurrentWeek, peekCurrentWeek } from './currentWeekCache';
 import { effectiveUserName, rememberUserName } from './settingsUser';
+import { emptyLineup, lineupSignature } from './dfsLineup';
 import './DFS.css';
 import {
   kickoffLabel,
@@ -84,17 +85,7 @@ function DFS({ userName }) {
   const [currentWeek, setCurrentWeek] = useState(peekCurrentWeek());
   const [loading, setLoading] = useState(true);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
-  const [roster, setRoster] = useState({
-    QB: null,
-    RB1: null,
-    RB2: null,
-    WR1: null,
-    WR2: null,
-    WR3: null,
-    TE: null,
-    FLX: null,
-    DST: null
-  });
+  const [roster, setRoster] = useState(emptyLineup);
   
   // Filter states
   const [salaryRange, setSalaryRange] = useState([0, 10000]);
@@ -130,6 +121,19 @@ function DFS({ userName }) {
   const [pinInput, setPinInput] = useState('');
   const [showGameStartedModal, setShowGameStartedModal] = useState(false);
   const [playerToAddAfterConfirm, setPlayerToAddAfterConfirm] = useState(null);
+
+  // Which lineup the submissions above were made from. A submission is a
+  // snapshot, so changing the lineup makes every "Lineup submitted" marker
+  // describe a lineup that no longer exists.
+  const currentLineup = lineupSignature(roster);
+
+  // Clearing them re-enables the league buttons. Without this they stayed on
+  // "Lineup submitted" and refused to send until the page was navigated away
+  // from and back — the unmount was doing the resetting. Returning the same Set
+  // when it is already empty keeps this from re-rendering on every edit.
+  useEffect(() => {
+    setSubmittedEntries((prev) => (prev.size === 0 ? prev : new Set()));
+  }, [currentLineup]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -816,17 +820,7 @@ function DFS({ userName }) {
   const loadLineupFromCode = (lineupCode) => {
     try {
       // Clear current roster
-      setRoster({
-        QB: null,
-        RB1: null,
-        RB2: null,
-        WR1: null,
-        WR2: null,
-        WR3: null,
-        TE: null,
-        FLX: null,
-        DST: null
-      });
+      setRoster(emptyLineup());
 
       // Parse the lineup code - handle both formats
       let encoded;
