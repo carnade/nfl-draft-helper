@@ -49,6 +49,7 @@ export default function Changelog() {
         "Organisers can choose, per tournament, between freezing the whole lineup once anybody has played and freezing only the players who have played. The whole lineup stays the default, so nothing changes for a tournament already running unless you change it.",
         "The DFS page shows a league as locked, naming the player who has already played, instead of letting you build a replacement lineup and refusing it when you press submit. Where only some players are frozen it says which ones to keep.",
         "The manage page keeps each entrant's last ten submissions for the week in progress, so a lineup that was replaced can still be looked at. They are discarded once the week is scored.",
+        "Lineups are now actually kept secret until a tournament's reveal time. The reveal time had been recorded but never enforced, so anyone who knew a tournament's name could read every entry at any point \u2014 including before choosing their own. Who has submitted, and when, stays visible; what they picked does not. Organisers signed in with their Sleeper account still see everything.",
       ],
     },
     {

@@ -568,8 +568,13 @@ function DFSManage() {
       }
 
       // Fetch the full data for this entry (contains user_submissions)
-      // Use action=results to bypass PIN requirement when copying
-      const response = await fetch(`${BASE_URL}/tinyurl/${entryName}/data?action=results`);
+      // action=results skips the PIN prompt; the token is what gets the
+      // lineups themselves before a tournament's reveal time, which is the
+      // whole point of copying them from here.
+      const response = await fetch(
+        `${BASE_URL}/tinyurl/${entryName}/data?action=results`,
+        { headers: sleeperAuthHeaders() }
+      );
       if (!response.ok) {
         alert('Failed to fetch league data');
         return;
