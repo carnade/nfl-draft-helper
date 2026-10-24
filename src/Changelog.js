@@ -41,6 +41,13 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2026-10-24",
+      title: "DFS lineups can be resubmitted after an edit",
+      items: [
+        "Submitting a lineup to a league left that league's button reading \"Lineup submitted\" even after you changed the lineup, so there was no way to send the new one without switching pages or refreshing first. Changing the lineup now clears those markers, and the leagues can be submitted to again.",
+      ],
+    },
+    {
       date: "2026-10-22",
       title: "Gameday's season table remembers finished weeks",
       items: [
