@@ -45,7 +45,10 @@ export default function Changelog() {
       title: "DFS lineups lock once a player has kicked off",
       items: [
         "A submitted lineup is meant to be frozen as soon as one of its players starts their game. That check had not worked for months \u2014 a key format changed when DFS gained the Thursday and Monday slates and the check was never updated, so it quietly passed every lineup. It works again.",
-        "The DFS page now shows a league as locked, naming the player who has already played, instead of letting you build a replacement lineup and refusing it when you press submit.",
+        "Defences now count towards that lock. They score like any other slot but were being skipped, so a defence that had already played could be swapped for one that had not. A lineup whose defence has played will now lock where before it did not.",
+        "Organisers can choose, per tournament, between freezing the whole lineup once anybody has played and freezing only the players who have played. The whole lineup stays the default, so nothing changes for a tournament already running unless you change it.",
+        "The DFS page shows a league as locked, naming the player who has already played, instead of letting you build a replacement lineup and refusing it when you press submit. Where only some players are frozen it says which ones to keep.",
+        "The manage page keeps each entrant's last ten submissions for the week in progress, so a lineup that was replaced can still be looked at. They are discarded once the week is scored.",
       ],
     },
     {

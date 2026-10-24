@@ -469,7 +469,8 @@ function DFS({ userName }) {
                   // kickoff. Decided by the backend, which owns the rule and
                   // enforces it on submit — the page only reports it.
                   locked: !!entry.locked,
-                  lockedBy: entry.locked_by || []
+                  lockedBy: entry.locked_by || [],
+                  lineupLock: entry.lineup_lock || 'full' 
                 })
           : [];
         
@@ -487,7 +488,8 @@ function DFS({ userName }) {
                   tournamentWeek: entryProgress.tournamentWeek,
                   numWeeks: entryProgress.numWeeks,
                   locked: entryProgress.locked,
-                  lockedBy: entryProgress.lockedBy
+                  lockedBy: entryProgress.lockedBy,
+                  lineupLock: entryProgress.lineupLock
                 };
               }
               // If detail fetch fails, return basic entry
@@ -1809,6 +1811,10 @@ function DFS({ userName }) {
                     const playedNames = (entry.lockedBy || [])
                       .map((p) => [p.name, p.team && `(${p.team})`].filter(Boolean).join(' '))
                       .join(', ');
+                    // Frozen players but not a frozen lineup: this tournament
+                    // only locks the players who have played, so a submission
+                    // will still be taken as long as they stay in it.
+                    const partlyFrozen = !isLocked && (entry.lockedBy || []).length > 0;
 
                     return (
                       <button
@@ -1818,10 +1824,14 @@ function DFS({ userName }) {
                         className={`add-to-league-btn ${entry.has_data ? 'has-data' : 'no-data'} ${isSubmitted ? 'submitted' : ''} ${isLocked ? 'locked' : ''}`}
                         title={isLocked
                           ? `A lineup cannot be changed once one of its players has kicked off.${playedNames ? ` Already played: ${playedNames}.` : ''}`
+                          : partlyFrozen
+                          ? `This tournament freezes only the players who have played. Keep ${playedNames} in the lineup and the rest can still change.`
                           : undefined}
                       >
                         {isLocked
                           ? `${entry.name} — locked, a player has played`
+                          : partlyFrozen && !isSubmitted
+                          ? `${entry.name} — keep ${playedNames}`
                           : isSubmitted
                           ? 'Lineup submitted'
                           : `${entry.name} ${
