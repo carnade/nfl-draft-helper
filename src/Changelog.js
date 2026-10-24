@@ -42,6 +42,14 @@ export default function Changelog() {
   const entries = [
     {
       date: "2026-10-24",
+      title: "DFS lineups lock once a player has kicked off",
+      items: [
+        "A submitted lineup is meant to be frozen as soon as one of its players starts their game. That check had not worked for months \u2014 a key format changed when DFS gained the Thursday and Monday slates and the check was never updated, so it quietly passed every lineup. It works again.",
+        "The DFS page now shows a league as locked, naming the player who has already played, instead of letting you build a replacement lineup and refusing it when you press submit.",
+      ],
+    },
+    {
+      date: "2026-10-24",
       title: "DFS lineups can be resubmitted after an edit",
       items: [
         "Submitting a lineup to a league left that league's button reading \"Lineup submitted\" even after you changed the lineup, so there was no way to send the new one without switching pages or refreshing first. Changing the lineup now clears those markers, and the leagues can be submitted to again.",

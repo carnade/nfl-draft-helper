@@ -868,6 +868,25 @@ body.dark .modal-overlay {
   transform: none;
 }
 
+/* Frozen by a kickoff rather than by having been sent. Distinguished from
+ * .submitted because the two mean opposite things: one says the work is done,
+ * the other says it can no longer be done. Carries the help cursor since the
+ * title explains which player locked it. */
+.add-to-league-btn.locked {
+  background-color: hsl(var(--muted) / 0.6) !important;
+  color: hsl(var(--muted-foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+  cursor: help;
+  opacity: 0.75;
+  font-style: italic;
+}
+
+.add-to-league-btn.locked:hover {
+  background-color: hsl(var(--muted) / 0.6) !important;
+  opacity: 0.75;
+  transform: none;
+}
+
 .add-to-league-btn.disabled {
   background-color: hsl(var(--muted)) !important;
   color: hsl(var(--muted-foreground)) !important;

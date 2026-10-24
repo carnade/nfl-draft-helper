@@ -464,7 +464,12 @@ function DFS({ userName }) {
                   name: entry.name || entry,
                   submitAs: entry.submit_as || username,
                   tournamentWeek: entry.tournament_week || null,
-                  numWeeks: entry.num_weeks || null
+                  numWeeks: entry.num_weeks || null,
+                  // Whether the lineup already filed here is frozen by a
+                  // kickoff. Decided by the backend, which owns the rule and
+                  // enforces it on submit — the page only reports it.
+                  locked: !!entry.locked,
+                  lockedBy: entry.locked_by || []
                 })
           : [];
         
@@ -480,7 +485,9 @@ function DFS({ userName }) {
                   has_data: detailData.has_data || false,
                   week: detailData.week || null,
                   tournamentWeek: entryProgress.tournamentWeek,
-                  numWeeks: entryProgress.numWeeks
+                  numWeeks: entryProgress.numWeeks,
+                  locked: entryProgress.locked,
+                  lockedBy: entryProgress.lockedBy
                 };
               }
               // If detail fetch fails, return basic entry
@@ -1795,15 +1802,27 @@ function DFS({ userName }) {
                 <div className="add-to-league-buttons">
                   {availableTinyUrls.map((entry) => {
                     const isSubmitted = submittedEntries.has(entry.name);
-                    
+                    // Said here rather than after the fact: the submission would
+                    // be refused anyway, and an alert arriving once the lineup is
+                    // built is a worse way to find out.
+                    const isLocked = !!entry.locked;
+                    const playedNames = (entry.lockedBy || [])
+                      .map((p) => [p.name, p.team && `(${p.team})`].filter(Boolean).join(' '))
+                      .join(', ');
+
                     return (
                       <button
                         key={entry.name}
-                        onClick={() => !isSubmitted && handleAddToLeague(entry)}
-                        disabled={isSubmitted}
-                        className={`add-to-league-btn ${entry.has_data ? 'has-data' : 'no-data'} ${isSubmitted ? 'submitted' : ''}`}
+                        onClick={() => !isSubmitted && !isLocked && handleAddToLeague(entry)}
+                        disabled={isSubmitted || isLocked}
+                        className={`add-to-league-btn ${entry.has_data ? 'has-data' : 'no-data'} ${isSubmitted ? 'submitted' : ''} ${isLocked ? 'locked' : ''}`}
+                        title={isLocked
+                          ? `A lineup cannot be changed once one of its players has kicked off.${playedNames ? ` Already played: ${playedNames}.` : ''}`
+                          : undefined}
                       >
-                        {isSubmitted
+                        {isLocked
+                          ? `${entry.name} — locked, a player has played`
+                          : isSubmitted
                           ? 'Lineup submitted'
                           : `${entry.name} ${
                               entry.tournamentWeek
