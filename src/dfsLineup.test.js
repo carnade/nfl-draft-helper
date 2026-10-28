@@ -1,4 +1,5 @@
-import { DFS_SLOTS, emptyLineup, lineupSignature, sameLineup } from "./dfsLineup";
+import LZString from "lz-string";
+import { DFS_SLOTS, emptyLineup, lineupSignature, sameLineup, decodeLineup } from "./dfsLineup";
 
 const player = (id, name) => ({ sleeper_id: id, name: name || `P${id}` });
 
@@ -78,5 +79,51 @@ describe("lineupSignature", () => {
     const forwards = lineup({ QB: player("1"), DST: player("9") });
     const backwards = Object.fromEntries(Object.entries(forwards).reverse());
     expect(lineupSignature(backwards)).toBe(lineupSignature(forwards));
+  });
+});
+
+
+describe("decodeLineup", () => {
+  // Built the way DFS.js builds a submission, so the test exercises the real
+  // encoding rather than an idea of it.
+  const encode = (text) => LZString.compressToEncodedURIComponent(text);
+
+  it("reads back a lineup the page would have sent", () => {
+    const body = "11560-7000,10212-4000,CHI-3500";
+    const out = decodeLineup(`7|${encode(`MrJocke:${body}`)}`);
+    expect(out.week).toBe(7);
+    expect(out.username).toBe("MrJocke");
+    expect(out.players).toEqual([
+      { token: "11560", salary: 7000 },
+      { token: "10212", salary: 4000 },
+      { token: "CHI", salary: 3500 },
+    ]);
+  });
+
+  it("keeps a defence's team code as its token", () => {
+    // A defence has no numeric id, which is why tokens are returned rather
+    // than resolved players.
+    const out = decodeLineup(`7|${encode("MrJocke:CHI-3500")}`);
+    expect(out.players[0].token).toBe("CHI");
+  });
+
+  it("handles a handle containing digits", () => {
+    const out = decodeLineup(`7|${encode("Ringside1981:11560-7000")}`);
+    expect(out.username).toBe("Ringside1981");
+    expect(out.players).toHaveLength(1);
+  });
+
+  it("treats a numeric head as a player, not a handle", () => {
+    // The older "id:salary" spelling has no username prefix to strip.
+    const out = decodeLineup(`7|${encode("11560:7000")}`);
+    expect(out.username).toBeNull();
+  });
+
+  it("returns null for anything it cannot read", () => {
+    expect(decodeLineup("no-pipe-here")).toBeNull();
+    expect(decodeLineup("7|")).toBeNull();
+    expect(decodeLineup(`7|${"!!!not a payload!!!"}`)).toBeNull();
+    expect(decodeLineup(null)).toBeNull();
+    expect(decodeLineup(undefined)).toBeNull();
   });
 });

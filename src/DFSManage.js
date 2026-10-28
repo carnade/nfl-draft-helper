@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import LZString from 'lz-string';
 import './DFSManage.css';
 import { useIsPrivilegedUser, loadSleeperAuth } from './auth';
+import { decodeLineup } from './dfsLineup';
 
 // Add a mock flag
 const mock = process.env.REACT_APP_MOCK === 'true';
@@ -30,6 +31,13 @@ function DFSManage() {
   const [entryDetails, setEntryDetails] = useState({});
   const [removingEntrant, setRemovingEntrant] = useState(null);
   const [purgePointsOnRemove, setPurgePointsOnRemove] = useState(false);
+  // Keyed "{entry}:{username}" like removingEntrant and clearingLineup, rather
+  // than overloading expandedEntries, whose keys are entry names.
+  const [expandedHistory, setExpandedHistory] = useState(new Set());
+  // One fetch per tournament serves every entrant in it.
+  const [historyByEntry, setHistoryByEntry] = useState({});
+  const [loadingHistory, setLoadingHistory] = useState(new Set());
+  const [savingLock, setSavingLock] = useState(null);
   const [clearingLineup, setClearingLineup] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(new Set());
   const [expandedEntries, setExpandedEntries] = useState(new Set());
@@ -275,6 +283,83 @@ function DFSManage() {
   // players has kicked off, submitting over it is refused. This wipes only the
   // current week's lineup — they stay an entrant and keep points from earlier
   // weeks — so they can enter a fresh one.
+  // The last ten submissions for the week in progress. Organiser-only, and a
+  // separate route from the admin data dump so this page never holds PINs.
+  const fetchHistory = async (entryName) => {
+    setLoadingHistory(prev => new Set(prev).add(entryName));
+    try {
+      const response = await fetch(
+        `${BASE_URL}/admin/tinyurl/${encodeURIComponent(entryName)}/history`,
+        { headers: sleeperAuthHeaders() }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setHistoryByEntry(prev => ({ ...prev, [entryName]: data }));
+      } else {
+        const body = await response.json().catch(() => ({}));
+        window.alert(`Could not load history: ${body.error || response.status}`);
+      }
+    } catch (error) {
+      window.alert(`Could not load history: ${error.message}`);
+    } finally {
+      setLoadingHistory(prev => {
+        const next = new Set(prev);
+        next.delete(entryName);
+        return next;
+      });
+    }
+  };
+
+  const toggleHistory = (entryName, username) => {
+    const key = `${entryName}:${username}`;
+    setExpandedHistory(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+    if (!historyByEntry[entryName]) fetchHistory(entryName);
+  };
+
+  // Which players a stored lineup held.
+  //
+  // Tokens rather than resolved players, because a defence is a team code and a
+  // manual entry is a name. slatePlayers is the override panel's own list and
+  // is loaded for one week only, so it may be cold — then the raw token shows,
+  // which is still readable.
+  const slateNames = {};
+  slatePlayers.forEach((player) => { slateNames[player.id] = player.name; });
+
+  const describeLineup = (data) => {
+    const decoded = decodeLineup(data);
+    if (!decoded) return null;
+    return decoded.players.map(({ token }) => slateNames[token] || token);
+  };
+
+  const setLineupLock = async (entryName, mode) => {
+    setSavingLock(entryName);
+    try {
+      const response = await fetch(
+        `${BASE_URL}/admin/tinyurl/${encodeURIComponent(entryName)}/settings`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...sleeperAuthHeaders() },
+          body: JSON.stringify({ lineup_lock: mode })
+        }
+      );
+      if (response.ok) {
+        await fetchEntryDetails(entryName);
+      } else {
+        const body = await response.json().catch(() => ({}));
+        window.alert(`Could not change the lock: ${body.error || response.status}`);
+      }
+    } catch (error) {
+      window.alert(`Could not change the lock: ${error.message}`);
+    } finally {
+      setSavingLock(null);
+    }
+  };
+
   const clearLineup = async (entryName, username) => {
     if (!window.confirm(
       `Clear ${username}'s lineup in ${entryName}?\n\n` +
@@ -483,8 +568,13 @@ function DFSManage() {
       }
 
       // Fetch the full data for this entry (contains user_submissions)
-      // Use action=results to bypass PIN requirement when copying
-      const response = await fetch(`${BASE_URL}/tinyurl/${entryName}/data?action=results`);
+      // action=results skips the PIN prompt; the token is what gets the
+      // lineups themselves before a tournament's reveal time, which is the
+      // whole point of copying them from here.
+      const response = await fetch(
+        `${BASE_URL}/tinyurl/${entryName}/data?action=results`,
+        { headers: sleeperAuthHeaders() }
+      );
       if (!response.ok) {
         alert('Failed to fetch league data');
         return;
@@ -806,6 +896,29 @@ function DFSManage() {
                       </div>
                     )}
 
+                    <div className="dfs-manage-override-panel">
+                      <h3 className="dfs-manage-section-title">Lineup lock</h3>
+                      <p className="dfs-manage-override-note">
+                        What happens once one of an entrant&apos;s players has kicked off.
+                        Allowing the rest to change lets somebody restructure mid-week
+                        knowing how their early players did.
+                      </p>
+                      {['full', 'unplayed'].map((mode) => (
+                        <label key={mode} className="dfs-manage-lock-option">
+                          <input
+                            type="radio"
+                            name={`lineup-lock-${entry.name}`}
+                            checked={(details.lineup_lock || 'full') === mode}
+                            disabled={savingLock === entry.name}
+                            onChange={() => setLineupLock(entry.name, mode)}
+                          />
+                          {mode === 'full'
+                            ? 'Freeze the whole lineup once any player has played'
+                            : 'Freeze only the players who have played'}
+                        </label>
+                      ))}
+                    </div>
+
                     {(() => {
                       // An open tournament has no allowlist in its first week: the
                       // entrants are whoever has actually submitted.
@@ -870,6 +983,19 @@ function DFSManage() {
                                       {clearingLineup === `${entry.name}:${username}` ? '…' : 'Clear'}
                                     </button>
                                   )}
+                                  {updateCount > 1 && (
+                                    <button
+                                      className="dfs-manage-clear-lineup"
+                                      onClick={() => toggleHistory(entry.name, username)}
+                                      title={`What ${username} submitted earlier this week`}
+                                    >
+                                      {loadingHistory.has(entry.name)
+                                        ? '…'
+                                        : expandedHistory.has(`${entry.name}:${username}`)
+                                        ? 'Hide history'
+                                        : 'History'}
+                                    </button>
+                                  )}
                                   <button
                                     className="dfs-manage-remove-entrant"
                                     onClick={() => removeEntrant(entry.name, username)}
@@ -879,6 +1005,31 @@ function DFSManage() {
                                     {removingEntrant === `${entry.name}:${username}` ? '…' : 'Remove'}
                                   </button>
                                 </div>
+                                {expandedHistory.has(`${entry.name}:${username}`) && (() => {
+                                  const records = historyByEntry[entry.name]?.entrants?.[username]?.history;
+                                  if (!records) return null;
+                                  if (records.length === 0) {
+                                    return <p className="dfs-manage-history-note">Nothing kept for this week yet.</p>;
+                                  }
+                                  return (
+                                    <ol className="dfs-manage-history">
+                                      {records.map((record, i) => {
+                                        const names = describeLineup(record.data);
+                                        return (
+                                          <li key={`${record.at}-${i}`} className="dfs-manage-history-row">
+                                            <span className="dfs-manage-submission-value">
+                                              {formatDateWithWeekday(record.at)}
+                                            </span>
+                                            {i === 0 && <span className="dfs-manage-history-tag">current</span>}
+                                            <span className="dfs-manage-history-players">
+                                              {names ? names.join(', ') : 'could not be read'}
+                                            </span>
+                                          </li>
+                                        );
+                                      })}
+                                    </ol>
+                                  );
+                                })()}
                               </div>
                             );
                           })}

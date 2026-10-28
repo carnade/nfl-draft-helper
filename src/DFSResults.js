@@ -891,7 +891,10 @@ function DFSResults() {
           const url = isAdminMode 
             ? `${BASE_URL}/tinyurl/${tinyUrlNameParam}/data?action=results&admin=true`
             : `${BASE_URL}/tinyurl/${tinyUrlNameParam}/data?action=results`;
-          const response = await fetch(url);
+          // Lineups are withheld until the reveal time now, so the organiser's
+          // view has to prove who it is. admin=true in the URL no longer gets
+          // anybody anything — it only ever convinced this page, not the server.
+          const response = await fetch(url, { headers: sleeperAuthHeaders() });
           
           if (response.ok) {
             const result = await response.json();

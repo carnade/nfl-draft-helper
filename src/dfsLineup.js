@@ -1,3 +1,5 @@
+import LZString from "lz-string";
+
 // The DFS lineup: its slots, and whether it has changed.
 //
 // "Has it changed" exists because submitting a lineup to a league marks that
@@ -41,4 +43,69 @@ export function lineupSignature(roster = {}) {
 /** Whether two lineups hold the same players in the same slots. */
 export function sameLineup(a, b) {
   return lineupSignature(a) === lineupSignature(b);
+}
+
+// ── Reading a submitted lineup back ────────────────────────────────────────
+
+/**
+ * The players inside a submitted lineup string, or null.
+ *
+ * A submission is `"{week}|{LZString.compressToEncodedURIComponent('User:id-salary,...')}"`.
+ * The same decode ladder is copy-pasted in five places across DFSResults.js,
+ * DFS.js and DFSManage.js, each doing something different with the result. This
+ * is the one place that knows the shape, which is where the frontend already
+ * keeps "what a lineup is" — see lineupSignature above.
+ *
+ * Tokens rather than resolved players: a defence is a team code and a manual
+ * entry is a name, so the caller decides how to turn a token into something to
+ * display. That mirrors the backend's own `_lineup_slot_tokens`.
+ */
+export function decodeLineup(data) {
+  if (typeof data !== "string" || !data.includes("|")) return null;
+
+  const [week, payload] = [data.slice(0, data.indexOf("|")), data.slice(data.indexOf("|") + 1)];
+  if (!payload) return null;
+
+  // The order the page writes them in first, then the older spellings.
+  let text = null;
+  for (const decode of [
+    (p) => LZString.decompressFromEncodedURIComponent(p),
+    (p) => LZString.decompressFromBase64(p),
+    (p) => LZString.decompressFromUTF16(p),
+  ]) {
+    try {
+      const out = decode(payload);
+      if (out && (out.includes("-") || out.includes(":"))) {
+        text = out;
+        break;
+      }
+    } catch {
+      /* try the next one */
+    }
+  }
+  if (!text) return null;
+
+  // A username prefix, when there is one. A purely numeric head is a player id
+  // in the older "id:salary" spelling, not a handle.
+  let username = null;
+  let list = text;
+  if (text.includes(":")) {
+    const head = text.slice(0, text.indexOf(":")).trim();
+    if (!/^\d+$/.test(head)) {
+      username = head;
+      list = text.slice(text.indexOf(":") + 1);
+    }
+  }
+
+  const players = list
+    .split(",")
+    .map((pair) => pair.trim())
+    .filter(Boolean)
+    .map((pair) => {
+      const [token, salary] = pair.split("-");
+      return { token: (token || "").trim(), salary: Number(salary) || null };
+    })
+    .filter((p) => p.token);
+
+  return { week: Number(week) || null, username, players };
 }
