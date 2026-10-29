@@ -1,10 +1,11 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 
-import {
+import PlayerFinder, {
   COLUMNS,
   FinderRow,
   SosCell,
+  basisFor,
   defaultDirectionFor,
   filterRows,
   finderRow,
@@ -164,13 +165,13 @@ describe("sortRows", () => {
   ];
 
   it("sorts descending on raw value", () => {
-    const sorted = sortRows(rows, { key: "ktc", direction: "desc" }, { valueBasis: "value" });
+    const sorted = sortRows(rows, { key: "ktc", direction: "desc", basis: "value" });
 
     expect(sorted.map((r) => r.id)).toEqual(["dear", "scoreless", "cheap"]);
   });
 
   it("puts the best bargain first on cost per point", () => {
-    const sorted = sortRows(rows, { key: "ktc", direction: "asc" }, { valueBasis: "perPoint" });
+    const sorted = sortRows(rows, { key: "ktc", direction: "asc", basis: "perPoint" });
 
     expect(sorted[0].id).toBe("cheap");
   });
@@ -178,21 +179,21 @@ describe("sortRows", () => {
   it("sorts a player with no figure last, not first", () => {
     // The mistake that would make this column actively misleading: a player
     // who has scored nothing is not the cheapest production in the league.
-    const ascending = sortRows(rows, { key: "ktc", direction: "asc" }, { valueBasis: "perPoint" });
-    const descending = sortRows(rows, { key: "ktc", direction: "desc" }, { valueBasis: "perPoint" });
+    const ascending = sortRows(rows, { key: "ktc", direction: "asc", basis: "perPoint" });
+    const descending = sortRows(rows, { key: "ktc", direction: "desc", basis: "perPoint" });
 
     expect(ascending[ascending.length - 1].id).toBe("scoreless");
     expect(descending[descending.length - 1].id).toBe("scoreless");
   });
 
-  it("sorts each schedule column on the basis that column is showing", () => {
+  it("sorts on the basis the sort was taken against, not a pill read later", () => {
     const teams = [
       row({ sleeper_id: "x", sos: { ...raw().sos, ros: { 2025: cell(0.9, 1), 2026: cell(0.1, 32), vspos: cell(20, 1) } } }),
       row({ sleeper_id: "y", sos: { ...raw().sos, ros: { 2025: cell(0.1, 32), 2026: cell(0.9, 1), vspos: cell(40, 32) } } }),
     ];
 
-    const by2025 = sortRows(teams, { key: "sosRos", direction: "desc" }, { rosBasis: "2025" });
-    const by2026 = sortRows(teams, { key: "sosRos", direction: "desc" }, { rosBasis: "2026" });
+    const by2025 = sortRows(teams, { key: "sosRos", direction: "desc", basis: "2025" });
+    const by2026 = sortRows(teams, { key: "sosRos", direction: "desc", basis: "2026" });
 
     expect(by2025[0].id).toBe("x");
     expect(by2026[0].id).toBe("y");
@@ -201,11 +202,26 @@ describe("sortRows", () => {
   it("sorts names alphabetically", () => {
     const sorted = sortRows(
       [row({ sleeper_id: "1", last_name: "Zeta" }), row({ sleeper_id: "2", last_name: "Alpha" })],
-      { key: "name", direction: "asc" },
-      {}
+      { key: "name", direction: "asc", basis: null }
     );
 
     expect(sorted.map((r) => r.id)).toEqual(["2", "1"]);
+  });
+});
+
+describe("basisFor", () => {
+  const pills = { valueBasis: "perPoint", rosBasis: "2025", postBasis: "vspos" };
+
+  it("reports which pill each sortable column is reading", () => {
+    expect(basisFor("ktc", pills)).toBe("perPoint");
+    expect(basisFor("fc", pills)).toBe("perPoint");
+    expect(basisFor("sosRos", pills)).toBe("2025");
+    expect(basisFor("sosPost", pills)).toBe("vspos");
+  });
+
+  it("is null for a column with no pill", () => {
+    expect(basisFor("age", pills)).toBeNull();
+    expect(basisFor("name", pills)).toBeNull();
   });
 });
 
@@ -325,5 +341,115 @@ describe("COLUMNS", () => {
     expect(COLUMNS.map((c) => c.key)).toEqual([
       "age", "ktc", "fc", "points", "ppg", "last5", "games",
     ]);
+  });
+});
+
+// ── Pills change what is shown, not the order ───────────────────────────────
+
+describe("the rendered table", () => {
+  // Ordered so raw value and cost-per-point disagree: the dearest player is
+  // also the best value for money, so a basis change would visibly reorder.
+  const payload = [
+    raw({ sleeper_id: "dear", first_name: "Dear", last_name: "Player",
+          "KTC Position Rank": null, "KTC Value": 9000, pts_ppr: 300, gp: 10 }),   // 300/pt
+    raw({ sleeper_id: "mid", first_name: "Mid", last_name: "Player",
+          "KTC Position Rank": null, "KTC Value": 5000, pts_ppr: 100, gp: 10 }),   // 500/pt
+    raw({ sleeper_id: "cheap", first_name: "Cheap", last_name: "Player",
+          "KTC Position Rank": null, "KTC Value": 1000, pts_ppr: 10, gp: 10 }),    // 1000/pt
+  ];
+
+  const names = () =>
+    screen
+      .getAllByRole("row")
+      .slice(1)
+      .map((tr) => tr.querySelector(".finder-name").textContent.trim());
+
+  /** A column header by its exact leading label, since "Pts" also prefixes "Pts/g". */
+  const header = (label) =>
+    screen
+      .getAllByRole("columnheader")
+      .find((th) => th.textContent.trim().startsWith(label) &&
+                    !th.textContent.trim().startsWith(`${label}/`));
+
+  /** The nth pill with this label — the value pills appear over KTC and FC alike. */
+  const pill = (label, index = 0) => screen.getAllByRole("button", { name: label })[index];
+
+  beforeEach(() => {
+    sessionStorage.clear();
+    global.fetch = jest.fn(() =>
+      Promise.resolve({ ok: true, json: () => Promise.resolve(payload) })
+    );
+  });
+
+  afterEach(() => {
+    delete global.fetch;
+  });
+
+  const show = async () => {
+    render(<PlayerFinder onAddPlayer={() => {}} />);
+    await screen.findByText("Dear Player");
+  };
+
+  it("loads and sorts by KTC descending", async () => {
+    await show();
+
+    expect(names()).toEqual(["Dear Player", "Mid Player", "Cheap Player"]);
+  });
+
+  it("keeps the order when the value pill changes what the column shows", async () => {
+    // The reported bug: flipping a pill re-sorted the table. A pill chooses
+    // what a column reads; it is not a request to reorder.
+    await show();
+    const before = names();
+
+    click(pill("per pt"));
+
+    expect(names()).toEqual(before);
+    // The figures did change — 9000 reads as 300 per point.
+    expect(screen.getByText("300")).toBeInTheDocument();
+    expect(screen.queryByText("9000")).not.toBeInTheDocument();
+  });
+
+  it("re-sorts on the new reading once the header is clicked", async () => {
+    await show();
+    click(pill("per pt"));
+
+    click(header("KTC"));
+
+    // Cheapest per point first, which is the opposite end from raw value.
+    expect(names()).toEqual(["Dear Player", "Mid Player", "Cheap Player"]);
+  });
+
+  it("does not sort a column just because a pill inside its header was clicked", async () => {
+    // The pills live inside the clickable header, so a pill click used to
+    // bubble to it and sort by that column. Sorting by age here makes the
+    // difference visible: a bubbled click would resort by KTC.
+    await show();
+    click(header("Age"));
+    const before = names();
+
+    click(pill("per pt"));
+
+    expect(names()).toEqual(before);
+  });
+
+  it("keeps the order when a schedule pill changes", async () => {
+    await show();
+    click(header("Rest of season"));
+    const before = names();
+
+    click(pill("2025"));
+
+    expect(names()).toEqual(before);
+  });
+
+  it("still sorts when a header is clicked, in both directions", async () => {
+    await show();
+
+    click(header("Pts"));
+    expect(names()).toEqual(["Dear Player", "Mid Player", "Cheap Player"]);
+
+    click(header("Pts"));
+    expect(names()).toEqual(["Cheap Player", "Mid Player", "Dear Player"]);
   });
 });

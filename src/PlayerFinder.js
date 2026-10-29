@@ -135,20 +135,23 @@ export function filterRows(rows, filters) {
 /**
  * Rows in sorted order.
  *
+ * `basis` is part of the sort, not read from the pills, and that is the point:
+ * a pill chooses what a column *shows*, and changing what is shown is not a
+ * request to reorder the table. So the basis is captured when a header is
+ * clicked and carried here, which leaves the order alone until the next click.
+ *
  * Missing values always sort last, whichever direction is asked for. They are
  * not the smallest and not the largest; they are absent, and a column sorted
  * to find the cheapest player in the league should not open with every player
  * nobody has priced.
  */
-export function sortRows(rows, { key, direction }, { valueBasis, rosBasis, postBasis } = {}) {
+export function sortRows(rows, { key, direction, basis }) {
   const pick = (row) => {
     if (key === "name") return row.name;
     if (key === "position") return row.position;
-    if (key === "ktc" || key === "fc") return valueOf(row, key, valueBasis);
-    // The two schedule columns sort on whichever basis each is showing, so
-    // clicking one sorts by what is actually on screen in it.
-    if (key === "sosRos") return sosCellOf(row, "ros", rosBasis)?.value ?? null;
-    if (key === "sosPost") return sosCellOf(row, "post", postBasis)?.value ?? null;
+    if (key === "ktc" || key === "fc") return valueOf(row, key, basis);
+    if (key === "sosRos") return sosCellOf(row, "ros", basis)?.value ?? null;
+    if (key === "sosPost") return sosCellOf(row, "post", basis)?.value ?? null;
     return row[key];
   };
 
@@ -167,12 +170,25 @@ export function sortRows(rows, { key, direction }, { valueBasis, rosBasis, postB
   return sorted;
 }
 
+/**
+ * Which pill a column is reading right now.
+ *
+ * Captured into the sort when a header is clicked, so that a later pill change
+ * does not retroactively reorder the table.
+ */
+export function basisFor(key, { valueBasis, rosBasis, postBasis }) {
+  if (key === "ktc" || key === "fc") return valueBasis;
+  if (key === "sosRos") return rosBasis;
+  if (key === "sosPost") return postBasis;
+  return null;
+}
+
 /** The direction a column should open on, so one click lands somewhere useful. */
-export function defaultDirectionFor(key, valueBasis) {
+export function defaultDirectionFor(key, basis) {
   if (key === "name" || key === "position") return "asc";
   if (key === "age") return "asc";
   // Cost per point is the one figure where small is good.
-  if ((key === "ktc" || key === "fc") && valueBasis === "perPoint") return "asc";
+  if ((key === "ktc" || key === "fc") && basis === "perPoint") return "asc";
   // A lower win percentage, or more points allowed, is the easier draw — and
   // the easy end is what you look for when shopping for a player.
   if (key === "sosRos" || key === "sosPost") return "asc";
@@ -261,15 +277,32 @@ export function FinderRow({ row, valueBasis, rosWindowBasis, postWindowBasis, ad
 
 // ── Controls ─────────────────────────────────────────────────────────────────
 
+/**
+ * The connected pills that choose what a column reads.
+ *
+ * They sit inside the column header, which is itself clickable to sort, so
+ * every click here has to be stopped from bubbling: without it, choosing a
+ * basis also re-sorted the table, which is not what picking a basis means.
+ */
 function BasisPills({ bases, labels, value, onChange, group }) {
+  const choose = (event, basis) => {
+    event.stopPropagation();
+    onChange(basis);
+  };
+
   return (
-    <div className="finder-pills" role="group" aria-label={group}>
+    <div
+      className="finder-pills"
+      role="group"
+      aria-label={group}
+      onClick={(event) => event.stopPropagation()}
+    >
       {bases.map((basis) => (
         <button
           key={basis}
           type="button"
           className={`finder-pill${value === basis ? " finder-pill-on" : ""}`}
-          onClick={() => onChange(basis)}
+          onClick={(event) => choose(event, basis)}
           aria-pressed={value === basis}
         >
           {labels[basis]}
@@ -316,7 +349,8 @@ function PlayerFinder({ onAddPlayer }) {
   const [valueBasis, setValueBasis] = useState("value");
   const [rosBasis, setRosBasis] = useState("2026");
   const [postBasis, setPostBasis] = useState("2026");
-  const [sortConfig, setSortConfig] = useState({ key: "ktc", direction: "desc" });
+  // `basis` is the pill this sort was taken against, frozen at click time.
+  const [sortConfig, setSortConfig] = useState({ key: "ktc", direction: "desc", basis: "value" });
   const [justAdded, setJustAdded] = useState({});
 
   useEffect(() => {
@@ -352,13 +386,16 @@ function PlayerFinder({ onAddPlayer }) {
 
   const handleSort = useCallback(
     (key) => {
+      // The basis is read here, on the click, and then kept. Re-reading it on
+      // every render is what used to let a pill reorder the table.
+      const basis = basisFor(key, { valueBasis, rosBasis, postBasis });
       setSortConfig((previous) =>
-        previous.key === key
-          ? { key, direction: previous.direction === "asc" ? "desc" : "asc" }
-          : { key, direction: defaultDirectionFor(key, valueBasis) }
+        previous.key === key && previous.basis === basis
+          ? { key, basis, direction: previous.direction === "asc" ? "desc" : "asc" }
+          : { key, basis, direction: defaultDirectionFor(key, basis) }
       );
     },
-    [valueBasis]
+    [valueBasis, rosBasis, postBasis]
   );
 
   const sortIcon = (key) => {
@@ -382,10 +419,12 @@ function PlayerFinder({ onAddPlayer }) {
         : [...previous, position]
     );
 
+  // Deliberately not dependent on the pills: they change what the cells read,
+  // not the order the rows sit in.
   const visible = useMemo(() => {
     const filtered = filterRows(rows, { query, positions, ranges });
-    return sortRows(filtered, sortConfig, { valueBasis, rosBasis, postBasis });
-  }, [rows, query, positions, ranges, sortConfig, valueBasis, rosBasis, postBasis]);
+    return sortRows(filtered, sortConfig);
+  }, [rows, query, positions, ranges, sortConfig]);
 
   const add = (row) => {
     onAddPlayer?.(row);
