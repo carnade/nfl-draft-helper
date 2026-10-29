@@ -433,6 +433,28 @@ describe("the rendered table", () => {
     expect(names()).toEqual(before);
   });
 
+  it("lights an active position filter in that position's own colour", async () => {
+    // The colour comes from positionColors.css matching `.finder-position.pos-active`
+    // and reading the `--pos` tokens that `pos-qb` sets. jsdom resolves neither,
+    // so what is checked is the contract between them: both classes present, and
+    // absent again when the filter is off. Naming the active state anything else
+    // is what left it uncoloured.
+    await show();
+    const qb = screen.getByRole("button", { name: "QB" });
+
+    expect(qb).not.toHaveClass("pos-active");
+
+    click(qb);
+
+    expect(qb).toHaveClass("finder-position", "pos-active", "pos-qb");
+    expect(qb).toHaveAttribute("aria-pressed", "true");
+
+    click(qb);
+
+    expect(qb).not.toHaveClass("pos-active");
+    expect(qb).not.toHaveClass("pos-qb");
+  });
+
   it("keeps the order when a schedule pill changes", async () => {
     await show();
     click(header("Rest of season"));

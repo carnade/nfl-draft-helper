@@ -52,16 +52,15 @@
   cursor: pointer;
 }
 
-.finder-position:hover {
+/* Not while active: the hover border would otherwise sit on equal specificity
+ * with the position colour and win or lose on bundle order. */
+.finder-position:not(.pos-active):hover {
   border-color: hsl(var(--foreground) / 0.4);
 }
 
-/* The position's own colour, so an active filter matches the pills in the
- * table. `pos-active` and the per-position classes come from positionColors. */
-.finder-position-on {
-  color: #fff;
-  border-color: transparent;
-}
+/* An active filter takes the position's own colour, matching the pills in the
+ * table. The tones and the rule that applies them live in positionColors.css;
+ * `pos-active` and the per-position class come from positionClass(). */
 
 .finder-count {
   color: hsl(var(--muted-foreground));

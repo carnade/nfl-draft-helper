@@ -464,7 +464,7 @@ function PlayerFinder({ onAddPlayer }) {
               key={position}
               type="button"
               className={`finder-position${
-                positions.includes(position) ? ` finder-position-on ${positionClass(position)}` : ""
+                positions.includes(position) ? ` pos-active ${positionClass(position)}` : ""
               }`}
               onClick={() => togglePosition(position)}
               aria-pressed={positions.includes(position)}
