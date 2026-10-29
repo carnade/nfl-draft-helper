@@ -63,6 +63,10 @@
  * `pos-active` and the per-position class come from positionClass(). */
 
 .finder-count {
+  /* Fixed width and tabular figures: the text goes from "518 of 518" to
+     "9 of 518" as filters bite, and without both of these every change in it
+     shifted whatever sat to its right. */
+  min-width: 5.5rem;
   color: hsl(var(--muted-foreground));
   font-size: 0.8125rem;
   font-variant-numeric: tabular-nums;
@@ -76,6 +80,13 @@
   color: hsl(var(--foreground) / 0.8);
   font-size: 0.75rem;
   cursor: pointer;
+}
+
+/* Keeps its box in the row when there is nothing to clear. visibility rather
+   than display, so the bar does not reflow the moment a filter is touched. */
+.finder-clear-idle {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 /* ── Range filters ─────────────────────────────────────────────────────── */
@@ -185,9 +196,26 @@
 
 /* ── Table ─────────────────────────────────────────────────────────────── */
 
+/* Fixed, with widths from the colgroup. Auto layout sizes each column from the
+   rows currently rendered, so filtering to one position re-measured and
+   resized the whole table — every column moved because the content behind it
+   had changed. Fixed layout ignores content, so the columns hold still.
+   The sum is wider than a phone; .ss-table-wrap scrolls it sideways, which is
+   the mechanism these tables already use. */
+.finder-table {
+  table-layout: fixed;
+  min-width: 72rem;   /* the colgroup's own sum, so nothing is squeezed */
+}
+
 .finder-table th {
   vertical-align: bottom;
   white-space: nowrap;
+}
+
+/* A name too long for its column is clipped rather than widening it. */
+.finder-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .finder-sortable {

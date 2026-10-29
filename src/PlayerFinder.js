@@ -38,18 +38,27 @@ export const POSITIONS = ["QB", "RB", "WR", "TE"];
 export const SOS_BASES = ["2025", "2026", "vspos"];
 const SOS_LABELS = { 2025: "2025", 2026: "2026", vspos: "vs pos" };
 
-// The numeric columns, in table order. Each is sortable and filterable, and
+// The numeric columns, in table order. Each is sortable and filterable;
 // `decimals` is how it prints — the values arrive at full precision and only
 // the display is rounded, so filtering on 12.5 means 12.5 and not 12.45.
+//
+// `width` exists because the table is laid out fixed rather than auto. Left to
+// itself the browser sizes each column from whatever rows are showing, so every
+// column jumped about as the filters changed. The two value columns are wider
+// than their numbers need because their headers carry pills.
 export const COLUMNS = [
-  { key: "age", label: "Age", decimals: 1 },
-  { key: "ktc", label: "KTC", decimals: 0 },
-  { key: "fc", label: "FC", decimals: 0 },
-  { key: "points", label: "Pts", decimals: 1 },
-  { key: "ppg", label: "Pts/g", decimals: 1 },
-  { key: "last5", label: "L5/g", decimals: 1 },
-  { key: "games", label: "GP", decimals: 0 },
+  { key: "age", label: "Age", decimals: 1, width: "3.5rem" },
+  { key: "ktc", label: "KTC", decimals: 0, width: "6.5rem" },
+  { key: "fc", label: "FC", decimals: 0, width: "6.5rem" },
+  { key: "points", label: "Pts", decimals: 1, width: "4.25rem" },
+  { key: "ppg", label: "Pts/g", decimals: 1, width: "4.5rem" },
+  { key: "last5", label: "L5/g", decimals: 1, width: "4.5rem" },
+  { key: "games", label: "GP", decimals: 0, width: "3.25rem" },
 ];
+
+// The columns either side of those, in the order they appear.
+const LEADING_WIDTHS = ["3.5rem", "11rem", "3.5rem"];   // position, name, team
+const TRAILING_WIDTHS = ["9rem", "9rem", "3rem"];       // two schedules, add
 
 /**
  * The filterable, sortable shape of one fetched row.
@@ -449,15 +458,9 @@ function PlayerFinder({ onAddPlayer }) {
   return (
     <div className="finder">
       <div className="finder-controls">
-        <input
-          className="finder-search"
-          type="search"
-          placeholder="Search players…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          aria-label="Search players"
-        />
-
+        {/* The position buttons come first so that nothing to their left can
+            change width and shove them sideways — which is what the growing
+            search box did every time a filter appeared beside it. */}
         <div className="finder-positions" role="group" aria-label="Filter by position">
           {POSITIONS.map((position) => (
             <button
@@ -474,15 +477,30 @@ function PlayerFinder({ onAddPlayer }) {
           ))}
         </div>
 
+        <input
+          className="finder-search"
+          type="search"
+          placeholder="Search players…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label="Search players"
+        />
+
         <span className="finder-count">
           {visible.length} of {rows.length}
         </span>
 
-        {activeFilters > 0 && (
-          <button type="button" className="finder-clear" onClick={clearFilters}>
-            Clear filters
-          </button>
-        )}
+        {/* Always in the layout, only sometimes visible: rendering it
+            conditionally made every filter click reflow the whole bar. */}
+        <button
+          type="button"
+          className={`finder-clear${activeFilters > 0 ? "" : " finder-clear-idle"}`}
+          onClick={clearFilters}
+          tabIndex={activeFilters > 0 ? 0 : -1}
+          aria-hidden={activeFilters > 0 ? undefined : true}
+        >
+          Clear filters
+        </button>
 
         <span className="finder-info" tabIndex={0} role="note" aria-label="How to read this table">
           i
@@ -510,6 +528,11 @@ function PlayerFinder({ onAddPlayer }) {
 
       <div className="ss-table-wrap">
         <table className="ss-table finder-table">
+          <colgroup>
+            {LEADING_WIDTHS.map((width) => <col key={width} style={{ width }} />)}
+            {COLUMNS.map((column) => <col key={column.key} style={{ width: column.width }} />)}
+            {TRAILING_WIDTHS.map((width, i) => <col key={`t${i}`} style={{ width }} />)}
+          </colgroup>
           <thead>
             <tr>
               <th className="ss-center">Pos</th>

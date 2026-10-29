@@ -455,6 +455,19 @@ describe("the rendered table", () => {
     expect(qb).not.toHaveClass("pos-qb");
   });
 
+  it("gives every column a width, so content cannot resize them", async () => {
+    // The colgroup is what holds the columns still while filters change what is
+    // in them. One <col> short and every width after the gap lands on the wrong
+    // column, which is not obvious from reading either list.
+    await show();
+
+    const cols = document.querySelectorAll(".finder-table colgroup col");
+    const headers = screen.getAllByRole("columnheader");
+
+    expect(cols).toHaveLength(headers.length);
+    cols.forEach((col) => expect(col.style.width).not.toBe(""));
+  });
+
   it("keeps the order when a schedule pill changes", async () => {
     await show();
     click(header("Rest of season"));
