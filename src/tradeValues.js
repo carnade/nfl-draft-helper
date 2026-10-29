@@ -28,6 +28,32 @@ export function pointsPerGame(row) {
 }
 
 /**
+ * What a player costs per point of weekly production, to the nearest whole.
+ *
+ * `key` is "KTC Value" or "FC Value". Read like a price-to-earnings ratio:
+ * 412 means 412 of dynasty value for every fantasy point a week, so **lower
+ * is cheaper**, and it is the one figure in the table where small is good.
+ *
+ * Null, never Infinity and never 0, when there is no production to divide by.
+ * Sixty-five players in the current season have played and scored nothing —
+ * backup quarterbacks, blocking tight ends — and either of those answers would
+ * sort them to the top as the best value in the league.
+ *
+ * Worth knowing what this compares: a dynasty valuation is a price on the
+ * years ahead, and points per game is this season. So the ratio flatters an
+ * older productive player and penalises a young one who has not arrived yet.
+ * That is the right reading for a win-now trade and the wrong one for a
+ * rebuild, which is why the age column sits beside it.
+ */
+export function valuePerPoint(row, key) {
+  const value = Number(row?.[key]);
+  const perGame = pointsPerGame(row);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  if (perGame === null || perGame <= 0) return null;
+  return Math.round(value / perGame);
+}
+
+/**
  * A pick's two values.
  *
  * KeepTradeCut's superflex column is filled by matching the 1QB scrape on the

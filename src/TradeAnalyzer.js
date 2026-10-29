@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { forwardRef, useImperativeHandle, useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch, faTimes, faSortUp, faSortDown, faSort } from "@fortawesome/free-solid-svg-icons";
 import "./TradeAnalyzer.css";
@@ -77,7 +77,7 @@ const loadFromSession = (key) => {
   }
 };
 
-function TradeAnalyzer({ userName, setUserName }) {
+const TradeAnalyzer = forwardRef(function TradeAnalyzer({ userName, setUserName }, ref) {
   const [projectionsData, setProjectionsData] = useState([]);
   const [statsData, setStatsData] = useState([]);
   const [picksData, setPicksData] = useState([]); // Picks data
@@ -570,16 +570,52 @@ function TradeAnalyzer({ userName, setUserName }) {
   // Get position rank
   const getPositionRank = (player) => {
     const position = player.player.position;
-    const adp = player.stats.adp_ppr;
-    
-    if (position === 'RB') return `RB${Math.round(adp)}`;
-    if (position === 'WR') return `WR${Math.round(adp)}`;
-    if (position === 'TE') return `TE${Math.round(adp)}`;
-    if (position === 'QB') return `QB${Math.round(adp)}`;
-    if (position === 'K') return `K${Math.round(adp)}`;
-    if (position === 'DEF') return `DEF${Math.round(adp)}`;
-    return `${position}${Math.round(adp)}`;
+    // Sleeper's own rows always carry an ADP, but a player handed over from the
+    // Player Finder need not — and Math.round(undefined) printed "RBNaN".
+    const raw = player.stats?.adp_ppr;
+    const adp = Number.isFinite(Number(raw)) ? Math.round(Number(raw)) : '';
+
+    if (position === 'RB') return `RB${adp}`;
+    if (position === 'WR') return `WR${adp}`;
+    if (position === 'TE') return `TE${adp}`;
+    if (position === 'QB') return `QB${adp}`;
+    if (position === 'K') return `K${adp}`;
+    if (position === 'DEF') return `DEF${adp}`;
+    return `${position}${adp}`;
   };
+
+  /**
+   * Add a player by Sleeper id — what the Player Finder tab calls through the
+   * ref the page wrapper holds.
+   *
+   * The id is resolved against this component's own projections rather than
+   * having the caller build the item, because addPlayerToTeam wants a Sleeper
+   * projections row and only this side has one: a real `stats.adp_ppr` for the
+   * position label, and the whole `stats` object the trade table reads. The
+   * fallback covers a player Sleeper has no projection for — a rookie who has
+   * not been priced, say — who should still be addable.
+   */
+  const addPlayerById = async (playerId, team = 'team2') => {
+    const id = String(playerId);
+    const projected = projectionsData.find(p => String(p.player_id) === id);
+    if (projected) {
+      await addPlayerToTeam(projected, team);
+      return;
+    }
+
+    const known = statsData.find(p => String(p.player_id) === id);
+    if (!known) {
+      console.warn(`Cannot add player ${id}: Sleeper has no row for them`);
+      return;
+    }
+    await addPlayerToTeam({ ...known, stats: known.stats || {} }, team);
+  };
+
+  // The one thing the Player Finder needs from in here. Exposed rather than
+  // lifting the trade itself out: team1Players and team2Players are read in
+  // dozens of places across this component, and none of those readers want to
+  // move.
+  useImperativeHandle(ref, () => ({ addPlayerById }));
 
   // Remove player from team
   const removePlayerFromTeam = (playerId, team) => {
@@ -974,8 +1010,6 @@ function TradeAnalyzer({ userName, setUserName }) {
 
   return (
     <div className="trade-analyzer">
-      <h1>Trade Helper</h1>
-      
       {isLoading && (
         <div className="loading">
           <p>Loading player projections...</p>
@@ -1496,6 +1530,6 @@ function TradeAnalyzer({ userName, setUserName }) {
       )}
     </div>
   );
-}
+});
 
 export default TradeAnalyzer;
