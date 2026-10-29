@@ -1,0 +1,359 @@
+/* Player Finder.
+ *
+ * Every class here is `finder-` prefixed. The CSS in this app is global and
+ * unscoped, and the Finder is mounted on the same page as the Trade Helper all
+ * the time, so an unprefixed `.pill` or `.range` would quietly restyle the
+ * other tab. The pill and info-popover shapes are deliberately re-declared
+ * here rather than borrowed from TradeAnalyzer.css for the same reason: the two
+ * files should be free to change without moving each other.
+ *
+ * Colours come from the theme tokens, so light and dark both work.
+ */
+
+.finder {
+  padding: 0 0 2rem;
+}
+
+/* ── Controls ──────────────────────────────────────────────────────────── */
+
+.finder-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.finder-search {
+  flex: 1 1 14rem;
+  min-width: 0;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-size: 0.875rem;
+}
+
+.finder-positions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.finder-position {
+  min-width: 2.5rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  background: transparent;
+  color: hsl(var(--foreground) / 0.7);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Not while active: the hover border would otherwise sit on equal specificity
+ * with the position colour and win or lose on bundle order. */
+.finder-position:not(.pos-active):hover {
+  border-color: hsl(var(--foreground) / 0.4);
+}
+
+/* An active filter takes the position's own colour, matching the pills in the
+ * table. The tones and the rule that applies them live in positionColors.css;
+ * `pos-active` and the per-position class come from positionClass(). */
+
+.finder-count {
+  /* Fixed width and tabular figures: the text goes from "518 of 518" to
+     "9 of 518" as filters bite, and without both of these every change in it
+     shifted whatever sat to its right. */
+  min-width: 5.5rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.finder-clear {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  background: transparent;
+  color: hsl(var(--foreground) / 0.8);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+/* Keeps its box in the row when there is nothing to clear. visibility rather
+   than display, so the bar does not reflow the moment a filter is touched. */
+.finder-clear-idle {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* ── Range filters ─────────────────────────────────────────────────────── */
+
+.finder-ranges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.finder-range {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+}
+
+.finder-range-label {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.finder-range input {
+  width: 3.25rem;
+  padding: 0.2rem 0.3rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: hsl(var(--muted) / 0.4);
+  color: hsl(var(--foreground));
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.finder-range input:focus {
+  outline: none;
+  border-color: hsl(var(--primary));
+}
+
+/* Firefox and WebKit both reserve room for spinners that are not worth the
+ * width at this size. */
+.finder-range input::-webkit-outer-spin-button,
+.finder-range input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.finder-range input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* ── Connected pills ──────────────────────────────────────────────────── */
+
+.finder-pills {
+  display: flex;
+  /* Ranged right, with the header label above and the figures below — every
+     column carrying pills is an .ss-num one, so those are both right-aligned,
+     and a flex row defaulting to flex-start left the pills alone in the middle
+     reading right, left, right down the column. */
+  justify-content: flex-end;
+  margin-top: 0.25rem;
+}
+
+.finder-pill {
+  padding: 0.1rem 0.35rem;
+  border: 1px solid hsl(var(--border));
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+
+/* Connected: one shared border between neighbours, rounded only at the ends. */
+.finder-pill:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.finder-pill:last-child {
+  border-radius: 0 4px 4px 0;
+}
+
+.finder-pill:not(:first-child) {
+  border-left: none;
+}
+
+.finder-pill-on {
+  background: hsl(var(--primary) / 0.15);
+  border-color: hsl(var(--primary));
+  color: hsl(var(--foreground));
+}
+
+/* A selected pill owns the border it shares with the pill after it, or the
+ * neighbour's grey line cuts across the highlight. */
+.finder-pill-on + .finder-pill {
+  border-left: 1px solid hsl(var(--primary));
+}
+
+/* ── Table ─────────────────────────────────────────────────────────────── */
+
+/* Fixed, with widths from the colgroup. Auto layout sizes each column from the
+   rows currently rendered, so filtering to one position re-measured and
+   resized the whole table — every column moved because the content behind it
+   had changed. Fixed layout ignores content, so the columns hold still.
+   The sum is wider than a phone; .ss-table-wrap scrolls it sideways, which is
+   the mechanism these tables already use. */
+.finder-table {
+  table-layout: fixed;
+  min-width: 72rem;   /* the colgroup's own sum, so nothing is squeezed */
+}
+
+.finder-table th {
+  vertical-align: bottom;
+  white-space: nowrap;
+}
+
+/* A name too long for its column is clipped rather than widening it. */
+.finder-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.finder-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.finder-sortable:hover {
+  color: hsl(var(--primary));
+}
+
+.finder-name {
+  white-space: nowrap;
+}
+
+.finder-injury {
+  margin-left: 0.3rem;
+  color: hsl(0 72% 51%);
+  font-size: 0.625rem;
+  font-weight: 700;
+}
+
+.finder-sos {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.finder-rank {
+  margin-left: 0.15rem;
+  opacity: 0.75;
+  font-size: 0.625rem;
+  font-weight: 400;
+}
+
+.finder-add {
+  width: 1.5rem;
+  height: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid hsl(var(--border));
+  border-radius: 4px;
+  background: transparent;
+  color: hsl(var(--foreground) / 0.7);
+  cursor: pointer;
+}
+
+.finder-add:hover {
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary));
+}
+
+.finder-added {
+  border-color: hsl(142 71% 45%);
+  color: hsl(142 71% 45%);
+}
+
+/* ── Notices ───────────────────────────────────────────────────────────── */
+
+.finder-notice {
+  padding: 1.5rem 0;
+  color: hsl(var(--muted-foreground));
+  text-align: center;
+}
+
+.finder-error {
+  color: hsl(0 72% 51%);
+}
+
+/* ── The info popover ─────────────────────────────────────────────────── */
+
+.finder-info {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-family: Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: help;
+  /* Not opacity: that would fade the popover nested inside it. */
+  color: hsl(var(--muted-foreground));
+}
+
+.finder-info:hover,
+.finder-info:focus-visible {
+  color: hsl(var(--foreground));
+}
+
+.finder-info-popover {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  z-index: 20;
+  width: min(22rem, calc(100vw - 2rem));
+  padding: 0.6rem 0.7rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  background: hsl(var(--background));
+  box-shadow: 0 6px 18px hsl(0 0% 0% / 0.18);
+  color: hsl(var(--foreground));
+  font-family: inherit;
+  font-style: normal;
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.5;
+  text-align: left;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s ease;
+}
+
+.finder-info:hover .finder-info-popover,
+.finder-info:focus .finder-info-popover,
+.finder-info:focus-within .finder-info-popover {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* ── Narrow screens ───────────────────────────────────────────────────── */
+
+@media (max-width: 700px) {
+  .finder-ranges {
+    /* One scrolling row rather than six stacked, which would push the table
+     * off the screen before it had been looked at. */
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+  }
+
+  .finder-search {
+    flex-basis: 100%;
+  }
+}

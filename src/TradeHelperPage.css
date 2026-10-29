@@ -1,0 +1,46 @@
+/* The Trade Helper page shell: heading, tabs, and the two panels.
+ *
+ * `thp-` prefixed. The generic `.tab-button` names in BestballList.css are
+ * already global on every page, so reusing them here would tie the two
+ * together; this is a handful of rules and not worth that coupling.
+ */
+
+.thp-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin: 0 0 1rem;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.thp-tab {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: hsl(var(--foreground) / 0.7);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.thp-tab:hover {
+  color: hsl(var(--foreground));
+}
+
+.thp-tab-on {
+  border-bottom-color: hsl(var(--primary));
+  color: hsl(var(--primary));
+}
+
+/* The inactive tab is hidden, not unmounted — see the note in
+ * TradeHelperPage.js. display:none also keeps it out of the tab order and out
+ * of the accessibility tree, which a visibility/opacity trick would not. */
+.thp-hidden {
+  display: none;
+}
+
+/* The page owns the heading now, so the Trade Helper's own h1 is gone and its
+ * top padding should not double up with ours. */
+.trade-helper-page > h1 {
+  margin-bottom: 0.75rem;
+}

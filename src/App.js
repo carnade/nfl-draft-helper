@@ -9,7 +9,7 @@ import DraftHelper from "./DraftHelper";
 import DraftsList from "./DraftsList";
 import LeagueList from "./LeagueList";
 import BestballList from "./BestballList";
-import TradeAnalyzer from "./TradeAnalyzer";
+import TradeHelperPage from "./TradeHelperPage";
 import TradeTracker from "./TradeTracker";
 import DFS from "./DFS";
 import DFSResults from "./DFSResults";
@@ -39,7 +39,7 @@ console.log({
   DraftsList,
   LeagueList,
   BestballList,
-  TradeAnalyzer,
+  TradeHelperPage,
   Settings,
   Stats,
 });
@@ -123,7 +123,7 @@ function App() {
               <Route path="/leagues/:userName" element={<LeagueList />} />
 
               <Route path="/bestball/:userName" element={<BestballList />} />
-              <Route path="/trade-analyzer" element={<TradeAnalyzer userName={userName} setUserName={setUserName} />} />
+              <Route path="/trade-analyzer" element={<TradeHelperPage userName={userName} setUserName={setUserName} />} />
               <Route path="/trade-tracker" element={<TradeTracker />} />
               <Route path="/dfs" element={<DFS userName={userName} />} />
               <Route path="/dfs/manage" element={<DFSManage />} />

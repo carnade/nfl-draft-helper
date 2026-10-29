@@ -140,8 +140,13 @@ body.dark {
  * pages, and each of those stylesheets carried its own byte-identical copy of
  * these colours — thirty rules for one idea. There is no single component sheet
  * that owns the button, so the rule lives here beside the tones it uses.
+ *
+ * The Finder's own buttons join the selector rather than copying the three
+ * declarations into PlayerFinder.css, which is how the thirty got there. They
+ * keep their own base styling and borrow only the tones.
  */
-.filter-button.pos-active {
+.filter-button.pos-active,
+.finder-position.pos-active {
   background-color: hsl(var(--pos));
   border-color: hsl(var(--pos-edge));
   color: hsl(var(--pos-ink));
