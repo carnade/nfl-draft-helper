@@ -138,6 +138,11 @@
 
 .finder-pills {
   display: flex;
+  /* Ranged right, with the header label above and the figures below — every
+     column carrying pills is an .ss-num one, so those are both right-aligned,
+     and a flex row defaulting to flex-start left the pills alone in the middle
+     reading right, left, right down the column. */
+  justify-content: flex-end;
   margin-top: 0.25rem;
 }
 
