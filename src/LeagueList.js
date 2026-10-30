@@ -24,6 +24,7 @@ import {
   averageFptsPerGame,
 } from "./playerForm";
 import { getCurrentWeek } from "./currentWeekCache";
+import { fetchMatchups, startersFor } from "./sleeperLineup";
 import { loadHiddenLeagues, visibleLeagues } from "./leagueVisibility";
 import "./LeagueList.css";
 import "./TableStyles.css";
@@ -909,13 +910,20 @@ function LeagueList() {
         loadHiddenLeagues()
       );
 
+      // Needed before the per-league fan-out below, because the lineup comes
+      // from the week's matchup rather than from the roster. Cached for an
+      // hour, so this is usually not a request at all.
+      const lineupWeek = await getCurrentWeek();
+
       const leagueDetailsPromises = filteredLeagues.map(async (league) => {
         const leagueId = league.league_id;
 
-        const rostersResponse = await fetch(
-          `https://api.sleeper.app/v1/league/${leagueId}/rosters`
-        );
-        const rostersData = await rostersResponse.json();
+        // In parallel: the squad from the roster, the lineup from the matchup.
+        // See sleeperLineup.js for why the roster's own `starters` is not used.
+        const [rostersData, matchupRows] = await Promise.all([
+          fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`).then((r) => r.json()),
+          lineupWeek > 0 ? fetchMatchups(leagueId, lineupWeek) : Promise.resolve([]),
+        ]);
 
         const userRoster = rostersData.find(
           (roster) => roster.owner_id === userId
@@ -946,7 +954,7 @@ function LeagueList() {
           )
         );
 
-        const starters = userRoster.starters || [];
+        const starters = startersFor(matchupRows, userRoster);
         const reserve = userRoster.reserve || [];
         const taxi = userRoster.taxi || [];
         const players = userRoster.players || [];

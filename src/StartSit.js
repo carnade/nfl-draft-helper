@@ -14,6 +14,7 @@ import {
 import { useSleeperAuth } from "./auth";
 import { projectedPoints, hasProjection, fetchWeekProjectionsUrl } from "./leagueScoring";
 import { evaluateLineup, countActionable, benchFrom } from "./startSitModel";
+import { fetchMatchups, startersFor } from "./sleeperLineup";
 import { lockedTeamsFor, byeTeamsFor } from "./nflSchedule";
 import PositionPill from "./PositionPill";
 import { positionKey } from "./positionColors";
@@ -494,7 +495,7 @@ function StartSit({ userName }) {
 
       const formWeeks = playedWeeksBefore(currentWeek, 5);
 
-      const [projections, dfsRaw, teamStats, schedule, rosterLists, seasonStats, weeklyStats] = await Promise.all([
+      const [projections, dfsRaw, teamStats, schedule, rosterLists, matchupLists, seasonStats, weeklyStats] = await Promise.all([
         (async () => {
           if (projectionsRef.current?.week === currentWeek) return projectionsRef.current.data;
           const cached = readCache(projKey, PROJECTION_TTL_MS);
@@ -541,6 +542,12 @@ function StartSit({ userName }) {
               .then((r) => r.json())
               .catch(() => [])
           )
+        ),
+        // The lineup itself comes from here rather than from the roster above.
+        // See sleeperLineup.js: the roster's own `starters` lags, and this is
+        // also where a change is written, so reading it keeps the two in step.
+        Promise.all(
+          playable.map((l) => fetchMatchups(l.league_id, currentWeek, { signal }))
         ),
         statsCache(`sleeper_stats_season_${SEASON}`, seasonStatsUrl(SEASON))(),
         // Newest week first, which is the order recentForm walks.
@@ -591,7 +598,7 @@ function StartSit({ userName }) {
 
       const built = playable.map((league, i) => {
         const roster = rosters[i];
-        const starters = roster?.starters || [];
+        const starters = startersFor(matchupLists[i], roster);
         const reserve = roster?.reserve || [];
         const taxi = roster?.taxi || [];
         const all = roster?.players || [];
