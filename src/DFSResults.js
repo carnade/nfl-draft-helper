@@ -6,6 +6,7 @@ import { loadSleeperAuth, useIsPrivilegedUser } from './auth';
 import { getCurrentWeek } from './currentWeekCache';
 import { effectiveUserName } from './settingsUser';
 import { positionFill } from "./positionColors";
+import { revealIsPending, parseRevealTime } from "./dfsReveal";
 
 // Add a mock flag
 const mock = process.env.REACT_APP_MOCK === 'true';
@@ -204,6 +205,10 @@ function DFSResults() {
   const [showUpdatingIndicator, setShowUpdatingIndicator] = useState(false);
   const [lastUpdateTime, setLastUpdateTime] = useState(null);
   const [revealTime, setRevealTime] = useState(null);
+  // The server's own verdict on whether the reveal has happened. It decides
+  // this against its clock, and exempts the organiser by verifying their
+  // Sleeper token — neither of which this page can do for itself.
+  const [revealPending, setRevealPending] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [submissionStatus, setSubmissionStatus] = useState({});
   const [allowedNames, setAllowedNames] = useState([]);
@@ -899,9 +904,17 @@ function DFSResults() {
           if (response.ok) {
             const result = await response.json();
             
-            // Store reveal time if present
+            // What the server decided, which is what withheld the lineups.
+            // Trusted over the comparison below: that one depends on this
+            // browser's clock and on the date string parsing, and when either
+            // goes wrong it fails open.
+            setRevealPending(result.reveal_pending === true);
+
+            // Still kept, for the countdown and as the fallback when the
+            // server says nothing — an organiser's own view, or a tournament
+            // with no reveal set at all.
             if (result.reveal) {
-              setRevealTime(new Date(result.reveal));
+              setRevealTime(parseRevealTime(result.reveal));
             }
             
             // Get allowed_names and user_submissions from the response
@@ -1307,13 +1320,16 @@ function DFSResults() {
   }, [inputData]);
 
 
-  // Check if we should show placeholder data (before reveal time and not admin)
-  const shouldShowPlaceholder = useCallback(() => {
-    if (!revealTime) return false; // No reveal time set, show real data
-    if (isAdmin) return false; // Admin override, show real data
-    const now = new Date();
-    return now < revealTime; // Before reveal time, show placeholder
-  }, [revealTime, isAdmin]);
+  // Whether everything derived from this week has to stay hidden.
+  //
+  // The server's answer wins. It is the one that withheld the lineups, it
+  // owns the clock the reveal time is measured against, and it is the only
+  // side that can tell an organiser from somebody who put admin=true in the
+  // URL — so when it says the reveal is pending, no local override reopens it.
+  const shouldShowPlaceholder = useCallback(
+    () => revealIsPending({ serverSaysPending: revealPending, revealTime, isAdmin }),
+    [revealPending, revealTime, isAdmin]
+  );
 
   // Track players we've attempted to fetch to avoid duplicate requests
   const attemptedFallbackFetchRef = useRef(new Set());
