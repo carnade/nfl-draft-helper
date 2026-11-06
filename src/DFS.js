@@ -1130,6 +1130,31 @@ function DFS({ userName }) {
     setRoster(prev => ({ ...prev, [slotKey]: null }));
   };
 
+  /**
+   * Empty the whole lineup and start again.
+   *
+   * Deliberately ignores the per-player kickoff rule, which is the point: the
+   * slot buttons will not release a player who has played, so without this
+   * there is no way back to a blank sheet short of reloading the page.
+   *
+   * Which is also why it asks first when any of them have played. They cannot
+   * be picked again afterwards, so clearing is the one edit here that really
+   * cannot be undone.
+   */
+  const clearLineup = () => {
+    const played = Object.values(roster).filter((p) => p && hasGameStarted(p));
+    if (played.length > 0) {
+      const names = played.map((p) => p.name).join(', ');
+      const ok = window.confirm(
+        `Clear the whole lineup?\n\n`
+        + `${names} ${played.length === 1 ? 'has' : 'have'} already played, `
+        + `so cannot be added back afterwards.`
+      );
+      if (!ok) return;
+    }
+    setRoster(emptyLineup());
+  };
+
   const isPlayerInRoster = (player) => {
     return Object.values(roster).some(p => p && p.name === player.name);
   };
@@ -1279,6 +1304,7 @@ function DFS({ userName }) {
         <div className="dfs-team-section">
           <div className="dfs-team-head">
             <h2>My Team</h2>
+            <div className="dfs-team-head-actions">
             {firstKickoff && (
               <span
                 className="dfs-first-kickoff"
@@ -1300,6 +1326,16 @@ function DFS({ userName }) {
                 first kickoff {kickoffLabel(firstKickoff)}
               </span>
             )}
+            <button
+              type="button"
+              className="dfs-clear-lineup-btn"
+              onClick={clearLineup}
+              disabled={!Object.values(roster).some(Boolean)}
+              title="Empty every slot and start again"
+            >
+              Clear lineup
+            </button>
+            </div>
           </div>
           <table className="dfs-team-table">
             <thead>

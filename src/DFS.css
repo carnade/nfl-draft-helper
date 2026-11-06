@@ -108,6 +108,35 @@ body.dark .check-results-button:hover {
   margin: 0;
 }
 
+/* The kickoff badge and the clear button travel together on the right, so
+   adding the button does not pull the badge away from the heading. */
+.dfs-team-head-actions {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.dfs-clear-lineup-btn {
+  padding: 0.25rem 0.6rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  background: transparent;
+  color: hsl(var(--foreground) / 0.8);
+  font-size: 0.75rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dfs-clear-lineup-btn:hover:not(:disabled) {
+  border-color: hsl(0 72% 51%);
+  color: hsl(0 72% 51%);
+}
+
+.dfs-clear-lineup-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 /* When the lineup locks. The first game to kick off is the one that matters —
    after it, that player cannot be changed. */
 .dfs-first-kickoff {

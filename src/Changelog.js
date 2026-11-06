@@ -47,6 +47,7 @@ export default function Changelog() {
         "The lineup builder would let you take a player out after their game had kicked off, and let you put one in. Neither was ever going to be accepted \u2014 the server refuses both, whichever lock a tournament uses \u2014 so the edit only wasted the trip. Their remove button is now switched off, and says why on hover.",
         "The yellow \u201cadd anyway\u201d prompt for a player whose game had started is gone with it. Those players now simply cannot be picked, like one you have no room or salary for.",
         "Load your lineup back once some of it has played and the played players stay put, which is what the \u201cfreeze only the players who have played\u201d setting was for.",
+        "A Clear lineup button next to My Team empties every slot, including players who have already kicked off \u2014 the one way back to a blank sheet, since their own remove buttons no longer let go. It asks first when any of them have played, because they cannot be picked again afterwards.",
       ],
     },
     {
