@@ -12,7 +12,7 @@ import {
   kickoffLabel,
   earliestKickoff,
   kickoffAt,
-  parseGameStartToUtc,
+  hasKickedOff,
 } from "./dfsKickoff";
 import {
   positionClass,
@@ -42,25 +42,6 @@ function sleeperAuthHeaders() {
 const NAME_TRANSLATIONS = {
   'Hollywood Brown': 'Marquise Brown',
   // Add more translations here as needed
-};
-
-// Get 03:00 CET on the day after game date (CET is UTC+1, so 03:00 CET = 02:00 UTC)
-// During daylight saving (CEST is UTC+2), 03:00 CEST = 01:00 UTC
-// For simplicity, using 02:00 UTC as approximation (safe for winter time)
-const getDayAfterGameAt3AmCET = (gameDate) => {
-  if (!gameDate) return null;
-  
-  const year = parseInt(gameDate.slice(0, 4), 10);
-  const monthIndex = parseInt(gameDate.slice(5, 7), 10) - 1;
-  const day = parseInt(gameDate.slice(8, 10), 10);
-  
-  if (Number.isNaN(year) || Number.isNaN(monthIndex) || Number.isNaN(day)) {
-    return null;
-  }
-  
-  // Day after game date at 03:00 CET = 02:00 UTC (approximation, works for winter time)
-  // Using 02:00 UTC which is close enough (03:00 CET in winter, 04:00 CEST in summer)
-  return new Date(Date.UTC(year, monthIndex, day + 1, 2, 0));
 };
 
 // What a "my lineup" row is entered into: a one-week slate, or a tournament and how
@@ -119,8 +100,6 @@ function DFS({ userName }) {
   const [showPinModal, setShowPinModal] = useState(false);
   const [selectedLineupForPin, setSelectedLineupForPin] = useState(null);
   const [pinInput, setPinInput] = useState('');
-  const [showGameStartedModal, setShowGameStartedModal] = useState(false);
-  const [playerToAddAfterConfirm, setPlayerToAddAfterConfirm] = useState(null);
 
   // Which lineup the submissions above were made from. A submission is a
   // snapshot, so changing the lineup makes every "Lineup submitted" marker
@@ -1155,31 +1134,9 @@ function DFS({ userName }) {
     return Object.values(roster).some(p => p && p.name === player.name);
   };
 
-  const hasGameStarted = (player) => {
-    if (!player.game_date) return false;
-    
-    const now = new Date();
-    let gameCutoffTime = null;
-    
-    // Try to use game start time if available
-    if (player.game_start_time) {
-      try {
-        gameCutoffTime = parseGameStartToUtc(player.game_date, player.game_start_time);
-      } catch (error) {
-        console.error('Error parsing game start time:', error);
-      }
-    }
-    
-    // If game start time not available or parsing failed, use 03:00 CET on day after game
-    if (!gameCutoffTime) {
-      gameCutoffTime = getDayAfterGameAt3AmCET(player.game_date);
-    }
-    
-    // Return true if current time is past the cutoff time
-    return gameCutoffTime && now >= gameCutoffTime;
-  };
+  const hasGameStarted = (player) => hasKickedOff(player);
 
-  const canAddPlayer = (player, ignoreGameStart = false) => {
+  const canAddPlayer = (player) => {
     // Normalize position - handle variations like 'D/ST', 'D_ST', etc.
     let position = player.position;
     if (position && typeof position === 'string') {
@@ -1194,30 +1151,11 @@ function DFS({ userName }) {
     const currentSalary = getTotalSalary();
     const SALARY_CAP = 50000;
     
-    // Check if player has already played their game (unless ignoring it)
-    if (!ignoreGameStart && player.game_date) {
-      const now = new Date();
-      let gameCutoffTime = null;
-      
-      // Try to use game start time if available
-      if (player.game_start_time) {
-        try {
-          gameCutoffTime = parseGameStartToUtc(player.game_date, player.game_start_time);
-        } catch (error) {
-          console.error('Error parsing game start time:', error);
-        }
-      }
-      
-      // If game start time not available or parsing failed, use 03:00 CET on day after game
-      if (!gameCutoffTime) {
-        gameCutoffTime = getDayAfterGameAt3AmCET(player.game_date);
-      }
-      
-      // Disable if current time is past the cutoff time
-      if (gameCutoffTime && now >= gameCutoffTime) {
-        return false;
-      }
-    }
+    // A player whose game has kicked off cannot join a lineup. The server
+    // refuses such a submission in either lock mode, so there is nothing to
+    // gain by letting one be added here.
+    if (hasKickedOff(player)) return false;
+
     
     // Check salary cap
     if (currentSalary + player.salary > SALARY_CAP) {
@@ -1250,34 +1188,13 @@ function DFS({ userName }) {
         removePlayerFromRoster(slotKey);
       }
     } else {
-      // Check if game has started - if so, show confirmation modal
-      if (hasGameStarted(player)) {
-        setPlayerToAddAfterConfirm(player);
-        setShowGameStartedModal(true);
-      } else {
-        // Asked before adding, not after: addPlayerToRoster silently does
-        // nothing when there is no slot or no cap room, and the search should
-        // only clear when the player actually landed somewhere.
-        const added = canAddPlayer(player);
-        addPlayerToRoster(player);
-        if (added) setNameFilter('');
-      }
-    }
-  };
-
-  const handleConfirmAddAfterGameStart = () => {
-    if (playerToAddAfterConfirm) {
-      const added = canAddPlayer(playerToAddAfterConfirm, true);
-      addPlayerToRoster(playerToAddAfterConfirm);
+      // Asked before adding, not after: addPlayerToRoster silently does
+      // nothing when there is no slot or no cap room, and the search should
+      // only clear when the player actually landed somewhere.
+      const added = canAddPlayer(player);
+      addPlayerToRoster(player);
       if (added) setNameFilter('');
-      setShowGameStartedModal(false);
-      setPlayerToAddAfterConfirm(null);
     }
-  };
-
-  const handleCancelAddAfterGameStart = () => {
-    setShowGameStartedModal(false);
-    setPlayerToAddAfterConfirm(null);
   };
 
   const getTotalFpts = () => {
@@ -1431,10 +1348,17 @@ function DFS({ userName }) {
                     {roster[key] ? (roster[key].ppg_projection || 0).toFixed(1) : '-'}
                   </td>
                   <td className="action-cell">
+                    {/* A player who has kicked off stays put. Both lock modes
+                        require it — "full" refuses the whole submission and
+                        "unplayed" refuses one that moved him — so offering the
+                        button only invited a lineup the server would reject. */}
                     <button
                       className="roster-remove-btn"
                       onClick={() => removePlayerFromRoster(key)}
-                      disabled={!roster[key]}
+                      disabled={!roster[key] || hasGameStarted(roster[key])}
+                      title={roster[key] && hasGameStarted(roster[key])
+                        ? `${roster[key].name}'s game has started, so they have to stay in the lineup.`
+                        : undefined}
                     >
                       ×
                     </button>
@@ -2057,28 +1981,6 @@ function DFS({ userName }) {
         </div>
       )}
 
-      {showGameStartedModal && playerToAddAfterConfirm && (
-        <div className="modal-overlay" onClick={handleCancelAddAfterGameStart}>
-          <div className="lineup-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close-btn" onClick={handleCancelAddAfterGameStart}>
-              ×
-            </button>
-            <h2>Player's Game Has Started</h2>
-            <div className="load-lineup-container">
-              <p>Player's game has started, add anyway?</p>
-              <div className="load-lineup-buttons" style={{ marginTop: '16px' }}>
-                <button className="load-btn" onClick={handleConfirmAddAfterGameStart}>
-                  Yes
-                </button>
-                <button className="cancel-btn" onClick={handleCancelAddAfterGameStart}>
-                  No
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="dfs-content">
         <div className="dfs-table-wrapper">
           <table className="dfs-table">
@@ -2100,20 +2002,24 @@ function DFS({ userName }) {
             <tbody>
               {sortedPlayers.map((player, index) => {
                 const inRoster = isPlayerInRoster(player);
+                // Kickoff settles it either way round: he cannot be added and,
+                // once in, cannot be taken out. Previously this offered a
+                // yellow "add anyway" that only led to a refused submission.
                 const gameStarted = hasGameStarted(player);
-                // Check if can add, ignoring game start status (we handle that separately)
-                const canAddIgnoringGameStart = canAddPlayer(player, true);
-                // Only disable if can't add for other reasons (salary, position slots)
-                const isDisabled = !inRoster && !canAddIgnoringGameStart;
-                const isGameStarted = !inRoster && gameStarted && canAddIgnoringGameStart;
-                
+                const isDisabled = gameStarted || (!inRoster && !canAddPlayer(player));
+
                 return (
                   <tr key={index}>
                     <td className="action-column">
                       <button
-                        className={`player-toggle-btn ${inRoster ? 'selected' : ''} ${isDisabled ? 'disabled' : ''} ${isGameStarted ? 'game-started' : ''}`}
+                        className={`player-toggle-btn ${inRoster ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`}
                         onClick={() => !isDisabled && togglePlayerSelection(index, player)}
                         disabled={isDisabled}
+                        title={gameStarted
+                          ? inRoster
+                            ? `${player.name}'s game has started, so they have to stay in the lineup.`
+                            : `${player.name}'s game has already started.`
+                          : undefined}
                       >
                         {inRoster ? '×' : '+'}
                       </button>

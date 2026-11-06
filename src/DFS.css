@@ -1082,16 +1082,6 @@ body.dark .dfs-table thead {
   background-color: hsl(var(--muted));
 }
 
-.player-toggle-btn.game-started {
-  background-color: hsl(55 90% 75%);
-  color: hsl(55 50% 20%);
-}
-
-.player-toggle-btn.game-started:hover {
-  background-color: hsl(55 90% 70%);
-  color: hsl(55 50% 20%);
-}
-
 .dfs-table td.injury {
   color: hsl(0 84% 60%);
   font-weight: 600;
