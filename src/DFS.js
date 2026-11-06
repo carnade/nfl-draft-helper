@@ -1772,8 +1772,13 @@ function DFS({ userName }) {
                     // text. A lineup can have nine frozen players, and nine
                     // names turned the button into a paragraph; which ones they
                     // are only matters once you go looking.
+                    //
+                    // "locked" rather than "keep": the number is how many are
+                    // frozen, not how many to retain. Change two of the other
+                    // six and you are keeping seven, of which three are locked.
                     const playedCount = (entry.lockedBy || []).length;
-                    const playedLabel = `${playedCount} player${playedCount === 1 ? '' : 's'}`;
+                    const playedLabel =
+                      `${playedCount} player${playedCount === 1 ? '' : 's'} locked`;
                     const playedNames = (entry.lockedBy || [])
                       .map((p) => [p.name, p.team && `(${p.team})`].filter(Boolean).join(' '))
                       .join(', ');
@@ -1797,7 +1802,7 @@ function DFS({ userName }) {
                         {isLocked
                           ? `${entry.name} — locked, a player has played`
                           : partlyFrozen && !isSubmitted
-                          ? `${entry.name} — keep ${playedLabel}`
+                          ? `${entry.name} — ${playedLabel}`
                           : isSubmitted
                           ? 'Lineup submitted'
                           : `${entry.name} ${
