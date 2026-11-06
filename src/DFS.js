@@ -1768,13 +1768,19 @@ function DFS({ userName }) {
                     // be refused anyway, and an alert arriving once the lineup is
                     // built is a worse way to find out.
                     const isLocked = !!entry.locked;
+                    // A count on the face of the button, the names in its hover
+                    // text. A lineup can have nine frozen players, and nine
+                    // names turned the button into a paragraph; which ones they
+                    // are only matters once you go looking.
+                    const playedCount = (entry.lockedBy || []).length;
+                    const playedLabel = `${playedCount} player${playedCount === 1 ? '' : 's'}`;
                     const playedNames = (entry.lockedBy || [])
                       .map((p) => [p.name, p.team && `(${p.team})`].filter(Boolean).join(' '))
                       .join(', ');
                     // Frozen players but not a frozen lineup: this tournament
                     // only locks the players who have played, so a submission
                     // will still be taken as long as they stay in it.
-                    const partlyFrozen = !isLocked && (entry.lockedBy || []).length > 0;
+                    const partlyFrozen = !isLocked && playedCount > 0;
 
                     return (
                       <button
@@ -1791,7 +1797,7 @@ function DFS({ userName }) {
                         {isLocked
                           ? `${entry.name} — locked, a player has played`
                           : partlyFrozen && !isSubmitted
-                          ? `${entry.name} — keep ${playedNames}`
+                          ? `${entry.name} — keep ${playedLabel}`
                           : isSubmitted
                           ? 'Lineup submitted'
                           : `${entry.name} ${
