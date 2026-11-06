@@ -94,6 +94,60 @@ export function kickoffAt(player) {
  * Sunday is better than nothing — but it comes from the scrape, so it is the
  * American day and is left as-is rather than shifted on a guess.
  */
+/**
+ * 03:00 CET on the day after a game, as the last-resort cutoff.
+ *
+ * Only reached when the kickoff time cannot be read at all. Deliberately late:
+ * a cutoff that guesses too late leaves a player editable slightly too long,
+ * where one that guesses too early locks a lineup before its games.
+ *
+ * 02:00 UTC, which is 03:00 CET in winter and 04:00 CEST in summer. The
+ * approximation is in the summer direction and does not matter at this
+ * distance from kickoff.
+ */
+function dayAfterGameCutoff(gameDate) {
+  if (!gameDate) return null;
+
+  const year = parseInt(gameDate.slice(0, 4), 10);
+  const monthIndex = parseInt(gameDate.slice(5, 7), 10) - 1;
+  const day = parseInt(gameDate.slice(8, 10), 10);
+  if (Number.isNaN(year) || Number.isNaN(monthIndex) || Number.isNaN(day)) {
+    return null;
+  }
+  return new Date(Date.UTC(year, monthIndex, day + 1, 2, 0));
+}
+
+/**
+ * Whether this player's game has begun, and so whether they are now fixed.
+ *
+ * The one rule behind both halves of the lineup builder: a player who has
+ * kicked off cannot be added to a lineup, and cannot be taken out of one. The
+ * server refuses either in both lock modes — "full" rejects the whole
+ * submission, "unplayed" rejects one that moved him — so the page agrees with
+ * it rather than offering an edit that would come back refused.
+ *
+ * A player with no game date at all is not started: that is missing slate
+ * data, not a kickoff, and it should not freeze a lineup.
+ *
+ * Previously inlined twice in DFS.js, once in the display check and once in
+ * the can-add check, which is how they came to disagree about defences.
+ */
+export function hasKickedOff(player, now = new Date()) {
+  if (!player?.game_date) return false;
+
+  let cutoff = null;
+  if (player.game_start_time) {
+    try {
+      cutoff = parseGameStartToUtc(player.game_date, player.game_start_time);
+    } catch {
+      cutoff = null;
+    }
+  }
+  if (!cutoff) cutoff = dayAfterGameCutoff(player.game_date);
+
+  return !!cutoff && now >= cutoff;
+}
+
 export function kickoffLabel(player) {
   const at = kickoffAt(player);
   if (at) {
