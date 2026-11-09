@@ -15,7 +15,7 @@ import { useSleeperAuth } from "./auth";
 import { projectedPoints, hasProjection, fetchWeekProjectionsUrl } from "./leagueScoring";
 import { evaluateLineup, countActionable, benchFrom } from "./startSitModel";
 import { fetchMatchups, startersFor } from "./sleeperLineup";
-import { lockedTeamsFor, byeTeamsFor } from "./nflSchedule";
+import { lockedTeamsFor, byeTeamsFor, nflverseTeam } from "./nflSchedule";
 import PositionPill from "./PositionPill";
 import { positionKey } from "./positionColors";
 import { loadHiddenLeagues, visibleLeagues, useHiddenLeagues } from "./leagueVisibility";
@@ -25,9 +25,6 @@ const BASE_URL = process.env.REACT_APP_MOCK
   ? "http://localhost:5000"
   : "https://shaggy-latashia-carnade-2ea2054a.koyeb.app";
 
-// Sleeper and nflverse spell a few teams differently.
-const TEAM_ABBR_MAP = { LAR: "LA", WSH: "WAS", JAC: "JAX" };
-const nflverseTeam = (team) => TEAM_ABBR_MAP[team] || team;
 
 // nflverse only ranks defences against these positions.
 const DVP_POSITIONS = new Set(["qb", "rb", "wr", "te"]);

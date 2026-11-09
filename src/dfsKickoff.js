@@ -51,18 +51,27 @@ export function parseGameStartToUtc(gameDate, gameStartTime) {
       ? gameStartTime.trim()
       : "6:00PM";
 
-  if (!timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i)) {
+  // Two spellings reach this, both US Eastern. The salary scrape writes
+  // "1:00PM"; the schedule our own backend serves writes "13:00", and that one
+  // used to miss the meridiem test below and fall through to the 6pm guess —
+  // every Sunday kickoff reported five hours late, which is the wrong direction
+  // for anything deciding when a lineup locks.
+  const clock = timeStr.match(/^(\d{1,2}):(\d{2})$/);
+  const meridiemClock = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!clock && !meridiemClock) {
     timeStr = "6:00PM";
   }
 
-  const parsed = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  const parsed = clock || timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
   if (!parsed) return null;
 
   let hours = parseInt(parsed[1], 10);
   const minutes = parseInt(parsed[2], 10);
-  const meridiem = parsed[3].toUpperCase();
+  const meridiem = parsed[3] ? parsed[3].toUpperCase() : null;
   if (meridiem === "PM" && hours !== 12) hours += 12;
   else if (meridiem === "AM" && hours === 12) hours = 0;
+  // A 24-hour reading of something outside the clock is not a time.
+  if (!meridiem && (hours > 23 || minutes > 59)) return null;
 
   const year = parseInt(gameDate.slice(0, 4), 10);
   const monthIndex = parseInt(gameDate.slice(5, 7), 10) - 1;

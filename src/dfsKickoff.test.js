@@ -191,3 +191,51 @@ describe("hasKickedOff", () => {
     expect(hasKickedOff(dst, KICKOFF)).toBe(true);
   });
 });
+
+// ── The schedule our own backend serves uses a 24-hour clock ───────────────
+
+describe("parseGameStartToUtc on a 24-hour time", () => {
+  // Same Eastern instants as the AM/PM cases above, written the other way.
+  // 8 November 2026 is after the US clocks go back, so Eastern is UTC-5.
+  it("reads the Sunday slate", () => {
+    expect(iso(parseGameStartToUtc("2026-11-08", "13:00")))
+      .toBe("2026-11-08T18:00:00.000Z");
+  });
+
+  it("reads the London kick, which is a morning Eastern time", () => {
+    expect(iso(parseGameStartToUtc("2026-11-08", "09:30")))
+      .toBe("2026-11-08T14:30:00.000Z");
+  });
+
+  it("reads a night game", () => {
+    expect(iso(parseGameStartToUtc("2026-11-05", "20:15")))
+      .toBe("2026-11-06T01:15:00.000Z");
+  });
+
+  it("agrees with the same time written with a meridiem", () => {
+    expect(iso(parseGameStartToUtc("2026-11-08", "16:25")))
+      .toBe(iso(parseGameStartToUtc("2026-11-08", "4:25PM")));
+  });
+
+  it("does not quietly become six in the evening", () => {
+    // The regression this branch exists for: a 24-hour time missed the
+    // meridiem test and fell through to the "6:00PM" guess, putting every
+    // Sunday kickoff five hours late.
+    const sundayOne = parseGameStartToUtc("2026-11-08", "13:00");
+    const guessedSixPm = parseGameStartToUtc("2026-11-08", "nonsense");
+
+    expect(iso(sundayOne)).not.toBe(iso(guessedSixPm));
+    expect(iso(guessedSixPm)).toBe("2026-11-08T23:00:00.000Z");
+  });
+
+  it("is null for a clock reading that is not a time", () => {
+    expect(parseGameStartToUtc("2026-11-08", "25:00")).toBeNull();
+    expect(parseGameStartToUtc("2026-11-08", "13:70")).toBeNull();
+  });
+
+  it("still guesses for a string that is no kind of time", () => {
+    // Deliberately unchanged: a row with a date but unreadable time keeps the
+    // late guess, which locks a player too late rather than too early.
+    expect(iso(parseGameStartToUtc("2026-11-08", "kickoff"))).toBe("2026-11-08T23:00:00.000Z");
+  });
+});
