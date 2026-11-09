@@ -1,0 +1,194 @@
+/* The Corona Masters commissioner panel.
+ *
+ * `cm-` prefixed. The CSS in this app is global and unscoped, so a bare
+ * `.panel` or `.problem` would reach into every other page.
+ *
+ * Colours come from the theme tokens. The one exception is the amber used for a
+ * team that needs attention and the red for a hard fault, which cannot be
+ * derived from a token — the same exception LeagueIssues.css makes for its
+ * warning colour, and for the same reason.
+ */
+
+.cm-panel {
+  margin: 24px 0 8px;
+  padding: 14px;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius, 6px);
+  background: hsl(var(--card));
+}
+
+.cm-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.cm-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.cm-subtitle {
+  margin: 18px 0 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.cm-refresh {
+  padding: 0.25rem 0.6rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  background: transparent;
+  color: hsl(var(--foreground) / 0.8);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.cm-refresh:hover:not(:disabled) {
+  border-color: hsl(var(--foreground) / 0.4);
+}
+
+.cm-refresh:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.cm-summary {
+  margin: 0 0 10px;
+  font-size: 0.8125rem;
+  color: hsl(var(--foreground));
+}
+
+.cm-error {
+  margin: 0 0 10px;
+  font-size: 0.8125rem;
+  color: hsl(0 72% 51%);
+}
+
+/* ── The table ────────────────────────────────────────────────────────── */
+
+.cm-table {
+  font-size: 0.8125rem;
+}
+
+.cm-table td {
+  vertical-align: top;
+}
+
+.cm-manager {
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.cm-fixby {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A team with something to do carries a left edge, so the eye finds the rows
+   that matter without reading the counts. */
+.cm-row-broken .cm-manager {
+  box-shadow: inset 3px 0 0 hsl(38 70% 50% / 0.65);
+  padding-left: 10px;
+}
+
+.cm-problems {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.cm-problem {
+  margin: 0;
+}
+
+/* An empty slot is the worst of the three: nobody is even nominated. */
+.cm-empty {
+  color: hsl(0 72% 51%);
+  font-weight: 600;
+}
+
+.cm-out {
+  color: hsl(var(--foreground));
+}
+
+.cm-bye {
+  color: hsl(var(--muted-foreground));
+}
+
+/* ── The message, exactly as it will be sent ──────────────────────────── */
+
+.cm-message {
+  margin: 0;
+  padding: 10px 12px;
+  max-height: 20rem;
+  overflow: auto;
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  background: hsl(var(--muted) / 0.35);
+  color: hsl(var(--foreground));
+  font-family: inherit;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.cm-send-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.cm-send {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid hsl(var(--primary));
+  border-radius: 6px;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cm-send:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.cm-send:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.cm-sent-ok {
+  color: hsl(142 71% 40%);
+  font-size: 0.8125rem;
+}
+
+.cm-sent-bad {
+  color: hsl(0 72% 51%);
+  font-size: 0.8125rem;
+}
+
+body.dark .cm-sent-ok {
+  color: hsl(142 60% 55%);
+}
+
+body.dark .cm-empty,
+body.dark .cm-error,
+body.dark .cm-sent-bad {
+  color: hsl(0 80% 68%);
+}
+
+@media (max-width: 700px) {
+  .cm-manager,
+  .cm-fixby {
+    white-space: normal;
+  }
+}

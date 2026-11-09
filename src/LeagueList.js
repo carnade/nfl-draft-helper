@@ -28,6 +28,7 @@ import { fetchMatchups, startersFor } from "./sleeperLineup";
 import { loadHiddenLeagues, visibleLeagues } from "./leagueVisibility";
 import "./LeagueList.css";
 import "./TableStyles.css";
+import CoronaPanel from "./CoronaPanel";
 import PositionPill from "./PositionPill";
 import { emptyBenchSlots } from "./rosterSlots";
 import LeagueIssues from "./LeagueIssues";
@@ -2442,6 +2443,10 @@ function LeagueList() {
           </div>
         </div>
       </div>
+      {/* Runs the whole league rather than one roster, so it sits below
+          everything else — and renders nothing, and fetches nothing, for
+          anyone it is not meant for. */}
+      <CoronaPanel />
       <span hidden>{userId}</span>
     </div>
   );

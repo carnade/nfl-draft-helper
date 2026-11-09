@@ -10,7 +10,7 @@ const AUTH_CHANGE_EVENT = "sleeper-auth-changed";
 
 // Sleeper usernames (display_name, case-insensitive) allowed to see
 // privileged/internal-only content. Add more as needed.
-const PRIVILEGED_SLEEPER_USERS = ["carnade"];
+const PRIVILEGED_SLEEPER_USERS = ["carnade", "redhelge"];
 
 export function loadSleeperAuth() {
   try {
