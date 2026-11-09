@@ -1,0 +1,172 @@
+/* The matchup detail panel.
+ *
+ * `gd-` prefixed. The CSS here is global and unscoped, so a bare `.row` or
+ * `.name` would reach into every other page.
+ *
+ * Three columns: my player, the slot, theirs. The slot column is fixed so the
+ * two point columns stay either side of it rather than sliding about with the
+ * longest name in the lineup.
+ */
+
+.gd-detail {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid hsl(var(--border));
+  font-size: 0.8125rem;
+}
+
+.gd-row {
+  display: grid;
+  grid-template-columns: 1fr 3.25rem 1fr;
+  align-items: start;
+  gap: 6px;
+  padding: 4px 0;
+}
+
+.gd-row + .gd-row {
+  border-top: 1px solid hsl(var(--border) / 0.5);
+}
+
+.gd-totals {
+  font-size: 0.875rem;
+  padding-bottom: 6px;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.gd-totals .gd-name {
+  font-weight: 600;
+}
+
+/* ── A side ────────────────────────────────────────────────────────────── */
+
+.gd-side {
+  min-width: 0;
+}
+
+.gd-side-top {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+/* My numbers sit against the slot label in the middle; the opponent's against
+   theirs, so the two point columns face each other across it. */
+.gd-side-mine .gd-side-top {
+  flex-direction: row-reverse;
+}
+
+.gd-side-mine {
+  text-align: right;
+}
+
+.gd-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gd-points {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.gd-proj {
+  color: hsl(var(--muted-foreground));
+  font-weight: 400;
+}
+
+.gd-side-empty .gd-name {
+  font-style: italic;
+}
+
+/* ── The slot label ───────────────────────────────────────────────────── */
+
+.gd-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 0.6875rem;
+}
+
+.gd-totals .gd-slot {
+  white-space: nowrap;
+  font-size: 0.625rem;
+}
+
+/* ── The stat line ────────────────────────────────────────────────────── */
+
+.gd-statline {
+  margin-top: 1px;
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gd-side-mine .gd-statline {
+  text-align: right;
+}
+
+.gd-statline-toggle {
+  margin-top: 8px;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.6875rem;
+  cursor: pointer;
+}
+
+.gd-statline-toggle:hover {
+  border-color: hsl(var(--foreground) / 0.4);
+  color: hsl(var(--foreground));
+}
+
+.gd-detail-empty {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid hsl(var(--border));
+  font-size: 0.8125rem;
+}
+
+/* ── The card as a control ────────────────────────────────────────────── */
+
+/* The whole card opens the panel, so it has to look like it does something. */
+.gameday-card-open {
+  cursor: pointer;
+}
+
+.gameday-card-open:hover {
+  border-color: hsl(var(--foreground) / 0.35);
+}
+
+.gameday-card-open:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+}
+
+.gd-chevron {
+  margin-left: 6px;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+}
+
+/* ── Narrow screens ──────────────────────────────────────────────────── */
+
+@media (max-width: 520px) {
+  /* The slot column is the first thing to give: the pill is readable at the
+     start of the row and the names need the width more than the symmetry. */
+  .gd-row {
+    grid-template-columns: 1fr 2.5rem 1fr;
+    gap: 4px;
+  }
+
+  .gd-detail {
+    font-size: 0.75rem;
+  }
+}
