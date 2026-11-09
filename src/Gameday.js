@@ -381,13 +381,24 @@ export default function Gameday() {
    * fetch them. After that the poll carries them, because the flag is a ref and
    * so does not rebuild `load`.
    */
-  const toggleExpanded = (leagueId) => {
+  const toggleExpanded = (leagueId, card) => {
+    let opening = false;
     setExpanded((previous) => {
       const next = new Set(previous);
       if (next.has(leagueId)) next.delete(leagueId);
-      else next.add(leagueId);
+      else {
+        next.add(leagueId);
+        opening = true;
+      }
       return next;
     });
+
+    // An opened card spans the whole grid, which puts it on a line of its own —
+    // so it can land below the fold of wherever the click happened. "nearest"
+    // leaves a card that is already in view alone.
+    if (opening && card?.scrollIntoView) {
+      requestAnimationFrame(() => card.scrollIntoView({ block: "nearest" }));
+    }
 
     if (!wantStatLinesRef.current) {
       wantStatLinesRef.current = true;
@@ -1030,14 +1041,14 @@ export default function Gameday() {
             key={i}
             className={`gameday-card${matchup?.final ? ` gameday-final-${matchup.final}` : ""}${
               canOpen ? " gameday-card-open" : ""
-            }`}
-            onClick={canOpen ? () => toggleExpanded(leagueId) : undefined}
+            }${isOpen ? " gameday-card-expanded" : ""}`}
+            onClick={canOpen ? (e) => toggleExpanded(leagueId, e.currentTarget) : undefined}
             onKeyDown={
               canOpen
                 ? (e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      toggleExpanded(leagueId);
+                      toggleExpanded(leagueId, e.currentTarget);
                     }
                   }
                 : undefined

@@ -134,6 +134,26 @@
   font-size: 0.8125rem;
 }
 
+/* ── An opened card takes the whole row ──────────────────────────────── */
+
+/* The cards sit in repeat(auto-fill, minmax(280px, 1fr)), and 280px cannot hold
+   two player names, two pairs of numbers and a slot label between them — the
+   names ended up ellipsised to nothing. Open one and it spans every column
+   instead, which is the width the panel needs and keeps the rest of the grid
+   where it is.
+   Spanning from column 1 means the grid moves the card to a line of its own, so
+   the click handler scrolls it back into view. */
+.gameday-card-expanded {
+  grid-column: 1 / -1;
+}
+
+/* With the room, the two sides can breathe: a fixed middle column keeps the
+   numbers facing each other rather than drifting to the outer edges. */
+.gameday-card-expanded .gd-row {
+  grid-template-columns: 1fr 5rem 1fr;
+  gap: 10px;
+}
+
 /* ── The card as a control ────────────────────────────────────────────── */
 
 /* The whole card opens the panel, so it has to look like it does something. */
