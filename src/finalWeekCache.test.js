@@ -102,3 +102,68 @@ describe("readFinalWeek", () => {
     }
   });
 });
+
+// ── The lineup, which cannot be rebuilt the way `players` can ───────────────
+
+describe("the stored lineup", () => {
+  beforeEach(() => sessionStorage.clear());
+
+  const row = (over = {}) => ({
+    roster_id: 11,
+    matchup_id: 5,
+    points: 59.6,
+    players_points: { a: 18.5, b: 29.0, c: 12.1, bench: 4.0 },
+    starters: ["a", "0", "b", "c"],
+    starters_points: [18.5, 0, 29.0, 12.1],
+    ...over,
+  });
+
+  it("survives the round trip in order", () => {
+    // The order *is* the slot assignment — starters[i] fills the i-th non-bench
+    // roster position — so losing it loses the pairing the detail panel is made of.
+    writeFinalWeek("L1", 9, [row()], { isFinal: true });
+
+    const [back] = readFinalWeek("L1", 9);
+
+    expect(back.starters).toEqual(["a", "0", "b", "c"]);
+    expect(back.starters_points).toEqual([18.5, 0, 29.0, 12.1]);
+  });
+
+  it("keeps an empty slot in place rather than compacting it", () => {
+    writeFinalWeek("L1", 9, [row()], { isFinal: true });
+
+    const [back] = readFinalWeek("L1", 9);
+
+    expect(back.starters[1]).toBe("0");
+    expect(back.starters).toHaveLength(4);
+  });
+
+  it("still rebuilds players from the points map", () => {
+    writeFinalWeek("L1", 9, [row()], { isFinal: true });
+
+    const [back] = readFinalWeek("L1", 9);
+
+    expect(back.players.sort()).toEqual(["a", "b", "bench", "c"]);
+  });
+
+  it("comes back as empty lists when a row had no lineup", () => {
+    writeFinalWeek("L1", 9, [row({ starters: undefined, starters_points: undefined })],
+                   { isFinal: true });
+
+    const [back] = readFinalWeek("L1", 9);
+
+    expect(back.starters).toEqual([]);
+    expect(back.starters_points).toEqual([]);
+  });
+
+  it("ignores an entry written before the lineup was kept", () => {
+    // The prefix carries a version for this: an older entry is simply not found,
+    // so it is refetched rather than expanded into a row with no lineup.
+    sessionStorage.setItem(
+      "gameday_week_L1_9",
+      JSON.stringify([{ r: 11, m: 5, p: 59.6, pp: { a: 1 } }])
+    );
+
+    expect(readFinalWeek("L1", 9)).toBeNull();
+  });
+});

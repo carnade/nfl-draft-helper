@@ -12,8 +12,17 @@
 // roster-week checked, so it is rebuilt on the way out. That halves what this
 // costs, which matters — a manager with sixty leagues would otherwise be
 // asking sessionStorage to hold more than it will take.
+//
+// `starters` and `starters_points` are stored, and cannot be left out the same
+// way: the lineup is an ordered list of eleven of those players, and nothing in
+// `players_points` says which eleven or in what order. The matchup detail panel
+// pairs the two teams by slot, which is that order, so a finished week read back
+// from here needs it.
 
-const PREFIX = "gameday_week";
+// Bumped when what is kept gets wider, so an existing visitor reads a fresh
+// entry rather than one missing the fields now expected of it — the same reason
+// TradeAnalyzer's cache carries a version in its prefix.
+const PREFIX = "gameday_week_v2";
 
 const keyFor = (leagueId, week) => `${PREFIX}_${leagueId}_${week}`;
 
@@ -35,6 +44,8 @@ function slim(rows) {
     m: r.matchup_id,
     p: r.points,
     pp: r.players_points || {},
+    s: Array.isArray(r.starters) ? r.starters : [],
+    sp: Array.isArray(r.starters_points) ? r.starters_points : [],
   }));
 }
 
@@ -45,6 +56,8 @@ function expand(rows) {
     points: r.p,
     players_points: r.pp || {},
     players: Object.keys(r.pp || {}),
+    starters: r.s || [],
+    starters_points: r.sp || [],
   }));
 }
 

@@ -41,6 +41,16 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2026-11-09",
+      title: "Open a Gameday matchup to see both lineups",
+      items: [
+        "Each matchup box on Gameday now opens. Click it and the two lineups unfold beneath, paired slot by slot \u2014 your quarterback against theirs, your flex against theirs \u2014 with each player\u2019s points so far and what they were projected to score for the game.",
+        "A totals line sits at the top of the panel. It adds up the players shown rather than repeating the score from the box, so the two always agree on where the points came from.",
+        "A stat line under each player, if you want one: catches over targets and yards for a receiver, carries and rushing yards for a back, passing for a quarterback. Shaped to the position rather than the same columns for everyone, since a quarterback has no receptions and a receiver no carries. There is a button in the panel to turn them off, and the choice is remembered.",
+        "The stat lines fill in during games rather than after them, and refresh with the rest of the page while Live update is on. Nothing extra is fetched until you open a matchup for the first time.",
+      ],
+    },
+    {
       date: "2026-11-06",
       title: "A played player can no longer be moved in the DFS builder",
       items: [

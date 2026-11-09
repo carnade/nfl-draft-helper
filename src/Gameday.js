@@ -11,7 +11,11 @@ import {
   weekIsSelectable,
 } from "./gamedayWeek";
 import { bestLineupPoints } from "./bestLineup";
+import { detailPair } from "./gamedayDetail";
+import MatchupDetail from "./MatchupDetail";
+import { buildSlots } from "./startSitModel";
 import { readFinalWeek, writeFinalWeek } from "./finalWeekCache";
+import { reduceStatRows, weekStatsUrl } from "./playerForm";
 import { readSeasonWeek, writeSeasonWeek, readSeasonWeeks } from "./seasonCache";
 import {
   summariseWeek,
@@ -30,6 +34,20 @@ const PCT_STYLE_KEY = "gameday_pct_style";
 // they move with injury news, not with play — so a poll only costs two small
 // requests per league.
 const LIVE_POLL_MS = 60_000;
+
+const STAT_LINE_KEY = "gameday_stat_lines";
+
+// What a stat line needs, and nothing else. Deliberately not scoringStatKeys()
+// from playerForm: that keeps only what a league *scores*, which drops targets
+// in every league and carries in any that does not score them — the two columns
+// most worth having. 23 KB for a week against 646 untrimmed, and independent of
+// how a league happens to be set up.
+const STAT_LINE_KEYS = new Set([
+  "gp",
+  "pass_yd", "pass_td", "pass_int",
+  "rush_att", "rush_yd", "rush_td",
+  "rec", "rec_tgt", "rec_yd", "rec_td",
+]);
 // Statuses that mean no football is being played right now. Anything else —
 // whatever Sleeper calls a game in progress — counts as live, so an unfamiliar
 // value errs towards refreshing rather than going quiet during a game.
@@ -163,6 +181,7 @@ function buildMatchupResult(
     gameClocks,
     teamsPlaying,
     squadByRoster = {},
+    restByRoster = {},
     rosterPositions = [],
     positionsOf = () => [],
   }
@@ -239,6 +258,21 @@ function buildMatchupResult(
       positionsOf,
     });
 
+  // The per-player view of the same thing. legTotals above walks these very
+  // starters, prices each one and keeps only the sums; this keeps the rows.
+  //
+  // From the REST payload rather than from these legs: there the lineup is
+  // documented to be in slot order, which is what lets the two sides be paired
+  // slot by slot. The names are the one thing only the legs have.
+  const detail = detailPair({
+    mine: restByRoster[myLeg.roster_id],
+    theirs: oppLeg ? restByRoster[oppLeg.roster_id] : null,
+    playerMap: { ...(oppLeg?.player_map || {}), ...(myLeg.player_map || {}) },
+    slots: buildSlots(rosterPositions),
+    projections,
+    scoring,
+  });
+
   const final = finalOutcome({
     hasOpponent: !!oppLeg,
     myPlayed: mine.played,
@@ -266,6 +300,8 @@ function buildMatchupResult(
     myMax: final ? bestFor(myLeg) : null,
     oppMax: final ? bestFor(oppLeg) : null,
     predictedWin: oppLeg ? myLive > oppLive : null,
+    // { mine: [row], theirs: [row] | null, slots: [] } — see gamedayDetail.js.
+    detail,
     // Null until every starter on both sides has played. Once it is set the
     // score is no longer a projection of anything.
     final,
@@ -315,11 +351,73 @@ export default function Gameday() {
   // leagues for a number that cannot change is pure waste.
   const [pollEnabled, setPollEnabled] = useState(false);
   const [gamesLive, setGamesLive] = useState(null);
+  // Which matchups are open. A Set of league ids, as every other expandable
+  // list in this app keeps them.
+  const [expanded, setExpanded] = useState(() => new Set());
+  const [showStatLines, setShowStatLines] = useState(() => {
+    try {
+      return localStorage.getItem(STAT_LINE_KEY) !== "off";
+    } catch {
+      return true;
+    }
+  });
   const weekRef = useRef(null);
   const positionsRef = useRef({});
   // Projections change with news rather than with play, so they are fetched once
   // and reused by every poll.
   const projectionsRef = useRef(null);
+  // Actual stat lines, for the detail panels. Unlike projections these move with
+  // play — they are the very numbers the running score is priced from — so a
+  // live week refetches them on every poll and only a finished one is kept.
+  const statLinesRef = useRef(null);
+  // Nobody pays for the stat lines until a matchup is opened. A ref rather than
+  // state so turning it on does not rebuild `load` and restart the poll.
+  const wantStatLinesRef = useRef(false);
+
+  /**
+   * Open or close a matchup.
+   *
+   * The first open turns the stat lines on for good and asks for one load to
+   * fetch them. After that the poll carries them, because the flag is a ref and
+   * so does not rebuild `load`.
+   */
+  const toggleExpanded = (leagueId, card) => {
+    let opening = false;
+    setExpanded((previous) => {
+      const next = new Set(previous);
+      if (next.has(leagueId)) next.delete(leagueId);
+      else {
+        next.add(leagueId);
+        opening = true;
+      }
+      return next;
+    });
+
+    // An opened card spans the whole grid, which puts it on a line of its own —
+    // so it can land below the fold of wherever the click happened. "nearest"
+    // leaves a card that is already in view alone.
+    if (opening && card?.scrollIntoView) {
+      requestAnimationFrame(() => card.scrollIntoView({ block: "nearest" }));
+    }
+
+    if (!wantStatLinesRef.current) {
+      wantStatLinesRef.current = true;
+      const auth = getAuth();
+      if (auth) load(auth, new AbortController().signal, { showSpinner: false });
+    }
+  };
+
+  const toggleStatLines = () => {
+    setShowStatLines((previous) => {
+      const next = !previous;
+      try {
+        localStorage.setItem(STAT_LINE_KEY, next ? "on" : "off");
+      } catch {
+        /* the choice simply does not outlive the visit */
+      }
+      return next;
+    });
+  };
 
   const load = useCallback(async (auth, signal, { showSpinner }) => {
     if (showSpinner) setLoading(true);
@@ -415,6 +513,24 @@ export default function Gameday() {
         positionsRef.current = { ...positionsRef.current, ...positions };
       }
 
+      // Only once a panel has been opened, and only refetched while the week
+      // can still change. 23 KB trimmed, against 646 untrimmed.
+      if (wantStatLinesRef.current
+          && !(statLinesRef.current?.week === week && statLinesRef.current?.final)) {
+        try {
+          const rows = await fetch(weekStatsUrl(SEASON, week), { signal })
+            .then((r) => (r.ok ? r.json() : []));
+          statLinesRef.current = {
+            week,
+            final: weekIsFinal,
+            byPlayer: reduceStatRows(Array.isArray(rows) ? rows : [], STAT_LINE_KEYS),
+          };
+        } catch (e) {
+          if (e.name === "AbortError") throw e;
+          // The panel falls back to dashes. Not worth failing the page for.
+        }
+      }
+
       const results = await Promise.all(
         filtered.map(async (league) => {
           const leagueType = league.settings?.type === 2 ? "Dynasty" : "Redraft";
@@ -439,7 +555,11 @@ export default function Gameday() {
 
             const playerPoints = {};
             const squadByRoster = {};
+            // Kept whole as well as summed: the detail panel needs each row's
+            // starters and starters_points, which only this payload has.
+            const restByRoster = {};
             for (const m of Array.isArray(weekMatchups) ? weekMatchups : []) {
+              restByRoster[m.roster_id] = m;
               Object.assign(playerPoints, m.players_points || {});
               // The week's roster as it stood, bench included — a snapshot, not
               // today's squad, so a past week is right too.
@@ -460,6 +580,7 @@ export default function Gameday() {
               gameClocks,
               teamsPlaying,
               squadByRoster,
+              restByRoster,
               rosterPositions: league.roster_positions,
               positionsOf: (id) => positionsRef.current[id] || [],
             });
@@ -912,12 +1033,34 @@ export default function Gameday() {
   function renderCards(group) {
     return (
       <div className="gameday-leagues-grid">
-        {group.map(({ leagueName, matchup }, i) => (
+        {group.map(({ leagueName, leagueId, matchup }, i) => {
+          const canOpen = !!matchup?.detail?.mine?.length;
+          const isOpen = canOpen && expanded.has(leagueId);
+          return (
           <div
             key={i}
-            className={`gameday-card${matchup?.final ? ` gameday-final-${matchup.final}` : ""}`}
+            className={`gameday-card${matchup?.final ? ` gameday-final-${matchup.final}` : ""}${
+              canOpen ? " gameday-card-open" : ""
+            }${isOpen ? " gameday-card-expanded" : ""}`}
+            onClick={canOpen ? (e) => toggleExpanded(leagueId, e.currentTarget) : undefined}
+            onKeyDown={
+              canOpen
+                ? (e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      toggleExpanded(leagueId, e.currentTarget);
+                    }
+                  }
+                : undefined
+            }
+            role={canOpen ? "button" : undefined}
+            tabIndex={canOpen ? 0 : undefined}
+            aria-expanded={canOpen ? isOpen : undefined}
           >
-            <div className="gameday-card-title">{leagueName}</div>
+            <div className="gameday-card-title">
+              {leagueName}
+              {canOpen && <span className="gd-chevron">{isOpen ? "\u25be" : "\u25b8"}</span>}
+            </div>
             {!matchup ? (
               <div className="gameday-no-matchup">No matchup data</div>
             ) : matchup.predictedWin === null ? (
@@ -970,8 +1113,21 @@ export default function Gameday() {
                 </div>
               </div>
             )}
+            {/* Stops a click inside the panel from folding it away again. */}
+            {isOpen && (
+              <div onClick={(e) => e.stopPropagation()}>
+                <MatchupDetail
+                  detail={matchup.detail}
+                  oppName={matchup.oppName}
+                  statLines={statLinesRef.current?.byPlayer || {}}
+                  showStatLines={showStatLines}
+                  onToggleStatLines={toggleStatLines}
+                />
+              </div>
+            )}
           </div>
-        ))}
+          );
+        })}
       </div>
     );
   }
