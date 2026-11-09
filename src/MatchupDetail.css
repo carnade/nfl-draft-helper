@@ -134,23 +134,29 @@
   font-size: 0.8125rem;
 }
 
-/* ── An opened card takes the whole row ──────────────────────────────── */
+/* ── How wide an opened card gets ────────────────────────────────────── */
 
 /* The cards sit in repeat(auto-fill, minmax(280px, 1fr)), and 280px cannot hold
    two player names, two pairs of numbers and a slot label between them — the
-   names ended up ellipsised to nothing. Open one and it spans every column
-   instead, which is the width the panel needs and keeps the rest of the grid
-   where it is.
-   Spanning from column 1 means the grid moves the card to a line of its own, so
-   the click handler scrolls it back into view. */
+   names ended up ellipsised to nothing. So an opened card takes the whole grid
+   row and is then capped: the full page width left the longest stat line using
+   about a third of it.
+   **This is the number to change.** Roughly half a 1400px page, and it only
+   ever narrows the card — `min` keeps it inside a phone.
+   Why not `grid-column: span 2`, which would be the grid-native half: on a
+   one-column grid that asks for a column the grid does not have, so it invents
+   one and the whole page overflows sideways. */
 .gameday-card-expanded {
+  --gd-detail-width: 46rem;
   grid-column: 1 / -1;
+  max-width: min(100%, var(--gd-detail-width));
 }
 
-/* With the room, the two sides can breathe: a fixed middle column keeps the
-   numbers facing each other rather than drifting to the outer edges. */
+/* With the extra room the two sides can breathe, and a fixed middle column
+   keeps the numbers facing each other rather than drifting to the outer
+   edges. */
 .gameday-card-expanded .gd-row {
-  grid-template-columns: 1fr 5rem 1fr;
+  grid-template-columns: 1fr 4.5rem 1fr;
   gap: 10px;
 }
 
