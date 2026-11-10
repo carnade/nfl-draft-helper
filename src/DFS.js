@@ -44,6 +44,23 @@ const NAME_TRANSLATIONS = {
   // Add more translations here as needed
 };
 
+/**
+ * Whether a tournament from /available is one you can still submit to.
+ *
+ * It stays on that list through its grace week, because the results page builds
+ * "load from your leagues" from the same endpoint and the standings are the
+ * reason the week exists. So it is this page — the one that turns the list into
+ * "add team to league" buttons — that has to leave a finished tournament out.
+ * The server refuses the submission regardless; this is so nothing offers it.
+ *
+ * An older backend sends bare name strings with no flags. Those are let
+ * through: it is the flag's absence, not a claim that the tournament is over.
+ */
+export function canStillBeEntered(entry) {
+  if (typeof entry === 'string') return true;
+  return !entry?.finished;
+}
+
 // What a "my lineup" row is entered into: a one-week slate, or a tournament and how
 // far into it we are. Falls back to a single entry when the details fetch fails.
 const UNKNOWN_TOURNAMENT = { entryType: 'single', week: null, tournamentWeek: null, numWeeks: null };
@@ -436,8 +453,11 @@ function DFS({ userName }) {
         // Handle both cases: entries as strings or as objects. Keep submit_as:
         // a Sleeper-gated tournament files lineups under the Sleeper display name,
         // which need not match the username typed into settings.
-        const entryRefs = Array.isArray(data.entries)
-          ? data.entries.map(entry => typeof entry === 'string'
+        const enterable = (Array.isArray(data.entries) ? data.entries : [])
+          .filter(canStillBeEntered);
+
+        const entryRefs = enterable.length
+          ? enterable.map(entry => typeof entry === 'string'
               ? { name: entry, submitAs: username, tournamentWeek: null, numWeeks: null }
               : {
                   name: entry.name || entry,
