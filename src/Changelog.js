@@ -41,6 +41,20 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2026-11-12",
+      title: "A Contender Helper: what a trade does to the weeks that are left",
+      items: [
+        "A third tab on the Trade Helper page. Pick one of your leagues, put players on each side of a trade, and it works out the lineup you would actually field afterwards \u2014 week by week, to the end of the season and again through the fantasy playoffs.",
+        "The point is that a four-for-two changes who starts. Two of the four were on the bench and were never scoring for you anyway; the two coming back push two of your starters out. So it is not the players who are added up, it is the best lineup your roster can field before and after, every remaining week.",
+        "Two separate readings of the same trade, and they are worth comparing. One uses Sleeper\u2019s projections for each coming week; the other uses what each player has actually averaged this season. Both are priced in your league\u2019s own scoring, so a tight-end premium or a superflex counts properly.",
+        "Bye weeks are part of it rather than a footnote. A player on bye in one of those weeks scores nothing and somebody comes off your bench to cover, which is what makes trading for a player whose bye is already behind them worth something. Each player in the trade says whether their bye is done or still to come.",
+        "The strength of schedule your starters face, before and after, for the run-in and for the playoffs separately \u2014 and where that puts you among the twelve teams in the league, since a bare percentage is hard to read on its own.",
+        "The other side is worked out too, from their roster and their lineup, so you can see whether what you are offering is worth anything to them. Who they are comes from the players you ask for \u2014 no second dropdown to get out of step with it.",
+        "Where a figure cannot be worked out, it says so and says why instead of showing a number. A player listed Out has no projections published at all, not even for the weeks he is due back, so on that reading a trade for him cannot be judged \u2014 the season-average reading beside it answers it properly.",
+        "Nothing is fetched until you open the tab, and the projections wait until you ask for them, because there are eight weeks of them to download.",
+      ],
+    },
+    {
       date: "2026-11-09",
       title: "Open a Gameday matchup to see both lineups",
       items: [

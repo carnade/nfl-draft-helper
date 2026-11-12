@@ -3,17 +3,20 @@ import { render, screen, fireEvent } from "@testing-library/react";
 
 import TradeHelperPage from "./TradeHelperPage";
 
-// Both children fetch on mount, so they are stood in for here — this is a test
-// of the wrapper: which pane is showing, whether the other one is still alive,
-// and what happens to a player picked in the Finder.
+// All three children fetch on mount, so they are stood in for here — this is a
+// test of the wrapper: which pane is showing, whether the others are still
+// alive, what happens to a player picked in the Finder, and whether the
+// Contender pane is told it is the one being looked at.
 
 // Reached through `global` because jest hoists mock factories above everything
 // else in the file and refuses to let them close over ordinary module
 // variables. `global` is on its allow-list.
-global.__paneMounts = { trade: 0, finder: 0 };
+global.__paneMounts = { trade: 0, finder: 0, contender: 0 };
 global.__playersAdded = [];
+global.__contenderActive = [];
 const mounts = global.__paneMounts;
 const added = global.__playersAdded;
+const contenderActive = global.__contenderActive;
 
 jest.mock("./TradeAnalyzer", () => {
   const React = require("react");
@@ -52,13 +55,29 @@ jest.mock("./PlayerFinder", () => {
   };
 });
 
+jest.mock("./ContenderTab", () => {
+  const React = require("react");
+  return {
+    __esModule: true,
+    default: function FakeContenderTab({ active }) {
+      React.useEffect(() => {
+        global.__paneMounts.contender += 1;
+      }, []);
+      global.__contenderActive.push(active);
+      return <div data-testid="contender-pane">{String(active)}</div>;
+    },
+  };
+});
+
 const click = (el) => fireEvent.click(el);
 const tab = (name) => screen.getByRole("tab", { name });
 
 beforeEach(() => {
   mounts.trade = 0;
   mounts.finder = 0;
+  mounts.contender = 0;
   added.length = 0;
+  contenderActive.length = 0;
 });
 
 describe("TradeHelperPage", () => {
@@ -67,14 +86,16 @@ describe("TradeHelperPage", () => {
 
     expect(tab("Trade Helper")).toHaveAttribute("aria-selected", "true");
     expect(tab("Player Finder")).toHaveAttribute("aria-selected", "false");
+    expect(tab("Contender Helper")).toHaveAttribute("aria-selected", "false");
   });
 
-  it("mounts both panes immediately, not just the visible one", () => {
+  it("mounts every pane immediately, not just the visible one", () => {
     render(<TradeHelperPage userName="carnade" setUserName={() => {}} />);
 
     expect(screen.getByTestId("trade-pane")).toBeInTheDocument();
     expect(screen.getByTestId("finder-pane")).toBeInTheDocument();
-    expect(mounts).toEqual({ trade: 1, finder: 1 });
+    expect(screen.getByTestId("contender-pane")).toBeInTheDocument();
+    expect(mounts).toEqual({ trade: 1, finder: 1, contender: 1 });
   });
 
   it("hides the inactive pane rather than unmounting it", () => {
@@ -98,7 +119,7 @@ describe("TradeHelperPage", () => {
     click(tab("Trade Helper"));
     click(tab("Player Finder"));
 
-    expect(mounts).toEqual({ trade: 1, finder: 1 });
+    expect(mounts).toEqual({ trade: 1, finder: 1, contender: 1 });
   });
 
   it("sends a picked player to the other party's side", () => {
@@ -119,5 +140,36 @@ describe("TradeHelperPage", () => {
 
     expect(tab("Player Finder")).toHaveAttribute("aria-selected", "true");
     expect(added).toHaveLength(2);
+  });
+
+  // The Contender pane is mounted from the start like the others, but it is the
+  // one with an eight-week, 17 MB horizon to download, so it is told whether
+  // anyone is actually looking at it and waits to be asked.
+  it("tells the Contender pane it is not being looked at", () => {
+    render(<TradeHelperPage userName="carnade" setUserName={() => {}} />);
+
+    expect(screen.getByTestId("contender-pane")).toBeInTheDocument();
+    expect(contenderActive.every((value) => value === false)).toBe(true);
+  });
+
+  it("tells it when it becomes the visible tab", () => {
+    render(<TradeHelperPage userName="carnade" setUserName={() => {}} />);
+
+    click(tab("Contender Helper"));
+
+    expect(tab("Contender Helper")).toHaveAttribute("aria-selected", "true");
+    expect(contenderActive[contenderActive.length - 1]).toBe(true);
+    expect(screen.getByTestId("contender-pane").closest(".thp-hidden")).toBeNull();
+  });
+
+  it("keeps it mounted when it is left again", () => {
+    render(<TradeHelperPage userName="carnade" setUserName={() => {}} />);
+
+    click(tab("Contender Helper"));
+    click(tab("Trade Helper"));
+
+    expect(screen.getByTestId("contender-pane")).toBeInTheDocument();
+    expect(screen.getByTestId("contender-pane").closest(".thp-hidden")).not.toBeNull();
+    expect(mounts.contender).toBe(1);
   });
 });

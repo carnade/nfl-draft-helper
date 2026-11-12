@@ -4,23 +4,30 @@
 // in one. They are tabs rather than separate pages because the whole point is
 // to move between them repeatedly while building a single offer.
 //
-// Both tabs stay mounted and the inactive one is hidden with CSS. That is a
-// deliberate departure from the conditional-render tab pattern elsewhere in
-// this app (BestballList, LeagueList): the Trade Helper keeps the trade in
+// All three tabs stay mounted and the inactive ones are hidden with CSS. That
+// is a deliberate departure from the conditional-render tab pattern elsewhere
+// in this app (BestballList, LeagueList): the Trade Helper keeps the trade in
 // component state and refetches Sleeper's projections on mount, so unmounting
 // it would empty the trade and refire those requests every time the Finder was
 // opened — which, since players are usually added a few at a time, is the
 // normal flow rather than an edge case.
+//
+// The cost of that choice is that a mounted tab fetches whether or not anyone
+// looks at it, and the Contender Helper's horizon of weekly projections is far
+// too expensive to download for a tab nobody opened. So it is told whether it
+// is the active one and waits to be asked — see the note in ContenderTab.js.
 
 import React, { useRef, useState } from "react";
 
 import "./TradeHelperPage.css";
 import TradeAnalyzer from "./TradeAnalyzer";
 import PlayerFinder from "./PlayerFinder";
+import ContenderTab from "./ContenderTab";
 
 const TABS = [
   { id: "trade", label: "Trade Helper" },
   { id: "finder", label: "Player Finder" },
+  { id: "contender", label: "Contender Helper" },
 ];
 
 function TradeHelperPage({ userName, setUserName }) {
@@ -71,6 +78,15 @@ function TradeHelperPage({ userName, setUserName }) {
         className={activeTab === "finder" ? "" : "thp-hidden"}
       >
         <PlayerFinder onAddPlayer={addToTheirSide} />
+      </div>
+
+      <div
+        id="thp-panel-contender"
+        role="tabpanel"
+        aria-labelledby="thp-tab-contender"
+        className={activeTab === "contender" ? "" : "thp-hidden"}
+      >
+        <ContenderTab userName={userName} active={activeTab === "contender"} />
       </div>
     </div>
   );

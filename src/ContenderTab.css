@@ -1,0 +1,289 @@
+/* The Contender Helper tab.
+ *
+ * `ch-` prefixed, because the CSS in this app is global and unscoped — a bare
+ * `.tile` or `.delta` here would reach into every other page.
+ *
+ * Only what is new lives here. The two boxes, the player cards and the analysis
+ * block borrow `.trade-panel`, `.trade-player-card`, `.trade-analysis` and
+ * friends from TradeAnalyzer.css, which is already loaded on this page, so the
+ * two tabs look like the same tool without TradeAnalyzer being edited.
+ */
+
+.ch-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ── The bar: league, context, basis ─────────────────────────────────────── */
+
+.ch-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+}
+
+.ch-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: hsl(var(--foreground) / 0.75);
+}
+
+.ch-field select {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-size: 0.875rem;
+  font-weight: 500;
+  max-width: 22rem;
+}
+
+.ch-context {
+  font-size: 0.8125rem;
+  color: hsl(var(--foreground) / 0.6);
+}
+
+/* Pushed to the end of the bar so the basis is always in the same place,
+ * whatever the league name's length. */
+.ch-pills {
+  display: flex;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.ch-pill {
+  padding: 0.3rem 0.65rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 999px;
+  background: transparent;
+  color: hsl(var(--foreground) / 0.7);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ch-pill:hover {
+  color: hsl(var(--foreground));
+}
+
+.ch-pill-on {
+  background: hsl(var(--primary) / 0.12);
+  border-color: hsl(var(--primary) / 0.5);
+  color: hsl(var(--primary));
+}
+
+.ch-sos-pills {
+  display: flex;
+  gap: 0.25rem;
+  margin: 0.5rem 0 0.75rem;
+}
+
+/* ── The two boxes ───────────────────────────────────────────────────────── */
+
+/* `.trade-panels` in TradeAnalyzer.css is deliberately a single column, and
+ * the Trade Helper depends on that, so this tab sets its own two-column grid
+ * rather than overriding it. */
+.ch-panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .ch-panels {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ch-panel-note {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: hsl(var(--foreground) / 0.55);
+}
+
+.ch-bye-ahead,
+.ch-bye-done {
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* A bye still to come costs you a week of the run-in, so it is the one worth
+ * noticing; one already taken is reassurance and stays quiet. */
+.ch-bye-ahead {
+  background: hsl(38 92% 50% / 0.18);
+  color: hsl(32 90% 42%);
+}
+
+.ch-bye-done {
+  background: hsl(var(--foreground) / 0.07);
+  color: hsl(var(--foreground) / 0.5);
+}
+
+/* ── The headline ────────────────────────────────────────────────────────── */
+
+.ch-headline {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.75rem;
+  margin: 0.25rem 0 1rem;
+}
+
+.ch-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  background: hsl(var(--foreground) / 0.02);
+}
+
+.ch-tile-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: hsl(var(--foreground) / 0.6);
+}
+
+.ch-tile-figure {
+  font-size: 1.5rem;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.ch-tile-sub {
+  font-size: 0.75rem;
+  color: hsl(var(--foreground) / 0.55);
+  font-variant-numeric: tabular-nums;
+}
+
+.ch-up {
+  color: hsl(142 69% 38%);
+}
+
+.ch-down {
+  color: hsl(0 72% 48%);
+}
+
+/* ── The comparison grid ─────────────────────────────────────────────────── */
+
+.ch-side + .ch-side {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid hsl(var(--border));
+}
+
+.ch-grid {
+  display: grid;
+  grid-template-columns: minmax(8rem, auto) 1fr 1fr;
+  gap: 0.4rem 1rem;
+  align-items: baseline;
+}
+
+.ch-colhead,
+.ch-rowhead {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: hsl(var(--foreground) / 0.6);
+}
+
+.ch-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.ch-cell .team-value {
+  font-weight: 600;
+}
+
+.ch-delta {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: hsl(var(--foreground) / 0.75);
+}
+
+.ch-coverage {
+  font-size: 0.75rem;
+  color: hsl(var(--foreground) / 0.5);
+}
+
+.ch-cell sup {
+  margin-left: 0.15rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+}
+
+/* ── Week by week ────────────────────────────────────────────────────────── */
+
+.ch-weeks {
+  margin-top: 1rem;
+}
+
+.ch-weeks > summary {
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: hsl(var(--foreground) / 0.7);
+}
+
+.ch-week-table {
+  width: 100%;
+  max-width: 34rem;
+  margin: 0.6rem 0 0;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.ch-week-table th,
+.ch-week-table td {
+  padding: 0.3rem 0.5rem;
+  text-align: right;
+  border-bottom: 1px solid hsl(var(--border) / 0.6);
+}
+
+.ch-week-table th:first-child,
+.ch-week-table td:first-child,
+.ch-week-table th:last-child,
+.ch-bye-cell {
+  text-align: left;
+}
+
+.ch-week-table th {
+  font-weight: 600;
+  color: hsl(var(--foreground) / 0.6);
+}
+
+.ch-bye-cell {
+  color: hsl(var(--foreground) / 0.55);
+}
+
+/* ── Notes ───────────────────────────────────────────────────────────────── */
+
+.ch-note {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: hsl(var(--foreground) / 0.6);
+}
+
+.ch-note-tight {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.ch-error {
+  color: hsl(0 72% 48%);
+}

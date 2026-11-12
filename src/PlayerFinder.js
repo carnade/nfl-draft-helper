@@ -20,16 +20,10 @@ import { positionClass } from "./positionColors";
 import { pointsPerGame, valuePerPoint } from "./tradeValues";
 import { ordinal } from "./ordinal";
 import { getDvpColor } from "./dvpColor";
-import { readCache, writeCache } from "./ttlCache";
 import { normalise } from "./playerSearch";
+import { fetchFinderRows } from "./finderRows";
 
-const BASE_URL = process.env.REACT_APP_MOCK
-  ? "http://localhost:5000"
-  : "https://shaggy-latashia-carnade-2ea2054a.koyeb.app";
 
-// The backend rebuilds this three times a week, so an hour is conservative.
-const CACHE_KEY = "player_finder_rows_v1";
-const CACHE_TTL_MS = 60 * 60 * 1000;
 
 export const POSITIONS = ["QB", "RB", "WR", "TE"];
 
@@ -366,18 +360,11 @@ function PlayerFinder({ onAddPlayer }) {
     let live = true;
 
     const load = async () => {
-      const cached = readCache(CACHE_KEY, CACHE_TTL_MS);
-      if (cached) {
-        setRows(cached.map(finderRow));
-        setStatus("ready");
-        return;
-      }
       try {
-        const response = await fetch(`${BASE_URL}/player-finder/data`);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
+        // Cache-or-fetch lives in finderRows.js, because the Contender tab on
+        // this same page reads the same 290 KB payload.
+        const data = await fetchFinderRows();
         if (!live) return;
-        writeCache(CACHE_KEY, data);
         setRows(data.map(finderRow));
         setStatus("ready");
       } catch (e) {
