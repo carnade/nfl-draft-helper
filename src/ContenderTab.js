@@ -29,6 +29,7 @@ import PositionPill from "./PositionPill";
 import { getCurrentWeek } from "./currentWeekCache";
 import { nameRank } from "./playerSearch";
 import { nflverseTeam } from "./nflSchedule";
+import { comparePositions } from "./positionColors";
 import { orderLeagues } from "./leagueOrder";
 import { projectedPoints } from "./leagueScoring";
 import { fptsPerGame } from "./playerForm";
@@ -116,6 +117,8 @@ function ContenderTab({ userName, active = false, onSendTrade }) {
   const [give, setGive] = useState([]);
   const [take, setTake] = useState([]);
   const [queries, setQueries] = useState({ give: "", take: "" });
+  // Which box is being used, so its roster can be listed while it is.
+  const [focused, setFocused] = useState(null);
   // The roster the trade is drawn from, when a link fixed it rather than the
   // signed-in user's own.
   const [linkRoster, setLinkRoster] = useState(null);
@@ -640,6 +643,30 @@ function ContenderTab({ userName, active = false, onSendTrade }) {
     [meta]
   );
 
+  // One roster, listed rather than searched.
+  //
+  // Typing a name works, but once the other side is settled the question is
+  // usually "what else have they got" — and that cannot be typed, because you
+  // do not know the answer yet. Position order, best first within each, because
+  // that is how a roster is read.
+  const rosterRows = useCallback(
+    (roster, exclude) => {
+      if (!roster) return [];
+      const taken = new Set(exclude.map(String));
+      return (roster.players || [])
+        .map(String)
+        .filter((id) => !taken.has(id) && meta[id])
+        .map((id) => ({ id, player: meta[id], roster }))
+        .sort(
+          (a, b) =>
+            comparePositions(a.player.position, b.player.position) ||
+            (b.player.pts_ppr || 0) - (a.player.pts_ppr || 0) ||
+            String(a.player.last_name).localeCompare(String(b.player.last_name))
+        );
+    },
+    [meta]
+  );
+
   const otherRosters = useMemo(() => {
     const others = rosters.filter(
       (roster) => String(roster.roster_id) !== String(myRoster?.roster_id)
@@ -657,6 +684,11 @@ function ContenderTab({ userName, active = false, onSendTrade }) {
 
   const giveHits = searchIn(myRoster ? [myRoster] : [], queries.give, give);
   const takeHits = searchIn(otherRosters, queries.take, take);
+
+  // The roster a side can be browsed from: mine always, theirs once there is a
+  // "theirs". Before that, every other team at once would be a hundred and
+  // fifty names, which is a list nobody reads.
+  const browseFrom = { give: myRoster, take: partnerRoster };
 
   const addPlayer = (side, id) => {
     if (side === "give") setGive((ids) => [...ids, String(id)]);
@@ -729,6 +761,32 @@ function ContenderTab({ userName, active = false, onSendTrade }) {
 
   const panel = (side, heading, hits, held, subtitle) => {
     const searching = queries[side].trim().length >= 2;
+    const browse = !searching && focused === side ? rosterRows(browseFrom[side], held) : [];
+    const rows = searching ? hits : browse;
+    const showing = searching || browse.length > 0;
+
+    const resultRow = (hit) => (
+      <div
+        className="search-result-item"
+        key={hit.id}
+        role="button"
+        tabIndex={0}
+        onClick={() => addPlayer(side, hit.id)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") addPlayer(side, hit.id);
+        }}
+      >
+        <span className="player-name">
+          <PositionPill position={hit.player.position} />{" "}
+          {[hit.player.first_name, hit.player.last_name].filter(Boolean).join(" ")}
+        </span>
+        <span className="player-details">
+          {hit.player.team || "FA"}
+          {side === "take" && !browseFrom.take ? ` · ${teamName(hit.roster)}` : ""}
+        </span>
+      </div>
+    );
+
     return (
     <div className="trade-panel">
       <div className="panel-header">
@@ -746,6 +804,8 @@ function ContenderTab({ userName, active = false, onSendTrade }) {
             placeholder={side === "give" ? "Search my roster…" : "Search the league…"}
             value={queries[side]}
             disabled={!league || detailStatus !== "ready"}
+            onFocus={() => setFocused(side)}
+            onBlur={() => setFocused((open) => (open === side ? null : open))}
             onChange={(event) =>
               setQueries((q) => ({ ...q, [side]: event.target.value }))
             }
@@ -755,9 +815,20 @@ function ContenderTab({ userName, active = false, onSendTrade }) {
             box. In flow it landed behind the input — `.search-input-wrapper` is
             positioned and the paragraph was not, so the input painted over it —
             and it belongs where the results would have been anyway. */}
-        {searching && (
-          <div className="search-results">
-            {hits.length === 0 && (
+        {showing && (
+          /* Clicking a row would otherwise blur the input, which closes the
+             list before the click lands on anything. */
+          <div
+            className="search-results ch-results"
+            onMouseDown={(event) => event.preventDefault()}
+          >
+            {!searching && browse.length > 0 && (
+              <div className="search-result-item ch-browse-head">
+                {browseFrom[side] ? teamName(browseFrom[side]) : ""} · {browse.length}{" "}
+                {browse.length === 1 ? "player" : "players"} left
+              </div>
+            )}
+            {searching && hits.length === 0 && (
               <div className="search-result-item ch-no-hits">
                 {side === "give"
                   ? "Nobody on your roster by that name."
@@ -766,26 +837,7 @@ function ContenderTab({ userName, active = false, onSendTrade }) {
                   : "Nobody on a roster in this league by that name — a free agent cannot be traded for."}
               </div>
             )}
-            {hits.map((hit) => (
-              <div
-                className="search-result-item"
-                key={hit.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => addPlayer(side, hit.id)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") addPlayer(side, hit.id);
-                }}
-              >
-                <span className="player-name">
-                  {[hit.player.first_name, hit.player.last_name].filter(Boolean).join(" ")}
-                </span>
-                <span className="player-details">
-                  {hit.player.position} · {hit.player.team || "FA"}
-                  {side === "take" ? ` · ${teamName(hit.roster)}` : ""}
-                </span>
-              </div>
-            ))}
+            {rows.map(resultRow)}
           </div>
         )}
       </div>

@@ -82,9 +82,9 @@ const SQUAD = {
 };
 
 const META = Object.fromEntries(
-  Object.entries(SQUAD).map(([id, [first, last, position, team]]) => [
+  Object.entries(SQUAD).map(([id, [first, last, position, team, rec]]) => [
     id,
-    { first_name: first, last_name: last, position, team, pts_ppr: 100 },
+    { first_name: first, last_name: last, position, team, pts_ppr: rec * 10 },
   ])
 );
 
@@ -294,6 +294,77 @@ describe("building a trade", () => {
 
     type(screen.getByLabelText("Search the league"), "odunze");
     expect(await screen.findByText("Rome Odunze")).toBeInTheDocument();
+  });
+
+  it("lists the other side's roster once there is an other side", async () => {
+    // "What else have they got" cannot be typed, because you do not know the
+    // answer yet.
+    await open();
+    await pickLeague();
+
+    // Nothing to browse before a partner: every other team at once would be a
+    // hundred and fifty names.
+    fireEvent.focus(screen.getByLabelText("Search the league"));
+    expect(document.querySelector(".ch-results")).toBeNull();
+
+    type(screen.getByLabelText("Search the league"), "hubbard");
+    click(await screen.findByText("Chuba Hubbard"));
+
+    fireEvent.focus(screen.getByLabelText("Search the league"));
+    const rows = [...document.querySelectorAll(".ch-results .search-result-item")];
+    // The heading, then what is left of their roster — Hubbard having gone.
+    expect(rows[0]).toHaveTextContent("Their Team · 1 player left");
+    expect(rows.slice(1).map((row) => row.textContent)).toEqual([
+      expect.stringContaining("Puka Nacua"),
+    ]);
+  });
+
+  it("lists my own roster from the start, in position order", async () => {
+    await open();
+    await pickLeague();
+
+    fireEvent.focus(screen.getByLabelText("Search my roster"));
+    const names = [...document.querySelectorAll(".ch-results .player-name")].map(
+      (row) => row.textContent.trim()
+    );
+
+    // Quarterback, then the backs best first, then the receivers, then the end.
+    // The pill's own label is part of the row, which is the point of it.
+    expect(names).toEqual([
+      "QB Josh Allen",
+      "RB Breece Hall",
+      "RB Tyjae Spears",
+      "WR Garrett Wilson",
+      "WR Jalen Tolbert",
+      "TE George Kittle",
+    ]);
+  });
+
+  it("drops a player from the list once they are in the trade", async () => {
+    await open();
+    await pickLeague();
+
+    fireEvent.focus(screen.getByLabelText("Search my roster"));
+    click(screen.getByText("Breece Hall"));
+
+    fireEvent.focus(screen.getByLabelText("Search my roster"));
+    const names = [...document.querySelectorAll(".ch-results .player-name")].map(
+      (row) => row.textContent.trim()
+    );
+    expect(names).not.toContain("RB Breece Hall");
+    expect(names).toHaveLength(5);
+  });
+
+  it("puts a position pill on every row, browsing or searching", async () => {
+    await open();
+    await pickLeague();
+
+    fireEvent.focus(screen.getByLabelText("Search my roster"));
+    expect(document.querySelectorAll(".ch-results .pos-pill")).toHaveLength(6);
+
+    type(screen.getByLabelText("Search my roster"), "hall");
+    await screen.findByText("Breece Hall");
+    expect(document.querySelectorAll(".ch-results .pos-pill")).toHaveLength(1);
   });
 
   it("marks a bye still to come and one already taken", async () => {
