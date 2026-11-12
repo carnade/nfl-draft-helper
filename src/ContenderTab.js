@@ -1072,7 +1072,12 @@ function ContenderTab({ userName, active = false, onSendTrade }) {
             <p className="ch-note ch-note-tight">{caveats.join(" · ")}</p>
           )}
 
-          <details className="ch-weeks">
+          {/* Open to begin with. It was a disclosure on the grounds of being
+              busy, but it is where a bye or a hard week shows itself, which is
+              most of why the horizon is walked week by week at all. React
+              writes `open` on mount and then leaves it alone, so closing it
+              sticks for as long as the tab is up. */}
+          <details className="ch-weeks" open>
             <summary>Week by week</summary>
             <div className="ch-week-tables">
               {weekTable("My team", headline.mine)}

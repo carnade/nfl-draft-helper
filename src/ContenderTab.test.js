@@ -375,7 +375,8 @@ describe("the impact", () => {
     await buildTrade();
     await screen.findByText("Impact");
 
-    click(screen.getByText("Week by week"));
+    // No click needed: it is open to begin with.
+    expect(screen.getByText("Week by week").closest("details")).toHaveAttribute("open");
 
     // A week that swings the trade swings it for them too, and which of the two
     // it hurts is the thing being weighed up — so both sides get the detail.
@@ -396,7 +397,6 @@ describe("the impact", () => {
     click(await screen.findByText("Tyjae Spears"));
     await screen.findByText("Impact");
 
-    click(screen.getByText("Week by week"));
     expect(document.querySelectorAll(".ch-week-table")).toHaveLength(1);
   });
 
