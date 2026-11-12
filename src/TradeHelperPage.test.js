@@ -59,12 +59,22 @@ jest.mock("./ContenderTab", () => {
   const React = require("react");
   return {
     __esModule: true,
-    default: function FakeContenderTab({ active }) {
+    default: function FakeContenderTab({ active, onSendTrade }) {
       React.useEffect(() => {
         global.__paneMounts.contender += 1;
       }, []);
       global.__contenderActive.push(active);
-      return <div data-testid="contender-pane">{String(active)}</div>;
+      return (
+        <div data-testid="contender-pane">
+          {String(active)}
+          <button
+            type="button"
+            onClick={() => onSendTrade({ give: ["g1", "g2"], get: ["t1"] })}
+          >
+            send the trade
+          </button>
+        </div>
+      );
     },
   };
 });
@@ -171,5 +181,34 @@ describe("TradeHelperPage", () => {
     expect(screen.getByTestId("contender-pane")).toBeInTheDocument();
     expect(screen.getByTestId("contender-pane").closest(".thp-hidden")).not.toBeNull();
     expect(mounts.contender).toBe(1);
+  });
+
+  // The Contender Helper hands a whole trade over rather than one player.
+  it("puts each side of a sent trade on the right panel", () => {
+    render(<TradeHelperPage userName="carnade" setUserName={() => {}} />);
+    click(tab("Contender Helper"));
+
+    click(screen.getByRole("button", { name: "send the trade" }));
+
+    // team2 is the "<user> gets..." panel, so it takes what the trade brings
+    // in; team1 is headed "Trade Partner gets..." and takes what goes out.
+    // Backwards, this would read every trade as its own mirror image.
+    expect(added).toEqual([
+      ["g1", "team1"],
+      ["g2", "team1"],
+      ["t1", "team2"],
+    ]);
+  });
+
+  it("switches to the Trade Helper after sending, unlike the Finder's add", () => {
+    // A single action whose whole point is to see the trade priced the other
+    // way. Staying put would look like nothing had happened.
+    render(<TradeHelperPage userName="carnade" setUserName={() => {}} />);
+    click(tab("Contender Helper"));
+
+    click(screen.getByRole("button", { name: "send the trade" }));
+
+    expect(tab("Trade Helper")).toHaveAttribute("aria-selected", "true");
+    expect(mounts).toEqual({ trade: 1, finder: 1, contender: 1 });
   });
 });

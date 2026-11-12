@@ -34,11 +34,24 @@ function TradeHelperPage({ userName, setUserName }) {
   const [activeTab, setActiveTab] = useState("trade");
   const trade = useRef(null);
 
-  // Added to the other party's side, and the tab deliberately does not change:
-  // several players are usually picked in a row, and jumping away after each
-  // one would mean navigating back for the next.
-  const addToTheirSide = (row) => {
+  // `team2` is the "<user> gets..." panel — what the trade brings in. The tab
+  // deliberately does not change: several players are usually picked in a row,
+  // and jumping away after each one would mean navigating back for the next.
+  const addIncoming = (row) => {
     trade.current?.addPlayerById(row.id, "team2");
+  };
+
+  // A whole trade, from the Contender Helper. The sides have to be the right
+  // way round: `team2` is what I get, `team1` is the panel headed "Trade
+  // Partner gets...", so it takes what I give away.
+  //
+  // This one does switch tab, unlike the Finder's add. It is a single action
+  // whose whole point is to see the trade priced the other way, and leaving the
+  // user on a page that looks unchanged would read as nothing having happened.
+  const sendTrade = ({ give = [], get = [] }) => {
+    give.forEach((id) => trade.current?.addPlayerById(id, "team1"));
+    get.forEach((id) => trade.current?.addPlayerById(id, "team2"));
+    setActiveTab("trade");
   };
 
   return (
@@ -77,7 +90,7 @@ function TradeHelperPage({ userName, setUserName }) {
         aria-labelledby="thp-tab-finder"
         className={activeTab === "finder" ? "" : "thp-hidden"}
       >
-        <PlayerFinder onAddPlayer={addToTheirSide} />
+        <PlayerFinder onAddPlayer={addIncoming} />
       </div>
 
       <div
@@ -86,7 +99,11 @@ function TradeHelperPage({ userName, setUserName }) {
         aria-labelledby="thp-tab-contender"
         className={activeTab === "contender" ? "" : "thp-hidden"}
       >
-        <ContenderTab userName={userName} active={activeTab === "contender"} />
+        <ContenderTab
+          userName={userName}
+          active={activeTab === "contender"}
+          onSendTrade={sendTrade}
+        />
       </div>
     </div>
   );

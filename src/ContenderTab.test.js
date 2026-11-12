@@ -321,9 +321,54 @@ describe("the impact", () => {
 
   it("shows the partner's side too, from their own lineup", async () => {
     await buildTrade();
-    // Twice each: the comparison block and the week-by-week table.
-    expect(await screen.findAllByText("Their Team")).toHaveLength(2);
-    expect(screen.getAllByText("My team")).toHaveLength(2);
+    // Three places each: the headline tile, the comparison heading, and the
+    // week-by-week table.
+    expect(await screen.findAllByText("Their Team")).toHaveLength(3);
+    expect(screen.getAllByText("My team")).toHaveLength(3);
+  });
+
+  it("gives each team a box of its own, holding both windows", async () => {
+    // Grouped by window instead, the box under the heading that said "My team"
+    // held both sides' run-in figures — which is not what that heading claims.
+    await buildTrade();
+    await screen.findByText("Impact");
+
+    const mineTile = document.querySelector(".ch-tile-mine");
+    const theirTile = document.querySelector(".ch-tile-theirs");
+
+    for (const tile of [mineTile, theirTile]) {
+      const windows = [...tile.querySelectorAll(".ch-tile-when")].map((el) => el.textContent);
+      expect(windows).toHaveLength(2);
+      expect(windows[0]).toMatch(/Rest of season/);
+      expect(windows[1]).toMatch(/Playoffs/);
+    }
+
+    expect(mineTile).toHaveTextContent("My team");
+    expect(theirTile).toHaveTextContent("Their Team");
+    // And nothing of theirs has leaked into mine.
+    expect(mineTile).not.toHaveTextContent("Their Team");
+  });
+
+  it("hands the whole trade to the Trade Helper", async () => {
+    const onSendTrade = jest.fn();
+    render(<ContenderTab userName="carnade" active onSendTrade={onSendTrade} />);
+    await screen.findByLabelText("League");
+    await pickLeague();
+
+    type(screen.getByLabelText("Search my roster"), "spears");
+    click(await screen.findByText("Tyjae Spears"));
+    type(screen.getByLabelText("Search the league"), "nacua");
+    click(await screen.findByText("Puka Nacua"));
+
+    click(await screen.findByRole("button", { name: /Trade Helper/ }));
+
+    expect(onSendTrade).toHaveBeenCalledWith({ give: ["m_flex"], get: ["p_wr"] });
+  });
+
+  it("offers no hand-off when the page has nowhere to send it", async () => {
+    await buildTrade();
+    await screen.findByText("Impact");
+    expect(screen.queryByRole("button", { name: /Trade Helper/ })).not.toBeInTheDocument();
   });
 
   it("gives the opponent a week-by-week table of their own", async () => {

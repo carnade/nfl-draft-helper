@@ -597,6 +597,13 @@ const TradeAnalyzer = forwardRef(function TradeAnalyzer({ userName, setUserName 
    */
   const addPlayerById = async (playerId, team = 'team2') => {
     const id = String(playerId);
+
+    // Already on that side, so there is nothing to add. Without this, sending a
+    // whole trade over twice doubled every player in it, and the Finder's "+"
+    // would happily add the same name again.
+    const held = team === 'team1' ? team1Players : team2Players;
+    if (held.some(p => String(p.id) === id)) return;
+
     const projected = projectionsData.find(p => String(p.player_id) === id);
     if (projected) {
       await addPlayerToTeam(projected, team);

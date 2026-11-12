@@ -70,7 +70,7 @@ const weekSpan = (weeks) => {
   return first === last ? `wk ${first}` : `wk ${first}–${last}`;
 };
 
-function ContenderTab({ userName, active = false }) {
+function ContenderTab({ userName, active = false, onSendTrade }) {
   // Opened once is opened for good: the pane stays mounted after the first
   // visit, and so should its data.
   const opened = useRef(false);
@@ -966,61 +966,81 @@ function ContenderTab({ userName, active = false }) {
         <div className="trade-analysis">
           <h3>Impact</h3>
 
-          <div className="ch-teams">
-            <span className="ch-mine">My team</span>
-            <span className="ch-measure" />
-            <span className="ch-theirs">
-              {partnerRoster && partner.teamCount === 1
-                ? teamName(partnerRoster)
-                : "nobody yet"}
-            </span>
-          </div>
-
+          {/* A tile per team, each carrying both windows. Grouped by window
+              instead — which is how this first read — the left tile sat under
+              the heading that said "My team" while holding both sides' figures
+              for the run-in, which is a confusing thing to put there. */}
           <div className="ch-headline">
-            {["regular", "playoffs"].map((key) => {
-              const weeks = key === "regular" ? windows.regular : windows.playoffs;
-              const figure = (impact, side) => (
-                <div className={side}>
-                  <strong
-                    className={`ch-tile-figure${
-                      impact?.deltaPerWeek > 0
-                        ? " ch-up"
-                        : impact?.deltaPerWeek < 0
-                        ? " ch-down"
-                        : ""
-                    }`}
-                  >
-                    {signed(impact?.deltaPerWeek)} pts/wk
-                  </strong>
-                  <span className="ch-tile-sub">
-                    {impact == null
-                      ? "no team yet"
-                      : impact.deltaPerWeek == null
-                      ? "not priceable on this basis"
-                      : `${signed(impact.deltaTotal)} over ${
-                          impact.after.pricedWeeks.length
-                        } of ${weeks.length} week${weeks.length === 1 ? "" : "s"}`}
+            {[
+              ["mine", "My team", true],
+              [
+                "theirs",
+                partnerRoster && partner.teamCount === 1
+                  ? teamName(partnerRoster)
+                  : "Their team",
+                Boolean(partnerRoster && partner.teamCount === 1),
+              ],
+            ].map(([side, label, known]) => (
+              <div className={`ch-tile ch-tile-${side}`} key={side}>
+                <span className="ch-tile-label">
+                  {label}
+                  <span className="ch-tile-basis">
+                    {byProjection ? "projection" : "points per game"}
                   </span>
-                </div>
-              );
-
-              return (
-                <div className="ch-tile" key={key}>
-                  <span className="ch-tile-label">
-                    {key === "regular" ? "Rest of season" : "Playoffs"} ({weekSpan(weeks)})
-                    {byProjection ? " · projection" : " · points per game"}
-                  </span>
-                  <div className="ch-tile-sides">
-                    {figure(headline.mine[key], "ch-mine")}
-                    {figure(
-                      partnerRoster && partner.teamCount === 1 ? headline.theirs[key] : null,
-                      "ch-theirs"
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                </span>
+                {["regular", "playoffs"].map((key) => {
+                  const weeks = key === "regular" ? windows.regular : windows.playoffs;
+                  const impact = known ? headline[side][key] : null;
+                  return (
+                    <div className="ch-tile-window" key={key}>
+                      <span className="ch-tile-when">
+                        {key === "regular" ? "Rest of season" : "Playoffs"}{" "}
+                        {weekSpan(weeks)}
+                      </span>
+                      <strong
+                        className={`ch-tile-figure${
+                          impact?.deltaPerWeek > 0
+                            ? " ch-up"
+                            : impact?.deltaPerWeek < 0
+                            ? " ch-down"
+                            : ""
+                        }`}
+                      >
+                        {signed(impact?.deltaPerWeek)} pts/wk
+                      </strong>
+                      <span className="ch-tile-sub">
+                        {!known
+                          ? "nobody on the other side yet"
+                          : impact == null
+                          ? "no weeks left"
+                          : impact.deltaPerWeek == null
+                          ? "not priceable on this basis"
+                          : `${signed(impact.deltaTotal)} over ${
+                              impact.after.pricedWeeks.length
+                            } of ${weeks.length} week${weeks.length === 1 ? "" : "s"}`}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
           </div>
+
+          {onSendTrade && (
+            <div className="ch-send">
+              <button
+                type="button"
+                className="ch-send-button"
+                onClick={() => onSendTrade({ give, get: take })}
+              >
+                Price this trade in the Trade Helper
+              </button>
+              <span className="ch-send-note">
+                Sends both sides over and opens that tab, so the same trade can be read in
+                dynasty value as well.
+              </span>
+            </div>
+          )}
 
           <div className="ch-sos-pills" role="group" aria-label="Schedule basis">
             {SOS_BASES.map((option) => (
@@ -1033,6 +1053,16 @@ function ContenderTab({ userName, active = false }) {
                 {SOS_LABEL[option]}
               </button>
             ))}
+          </div>
+
+          <div className="ch-teams">
+            <span className="ch-mine">My team</span>
+            <span className="ch-measure" />
+            <span className="ch-theirs">
+              {partnerRoster && partner.teamCount === 1
+                ? teamName(partnerRoster)
+                : "nobody yet"}
+            </span>
           </div>
 
           {windowBlock("Rest of season", "regular", "ros", windows.regular)}
