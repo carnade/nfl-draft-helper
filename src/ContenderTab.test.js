@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 
 import ContenderTab from "./ContenderTab";
 import * as load from "./contenderLoad";
@@ -370,6 +370,36 @@ describe("the impact", () => {
     expect(load.loadWeekProjections.mock.calls.map((call) => call[1])).toEqual([
       10, 11, 12, 13, 14, 15, 16, 17,
     ]);
+  });
+
+  it("survives being flipped away from and back to mid-download", async () => {
+    // Eight weeks of 2 MB is slow enough that flipping to Pts/g to read
+    // something while it runs is the obvious thing to do.
+    const pending = [];
+    load.loadWeekProjections.mockImplementation(
+      () => new Promise((resolve) => pending.push(resolve))
+    );
+
+    await buildTrade();
+    click(screen.getByRole("button", { name: "Projections" }));
+    await waitFor(() => expect(pending).toHaveLength(1));
+
+    click(screen.getByRole("button", { name: "Pts/g" }));
+    click(screen.getByRole("button", { name: "Projections" }));
+
+    // Let every week through, including the last one started.
+    for (let i = 0; i < 20; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await act(async () => {
+        pending.splice(0).forEach((resolve) => resolve(PROJECTIONS));
+      });
+    }
+
+    expect(load.loadWeekProjections).toHaveBeenCalledTimes(8);
+    expect(load.loadWeekProjections.mock.calls.map((call) => call[1])).toEqual([
+      10, 11, 12, 13, 14, 15, 16, 17,
+    ]);
+    expect(screen.queryByText(/Loading Sleeper projections/)).not.toBeInTheDocument();
   });
 
   it("does not warn about a split when there is only one partner", async () => {

@@ -77,13 +77,13 @@ function ContenderTab({ userName, active = false }) {
   if (active) opened.current = true;
   const live = opened.current;
 
-  // Which league-and-horizon the projection loader has already run for.
+  // The projection download, which outlives the effect that starts it.
   //
-  // A ref rather than state on purpose: held in state it would be a dependency
-  // of that effect, so marking the load as started would re-run the effect, and
-  // the re-run's cleanup would abort the loop after its first week — seven
-  // weeks silently missing, with no error anywhere to say so.
-  const projKey = useRef(null);
+  // `key` is the league and horizon it is for; `controller` aborts it. Both are
+  // refs rather than state because they must not be dependencies of the effect
+  // below: marking the load as started would re-run it, and the re-run's
+  // cleanup would abort the loop after its first week.
+  const projRun = useRef({ key: null, controller: null });
 
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState(null);
@@ -204,7 +204,8 @@ function ContenderTab({ userName, active = false }) {
     setProjStatus("idle");
     setProjDone(0);
     setBasis("ppg");
-    projKey.current = null;
+    projRun.current.controller?.abort();
+    projRun.current = { key: null, controller: null };
   }, [leagueId]);
 
   const windows = useMemo(
@@ -217,18 +218,33 @@ function ContenderTab({ userName, active = false }) {
     [windows]
   );
 
+  // Only ever abort the download because the component is going away. Leaving
+  // the tab or the page does not: the pane stays mounted, and the bytes are
+  // already being paid for.
+  useEffect(() => () => projRun.current.controller?.abort(), []);
+
   // Projections are fetched one week at a time rather than eight at once: each
   // response is 2.1 MB and parsing eight in parallel visibly stalls the tab.
   //
+  // The run deliberately has no cleanup of its own. It used to abort when the
+  // effect re-ran, and `basis` is one of the effect's dependencies — so
+  // flipping to Pts/g to read something while the eight weeks downloaded killed
+  // the loop after whichever week it was on, and flipping back hit the
+  // already-started guard and never restarted. The tab sat on "week 1 of 8"
+  // for good, with no error to say why. Eight 2 MB downloads are far too
+  // expensive to throw away over a glance at the other basis, so the run now
+  // owns its own life: it is started here and only the unmount above stops it.
   useEffect(() => {
     if (!live || basis !== "proj" || !league || horizon.length === 0) return undefined;
 
     const key = `${league.league_id}:${horizon.join(",")}`;
-    if (projKey.current === key) return undefined;
-    projKey.current = key;
+    if (projRun.current.key === key) return undefined;
 
     const controller = new AbortController();
-    let alive = true;
+    projRun.current = { key, controller };
+    // Still ours only while nothing newer has replaced it — a league switch
+    // does, and so does the unmount.
+    const current = () => projRun.current.key === key;
 
     (async () => {
       setProjStatus("loading");
@@ -243,27 +259,24 @@ function ContenderTab({ userName, active = false }) {
             currentWeek,
           });
         } catch (e) {
-          if (!alive || e.name === "AbortError") return;
+          if (!current() || e.name === "AbortError") return;
           failures += 1;
         }
-        if (!alive) return;
+        if (!current()) return;
         setProjDone((done) => done + 1);
         setProjections({ ...priced });
       }
-      if (!alive) return;
+      if (!current()) return;
       if (failures === horizon.length) {
         // Let the pill be clicked again to retry rather than being stuck.
-        projKey.current = null;
+        projRun.current = { key: null, controller: null };
         setProjStatus("failed");
       } else {
         setProjStatus("ready");
       }
     })();
 
-    return () => {
-      alive = false;
-      controller.abort();
-    };
+    return undefined;
   }, [live, basis, league, horizon, currentWeek]);
 
   // ── Reading the league ────────────────────────────────────────────────────
@@ -874,7 +887,10 @@ function ContenderTab({ userName, active = false }) {
         </p>
       )}
       {basis === "proj" && projStatus === "failed" && (
-        <p className="ch-note ch-error">The Sleeper projections could not be loaded.</p>
+        <p className="ch-note ch-error">
+          The Sleeper projections could not be loaded. Switch to Pts/g and back to try
+          again.
+        </p>
       )}
 
       {league && detailStatus === "loading" && <p className="ch-note">Loading the league…</p>}
