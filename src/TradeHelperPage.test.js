@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 
 import TradeHelperPage from "./TradeHelperPage";
 
@@ -79,6 +80,12 @@ jest.mock("./ContenderTab", () => {
   };
 });
 
+const at = (path = "/trade-analyzer") => ({
+  wrapper: ({ children }) => (
+    <MemoryRouter initialEntries={[path]}>{children}</MemoryRouter>
+  ),
+});
+
 const click = (el) => fireEvent.click(el);
 const tab = (name) => screen.getByRole("tab", { name });
 
@@ -92,7 +99,7 @@ beforeEach(() => {
 
 describe("TradeHelperPage", () => {
   it("shows the Trade Helper first", () => {
-    render(<TradeHelperPage userName="carnade" setUserName={() => {}} />);
+    render(<TradeHelperPage userName="carnade" setUserName={() => {}} />, at());
 
     expect(tab("Trade Helper")).toHaveAttribute("aria-selected", "true");
     expect(tab("Player Finder")).toHaveAttribute("aria-selected", "false");
@@ -100,7 +107,7 @@ describe("TradeHelperPage", () => {
   });
 
   it("mounts every pane immediately, not just the visible one", () => {
-    render(<TradeHelperPage userName="carnade" setUserName={() => {}} />);
+    render(<TradeHelperPage userName="carnade" setUserName={() => {}} />, at());
 
     expect(screen.getByTestId("trade-pane")).toBeInTheDocument();
     expect(screen.getByTestId("finder-pane")).toBeInTheDocument();
@@ -109,7 +116,7 @@ describe("TradeHelperPage", () => {
   });
 
   it("hides the inactive pane rather than unmounting it", () => {
-    render(<TradeHelperPage userName="carnade" setUserName={() => {}} />);
+    render(<TradeHelperPage userName="carnade" setUserName={() => {}} />, at());
 
     click(tab("Player Finder"));
 
@@ -123,7 +130,7 @@ describe("TradeHelperPage", () => {
     // keeps the trade in component state and refetches Sleeper's projections on
     // mount, so a remount would empty a half-built trade every time the Finder
     // was opened to add the next player.
-    render(<TradeHelperPage userName="carnade" setUserName={() => {}} />);
+    render(<TradeHelperPage userName="carnade" setUserName={() => {}} />, at());
 
     click(tab("Player Finder"));
     click(tab("Trade Helper"));
@@ -133,7 +140,7 @@ describe("TradeHelperPage", () => {
   });
 
   it("sends a picked player to the other party's side", () => {
-    render(<TradeHelperPage userName="carnade" setUserName={() => {}} />);
+    render(<TradeHelperPage userName="carnade" setUserName={() => {}} />, at());
     click(tab("Player Finder"));
 
     click(screen.getByRole("button", { name: "add a player" }));
@@ -142,7 +149,7 @@ describe("TradeHelperPage", () => {
   });
 
   it("stays on the Finder after adding, so several can be picked", () => {
-    render(<TradeHelperPage userName="carnade" setUserName={() => {}} />);
+    render(<TradeHelperPage userName="carnade" setUserName={() => {}} />, at());
     click(tab("Player Finder"));
 
     click(screen.getByRole("button", { name: "add a player" }));
@@ -156,14 +163,14 @@ describe("TradeHelperPage", () => {
   // one with an eight-week, 17 MB horizon to download, so it is told whether
   // anyone is actually looking at it and waits to be asked.
   it("tells the Contender pane it is not being looked at", () => {
-    render(<TradeHelperPage userName="carnade" setUserName={() => {}} />);
+    render(<TradeHelperPage userName="carnade" setUserName={() => {}} />, at());
 
     expect(screen.getByTestId("contender-pane")).toBeInTheDocument();
     expect(contenderActive.every((value) => value === false)).toBe(true);
   });
 
   it("tells it when it becomes the visible tab", () => {
-    render(<TradeHelperPage userName="carnade" setUserName={() => {}} />);
+    render(<TradeHelperPage userName="carnade" setUserName={() => {}} />, at());
 
     click(tab("Contender Helper"));
 
@@ -173,7 +180,7 @@ describe("TradeHelperPage", () => {
   });
 
   it("keeps it mounted when it is left again", () => {
-    render(<TradeHelperPage userName="carnade" setUserName={() => {}} />);
+    render(<TradeHelperPage userName="carnade" setUserName={() => {}} />, at());
 
     click(tab("Contender Helper"));
     click(tab("Trade Helper"));
@@ -185,7 +192,7 @@ describe("TradeHelperPage", () => {
 
   // The Contender Helper hands a whole trade over rather than one player.
   it("puts each side of a sent trade on the right panel", () => {
-    render(<TradeHelperPage userName="carnade" setUserName={() => {}} />);
+    render(<TradeHelperPage userName="carnade" setUserName={() => {}} />, at());
     click(tab("Contender Helper"));
 
     click(screen.getByRole("button", { name: "send the trade" }));
@@ -203,12 +210,32 @@ describe("TradeHelperPage", () => {
   it("switches to the Trade Helper after sending, unlike the Finder's add", () => {
     // A single action whose whole point is to see the trade priced the other
     // way. Staying put would look like nothing had happened.
-    render(<TradeHelperPage userName="carnade" setUserName={() => {}} />);
+    render(<TradeHelperPage userName="carnade" setUserName={() => {}} />, at());
     click(tab("Contender Helper"));
 
     click(screen.getByRole("button", { name: "send the trade" }));
 
     expect(tab("Trade Helper")).toHaveAttribute("aria-selected", "true");
     expect(mounts).toEqual({ trade: 1, finder: 1, contender: 1 });
+  });
+
+  it("opens on the tab a shared link asks for", () => {
+    // A link to a trade is useless if it lands on the Trade Helper instead of
+    // the tab that can read it.
+    render(
+      <TradeHelperPage userName="carnade" setUserName={() => {}} />,
+      at("/trade-analyzer?tab=contender&league=1&from=3&get=9493")
+    );
+
+    expect(tab("Contender Helper")).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("ignores a tab it does not have", () => {
+    render(
+      <TradeHelperPage userName="carnade" setUserName={() => {}} />,
+      at("/trade-analyzer?tab=nonsense")
+    );
+
+    expect(tab("Trade Helper")).toHaveAttribute("aria-selected", "true");
   });
 });

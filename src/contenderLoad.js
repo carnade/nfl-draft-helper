@@ -94,6 +94,25 @@ export async function loadLeagues(userName, { signal } = {}) {
   return answer;
 }
 
+/**
+ * One league on its own, for a trade arriving by link.
+ *
+ * The leagues list is the signed-in user's, and whoever opens a link need not
+ * be in it — need not be signed in at all. The league object carries
+ * roster_positions, scoring_settings and settings just the same.
+ */
+export async function loadLeague(leagueId, { signal } = {}) {
+  if (!leagueId) return null;
+  const key = `ch_league_${leagueId}`;
+  const cached = readCache(key, LEAGUES_TTL_MS);
+  if (cached) return cached;
+
+  const league = await json(`${SLEEPER}/league/${leagueId}`, { signal });
+  if (!league?.league_id) return null;
+  writeCache(key, league);
+  return league;
+}
+
 /** One league's rosters and the managers behind them. */
 export async function loadLeagueDetail(leagueId, { signal } = {}) {
   if (!leagueId) return { rosters: [], users: [] };

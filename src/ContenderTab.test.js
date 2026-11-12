@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 
 import ContenderTab from "./ContenderTab";
 import * as load from "./contenderLoad";
@@ -123,6 +124,7 @@ beforeEach(() => {
 
   getCurrentWeek.mockResolvedValue(10);
   load.loadLeagues.mockResolvedValue({ userId: ME, leagues: [LEAGUE] });
+  load.loadLeague.mockResolvedValue(LEAGUE);
   load.loadSchedule.mockResolvedValue(SCHEDULE);
   load.loadLeagueDetail.mockResolvedValue({ rosters: ROSTERS, users: USERS });
   load.loadSeasonStats.mockResolvedValue(SEASON_STATS);
@@ -135,8 +137,17 @@ afterEach(() => {
   delete global.fetch;
 });
 
-const open = async () => {
-  const view = render(<ContenderTab userName="carnade" active />);
+// The tab reads a shared trade out of the query string, so every render needs
+// a router around it. `at` is the link being opened.
+const show = (props = {}, at = "/trade-analyzer") =>
+  render(
+    <MemoryRouter initialEntries={[at]}>
+      <ContenderTab userName="carnade" active {...props} />
+    </MemoryRouter>
+  );
+
+const open = async (props, at) => {
+  const view = show(props, at);
   await screen.findByLabelText("League");
   return view;
 };
@@ -153,7 +164,7 @@ describe("before the tab is ever opened", () => {
     // The page keeps every tab mounted so the trade survives switching, which
     // means a hidden tab that loaded on mount would download the whole horizon
     // for someone who never clicked it.
-    render(<ContenderTab userName="carnade" active={false} />);
+    show({ active: false });
 
     await Promise.resolve();
 
@@ -166,21 +177,26 @@ describe("before the tab is ever opened", () => {
   });
 
   it("loads once it is shown, and stays loaded when it is hidden again", async () => {
-    const { rerender } = render(<ContenderTab userName="carnade" active={false} />);
+    const inRouter = (active) => (
+      <MemoryRouter initialEntries={["/trade-analyzer"]}>
+        <ContenderTab userName="carnade" active={active} />
+      </MemoryRouter>
+    );
+    const { rerender } = render(inRouter(false));
     expect(load.loadLeagues).not.toHaveBeenCalled();
 
-    rerender(<ContenderTab userName="carnade" active />);
+    rerender(inRouter(true));
     await screen.findByLabelText("League");
     expect(load.loadLeagues).toHaveBeenCalledTimes(1);
 
     // Hiding it must not refire anything; the pane is still mounted.
-    rerender(<ContenderTab userName="carnade" active={false} />);
-    rerender(<ContenderTab userName="carnade" active />);
+    rerender(inRouter(false));
+    rerender(inRouter(true));
     expect(load.loadLeagues).toHaveBeenCalledTimes(1);
   });
 
   it("asks for a username rather than loading nothing", () => {
-    render(<ContenderTab userName="" active />);
+    show({ userName: "" });
     expect(screen.getByText(/Set a Sleeper username/)).toBeInTheDocument();
     expect(load.loadLeagues).not.toHaveBeenCalled();
   });
@@ -351,8 +367,7 @@ describe("the impact", () => {
 
   it("hands the whole trade to the Trade Helper", async () => {
     const onSendTrade = jest.fn();
-    render(<ContenderTab userName="carnade" active onSendTrade={onSendTrade} />);
-    await screen.findByLabelText("League");
+    await open({ onSendTrade });
     await pickLeague();
 
     type(screen.getByLabelText("Search my roster"), "spears");
@@ -518,5 +533,139 @@ describe("the impact", () => {
     // The Rams are the softest draw in the fixture, so taking Nacua can only
     // make the average easier.
     expect(screen.getAllByText("easier").length).toBeGreaterThan(0);
+  });
+
+});
+
+// ── A trade that arrived by link ────────────────────────────────────────────
+
+describe("opening a shared trade", () => {
+  // Roster 1 (mine) gives Spears for roster 2's Nacua.
+  const LINK = "/trade-analyzer?tab=contender&league=L1&from=1&give=m_flex&get=p_wr";
+
+  const ready = async (props = {}, path = LINK) => {
+    show(props, path);
+    await waitFor(() => expect(screen.getByText("Impact")).toBeInTheDocument());
+  };
+
+  it("loads the league the link names without being told to pick it", async () => {
+    await ready();
+
+    expect(load.loadLeague).toHaveBeenCalledWith("L1", expect.anything());
+    expect(screen.getByLabelText("League")).toHaveValue("L1");
+    expect(screen.getByText("Tyjae Spears")).toBeInTheDocument();
+    expect(screen.getByText("Puka Nacua")).toBeInTheDocument();
+  });
+
+  it("works for somebody who is not signed in at all", async () => {
+    // Most of the point of sending one: the league-mate it goes to need not
+    // have set a username in this app.
+    load.loadLeagues.mockResolvedValue({ userId: null, leagues: [] });
+    await ready({ userName: "" });
+
+    expect(load.loadLeagues).not.toHaveBeenCalled();
+    expect(load.loadLeague).toHaveBeenCalledWith("L1", expect.anything());
+    // Neither roster is theirs, so neither is called "mine".
+    expect(screen.queryByText("My team")).not.toBeInTheDocument();
+    expect(screen.getAllByText("My Team").length).toBeGreaterThan(0);
+  });
+
+  it("draws it from the viewer's own side when they are the other half", async () => {
+    // The trade is the same trade; which way round it is drawn is not.
+    load.loadLeagues.mockResolvedValue({ userId: "u-them", leagues: [LEAGUE] });
+    await ready();
+
+    const mineTile = document.querySelector(".ch-tile-mine");
+    expect(mineTile).toHaveTextContent("My team");
+    // Their roster gives Nacua and gets Spears, which is the link read from
+    // the other end.
+    const [giving, getting] = document.querySelectorAll(".trade-panel");
+    expect(giving).toHaveTextContent("I give");
+    expect(giving).toHaveTextContent("Puka Nacua");
+    expect(getting).toHaveTextContent("Tyjae Spears");
+  });
+
+  it("says when a player has moved since the link was made", async () => {
+    // Waivers run and other trades go through. Priced as though nothing had
+    // moved, the roster is charged for a player it no longer holds.
+    load.loadLeagueDetail.mockResolvedValue({
+      rosters: ROSTERS.map((roster) =>
+        roster.roster_id === 1
+          ? { ...roster, players: roster.players.filter((id) => id !== "m_flex") }
+          : roster.roster_id === 3
+          ? { ...roster, players: [...roster.players, "m_flex"] }
+          : roster
+      ),
+      users: USERS,
+    });
+    await ready();
+
+    const warning = screen.getByText(/no longer on the roster it was built against/);
+    expect(warning).toHaveTextContent("Tyjae Spears");
+  });
+
+  it("still draws it when everybody on the other side has moved", async () => {
+    // Nobody left to infer a partner from, but the trade still has to be shown
+    // from the roster the link named, or the staleness cannot be reported.
+    load.loadLeagueDetail.mockResolvedValue({
+      rosters: ROSTERS.map((roster) =>
+        roster.roster_id === 2
+          ? { ...roster, players: roster.players.filter((id) => id !== "p_wr") }
+          : roster
+      ),
+      users: USERS,
+    });
+    show({}, LINK);
+
+    const warning = await screen.findByText(/no longer on the roster it was built against/);
+    expect(warning).toHaveTextContent("Puka Nacua");
+    expect(document.querySelector(".ch-tile-mine")).toHaveTextContent("My team");
+  });
+
+  it("is an ordinary trade otherwise, not a locked one", async () => {
+    await ready();
+
+    click(screen.getByLabelText("Remove Spears"));
+    expect(screen.queryByText("Tyjae Spears")).not.toBeInTheDocument();
+  });
+
+  it("ignores a link that does not describe a trade", async () => {
+    show({}, "/trade-analyzer?tab=contender&league=L1");
+    await screen.findByLabelText("League");
+
+    expect(load.loadLeague).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("League")).toHaveValue("");
+  });
+});
+
+describe("copying a link", () => {
+  it("offers one for the trade as built, naming the roster", async () => {
+    const writeText = jest.fn(() => Promise.resolve());
+    Object.assign(navigator, { clipboard: { writeText } });
+
+    await open();
+    await pickLeague();
+    type(screen.getByLabelText("Search my roster"), "spears");
+    click(await screen.findByText("Tyjae Spears"));
+    type(screen.getByLabelText("Search the league"), "nacua");
+    click(await screen.findByText("Puka Nacua"));
+
+    click(await screen.findByRole("button", { name: /Copy a link/ }));
+
+    expect(writeText).toHaveBeenCalledTimes(1);
+    const link = writeText.mock.calls[0][0];
+    expect(link).toContain("tab=contender");
+    expect(link).toContain("league=L1");
+    expect(link).toContain("from=1");
+    expect(link).toContain("give=m_flex");
+    expect(link).toContain("get=p_wr");
+    // The person is not in it; the roster is.
+    expect(link).not.toContain("carnade");
+  });
+
+  it("offers nothing to copy before there is a trade", async () => {
+    await open();
+    await pickLeague();
+    expect(screen.queryByRole("button", { name: /Copy a link/ })).not.toBeInTheDocument();
   });
 });

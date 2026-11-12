@@ -20,6 +20,7 @@
 // Only what is genuinely new here takes a `ch-` prefix.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch, faTimes } from "@fortawesome/free-solid-svg-icons";
 
@@ -33,6 +34,7 @@ import { projectedPoints } from "./leagueScoring";
 import { fptsPerGame } from "./playerForm";
 import { rankColor } from "./dvpColor";
 import { ordinal } from "./ordinal";
+import { decodeTrade, staleTradePlayers, tradeLinkFor } from "./tradeLink";
 import {
   averageSos,
   byeStatusFor,
@@ -71,6 +73,11 @@ const weekSpan = (weeks) => {
 };
 
 function ContenderTab({ userName, active = false, onSendTrade }) {
+  const location = useLocation();
+  // Read once: a shared trade is a starting point, not a binding. Re-reading it
+  // would undo every edit the moment anything else re-rendered.
+  const [link] = useState(() => decodeTrade(location.search));
+
   // Opened once is opened for good: the pane stays mounted after the first
   // visit, and so should its data.
   const opened = useRef(false);
@@ -104,6 +111,10 @@ function ContenderTab({ userName, active = false, onSendTrade }) {
   const [give, setGive] = useState([]);
   const [take, setTake] = useState([]);
   const [queries, setQueries] = useState({ give: "", take: "" });
+  // The roster the trade is drawn from, when a link fixed it rather than the
+  // signed-in user's own.
+  const [linkRoster, setLinkRoster] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   const [basis, setBasis] = useState("ppg");
   const [sosBasis, setSosBasis] = useState("2026");
@@ -114,23 +125,41 @@ function ContenderTab({ userName, active = false, onSendTrade }) {
   // ── Loading ───────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!live || !userName) return undefined;
+    // A link needs no username: it names the league, and whoever opens it may
+    // not be in it, or signed in at all.
+    if (!live || (!userName && !link)) return undefined;
     const controller = new AbortController();
     let alive = true;
 
     (async () => {
       setStatus("loading");
       try {
-        const [week, found, fixtures] = await Promise.all([
+        const [week, found, fixtures, shared] = await Promise.all([
           getCurrentWeek(),
-          load.loadLeagues(userName, { signal: controller.signal }),
+          userName
+            ? load.loadLeagues(userName, { signal: controller.signal })
+            : Promise.resolve({ userId: null, leagues: [] }),
           load.loadSchedule({ signal: controller.signal }),
+          link
+            ? load.loadLeague(link.leagueId, { signal: controller.signal })
+            : Promise.resolve(null),
         ]);
         if (!alive) return;
         setCurrentWeek(week);
         setUserId(found.userId);
-        setLeagues(found.leagues);
         setSchedule(fixtures);
+
+        // The shared league need not be one of the viewer's own, so it joins
+        // the list rather than being looked up in it.
+        const known = found.leagues.some(
+          (one) => String(one.league_id) === String(link?.leagueId)
+        );
+        setLeagues(shared && !known ? [shared, ...found.leagues] : found.leagues);
+        if (link) {
+          setLeagueId(String(link.leagueId));
+          setGive(link.give);
+          setTake(link.get);
+        }
         setStatus("ready");
       } catch (e) {
         if (!alive || e.name === "AbortError") return;
@@ -143,7 +172,7 @@ function ContenderTab({ userName, active = false, onSendTrade }) {
       alive = false;
       controller.abort();
     };
-  }, [live, userName]);
+  }, [live, userName, link]);
 
   const league = useMemo(
     () => leagues.find((l) => String(l.league_id) === String(leagueId)) || null,
@@ -196,9 +225,17 @@ function ContenderTab({ userName, active = false, onSendTrade }) {
   }, [live, league]);
 
   // Switching league invalidates the trade: the players belong to the old one.
+  // The league a link names is excepted, because the link set that trade up.
+  const linkLeague = useRef(link ? String(link.leagueId) : null);
   useEffect(() => {
+    if (linkLeague.current && leagueId === linkLeague.current) {
+      // Once only. Leave and come back and it is an ordinary league again.
+      linkLeague.current = null;
+      return;
+    }
     setGive([]);
     setTake([]);
+    setLinkRoster(null);
     setQueries({ give: "", take: "" });
     setProjections({});
     setProjStatus("idle");
@@ -281,7 +318,7 @@ function ContenderTab({ userName, active = false, onSendTrade }) {
 
   // ── Reading the league ────────────────────────────────────────────────────
 
-  const myRoster = useMemo(
+  const viewerRoster = useMemo(
     () =>
       rosters.find(
         (roster) =>
@@ -290,6 +327,24 @@ function ContenderTab({ userName, active = false, onSendTrade }) {
       ) || null,
     [rosters, userId]
   );
+
+  // Whose side the trade is drawn from. Normally the viewer's own; for a trade
+  // that arrived by link, whichever roster the link named — or, once the sides
+  // have been swapped below, the viewer's, because they turned out to be the
+  // other half of it.
+  const myRoster = useMemo(() => {
+    if (linkRoster != null) {
+      return (
+        rosters.find((roster) => String(roster.roster_id) === String(linkRoster)) || null
+      );
+    }
+    return viewerRoster;
+  }, [linkRoster, rosters, viewerRoster]);
+
+  // Is the team on the left the viewer's own? It decides nothing about the
+  // figures and everything about what to call it.
+  const mineIsViewers =
+    !!myRoster && !!viewerRoster && String(myRoster.roster_id) === String(viewerRoster.roster_id);
 
   const teamName = useCallback(
     (roster) => {
@@ -316,6 +371,42 @@ function ContenderTab({ userName, active = false, onSendTrade }) {
         : null,
     [partner, rosters]
   );
+
+  // Players the link named who are somewhere else now. A link outlives the
+  // rosters it describes, and priced as though nothing had moved the figures
+  // are quietly wrong.
+  const moved = useMemo(() => {
+    if (!link || !myRoster) return [];
+    return staleTradePlayers({
+      give,
+      get: take,
+      rosterId: myRoster.roster_id,
+      partnerId: partnerRoster?.roster_id ?? null,
+      holder: rosterIdOf,
+    });
+  }, [link, myRoster, partnerRoster, give, take, rosterIdOf]);
+
+  // A trade arriving by link is drawn from the roster it names — unless the
+  // viewer turns out to be the other half of it, in which case the two sides
+  // swap so it reads from theirs. Swapping the sides rather than relabelling
+  // them means every figure below is already the right way round.
+  const settled = useRef(false);
+  useEffect(() => {
+    // Not waiting on a partner: when every player the link asks for has since
+    // moved there is nobody to infer, and the trade still has to be drawn from
+    // the roster the link named so the staleness can be reported at all.
+    if (!link || settled.current || rosters.length === 0) return;
+    settled.current = true;
+
+    const theirs = partner ? String(partner.rosterId) : null;
+    if (theirs && viewerRoster && String(viewerRoster.roster_id) === theirs) {
+      setLinkRoster(theirs);
+      setGive(link.get);
+      setTake(link.give);
+    } else {
+      setLinkRoster(String(link.rosterId));
+    }
+  }, [link, rosters, partner, viewerRoster]);
 
   const positionsOf = useCallback(
     (id) => {
@@ -564,7 +655,9 @@ function ContenderTab({ userName, active = false, onSendTrade }) {
 
   // ── Render ───────────────────────────────────────────────────────────────
 
-  if (!userName) {
+  // A shared trade names its own league, so it needs no username — which is
+  // the whole point of being able to send one to a league-mate.
+  if (!userName && !link) {
     return <p className="ch-note">Set a Sleeper username to compare a trade in one of your leagues.</p>;
   }
   if (status === "failed") {
@@ -771,6 +864,29 @@ function ContenderTab({ userName, active = false, onSendTrade }) {
     );
   };
 
+  // What to call the side the trade is drawn from. "My team" only when it is
+  // actually the viewer's — someone opening a link to a league they are not in
+  // should see two team names, not one of them claiming to be theirs.
+  const mineLabel = mineIsViewers || !myRoster ? "My team" : teamName(myRoster);
+
+  const shareLink = tradeLinkFor(
+    typeof window === "undefined" ? "" : window.location.origin,
+    location.pathname,
+    { leagueId, rosterId: myRoster?.roster_id, give, get: take }
+  );
+
+  const copyLink = () => {
+    if (!shareLink) return;
+    try {
+      navigator.clipboard.writeText(shareLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // A browser that refuses the clipboard is not worth an error state; the
+      // link is in the box beside the button either way.
+    }
+  };
+
   const playerName = (id) =>
     [meta[String(id)]?.first_name, meta[String(id)]?.last_name].filter(Boolean).join(" ") ||
     String(id);
@@ -943,6 +1059,17 @@ function ContenderTab({ userName, active = false, onSendTrade }) {
           soon as the first player is taken, so a split can only come from
           rosters that changed since they were loaded. Cheap to keep, and a
           wrong partner would quietly misprice the other side. */}
+      {moved.length > 0 && (
+        <p className="ch-note ch-error">
+          This trade came from a link, and{" "}
+          {moved.map((row) => playerName(row.id)).join(", ")}{" "}
+          {moved.length === 1 ? "is" : "are"} no longer on the roster it was built
+          against. The figures below count{" "}
+          {moved.length === 1 ? "them" : "them"} anyway, so they are worth less than
+          they look.
+        </p>
+      )}
+
       {partner && partner.teamCount > 1 && (
         <p className="ch-note ch-error">
           The players you are getting come from {partner.teamCount} different teams. Their
@@ -972,7 +1099,7 @@ function ContenderTab({ userName, active = false, onSendTrade }) {
               for the run-in, which is a confusing thing to put there. */}
           <div className="ch-headline">
             {[
-              ["mine", "My team", true],
+              ["mine", mineLabel, true],
               [
                 "theirs",
                 partnerRoster && partner.teamCount === 1
@@ -1026,8 +1153,8 @@ function ContenderTab({ userName, active = false, onSendTrade }) {
             ))}
           </div>
 
-          {onSendTrade && (
-            <div className="ch-send">
+          <div className="ch-send">
+            {onSendTrade && (
               <button
                 type="button"
                 className="ch-send-button"
@@ -1035,12 +1162,18 @@ function ContenderTab({ userName, active = false, onSendTrade }) {
               >
                 Price this trade in the Trade Helper
               </button>
-              <span className="ch-send-note">
-                Sends both sides over and opens that tab, so the same trade can be read in
-                dynasty value as well.
-              </span>
-            </div>
-          )}
+            )}
+            {shareLink && (
+              <button type="button" className="ch-send-button" onClick={copyLink}>
+                {copied ? "Link copied" : "Copy a link to this trade"}
+              </button>
+            )}
+            <span className="ch-send-note">
+              The link carries the league and the two rosters, so it opens for whoever you
+              send it to — signed in or not — and is worked out again from the
+              rosters as they stand that day rather than showing the figures frozen here.
+            </span>
+          </div>
 
           <div className="ch-sos-pills" role="group" aria-label="Schedule basis">
             {SOS_BASES.map((option) => (
@@ -1056,7 +1189,7 @@ function ContenderTab({ userName, active = false, onSendTrade }) {
           </div>
 
           <div className="ch-teams">
-            <span className="ch-mine">My team</span>
+            <span className="ch-mine">{mineLabel}</span>
             <span className="ch-measure" />
             <span className="ch-theirs">
               {partnerRoster && partner.teamCount === 1
@@ -1080,7 +1213,7 @@ function ContenderTab({ userName, active = false, onSendTrade }) {
           <details className="ch-weeks" open>
             <summary>Week by week</summary>
             <div className="ch-week-tables">
-              {weekTable("My team", headline.mine)}
+              {weekTable(mineLabel, headline.mine)}
               {partnerRoster && partner.teamCount === 1
                 ? weekTable(teamName(partnerRoster), headline.theirs)
                 : null}

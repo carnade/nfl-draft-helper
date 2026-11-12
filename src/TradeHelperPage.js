@@ -18,6 +18,7 @@
 // is the active one and waits to be asked — see the note in ContenderTab.js.
 
 import React, { useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 
 import "./TradeHelperPage.css";
 import TradeAnalyzer from "./TradeAnalyzer";
@@ -31,7 +32,13 @@ const TABS = [
 ];
 
 function TradeHelperPage({ userName, setUserName }) {
-  const [activeTab, setActiveTab] = useState("trade");
+  const location = useLocation();
+  // A shared trade links straight to the tab that can read it. Read once, so
+  // moving between tabs afterwards is not fought by the URL it arrived on.
+  const [activeTab, setActiveTab] = useState(() => {
+    const wanted = new URLSearchParams(location.search).get("tab");
+    return TABS.some((tab) => tab.id === wanted) ? wanted : "trade";
+  });
   const trade = useRef(null);
 
   // `team2` is the "<user> gets..." panel — what the trade brings in. The tab
