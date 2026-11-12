@@ -41,6 +41,25 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2026-11-12",
+      title: "A Contender Helper: what a trade does to the weeks that are left",
+      items: [
+        "A third tab on the Trade Helper page. Pick one of your leagues, put players on each side of a trade, and it works out the lineup you would actually field afterwards \u2014 week by week, to the end of the season and again through the fantasy playoffs.",
+        "The point is that a four-for-two changes who starts. Two of the four were on the bench and were never scoring for you anyway; the two coming back push two of your starters out. So it is not the players who are added up, it is the best lineup your roster can field before and after, every remaining week.",
+        "Two separate readings of the same trade, and they are worth comparing. One uses Sleeper\u2019s projections for each coming week; the other uses what each player has actually averaged this season. Both are priced in your league\u2019s own scoring, so a tight-end premium or a superflex counts properly.",
+        "Bye weeks are part of it rather than a footnote. A player on bye in one of those weeks scores nothing and somebody comes off your bench to cover, which is what makes trading for a player whose bye is already behind them worth something. Each player in the trade says whether their bye is done or still to come.",
+        "The strength of schedule your starters face, before and after, for the run-in and for the playoffs separately \u2014 and where that puts you among the twelve teams in the league, since a bare percentage is hard to read on its own.",
+        "The other side is worked out too, from their roster and their lineup, so you can see whether what you are offering is worth anything to them. Who they are comes from the players you ask for \u2014 no second dropdown to get out of step with it. Your figures run down the left and theirs down the right, with what is being measured between them, so each row reads as the trade it is.",
+        "Both readings stay on show at once rather than one replacing the other, for both sides and both windows \u2014 a season average sitting next to a projection is worth more than either on its own, especially when they disagree.",
+        "A button hands the whole trade over to the Trade Helper, both sides at once, so the same trade can be read in dynasty value straight afterwards without building it a second time.",
+        "Click into either search box and the roster behind it drops down to be browsed rather than typed at \u2014 your own on the left, and on the right whichever team you are trading with, once the first player has settled who that is. Listed in position order with the best first, since \"what else have they got\" is not a question you can type the answer to. Position pills on every row, searching or browsing.",
+        "And a link you can copy and send. It carries the league and the two rosters rather than a person, so whoever opens it sees the same trade \u2014 drawn from their own side if they are the other half of it, and working even for a league-mate who has never set a username here. The figures are worked out fresh when it is opened rather than frozen, and if a player has moved rosters since, it says so instead of quietly pricing a trade that can no longer happen.",
+        "Open the week-by-week view and you get both sides of it, week for week, with who is on bye each week. A bye that hurts you in week 13 may hurt them more, and which of the two it is tends to be the thing you are actually weighing up.",
+        "Where a figure cannot be worked out, it says so and says why instead of showing a number. A player listed Out has no projections published at all, not even for the weeks he is due back, so on that reading a trade for him cannot be judged \u2014 the season-average reading beside it answers it properly.",
+        "Nothing is fetched until you open the tab, and the projections wait until you ask for them, because there are eight weeks of them to download.",
+      ],
+    },
+    {
       date: "2026-11-09",
       title: "Open a Gameday matchup to see both lineups",
       items: [

@@ -1,4 +1,4 @@
-import { bestLineupPoints, pointsLeftOnBench } from "./bestLineup";
+import { bestLineupPoints, bestLineupSlots, pointsLeftOnBench } from "./bestLineup";
 
 const POS = {
   qb1: ["QB"], qb2: ["QB"],
@@ -146,5 +146,74 @@ describe("pointsLeftOnBench", () => {
 
   it("is null when the best lineup is unknown", () => {
     expect(pointsLeftOnBench(null, 100)).toBeNull();
+  });
+});
+
+describe("bestLineupSlots", () => {
+  const pts = { qb1: 20, qb2: 30, rb1: 10, rb2: 12, rb3: 5, wr1: 8, wr2: 9, te1: 7 };
+  const picked = () =>
+    bestLineupSlots({
+      rosterPositions: STD,
+      players: Object.keys(pts),
+      playerPoints: pts,
+      positionsOf,
+    });
+
+  it("says who is in which slot", () => {
+    expect(picked().assignments).toEqual([
+      { slot: "QB", slotIndex: 0, playerId: "qb2", points: 30 },
+      { slot: "RB", slotIndex: 1, playerId: "rb2", points: 12 },
+      { slot: "RB", slotIndex: 2, playerId: "rb1", points: 10 },
+      { slot: "WR", slotIndex: 3, playerId: "wr2", points: 9 },
+      { slot: "WR", slotIndex: 4, playerId: "wr1", points: 8 },
+      { slot: "TE", slotIndex: 5, playerId: "te1", points: 7 },
+      { slot: "FLEX", slotIndex: 6, playerId: "rb3", points: 5 },
+    ]);
+  });
+
+  it("comes back in roster order, not in the order the slots were filled", () => {
+    // The flex is filled last but sits last anyway; the point is that the
+    // indices ascend, because a lineup is read down the slots.
+    const indices = picked().assignments.map((slot) => slot.slotIndex);
+    expect(indices).toEqual([...indices].sort((a, b) => a - b));
+  });
+
+  it("names everyone left over", () => {
+    expect(picked().benched).toEqual(["qb1"]);
+  });
+
+  it("reports a slot nothing could fill", () => {
+    // A roster genuinely short a kicker: the lineup is still valid and the
+    // empty slot is said out loud rather than silently skipped.
+    const withKicker = [...STD, "K"];
+    const result = bestLineupSlots({
+      rosterPositions: withKicker,
+      players: Object.keys(pts),
+      playerPoints: pts,
+      positionsOf,
+    });
+    expect(result.unfilled).toEqual([{ slot: "K", slotIndex: 7 }]);
+    expect(result.total).toBe(81);
+  });
+
+  it("is null when the league has no startable slots", () => {
+    expect(
+      bestLineupSlots({ rosterPositions: ["BN", "IR"], players: ["qb1"], playerPoints: pts, positionsOf })
+    ).toBeNull();
+  });
+
+  it("agrees with bestLineupPoints, which is now built on it", () => {
+    // The guard on the refactor: one optimiser, two readings of it.
+    const cases = [
+      { rosterPositions: STD, players: Object.keys(pts), playerPoints: pts },
+      { rosterPositions: ["QB", "SUPER_FLEX"], players: ["qb1", "qb2", "rb1"], playerPoints: pts },
+      { rosterPositions: ["WR", "FLEX"], players: ["wr1", "rb1", "wr2"], playerPoints: pts },
+      { rosterPositions: ["BN"], players: ["qb1"], playerPoints: pts },
+      { rosterPositions: STD, players: [], playerPoints: {} },
+    ];
+    for (const args of cases) {
+      const full = bestLineupSlots({ ...args, positionsOf });
+      expect(bestLineupPoints({ ...args, positionsOf })).toBe(full ? full.total : null);
+    }
   });
 });

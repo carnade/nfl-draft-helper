@@ -19,7 +19,7 @@
 import { buildSlots, isEligible, eligiblePositions } from "./startSitModel";
 
 /**
- * The highest total this roster could have started.
+ * The best lineup itself: the total, and who is in which slot.
  *
  * `positionsOf(playerId)` returns that player's fantasy positions.
  *
@@ -27,8 +27,16 @@ import { buildSlots, isEligible, eligiblePositions } from "./startSitModel";
  * available for each. That is the order Sleeper itself resolves them in —
  * filling a flex before the position that can only go in one place would give
  * the flex a player the specific slot then has to do without.
+ *
+ * Exact for nested slot shapes, which is every league this app has seen:
+ * RB ⊂ FLEX ⊂ SUPER_FLEX, so a player taken by a narrower slot could never
+ * have been better used by a wider one. It is not a maximum-weight matching,
+ * so a league pairing REC_FLEX (WR/TE) with WRRB_FLEX (RB/WR) — equal-sized
+ * eligibility sets that tie in the sort — can be left a fraction short. Worth
+ * knowing when two runs are differenced against each other, as the Contender
+ * tab does: the bias mostly cancels, but it is a bias rather than noise.
  */
-export function bestLineupPoints({
+export function bestLineupSlots({
   rosterPositions = [],
   players = [],
   playerPoints = {},
@@ -50,8 +58,10 @@ export function bestLineupPoints({
     .sort((a, b) => eligiblePositions(a.slot).length - eligiblePositions(b.slot).length);
 
   const taken = new Set();
+  const assignments = [];
+  const unfilled = [];
   let total = 0;
-  for (const { slot } of order) {
+  for (const { slot, index } of order) {
     let best = null;
     for (const player of pool) {
       if (taken.has(player.id)) continue;
@@ -59,15 +69,38 @@ export function bestLineupPoints({
       if (!best || player.points > best.points) best = player;
     }
     // An empty slot is worth nothing rather than disqualifying the lineup: a
-    // roster can genuinely be short a kicker.
-    if (!best) continue;
+    // roster can genuinely be short a kicker. It is reported rather than
+    // swallowed, because a trade that leaves a slot empty should say so.
+    if (!best) {
+      unfilled.push({ slot, slotIndex: index });
+      continue;
+    }
     taken.add(best.id);
     total += best.points;
+    assignments.push({ slot, slotIndex: index, playerId: best.id, points: best.points });
   }
 
-  // Scores are quoted to two decimals everywhere else; summing floats here
-  // would otherwise show a hundredth that does not exist.
-  return Math.round(total * 100) / 100;
+  return {
+    // Scores are quoted to two decimals everywhere else; summing floats here
+    // would otherwise show a hundredth that does not exist.
+    total: Math.round(total * 100) / 100,
+    // Back in roster order, because a lineup is read down the slots rather
+    // than in the order they happened to be filled.
+    assignments: assignments.sort((a, b) => a.slotIndex - b.slotIndex),
+    unfilled: unfilled.sort((a, b) => a.slotIndex - b.slotIndex),
+    benched: pool.filter((player) => !taken.has(player.id)).map((player) => player.id),
+  };
+}
+
+/**
+ * The highest total this roster could have started.
+ *
+ * The original and still the only thing most callers want. Expressed through
+ * bestLineupSlots so there is one optimiser rather than two that can drift.
+ */
+export function bestLineupPoints(args) {
+  const picked = bestLineupSlots(args);
+  return picked ? picked.total : null;
 }
 
 /** How much was left on the bench. Null when the best lineup is unknown. */

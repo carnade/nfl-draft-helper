@@ -97,6 +97,24 @@ export function positionLabel(slot) {
  * Neither of those occurs in any league this app has seen — they exist in
  * SLOT_ELIGIBILITY and so must render something sane rather than nonsense.
  */
+/**
+ * The order positions are conventionally listed in.
+ *
+ * Anything unknown sorts to the end rather than to the front, so an IDP slot or
+ * a position this app has not met does not lead a roster listing.
+ */
+export const POSITION_ORDER = ["qb", "rb", "wr", "te", "flx", "k", "dst"];
+
+export function comparePositions(a, b) {
+  // Through positionKey, so every spelling of a defence lands in one place
+  // rather than DEF and D/ST sorting to opposite ends of a roster.
+  const rank = (position) => {
+    const at = POSITION_ORDER.indexOf(positionKey(position));
+    return at === -1 ? POSITION_ORDER.length : at;
+  };
+  return rank(a) - rank(b);
+}
+
 export const COMPOSITE_SLOTS = {
   FLEX: { label: "FLX", bands: ["WR", "RB", "TE"] },
   SUPER_FLEX: { label: "SFLX", bands: ["QB", "WR", "RB", "TE"] },

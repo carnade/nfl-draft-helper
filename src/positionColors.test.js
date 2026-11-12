@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import {
+  comparePositions,
   positionKey,
   positionClass,
   positionFill,
@@ -255,5 +256,28 @@ describe("compositeGradient", () => {
     expect(compositeGradient("QB")).toBeNull();
     expect(compositeGradient("DST")).toBeNull();
     expect(compositeGradient(null)).toBeNull();
+  });
+});
+
+describe("comparePositions", () => {
+  it("puts a roster in the order one is usually listed", () => {
+    const shuffled = ["DEF", "WR", "QB", "TE", "K", "RB"];
+    expect([...shuffled].sort(comparePositions)).toEqual([
+      "QB", "RB", "WR", "TE", "K", "DEF",
+    ]);
+  });
+
+  it("lands every spelling of a defence in the same place", () => {
+    expect(comparePositions("DEF", "D/ST")).toBe(0);
+    expect(comparePositions("DST", "QB")).toBeGreaterThan(0);
+  });
+
+  it("sorts something it has never met to the end, not the front", () => {
+    expect([...["LB", "QB"]].sort(comparePositions)).toEqual(["QB", "LB"]);
+    expect([...["LB", "DEF"]].sort(comparePositions)).toEqual(["DEF", "LB"]);
+  });
+
+  it("is stable for two of the same position", () => {
+    expect(comparePositions("WR", "WR")).toBe(0);
   });
 });

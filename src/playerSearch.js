@@ -37,6 +37,10 @@ export const playerKey = (firstName, lastName) => `${firstName}-${lastName}`;
 // boolean so a real match always beats a coincidence, whatever order the
 // leagues happen to come in.
 //
+// Exported for the Contender tab, whose search is over one league's rosters
+// rather than this module's playersByLeague shape. Two name matchers in one app
+// would eventually disagree about who "chase" means.
+//
 // Surnames outrank first names because one word is nearly always a surname:
 // "davis" means Malik Davis, not Davis Mills, and "chase" means Ja'Marr Chase
 // rather than Chase Brown. Ranking on the whole name instead put the first-name
@@ -49,7 +53,7 @@ const NAME_PREFIX = 3;
 const WORD_PREFIX = 4;
 const SUBSTRING = 5;
 
-function rank(query, firstName, lastName) {
+export function nameRank(query, firstName, lastName) {
   const name = normalise(`${firstName} ${lastName}`);
   const surname = normalise(lastName);
   const q = normalise(query);
@@ -89,7 +93,7 @@ export function matchPlayers(query, playersByLeague = {}) {
       const lastName = player?.last_name || "";
       if (!firstName && !lastName) continue;
 
-      const score = rank(query, firstName, lastName);
+      const score = nameRank(query, firstName, lastName);
       if (score === null) continue;
 
       const key = playerKey(firstName, lastName);
