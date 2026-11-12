@@ -600,8 +600,45 @@ describe("opening a shared trade", () => {
     });
     await ready();
 
-    const warning = screen.getByText(/no longer on the roster it was built against/);
-    expect(warning).toHaveTextContent("Tyjae Spears");
+    const warning = screen.getByText(/came from a link/);
+    // Where they are, not just that they are not here.
+    expect(warning).toHaveTextContent("Tyjae Spears (Third Team)");
+    expect(warning).toHaveTextContent("not on My Team");
+  });
+
+  it("offers the right roster when the link named the wrong one", () => {
+    // What a hand-built link with the wrong roster id in it looks like: every
+    // player it gives sits together somewhere else.
+    const wrong = "/trade-analyzer?tab=contender&league=L1&from=3&give=m_flex&get=p_wr";
+    return (async () => {
+      show({}, wrong);
+      const warning = await screen.findByText(/came from a link/);
+      expect(warning).toHaveTextContent("Tyjae Spears (My Team)");
+
+      click(screen.getByRole("button", { name: /Draw it from My Team instead/ }));
+
+      await waitFor(() =>
+        expect(screen.queryByText(/came from a link/)).not.toBeInTheDocument()
+      );
+      expect(document.querySelector(".ch-tile-mine")).toHaveTextContent("My team");
+    })();
+  });
+
+  it("offers nothing when the link has merely gone stale", async () => {
+    // One player moved while the rest still line up: there is no other roster
+    // to redraw to, so a button would be guessing.
+    load.loadLeagueDetail.mockResolvedValue({
+      rosters: ROSTERS.map((roster) =>
+        roster.roster_id === 1
+          ? { ...roster, players: roster.players.filter((id) => id !== "m_flex") }
+          : roster
+      ),
+      users: USERS,
+    });
+    show({}, "/trade-analyzer?tab=contender&league=L1&from=1&give=m_flex,m_te&get=p_wr");
+
+    await screen.findByText(/came from a link/);
+    expect(screen.queryByRole("button", { name: /Draw it from/ })).not.toBeInTheDocument();
   });
 
   it("still draws it when everybody on the other side has moved", async () => {
@@ -617,7 +654,7 @@ describe("opening a shared trade", () => {
     });
     show({}, LINK);
 
-    const warning = await screen.findByText(/no longer on the roster it was built against/);
+    const warning = await screen.findByText(/came from a link/);
     expect(warning).toHaveTextContent("Puka Nacua");
     expect(document.querySelector(".ch-tile-mine")).toHaveTextContent("My team");
   });

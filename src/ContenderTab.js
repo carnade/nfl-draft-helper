@@ -34,7 +34,12 @@ import { projectedPoints } from "./leagueScoring";
 import { fptsPerGame } from "./playerForm";
 import { rankColor } from "./dvpColor";
 import { ordinal } from "./ordinal";
-import { decodeTrade, staleTradePlayers, tradeLinkFor } from "./tradeLink";
+import {
+  decodeTrade,
+  impliedRoster,
+  staleTradePlayers,
+  tradeLinkFor,
+} from "./tradeLink";
 import {
   averageSos,
   byeStatusFor,
@@ -385,6 +390,17 @@ function ContenderTab({ userName, active = false, onSendTrade }) {
       holder: rosterIdOf,
     });
   }, [link, myRoster, partnerRoster, give, take, rosterIdOf]);
+
+  // Where the giving side actually sits, when it sits somewhere else to a team.
+  // That is a link built against the wrong roster rather than one gone stale,
+  // and it is recoverable in one click.
+  const impliedId = useMemo(
+    () =>
+      link && myRoster
+        ? impliedRoster({ give, rosterId: myRoster.roster_id, holder: rosterIdOf })
+        : null,
+    [link, myRoster, give, rosterIdOf]
+  );
 
   // A trade arriving by link is drawn from the roster it names — unless the
   // viewer turns out to be the other half of it, in which case the two sides
@@ -1061,12 +1077,40 @@ function ContenderTab({ userName, active = false, onSendTrade }) {
           wrong partner would quietly misprice the other side. */}
       {moved.length > 0 && (
         <p className="ch-note ch-error">
+          {/* Say where they are, not only that they are elsewhere. "Not on this
+              roster" is a dead end; "they are on Hindenburg Hooligans" is the
+              answer and, below, the way out. */}
           This trade came from a link, and{" "}
-          {moved.map((row) => playerName(row.id)).join(", ")}{" "}
-          {moved.length === 1 ? "is" : "are"} no longer on the roster it was built
-          against. The figures below count{" "}
-          {moved.length === 1 ? "them" : "them"} anyway, so they are worth less than
-          they look.
+          {moved
+            .map((row) => {
+              const holder = rosters.find(
+                (roster) => String(roster.roster_id) === String(row.now)
+              );
+              return `${playerName(row.id)} (${
+                holder ? teamName(holder) : "no roster in this league"
+              })`;
+            })
+            .join(", ")}{" "}
+          {moved.length === 1 ? "is" : "are"} not on{" "}
+          {myRoster ? teamName(myRoster) : "the roster it names"}. The figures below
+          count {moved.length === 1 ? "them" : "them"} anyway, so they are worth less
+          than they look.
+          {impliedId && (
+            <>
+              {" "}
+              <button
+                type="button"
+                className="ch-inline-button"
+                onClick={() => setLinkRoster(impliedId)}
+              >
+                Draw it from{" "}
+                {teamName(
+                  rosters.find((roster) => String(roster.roster_id) === String(impliedId))
+                )}{" "}
+                instead
+              </button>
+            </>
+          )}
         </p>
       )}
 

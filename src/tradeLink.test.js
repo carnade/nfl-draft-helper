@@ -1,6 +1,7 @@
 import {
   decodeTrade,
   encodeTrade,
+  impliedRoster,
   staleTradePlayers,
   tradeLinkFor,
 } from "./tradeLink";
@@ -156,5 +157,34 @@ describe("staleTradePlayers", () => {
     expect(
       staleTradePlayers({ ...TRADE, rosterId: "3", partnerId: "7", holder })
     ).toEqual([]);
+  });
+});
+
+describe("impliedRoster", () => {
+  const holders = { 6790: 2, 9480: 2, 9493: 1, 1111: 5 };
+  const holder = (id) => (holders[id] == null ? null : holders[id]);
+
+  it("spots a link naming the wrong roster entirely", () => {
+    // Everything it gives sits together somewhere else, which is what a
+    // hand-built link with the wrong id in it looks like.
+    expect(impliedRoster({ give: ["6790", "9480"], rosterId: 3, holder })).toBe("2");
+  });
+
+  it("says nothing when the link is already right", () => {
+    expect(impliedRoster({ give: ["6790", "9480"], rosterId: 2, holder })).toBeNull();
+  });
+
+  it("says nothing about one player having moved on", () => {
+    // Merely stale: the rest still line up, so there is nothing to redraw to.
+    expect(impliedRoster({ give: ["6790", "1111"], rosterId: 2, holder })).toBeNull();
+  });
+
+  it("says nothing when a player is on no roster at all", () => {
+    expect(impliedRoster({ give: ["6790", "nobody"], rosterId: 3, holder })).toBeNull();
+    expect(impliedRoster({ give: ["nobody"], rosterId: 3, holder })).toBeNull();
+  });
+
+  it("says nothing about an empty side", () => {
+    expect(impliedRoster({ give: [], rosterId: 3, holder })).toBeNull();
   });
 });

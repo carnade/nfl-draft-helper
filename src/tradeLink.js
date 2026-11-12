@@ -96,6 +96,28 @@ export function decodeTrade(search) {
 }
 
 /**
+ * The roster the giving side of a link probably meant.
+ *
+ * Two different things produce the same warning, and only one is worth offering
+ * a way out of. A link can go stale — one player moves on waivers while the
+ * rest still line up. Or it can have been wrong from the start, which looks
+ * quite different: *every* player it gives sits together on one roster that is
+ * not the one named. A link hand-built with the wrong roster id in it does
+ * exactly that, and so does one copied from the wrong half of a trade.
+ *
+ * Null unless the giving side is unanimous and points somewhere else, because
+ * anything less is a guess and acting on it redraws the whole page.
+ */
+export function impliedRoster({ give = [], rosterId, holder }) {
+  if (give.length === 0) return null;
+  const holders = new Set(give.map((id) => String(holder(String(id)))));
+  if (holders.size !== 1) return null;
+  const [only] = [...holders];
+  if (only === "null" || only === "undefined" || only === String(rosterId)) return null;
+  return only;
+}
+
+/**
  * Players the link names who are not where it says they are.
  *
  * A link outlives the rosters it describes: waivers run, other trades go

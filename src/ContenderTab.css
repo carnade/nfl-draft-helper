@@ -428,6 +428,18 @@
   background: hsl(var(--primary) / 0.2);
 }
 
+/* A way out offered inside a warning, so it reads as part of the sentence. */
+.ch-inline-button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .ch-send-note {
   font-size: 0.75rem;
   color: hsl(var(--foreground) / 0.55);
