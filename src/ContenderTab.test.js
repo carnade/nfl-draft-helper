@@ -244,7 +244,7 @@ describe("building a trade", () => {
     await pickLeague();
 
     type(screen.getByLabelText("Search the league"), "mahomes");
-    expect(await screen.findByText(/free agents cannot be traded for/)).toBeInTheDocument();
+    expect(await screen.findByText(/a free agent cannot be traded for/)).toBeInTheDocument();
   });
 
   it("infers the partner from the first player taken and narrows to them", async () => {
@@ -258,8 +258,11 @@ describe("building a trade", () => {
 
     // A third team's player is now out of reach, which is what keeps the
     // inferred partner honest without a dropdown that could disagree with it.
+    // The message names the team rather than the league, and says the way out.
     type(screen.getByLabelText("Search the league"), "odunze");
-    expect(await screen.findByText(/Nobody on a roster in this league/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Nobody on Their Team by that name\. Clear their side/)
+    ).toBeInTheDocument();
   });
 
   it("releases the partner when their side is emptied", async () => {
@@ -318,8 +321,38 @@ describe("the impact", () => {
 
   it("shows the partner's side too, from their own lineup", async () => {
     await buildTrade();
-    expect(await screen.findByText("Their Team")).toBeInTheDocument();
-    expect(screen.getByText("My team")).toBeInTheDocument();
+    // Twice each: the comparison block and the week-by-week table.
+    expect(await screen.findAllByText("Their Team")).toHaveLength(2);
+    expect(screen.getAllByText("My team")).toHaveLength(2);
+  });
+
+  it("gives the opponent a week-by-week table of their own", async () => {
+    await buildTrade();
+    await screen.findByText("Impact");
+
+    click(screen.getByText("Week by week"));
+
+    // A week that swings the trade swings it for them too, and which of the two
+    // it hurts is the thing being weighed up — so both sides get the detail.
+    const tables = document.querySelectorAll(".ch-week-table");
+    expect(tables).toHaveLength(2);
+    // Five regular-season weeks and three playoff weeks, both sides.
+    for (const table of tables) {
+      expect(table.querySelectorAll("tbody tr")).toHaveLength(8);
+      expect(table.querySelectorAll(".ch-week-playoff")).toHaveLength(3);
+    }
+  });
+
+  it("leaves the opponent's table out when there is no opponent", async () => {
+    await open();
+    await pickLeague();
+
+    type(screen.getByLabelText("Search my roster"), "spears");
+    click(await screen.findByText("Tyjae Spears"));
+    await screen.findByText("Impact");
+
+    click(screen.getByText("Week by week"));
+    expect(document.querySelectorAll(".ch-week-table")).toHaveLength(1);
   });
 
   it("stays on points per game until projections are asked for", async () => {

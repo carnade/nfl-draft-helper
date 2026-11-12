@@ -588,7 +588,9 @@ function ContenderTab({ userName, active = false }) {
     );
   };
 
-  const panel = (side, heading, hits, held, subtitle) => (
+  const panel = (side, heading, hits, held, subtitle) => {
+    const searching = queries[side].trim().length >= 2;
+    return (
     <div className="trade-panel">
       <div className="panel-header">
         <h3>{heading}</h3>
@@ -610,8 +612,21 @@ function ContenderTab({ userName, active = false }) {
             }
           />
         </div>
-        {hits.length > 0 && (
+        {/* The "nothing found" line sits in the dropdown rather than under the
+            box. In flow it landed behind the input — `.search-input-wrapper` is
+            positioned and the paragraph was not, so the input painted over it —
+            and it belongs where the results would have been anyway. */}
+        {searching && (
           <div className="search-results">
+            {hits.length === 0 && (
+              <div className="search-result-item ch-no-hits">
+                {side === "give"
+                  ? "Nobody on your roster by that name."
+                  : partnerRoster
+                  ? `Nobody on ${teamName(partnerRoster)} by that name. Clear their side to look at another team.`
+                  : "Nobody on a roster in this league by that name — a free agent cannot be traded for."}
+              </div>
+            )}
             {hits.map((hit) => (
               <div
                 className="search-result-item"
@@ -634,18 +649,12 @@ function ContenderTab({ userName, active = false }) {
             ))}
           </div>
         )}
-        {queries[side].trim().length >= 2 && hits.length === 0 && (
-          <p className="ch-note ch-note-tight">
-            {side === "give"
-              ? "Nobody on your roster by that name."
-              : "Nobody on a roster in this league by that name — free agents cannot be traded for."}
-          </p>
-        )}
       </div>
 
       <div className="selected-players">{held.map((id) => playerCard(side, id))}</div>
     </div>
-  );
+    );
+  };
 
   const sosRow = (figures, leagueValues, window) => {
     if (!figures) return <span className="team-value">–</span>;
@@ -713,6 +722,64 @@ function ContenderTab({ userName, active = false }) {
   const playerName = (id) =>
     [meta[String(id)]?.first_name, meta[String(id)]?.last_name].filter(Boolean).join(" ") ||
     String(id);
+
+  // One side's horizon, week by week. Both sides get one: a week where a bye
+  // swings the trade swings it for them too, and which of the two it hurts is
+  // the thing you are actually weighing up.
+  const weekTable = (label, impacts) => {
+    const rows = ["regular", "playoffs"].flatMap((key) => {
+      const impact = impacts[key];
+      if (!impact) return [];
+      return impact.after.byWeek.map((lineup) => {
+        const was = impact.before.byWeek.find((row) => row.week === lineup.week);
+        return {
+          key: `${key}-${lineup.week}`,
+          week: lineup.week,
+          playoff: key === "playoffs",
+          before: was?.total,
+          after: lineup.total,
+          delta: was ? lineup.total - was.total : null,
+          onBye: lineup.onBye,
+        };
+      });
+    });
+
+    return (
+      <div className="ch-week-side">
+        <h5 className="ch-week-head">{label}</h5>
+        {rows.length === 0 ? (
+          <p className="ch-note ch-note-tight">No week could be priced on this basis.</p>
+        ) : (
+          <table className="ch-week-table">
+            <thead>
+              <tr>
+                <th>Week</th>
+                <th>Before</th>
+                <th>After</th>
+                <th>Change</th>
+                <th>On bye</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.key} className={row.playoff ? "ch-week-playoff" : ""}>
+                  <td>{row.week}</td>
+                  <td>{fmt(row.before)}</td>
+                  <td>{fmt(row.after)}</td>
+                  <td className={row.delta > 0 ? "ch-up" : row.delta < 0 ? "ch-down" : ""}>
+                    {signed(row.delta)}
+                  </td>
+                  <td className="ch-bye-cell">
+                    {row.onBye.map((id) => meta[id]?.last_name || id).join(", ") || "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    );
+  };
 
   const caveats = [];
 
@@ -899,42 +966,12 @@ function ContenderTab({ userName, active = false }) {
 
           <details className="ch-weeks">
             <summary>Week by week</summary>
-            <table className="ch-week-table">
-              <thead>
-                <tr>
-                  <th>Week</th>
-                  <th>Before</th>
-                  <th>After</th>
-                  <th>Change</th>
-                  <th>Out that week</th>
-                </tr>
-              </thead>
-              <tbody>
-                {["regular", "playoffs"].flatMap((key) => {
-                  const impact = mine[key];
-                  if (!impact) return [];
-                  return impact.after.byWeek.map((lineup) => {
-                    const was = impact.before.byWeek.find((row) => row.week === lineup.week);
-                    const delta = was ? lineup.total - was.total : null;
-                    return (
-                      <tr key={`${key}-${lineup.week}`}>
-                        <td>{lineup.week}</td>
-                        <td>{fmt(was?.total)}</td>
-                        <td>{fmt(lineup.total)}</td>
-                        <td className={delta > 0 ? "ch-up" : delta < 0 ? "ch-down" : ""}>
-                          {signed(delta)}
-                        </td>
-                        <td className="ch-bye-cell">
-                          {lineup.onBye
-                            .map((id) => meta[id]?.last_name || id)
-                            .join(", ") || "—"}
-                        </td>
-                      </tr>
-                    );
-                  });
-                })}
-              </tbody>
-            </table>
+            <div className="ch-week-tables">
+              {weekTable("My team", mine)}
+              {partnerRoster && partner.teamCount === 1
+                ? weekTable(teamName(partnerRoster), theirs)
+                : null}
+            </div>
             <p className="ch-note ch-note-tight">
               The playoff schedule figure is always weeks 15–17, which is how it is computed
               for the whole league — so in a league whose playoffs start elsewhere it will not
