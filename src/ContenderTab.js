@@ -340,16 +340,20 @@ function ContenderTab({ userName, active = false }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meta, seasonStats, league]);
 
-  const pointsFor = useCallback(
-    (id, week) => {
-      if (basis === "proj") {
-        const value = projections[week]?.[String(id)];
-        return typeof value === "number" ? value : null;
-      }
+  const ratePoints = useCallback(
+    (id) => {
       const rate = rates[String(id)];
       return typeof rate === "number" && Number.isFinite(rate) ? rate : null;
     },
-    [basis, projections, rates]
+    [rates]
+  );
+
+  const projectionPoints = useCallback(
+    (id, week) => {
+      const value = projections[week]?.[String(id)];
+      return typeof value === "number" ? value : null;
+    },
+    [projections]
   );
 
   // ── The comparison ───────────────────────────────────────────────────────
@@ -358,42 +362,55 @@ function ContenderTab({ userName, active = false }) {
     () => ({
       rosterPositions: league?.roster_positions || [],
       positionsOf,
-      pointsFor,
       teamOf,
       byeWeeks,
     }),
-    [league, positionsOf, pointsFor, teamOf, byeWeeks]
+    [league, positionsOf, teamOf, byeWeeks]
   );
 
-  const impactFor = useCallback(
-    (roster, out, incoming, weeks) => {
-      if (!roster || weeks.length === 0) return null;
-      return tradeImpact({
-        ...shape,
-        playerIds: roster.players || [],
-        give: out,
-        get: incoming,
-        weeks,
-      });
+  // Both bases are worked out, not just the one the pill is on. The season rate
+  // costs nothing once the stats are loaded, and hiding it behind the pill was
+  // the reason a trade could be read on projections alone — which is the one
+  // basis that goes quiet on an injured player.
+  const impactsOn = useCallback(
+    (pointsFor) => {
+      const run = (roster, out, incoming, weeks) =>
+        !roster || weeks.length === 0
+          ? null
+          : tradeImpact({
+              ...shape,
+              pointsFor,
+              playerIds: roster.players || [],
+              give: out,
+              get: incoming,
+              weeks,
+            });
+
+      return {
+        mine: {
+          regular: run(myRoster, give, take, windows.regular),
+          playoffs: run(myRoster, give, take, windows.playoffs),
+        },
+        theirs: {
+          regular: run(partnerRoster, take, give, windows.regular),
+          playoffs: run(partnerRoster, take, give, windows.playoffs),
+        },
+      };
     },
-    [shape]
+    [shape, myRoster, partnerRoster, give, take, windows]
   );
 
-  const mine = useMemo(
-    () => ({
-      regular: impactFor(myRoster, give, take, windows.regular),
-      playoffs: impactFor(myRoster, give, take, windows.playoffs),
-    }),
-    [impactFor, myRoster, give, take, windows]
+  const byRate = useMemo(() => impactsOn(ratePoints), [impactsOn, ratePoints]);
+
+  const byProjection = useMemo(
+    () => (basis === "proj" ? impactsOn(projectionPoints) : null),
+    [basis, impactsOn, projectionPoints]
   );
 
-  const theirs = useMemo(
-    () => ({
-      regular: impactFor(partnerRoster, take, give, windows.regular),
-      playoffs: impactFor(partnerRoster, take, give, windows.playoffs),
-    }),
-    [impactFor, partnerRoster, take, give, windows]
-  );
+  // What the headline and the caveats speak for: the projection when it has
+  // been asked for and arrived, the season rate otherwise.
+  const headline = byProjection || byRate;
+  const mine = headline.mine;
 
   // ── Strength of schedule ─────────────────────────────────────────────────
 
@@ -713,24 +730,46 @@ function ContenderTab({ userName, active = false }) {
     );
   };
 
-  const sideBlock = (label, impacts, scheduleFigures) => (
-    <div className="ch-side">
-      <h4 className="section-heading">{label}</h4>
-      <div className="ch-grid">
-        <span className="ch-rowhead" />
-        <span className="ch-colhead">Rest of season ({weekSpan(windows.regular)})</span>
-        <span className="ch-colhead">Playoffs ({weekSpan(windows.playoffs)})</span>
+  // One window, read across: everything of mine on the left, everything of
+  // theirs on the right, the measure between them. A trade has two sides and
+  // the question is which way each figure moves, so the two sides face each
+  // other rather than being stacked one above the other.
+  const windowBlock = (label, key, sosKey, weeks) => {
+    const theirSide = partnerRoster && partner.teamCount === 1;
+    const row = (name, mineCell, theirCell) => (
+      <React.Fragment key={name}>
+        <span className="ch-mine">{mineCell}</span>
+        <span className="ch-measure">{name}</span>
+        <span className="ch-theirs">{theirSide ? theirCell : <span className="ch-muted">—</span>}</span>
+      </React.Fragment>
+    );
 
-        <span className="ch-rowhead">{basis === "proj" ? "Projection" : "Points per game"}</span>
-        <span className="ch-cell">{pointsRow(impacts.regular)}</span>
-        <span className="ch-cell">{pointsRow(impacts.playoffs)}</span>
-
-        <span className="ch-rowhead">Schedule ({SOS_LABEL[sosBasis]})</span>
-        <span className="ch-cell">{sosRow(scheduleFigures.regular, schedules.league.regular, "ros")}</span>
-        <span className="ch-cell">{sosRow(scheduleFigures.playoffs, schedules.league.playoffs, "post")}</span>
+    return (
+      <div className="ch-window">
+        <h4 className="ch-window-head">
+          {label} <span className="ch-window-weeks">{weekSpan(weeks)}</span>
+        </h4>
+        <div className="ch-face">
+          {row(
+            "Points per game",
+            pointsRow(byRate.mine[key]),
+            pointsRow(byRate.theirs[key])
+          )}
+          {byProjection &&
+            row(
+              "Sleeper projection",
+              pointsRow(byProjection.mine[key]),
+              pointsRow(byProjection.theirs[key])
+            )}
+          {row(
+            `Schedule (${SOS_LABEL[sosBasis]})`,
+            sosRow(schedules.mine[key], schedules.league[key], sosKey),
+            sosRow(schedules.theirs[key], schedules.league[key], sosKey)
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const playerName = (id) =>
     [meta[String(id)]?.first_name, meta[String(id)]?.last_name].filter(Boolean).join(" ") ||
@@ -927,15 +966,21 @@ function ContenderTab({ userName, active = false }) {
         <div className="trade-analysis">
           <h3>Impact</h3>
 
+          <div className="ch-teams">
+            <span className="ch-mine">My team</span>
+            <span className="ch-measure" />
+            <span className="ch-theirs">
+              {partnerRoster && partner.teamCount === 1
+                ? teamName(partnerRoster)
+                : "nobody yet"}
+            </span>
+          </div>
+
           <div className="ch-headline">
             {["regular", "playoffs"].map((key) => {
-              const impact = mine[key];
               const weeks = key === "regular" ? windows.regular : windows.playoffs;
-              return (
-                <div className="ch-tile" key={key}>
-                  <span className="ch-tile-label">
-                    {key === "regular" ? "Rest of season" : "Playoffs"} ({weekSpan(weeks)})
-                  </span>
+              const figure = (impact, side) => (
+                <div className={side}>
                   <strong
                     className={`ch-tile-figure${
                       impact?.deltaPerWeek > 0
@@ -948,12 +993,30 @@ function ContenderTab({ userName, active = false }) {
                     {signed(impact?.deltaPerWeek)} pts/wk
                   </strong>
                   <span className="ch-tile-sub">
-                    {impact?.deltaPerWeek == null
+                    {impact == null
+                      ? "no team yet"
+                      : impact.deltaPerWeek == null
                       ? "not priceable on this basis"
                       : `${signed(impact.deltaTotal)} over ${
                           impact.after.pricedWeeks.length
                         } of ${weeks.length} week${weeks.length === 1 ? "" : "s"}`}
                   </span>
+                </div>
+              );
+
+              return (
+                <div className="ch-tile" key={key}>
+                  <span className="ch-tile-label">
+                    {key === "regular" ? "Rest of season" : "Playoffs"} ({weekSpan(weeks)})
+                    {byProjection ? " · projection" : " · points per game"}
+                  </span>
+                  <div className="ch-tile-sides">
+                    {figure(headline.mine[key], "ch-mine")}
+                    {figure(
+                      partnerRoster && partner.teamCount === 1 ? headline.theirs[key] : null,
+                      "ch-theirs"
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -972,9 +1035,8 @@ function ContenderTab({ userName, active = false }) {
             ))}
           </div>
 
-          {sideBlock("My team", mine, schedules.mine)}
-          {partnerRoster && partner.teamCount === 1 &&
-            sideBlock(teamName(partnerRoster), theirs, schedules.theirs)}
+          {windowBlock("Rest of season", "regular", "ros", windows.regular)}
+          {windowBlock("Playoffs", "playoffs", "post", windows.playoffs)}
 
           {caveats.length > 0 && (
             <p className="ch-note ch-note-tight">{caveats.join(" · ")}</p>
@@ -983,9 +1045,9 @@ function ContenderTab({ userName, active = false }) {
           <details className="ch-weeks">
             <summary>Week by week</summary>
             <div className="ch-week-tables">
-              {weekTable("My team", mine)}
+              {weekTable("My team", headline.mine)}
               {partnerRoster && partner.teamCount === 1
-                ? weekTable(teamName(partnerRoster), theirs)
+                ? weekTable(teamName(partnerRoster), headline.theirs)
                 : null}
             </div>
             <p className="ch-note ch-note-tight">

@@ -359,8 +359,9 @@ describe("the impact", () => {
     await buildTrade();
 
     expect(load.loadWeekProjections).not.toHaveBeenCalled();
-    // One row head per side, which is why this is the All variant.
-    expect(screen.getAllByText("Points per game").length).toBe(2);
+    // One measure per window, and no projection row until there are any.
+    expect(screen.getAllByText("Points per game")).toHaveLength(2);
+    expect(screen.queryByText("Sleeper projection")).not.toBeInTheDocument();
 
     click(screen.getByRole("button", { name: "Projections" }));
 
@@ -400,6 +401,48 @@ describe("the impact", () => {
       10, 11, 12, 13, 14, 15, 16, 17,
     ]);
     expect(screen.queryByText(/Loading Sleeper projections/)).not.toBeInTheDocument();
+  });
+
+  it("keeps points per game on show once projections arrive", async () => {
+    // Both bases, both windows, both sides. Behind the pill, a trade could be
+    // read on projections alone — the one basis that goes quiet on an injured
+    // player — with the season rate beside it hidden.
+    await buildTrade();
+    click(screen.getByRole("button", { name: "Projections" }));
+    await waitFor(() => expect(load.loadWeekProjections).toHaveBeenCalledTimes(8));
+
+    expect(screen.getAllByText("Points per game")).toHaveLength(2);
+    expect(screen.getAllByText("Sleeper projection")).toHaveLength(2);
+  });
+
+  it("puts my figures on one side and theirs on the other", async () => {
+    await buildTrade();
+    await screen.findByText("Impact");
+
+    // Two windows, three rows apiece before projections load: points per game,
+    // schedule, and the team heading above them.
+    const rows = document.querySelectorAll(".ch-face");
+    expect(rows).toHaveLength(2);
+    for (const face of rows) {
+      expect(face.querySelectorAll(".ch-mine")).toHaveLength(2);
+      expect(face.querySelectorAll(".ch-theirs")).toHaveLength(2);
+    }
+
+    // And the heading says whose side is whose.
+    const teams = document.querySelector(".ch-teams");
+    expect(teams.querySelector(".ch-mine")).toHaveTextContent("My team");
+    expect(teams.querySelector(".ch-theirs")).toHaveTextContent("Their Team");
+  });
+
+  it("shows their change for both windows, not just mine", async () => {
+    await buildTrade();
+    await screen.findByText("Impact");
+
+    const [regular, playoffs] = document.querySelectorAll(".ch-face");
+    // Nacua for Spears costs them in both windows, and it is their column that
+    // has to say so.
+    expect(regular.querySelectorAll(".ch-theirs")[0].textContent).toMatch(/−/);
+    expect(playoffs.querySelectorAll(".ch-theirs")[0].textContent).toMatch(/−/);
   });
 
   it("does not warn about a split when there is only one partner", async () => {
