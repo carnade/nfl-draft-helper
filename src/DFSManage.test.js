@@ -5,6 +5,37 @@ import { describeRun, runWhen } from "./DFSManage";
 // — the reading of a run is the part with judgement in it.
 
 describe("describeRun", () => {
+  it("leads with players, and says how many rows that took", () => {
+    // A run walks several slates and most players are on more than one, so
+    // the rows outnumber the players about two to one. Leading with rows made
+    // a 925-player slate read as 1914 of something.
+    expect(
+      describeRun({
+        outcome: "ok",
+        players: 925,
+        scraped: 1914,
+        added: 0,
+        updated: 925,
+        kickoffs_filled: 222,
+        held: 925,
+      })
+    ).toBe(
+      "925 players (1914 rows across the slates) · 0 new · 925 updated · " +
+        "222 kickoffs filled · 925 held"
+    );
+  });
+
+  it("does not belabour the rows when they are the players", () => {
+    expect(describeRun({ outcome: "ok", players: 360, scraped: 360, held: 360 }))
+      .toBe("360 players · 360 held");
+  });
+
+  it("still reads an older run that only counted rows", () => {
+    // The history outlives the shape it was written in.
+    expect(describeRun({ outcome: "ok", scraped: 200, added: 2, held: 581 }))
+      .toBe("200 scraped · 2 new · 581 held");
+  });
+
   it("counts what a good run actually did", () => {
     // A run that added two players and one that added six hundred are the same
     // sentence on /statistics, and that is the difference between a quiet
