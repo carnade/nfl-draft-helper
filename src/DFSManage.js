@@ -20,6 +20,39 @@ function sleeperAuthHeaders() {
   return token ? { Authorization: token } : {};
 }
 
+// How a scrape run reads at a glance. Three outcomes rather than a success
+// flag, because they call for different things: nothing, a fresh cookie, and a
+// look at the logs.
+const RUN_LABEL = {
+  ok: 'Updated',
+  gated: 'Login needed',
+  failed: 'Failed',
+};
+
+export function describeRun(run) {
+  if (!run) return '';
+  if (run.outcome !== 'ok') return run.error || 'no reason recorded';
+  const parts = [];
+  if (run.scraped != null) parts.push(`${run.scraped} scraped`);
+  if (run.added != null) parts.push(`${run.added} new`);
+  if (run.updated != null) parts.push(`${run.updated} updated`);
+  if (run.kickoffs_filled) parts.push(`${run.kickoffs_filled} kickoffs filled`);
+  if (run.held != null) parts.push(`${run.held} held`);
+  return parts.join(' · ');
+}
+
+// "19 Nov 08:23" — the date matters as much as the time here, since the thing
+// being judged is how long ago the last good run was.
+export function runWhen(at) {
+  if (!at) return '';
+  const when = new Date(at);
+  if (Number.isNaN(when.getTime())) return at;
+  return when.toLocaleString(undefined, {
+    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false,
+  });
+}
+
+
 function DFSManage() {
   const navigate = useNavigate();
   // The button that reaches this page is already behind a privileged check, but the
@@ -49,6 +82,7 @@ function DFSManage() {
   // is the manual nudge for when the data is visibly up but ours is not.
   const [refreshingDfs, setRefreshingDfs] = useState(false);
   const [dfsStatus, setDfsStatus] = useState(null);
+  const [scrapeRuns, setScrapeRuns] = useState(null);
   // The /admin routes are gated on an organiser's Sleeper login, so they are no
   // longer reachable from a browser tab. These are the ones worth a button.
   const [runningTask, setRunningTask] = useState(null);
@@ -150,6 +184,26 @@ function DFSManage() {
     }
   };
 
+  // How the recent scrapes went. /statistics says what is true now; this says
+  // how it got there, which is the difference between "one error" and "the
+  // fourth today", and between a quiet run and one that quietly stored a
+  // quarter of the slate.
+  const readScrapeRuns = useCallback(async () => {
+    try {
+      const response = await fetch(`${BASE_URL}/admin/dfs-salaries/runs`, {
+        headers: sleeperAuthHeaders(),
+      });
+      if (!response.ok) return;
+      setScrapeRuns(await response.json());
+    } catch {
+      // The rest of the page does not depend on this.
+    }
+  }, []);
+
+  useEffect(() => {
+    readScrapeRuns();
+  }, [readScrapeRuns]);
+
   // The scrape outlives the hosting gateway's 100-second limit, so the endpoint
   // returns 202 and works in the background. Watch /statistics for the outcome
   // rather than waiting on the request, which would look like a failure.
@@ -207,6 +261,7 @@ function DFSManage() {
         if (now.updated && now.updated !== beforeUpdated) {
           setRefreshingDfs(false);
           setDfsStatus({ state: 'done', message: `Salaries updated ${now.updated}.` });
+          readScrapeRuns();
           return;
         }
         const failed =
@@ -218,6 +273,7 @@ function DFSManage() {
             message: `Scrape failed: ${now.error || 'no reason recorded'}` +
               (now.retries ? ` — ${now.retries} retry queued.` : ''),
           });
+          readScrapeRuns();
           return;
         }
       }
@@ -707,6 +763,60 @@ function DFSManage() {
           </span>
         )}
       </div>
+
+      {scrapeRuns && (
+        <div className="dfs-manage-scrapes">
+          <h2 className="dfs-manage-section-title">DFS salary scrapes</h2>
+
+          {scrapeRuns.cookie_looks_stale && (
+            <p className="dfs-manage-scrape-alert">
+              The last run was served the logged-out preview. DailyFantasyFuel shows
+              only the top few players without an account, so the slate is incomplete
+              until DFF_COOKIE is replaced with a fresh session cookie.
+            </p>
+          )}
+          {!scrapeRuns.cookie_configured && (
+            <p className="dfs-manage-scrape-alert">
+              No DFF_COOKIE is set, so the scrape sees only the logged-out preview.
+            </p>
+          )}
+
+          <p className="dfs-manage-scrape-summary">
+            {scrapeRuns.last_ok ? (
+              <>
+                Last good run <strong>{runWhen(scrapeRuns.last_ok.at)}</strong> —{' '}
+                {describeRun(scrapeRuns.last_ok)}.
+              </>
+            ) : (
+              <>No successful run on record.</>
+            )}{' '}
+            Holding {scrapeRuns.held} rows.
+          </p>
+
+          {scrapeRuns.runs.length > 0 && (
+            <table className="dfs-manage-scrape-table">
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>Outcome</th>
+                  <th>What happened</th>
+                </tr>
+              </thead>
+              <tbody>
+                {scrapeRuns.runs.map((run) => (
+                  <tr key={run.at} className={`is-${run.outcome}`}>
+                    <td>{runWhen(run.at)}</td>
+                    <td className="dfs-manage-scrape-outcome">
+                      {RUN_LABEL[run.outcome] || run.outcome}
+                    </td>
+                    <td>{describeRun(run)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
 
       {overrideWeek && (
         <div className="dfs-manage-override-panel">
