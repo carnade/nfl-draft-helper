@@ -41,7 +41,22 @@ export function describeRun(run) {
   if (!run) return '';
   if (!SUCCEEDED.has(run.outcome)) return run.error || 'no reason recorded';
   const parts = [];
-  if (run.scraped != null) parts.push(`${run.scraped} scraped`);
+
+  // Players, not rows. A run walks several slates and most players are on more
+  // than one of them, so the rows read outnumber the players about two to one;
+  // leading with the rows made a 925-player slate read as 1914 of something.
+  // The row count stays, in brackets, because "why did that take so long" is
+  // a question it answers and the player count does not.
+  if (run.players != null) {
+    parts.push(
+      run.scraped != null && run.scraped !== run.players
+        ? `${run.players} players (${run.scraped} rows across the slates)`
+        : `${run.players} players`
+    );
+  } else if (run.scraped != null) {
+    parts.push(`${run.scraped} scraped`);
+  }
+
   if (run.added != null) parts.push(`${run.added} new`);
   if (run.updated != null) parts.push(`${run.updated} updated`);
   if (run.kickoffs_filled) parts.push(`${run.kickoffs_filled} kickoffs filled`);
