@@ -723,3 +723,73 @@ body.dark .dfs-manage-submission-value {
   opacity: 0.9;
   cursor: pointer;
 }
+
+/* ── DFS salary scrapes ──────────────────────────────────────────────────── */
+
+.dfs-manage-scrapes {
+  margin: 1.5rem 0;
+  padding: 1rem 1.25rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  background: hsl(var(--foreground) / 0.02);
+}
+
+/* The one line that calls for an action rather than a glance. */
+.dfs-manage-scrape-alert {
+  margin: 0.5rem 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: 6px;
+  background: hsl(0 72% 48% / 0.12);
+  color: hsl(0 72% 42%);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.dfs-manage-scrape-summary {
+  margin: 0.5rem 0 0.9rem;
+  font-size: 0.875rem;
+  color: hsl(var(--foreground) / 0.75);
+}
+
+.dfs-manage-scrape-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.dfs-manage-scrape-table th,
+.dfs-manage-scrape-table td {
+  padding: 0.35rem 0.6rem 0.35rem 0;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid hsl(var(--border) / 0.6);
+}
+
+.dfs-manage-scrape-table th {
+  font-weight: 600;
+  color: hsl(var(--foreground) / 0.6);
+}
+
+.dfs-manage-scrape-table td:first-child {
+  white-space: nowrap;
+  color: hsl(var(--foreground) / 0.7);
+}
+
+.dfs-manage-scrape-outcome {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Colour carries the outcome, since that is the column read first. */
+.dfs-manage-scrape-table tr.is-ok .dfs-manage-scrape-outcome {
+  color: hsl(142 69% 38%);
+}
+
+.dfs-manage-scrape-table tr.is-gated .dfs-manage-scrape-outcome {
+  color: hsl(32 90% 42%);
+}
+
+.dfs-manage-scrape-table tr.is-failed .dfs-manage-scrape-outcome {
+  color: hsl(0 72% 48%);
+}
