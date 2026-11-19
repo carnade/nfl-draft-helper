@@ -46,6 +46,12 @@ describe("describeRun", () => {
       .toBe("300 scraped · 0 new · 300 held");
   });
 
+  it("counts a fallback run like any other good one", () => {
+    // It worked; what it lacks is columns, and the outcome label carries that.
+    expect(describeRun({ outcome: "fallback", scraped: 360, added: 12, held: 372 }))
+      .toBe("360 scraped · 12 new · 372 held");
+  });
+
   it("is empty for nothing at all", () => {
     expect(describeRun(null)).toBe("");
     expect(describeRun(undefined)).toBe("");

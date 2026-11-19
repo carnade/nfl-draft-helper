@@ -25,13 +25,21 @@ function sleeperAuthHeaders() {
 // look at the logs.
 const RUN_LABEL = {
   ok: 'Updated',
+  // The slate is current, but it came from DFF's data feed because the page
+  // was gated — so the last-5, last-10 and season columns are empty on it.
+  fallback: 'Updated (no averages)',
   gated: 'Login needed',
   failed: 'Failed',
 };
 
+// A run that fell back still succeeded — it collected a whole slate, just
+// without a few columns. Which columns is what the outcome label says; the
+// counts belong here with every other good run's.
+const SUCCEEDED = new Set(['ok', 'fallback']);
+
 export function describeRun(run) {
   if (!run) return '';
-  if (run.outcome !== 'ok') return run.error || 'no reason recorded';
+  if (!SUCCEEDED.has(run.outcome)) return run.error || 'no reason recorded';
   const parts = [];
   if (run.scraped != null) parts.push(`${run.scraped} scraped`);
   if (run.added != null) parts.push(`${run.added} new`);
@@ -768,11 +776,13 @@ function DFSManage() {
         <div className="dfs-manage-scrapes">
           <h2 className="dfs-manage-section-title">DFS salary scrapes</h2>
 
-          {scrapeRuns.cookie_looks_stale && (
+          {(scrapeRuns.cookie_looks_stale ||
+            scrapeRuns.runs[0]?.outcome === 'fallback') && (
             <p className="dfs-manage-scrape-alert">
-              The last run was served the logged-out preview. DailyFantasyFuel shows
-              only the top few players without an account, so the slate is incomplete
-              until DFF_COOKIE is replaced with a fresh session cookie.
+              The last run was served the logged-out preview. The slate itself came
+              through — it was read from DailyFantasyFuel's own data feed instead —
+              but without the last-5, last-10 and season average columns. Replace
+              DFF_COOKIE with a fresh session cookie to get those back.
             </p>
           )}
           {!scrapeRuns.cookie_configured && (
