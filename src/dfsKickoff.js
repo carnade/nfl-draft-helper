@@ -43,6 +43,25 @@ const convertEasternLocalToUtc = (year, monthIndex, day, hour24, minute) => {
  * what the game-has-started check wants: a late guess locks a player too late
  * rather than too early. Callers that must not guess use kickoffAt instead.
  */
+// The two spellings a kickoff arrives in, both US Eastern.
+//
+// "1:00PM" comes from the salary scrape; "13:00" comes from our own schedule,
+// which is where a row gets its time when DFF left the column empty — about
+// 200 of 512 on a week 12 slate.
+//
+// Named once and shared, because the two readers below had drifted apart:
+// parseGameStartToUtc was taught the 24-hour form and kickoffAt was not, so
+// every schedule-filled player displayed as a bare "Thu" with no time and was
+// skipped when working out which of a lineup's games starts first.
+const MERIDIEM_CLOCK = /(\d{1,2}):(\d{2})\s*(AM|PM)/i;
+const BARE_CLOCK = /^(\d{1,2}):(\d{2})$/;
+
+/** Whether a time string says anything, in either spelling. */
+export function readsAsClock(time) {
+  const text = String(time || "").trim();
+  return BARE_CLOCK.test(text) || MERIDIEM_CLOCK.test(text);
+}
+
 export function parseGameStartToUtc(gameDate, gameStartTime) {
   if (!gameDate) return null;
 
@@ -51,18 +70,12 @@ export function parseGameStartToUtc(gameDate, gameStartTime) {
       ? gameStartTime.trim()
       : "6:00PM";
 
-  // Two spellings reach this, both US Eastern. The salary scrape writes
-  // "1:00PM"; the schedule our own backend serves writes "13:00", and that one
-  // used to miss the meridiem test below and fall through to the 6pm guess —
-  // every Sunday kickoff reported five hours late, which is the wrong direction
-  // for anything deciding when a lineup locks.
-  const clock = timeStr.match(/^(\d{1,2}):(\d{2})$/);
-  const meridiemClock = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-  if (!clock && !meridiemClock) {
+  if (!readsAsClock(timeStr)) {
     timeStr = "6:00PM";
   }
 
-  const parsed = clock || timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  const clock = timeStr.match(BARE_CLOCK);
+  const parsed = clock || timeStr.match(MERIDIEM_CLOCK);
   if (!parsed) return null;
 
   let hours = parseInt(parsed[1], 10);
@@ -91,7 +104,7 @@ export function parseGameStartToUtc(gameDate, gameStartTime) {
  */
 export function kickoffAt(player) {
   if (!player?.game_date) return null;
-  if (!String(player.game_start_time || "").match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i)) return null;
+  if (!readsAsClock(player.game_start_time)) return null;
   const at = parseGameStartToUtc(player.game_date, player.game_start_time);
   return at && !Number.isNaN(at.getTime()) ? at : null;
 }
