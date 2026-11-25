@@ -239,3 +239,56 @@ describe("parseGameStartToUtc on a 24-hour time", () => {
     expect(iso(parseGameStartToUtc("2026-11-08", "kickoff"))).toBe("2026-11-08T23:00:00.000Z");
   });
 });
+
+// ── A kickoff that came from our own schedule ───────────────────────────────
+//
+// Rows whose time DFF left blank get one from the schedule instead, and that
+// one is written 24-hour: "20:15" rather than "8:15PM". About 200 of the 512
+// rows on a week 12 slate arrived that way.
+//
+// parseGameStartToUtc had been taught to read it; kickoffAt had not, and the
+// two tests had drifted apart. So every schedule-filled player displayed as a
+// bare "Thu" with no time, and — the part that mattered — was skipped when
+// working out which of a lineup's games kicks off first.
+
+describe("a 24-hour kickoff, as our own schedule writes it", () => {
+  it("is read rather than refused", () => {
+    const at = kickoffAt(row({ game_date: "2026-11-26", game_start_time: "20:15" }));
+    expect(at).not.toBeNull();
+    expect(at.toISOString()).toBe("2026-11-27T01:15:00.000Z");
+  });
+
+  it("agrees with the same time written the other way", () => {
+    const bare = kickoffAt(row({ game_date: "2026-11-26", game_start_time: "20:15" }));
+    const meridiem = kickoffAt(row({ game_date: "2026-11-26", game_start_time: "8:15PM" }));
+    expect(bare.getTime()).toBe(meridiem.getTime());
+  });
+
+  it("shows a time in the label instead of only the day", () => {
+    // What was reported: "the rest just say thu, sun etc, no time".
+    const label = kickoffLabel(row({ game_date: "2026-11-26", game_start_time: "16:30" }));
+    expect(label).toMatch(/\d{2}:\d{2}/);
+    expect(label).not.toBe("Sun");
+  });
+
+  it("is not skipped when deciding which game starts first", () => {
+    // The dangerous one. The earliest game is the schedule-filled one, so
+    // skipping it reported a later kickoff as the lineup's deadline.
+    const early = row({ name: "Early", game_date: "2026-11-26", game_start_time: "13:00" });
+    const late = row({ name: "Late", game_date: "2026-11-26", game_start_time: "8:20PM" });
+    expect(earliestKickoff([late, early]).name).toBe("Early");
+    expect(earliestKickoff([early, late]).name).toBe("Early");
+  });
+
+  it("still refuses a time that is not one", () => {
+    // The guard exists so an unreadable time is never shown as a kickoff —
+    // parseGameStartToUtc would hand back a guessed 6pm for it.
+    for (const bad of ["", "   ", "Unknown", "later", "25:99", null, undefined]) {
+      expect(kickoffAt(row({ game_date: "2026-11-26", game_start_time: bad }))).toBeNull();
+    }
+  });
+
+  it("refuses a row with no date whatever the time says", () => {
+    expect(kickoffAt(row({ game_date: null, game_start_time: "20:15" }))).toBeNull();
+  });
+});

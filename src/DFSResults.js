@@ -6,6 +6,7 @@ import { loadSleeperAuth, useIsPrivilegedUser } from './auth';
 import { getCurrentWeek } from './currentWeekCache';
 import { effectiveUserName } from './settingsUser';
 import { positionFill } from "./positionColors";
+import { parseGameStartToUtc } from "./dfsKickoff";
 import { revealIsPending, parseRevealTime } from "./dfsReveal";
 
 // Add a mock flag
@@ -95,66 +96,16 @@ const isDefenseSleeperId = (sleeperId) => {
   return !/^\d+$/.test(String(sleeperId));
 };
 
-const getUsdDstBoundsUtc = (year) => {
-  const march1Utc = Date.UTC(year, 2, 1);
-  const march1Day = new Date(march1Utc).getUTCDay();
-  const firstSundayMarch = march1Day === 0 ? 1 : 8 - march1Day;
-  const secondSundayMarch = firstSundayMarch + 7;
-  const dstStartUtc = Date.UTC(year, 2, secondSundayMarch, 7, 0); // 2 AM local -> 7 AM UTC
+// Kickoff parsing lives in dfsKickoff.js, which is tested and which knows
+// both spellings a kickoff arrives in. This file had its own copy of it —
+// sixty lines of the same daylight-saving arithmetic — and that copy only read
+// "8:20PM", falling back to a guessed 6:00PM Eastern for anything else.
+//
+// Which mattered once rows began carrying "20:20" from our own schedule: the
+// three checks below decide whether a player's points are revealed yet, and a
+// guessed 6pm revealed an 8:20 game two hours and twenty minutes before it
+// kicked off, and hid a 1:00 game for five hours after it had.
 
-  const nov1Utc = Date.UTC(year, 10, 1);
-  const nov1Day = new Date(nov1Utc).getUTCDay();
-  const firstSundayNovember = nov1Day === 0 ? 1 : 8 - nov1Day;
-  const dstEndUtc = Date.UTC(year, 10, firstSundayNovember, 6, 0); // 2 AM local -> 6 AM UTC
-
-  return { dstStartUtc, dstEndUtc };
-};
-
-const convertEasternLocalToUtc = (year, monthIndex, day, hour24, minute) => {
-  const { dstStartUtc, dstEndUtc } = getUsdDstBoundsUtc(year);
-  const dstCandidateUtc = Date.UTC(year, monthIndex, day, hour24 + 4, minute);
-  const stdCandidateUtc = Date.UTC(year, monthIndex, day, hour24 + 5, minute);
-  const isDst = dstCandidateUtc >= dstStartUtc && dstCandidateUtc < dstEndUtc;
-  return new Date(isDst ? dstCandidateUtc : stdCandidateUtc);
-};
-
-const parseGameStartToUtc = (gameDate, gameStartTime) => {
-  if (!gameDate) return null;
-
-  let timeStr = typeof gameStartTime === 'string' && gameStartTime.trim().length > 0
-    ? gameStartTime.trim()
-    : '6:00PM';
-
-  const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-  if (!timeMatch) {
-    // Unexpected format—fallback to default 6:00PM Eastern
-    timeStr = '6:00PM';
-  }
-
-  const parsedMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-  if (!parsedMatch) return null;
-
-  let [ , hourStr, minuteStr, ampm ] = parsedMatch;
-  let hours = parseInt(hourStr, 10);
-  const minutes = parseInt(minuteStr, 10);
-  const meridiem = ampm.toUpperCase();
-
-  if (meridiem === 'PM' && hours !== 12) {
-    hours += 12;
-  } else if (meridiem === 'AM' && hours === 12) {
-    hours = 0;
-  }
-
-  const year = parseInt(gameDate.slice(0, 4), 10);
-  const monthIndex = parseInt(gameDate.slice(5, 7), 10) - 1;
-  const day = parseInt(gameDate.slice(8, 10), 10);
-
-  if (Number.isNaN(year) || Number.isNaN(monthIndex) || Number.isNaN(day) || Number.isNaN(hours) || Number.isNaN(minutes)) {
-    return null;
-  }
-
-  return convertEasternLocalToUtc(year, monthIndex, day, hours, minutes);
-};
 
 function DFSResults() {
   const navigate = useNavigate();
