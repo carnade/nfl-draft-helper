@@ -41,6 +41,17 @@ export default function Changelog() {
   // Example entries — add new entries as needed
   const entries = [
     {
+      date: "2026-11-26",
+      title: "Records on the Gameday cards, and who is actually playing",
+      items: [
+        "Each side of a Gameday matchup now shows its record beside the name under the score \u2014 6-5, or 6-4-1 when a tie is in there. On the line that was already present, so the cards are no taller than they were.",
+        "Open a matchup and every starter carries a small marker: filled for a game that has finished, a quietly pulsing green for one being played right now, an outline for one still to come. A player left in the lineup through their bye gets his own marker too, since that is neither of the three.",
+        "A key appears under the lineup naming only the states actually on screen, so a morning with nothing live does not explain a colour it is not using.",
+        "Hovering any marker says it in words, and so does a screen reader \u2014 the colour is not the only thing carrying the meaning.",
+        "Neither needed anything extra fetched: the records ride along on a request the page already makes, and the game states come out of the same scores it already reads to work out the live projections.",
+      ],
+    },
+    {
       date: "2026-11-12",
       title: "A Contender Helper: what a trade does to the weeks that are left",
       items: [

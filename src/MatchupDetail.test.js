@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 
-import MatchupDetail, { SidePlayer, SlotRow, Totals } from "./MatchupDetail";
+import MatchupDetail, { PlayState, SidePlayer, SlotRow, Totals } from "./MatchupDetail";
 import { detailPair } from "./gamedayDetail";
 
 // user-event is v13 here and does not flush React 18 state, so interactions go
@@ -205,5 +205,90 @@ describe("Totals", () => {
 
     expect(screen.getAllByText("15.0")).toHaveLength(2);
     expect(screen.getAllByText("/ 18.0")).toHaveLength(2);
+  });
+});
+
+// ── Who has played, who is playing, who has not ─────────────────────────────
+
+describe("PlayState", () => {
+  it("draws a dot that says what it means", () => {
+    const { container } = render(<PlayState state="live" />);
+    const dot = container.querySelector(".gd-state");
+    expect(dot).toHaveClass("gd-state-live");
+    expect(dot).toHaveAttribute("title", "Playing now");
+    // Named for a screen reader too: a colour is not a label.
+    expect(dot).toHaveAttribute("aria-label", "Playing now");
+  });
+
+  it("has a word for each state", () => {
+    for (const [state, title] of [
+      ["done", "Game finished"],
+      ["live", "Playing now"],
+      ["pre", "Not kicked off yet"],
+      ["bye", "No game this week — left in the lineup"],
+      ["off", "Game called off"],
+    ]) {
+      const { container } = render(<PlayState state={state} />);
+      expect(container.querySelector(`.gd-state-${state}`)).toHaveAttribute("title", title);
+    }
+  });
+
+  it("draws nothing at all when the state is unknown", () => {
+    // Rather than a dot in the default colour, which would read as a state.
+    const { container } = render(<PlayState state={null} />);
+    expect(container.querySelector(".gd-state")).toBeNull();
+  });
+});
+
+describe("the state on a row", () => {
+  const row = { id: "2", name: "Jahmyr Gibbs", team: "DET", actual: 29,
+                projected: 17.5, hasProjection: true };
+
+  it("sits beside the name", () => {
+    const { container } = render(<SidePlayer row={{ ...row, state: "done" }} align="mine" />);
+    expect(container.querySelector(".gd-state-done")).not.toBeNull();
+  });
+
+  it("is absent when the row has no state", () => {
+    const { container } = render(<SidePlayer row={row} align="mine" />);
+    expect(container.querySelector(".gd-state")).toBeNull();
+  });
+});
+
+describe("the legend", () => {
+  const withStates = (states) => {
+    const built = pair();
+    built.mine = built.mine.map((r, i) => ({ ...r, state: states[i] ?? null }));
+    built.theirs = built.theirs.map((r) => ({ ...r, state: null }));
+    return built;
+  };
+
+  it("names only the states actually on screen", () => {
+    // A slate with nothing live should not advertise a colour it is not using.
+    render(<MatchupDetail detail={withStates(["done", "done", "pre"])} oppName="Them" />);
+
+    expect(screen.getByText("played")).toBeInTheDocument();
+    expect(screen.getByText("to come")).toBeInTheDocument();
+    expect(screen.queryByText("playing")).not.toBeInTheDocument();
+  });
+
+  it("appears at all only once some row has a state", () => {
+    const { container } = render(
+      <MatchupDetail detail={withStates([null, null, null])} oppName="Them" />
+    );
+    expect(container.querySelectorAll(".gd-legend-item")).toHaveLength(0);
+  });
+
+  it("keeps the stat-line toggle working beside it", () => {
+    const onToggle = jest.fn();
+    render(
+      <MatchupDetail
+        detail={withStates(["live", null, null])}
+        oppName="Them"
+        onToggleStatLines={onToggle}
+      />
+    );
+    click(screen.getByRole("button", { name: "Show stat lines" }));
+    expect(onToggle).toHaveBeenCalled();
   });
 });

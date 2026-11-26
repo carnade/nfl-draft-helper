@@ -182,3 +182,63 @@ describe("rowsTotal", () => {
     expect(rowsTotal([])).toBe(0);
   });
 });
+
+// ── Where each starter is in their game ─────────────────────────────────────
+
+describe("the play state on a row", () => {
+  const playing = new Set(["GB", "DET", "LAR"]);
+
+  it("is read off that team's game", () => {
+    const rows = detailRows({
+      restRow: row(),
+      playerMap: PLAYER_MAP,
+      slots: SLOTS,
+      teamsPlaying: playing,
+      gameStates: { GB: "done", DET: "live", LAR: "pre" },
+    });
+    expect(rows.map((r) => r.state)).toEqual(["done", "live", "pre"]);
+  });
+
+  it("names a starter left in through their bye", () => {
+    const rows = detailRows({
+      restRow: row(),
+      playerMap: PLAYER_MAP,
+      slots: SLOTS,
+      teamsPlaying: new Set(["GB", "DET"]),
+      gameStates: { GB: "done", DET: "live" },
+    });
+    expect(rows[2].state).toBe("bye");
+  });
+
+  it("is null on every row when the schedule did not load", () => {
+    // Colouring the lot the same wrong colour is worse than colouring none.
+    const rows = detailRows({ restRow: row(), playerMap: PLAYER_MAP, slots: SLOTS });
+    expect(rows.map((r) => r.state)).toEqual([null, null, null]);
+  });
+
+  it("is null for an empty slot rather than absent", () => {
+    const withGap = { ...row(), starters: ["1", "0", "3"] };
+    const rows = detailRows({
+      restRow: withGap,
+      playerMap: PLAYER_MAP,
+      slots: SLOTS,
+      teamsPlaying: playing,
+      gameStates: { GB: "done" },
+    });
+    expect(rows[1].state).toBeNull();
+    expect("state" in rows[1]).toBe(true);
+  });
+
+  it("reaches both sides through detailPair", () => {
+    const pair = detailPair({
+      mine: row(),
+      theirs: row(),
+      playerMap: PLAYER_MAP,
+      slots: SLOTS,
+      teamsPlaying: playing,
+      gameStates: { GB: "live", DET: "live", LAR: "live" },
+    });
+    expect(pair.mine.every((r) => r.state === "live")).toBe(true);
+    expect(pair.theirs.every((r) => r.state === "live")).toBe(true);
+  });
+});

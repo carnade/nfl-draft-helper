@@ -702,3 +702,15 @@ body.dark .pct-as-wash .pct-gold {
   display: inline-flex;
   gap: 4px;
 }
+
+/* A team's record, inline on the label line under the score. Deliberately on
+ * that line rather than a line of its own: the cards are already as tall as
+ * they want to be, and three characters cost nothing there. */
+.gd-record {
+  margin-left: 0.3rem;
+  padding: 0 0.25rem;
+  border-radius: 3px;
+  background: hsl(var(--foreground) / 0.08);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}

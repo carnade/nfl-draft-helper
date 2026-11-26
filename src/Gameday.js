@@ -3,7 +3,12 @@ import "./Gameday.css";
 
 import { projectedPoints, PROJECTION_POSITIONS } from "./leagueScoring";
 import { loadHiddenLeagues, visibleLeagues } from "./leagueVisibility";
-import { finalOutcome, remainingForStarter } from "./gamedayOutcome";
+import {
+  finalOutcome,
+  gameStatesByTeam,
+  recordLabel,
+  remainingForStarter,
+} from "./gamedayOutcome";
 import {
   weekToShow,
   pinnedWeek,
@@ -84,15 +89,20 @@ async function fetchGameClocks(week, token, signal) {
     signal,
   });
   const json = await res.json();
+  const games = json?.data?.scores || [];
   const byTeam = {};
-  for (const game of json?.data?.scores || []) {
+  for (const game of games) {
     const remaining = fractionRemaining(game.status, game.metadata);
     for (const side of ["home_team", "away_team"]) {
       const team = game.metadata?.[side];
       if (team) byTeam[team] = remaining;
     }
   }
-  return byTeam;
+  // Two readings of one payload. The fraction drives the live projection; the
+  // state says whether a starter has played, is playing, or has not started —
+  // which the fraction cannot, since a game at its first snap and one not
+  // kicked off both leave a full hour.
+  return { clocks: byTeam, states: gameStatesByTeam(games) };
 }
 
 // Whether any game in this week has kicked off, finished or otherwise left the
@@ -146,7 +156,7 @@ async function fetchLeagueMatchup(leagueId, token, signal, week) {
   const round = week > 0 ? week : 1;
   const query = `query get_league_detail {
     league_rosters(league_id: "${leagueId}"){
-      league_id owner_id roster_id
+      league_id owner_id roster_id settings
     }
     league_users(league_id: "${leagueId}"){
       user_id display_name
@@ -179,6 +189,7 @@ function buildMatchupResult(
     projections,
     playerPoints,
     gameClocks,
+    gameStates = {},
     teamsPlaying,
     squadByRoster = {},
     restByRoster = {},
@@ -271,6 +282,8 @@ function buildMatchupResult(
     slots: buildSlots(rosterPositions),
     projections,
     scoring,
+    gameStates,
+    teamsPlaying,
   });
 
   const final = finalOutcome({
@@ -297,6 +310,12 @@ function buildMatchupResult(
     myStarted: mine.started > 0,
     oppStarted: opp.started > 0,
     oppName,
+    // On the label line beside the played count, so the card says what it said
+    // before plus three characters and keeps its height.
+    myRecord: recordLabel(myRoster?.settings),
+    oppRecord: oppLeg
+      ? recordLabel(rosters.find((r) => r.roster_id === oppLeg.roster_id)?.settings)
+      : null,
     myMax: final ? bestFor(myLeg) : null,
     oppMax: final ? bestFor(oppLeg) : null,
     predictedWin: oppLeg ? myLive > oppLive : null,
@@ -486,7 +505,8 @@ export default function Gameday() {
           .filter(Boolean)
       );
 
-      const gameClocks = await fetchGameClocks(week, auth.token, signal);
+      const { clocks: gameClocks, states: gameStates } =
+        await fetchGameClocks(week, auth.token, signal);
 
       // Keyed by week. Fetched once per week rather than once per page: these
       // are week-specific, and before the week could be changed the distinction
@@ -578,6 +598,7 @@ export default function Gameday() {
               projections: projectionsRef.current.byPlayer,
               playerPoints,
               gameClocks,
+              gameStates,
               teamsPlaying,
               squadByRoster,
               restByRoster,
@@ -1085,7 +1106,13 @@ export default function Gameday() {
                     </div>
                   )}
                   <div className="gameday-score-label">
-                    You{matchup.myStarters > 0 && ` · ${matchup.myPlayed}/${matchup.myStarters}`}
+                    You
+                    {matchup.myRecord && (
+                      <span className="gd-record" title="Record this season">
+                        {matchup.myRecord}
+                      </span>
+                    )}
+                    {matchup.myStarters > 0 && ` · ${matchup.myPlayed}/${matchup.myStarters}`}
                   </div>
                 </div>
                 <div className="gameday-vs">vs</div>
@@ -1108,6 +1135,11 @@ export default function Gameday() {
                   )}
                   <div className="gameday-score-label">
                     {matchup.oppName}
+                    {matchup.oppRecord && (
+                      <span className="gd-record" title="Record this season">
+                        {matchup.oppRecord}
+                      </span>
+                    )}
                     {matchup.oppStarters > 0 && ` · ${matchup.oppPlayed}/${matchup.oppStarters}`}
                   </div>
                 </div>

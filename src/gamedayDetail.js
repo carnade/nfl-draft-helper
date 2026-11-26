@@ -23,6 +23,7 @@
 // carries them.
 
 import { projectedPoints, hasProjection } from "./leagueScoring";
+import { starterState } from "./gamedayOutcome";
 
 /** An unfilled slot. Sleeper writes "0" rather than leaving a hole. */
 const EMPTY = new Set(["0", 0, "", null, undefined]);
@@ -51,6 +52,8 @@ export function detailRows({
   slots = [],
   projections = {},
   scoring = {},
+  gameStates = {},
+  teamsPlaying,
 } = {}) {
   const starters = Array.isArray(restRow?.starters) ? restRow.starters : [];
   const points = Array.isArray(restRow?.starters_points) ? restRow.starters_points : [];
@@ -60,7 +63,7 @@ export function detailRows({
     const slot = slots[index] || null;
     if (EMPTY.has(playerId)) {
       return { slot, id: null, name: null, team: null, position: null,
-               actual: null, projected: null, hasProjection: false };
+               actual: null, projected: null, hasProjection: false, state: null };
     }
 
     const id = String(playerId);
@@ -84,6 +87,10 @@ export function detailRows({
       // team total above already blends in the clock.
       projected: hasProjection(projection) ? projectedPoints(projection, scoring) : null,
       hasProjection: hasProjection(projection),
+      // Played, playing, yet to start, or left in through a bye. Read off the
+      // game's status rather than its clock, because the clock cannot tell a
+      // first snap from a kickoff still to come.
+      state: starterState({ team: entry?.team || null, teamsPlaying, gameStates }),
     };
   });
 }
@@ -94,10 +101,12 @@ export function detailRows({
  * Returns null when there is no opponent — a bye has nothing to pair against,
  * and the panel says so rather than drawing half a table.
  */
-export function detailPair({ mine, theirs, playerMap, slots, projections, scoring } = {}) {
+export function detailPair({
+  mine, theirs, playerMap, slots, projections, scoring, gameStates, teamsPlaying,
+} = {}) {
   if (!mine) return null;
   const build = (restRow) =>
-    detailRows({ restRow, playerMap, slots, projections, scoring });
+    detailRows({ restRow, playerMap, slots, projections, scoring, gameStates, teamsPlaying });
   return {
     mine: build(mine),
     theirs: theirs ? build(theirs) : null,
