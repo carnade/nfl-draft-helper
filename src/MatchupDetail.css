@@ -49,14 +49,36 @@
   gap: 6px;
 }
 
-/* My numbers sit against the slot label in the middle; the opponent's against
-   theirs, so the two point columns face each other across it. */
-.gd-side-mine .gd-side-top {
+/* The numbers meet in the middle and the names run down the outer edges.
+ *
+ * Each half lays its row out towards the slot, so the two point columns face
+ * each other across it and each name gets the full outer width of its half —
+ * which is where the room is, and names are the thing that can outgrow a
+ * column. The marker sits innermost of all, so the pair of them flank the
+ * slot pill.
+ *
+ * This is the opposite way round from how the panel first shipped, where the
+ * points sat on the outer edges and the two names met in the middle. The
+ * names were the half being squeezed there, and the comment that used to sit
+ * here described the arrangement backwards. */
+.gd-side-theirs .gd-side-top {
   flex-direction: row-reverse;
 }
 
 .gd-side-mine {
+  text-align: left;
+}
+
+.gd-side-theirs {
   text-align: right;
+}
+
+/* Sent last in order rather than moved in the markup, because the two halves
+ * lay their rows out in opposite directions: last puts it against the slot on
+ * both sides, where moving it in the DOM would reach the slot on one side and
+ * the outer edge on the other. */
+.gd-state {
+  order: 1;
 }
 
 .gd-name {
