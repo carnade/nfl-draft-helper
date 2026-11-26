@@ -49,14 +49,36 @@
   gap: 6px;
 }
 
-/* My numbers sit against the slot label in the middle; the opponent's against
-   theirs, so the two point columns face each other across it. */
-.gd-side-mine .gd-side-top {
+/* The numbers meet in the middle and the names run down the outer edges.
+ *
+ * Each half lays its row out towards the slot, so the two point columns face
+ * each other across it and each name gets the full outer width of its half —
+ * which is where the room is, and names are the thing that can outgrow a
+ * column. The marker sits innermost of all, so the pair of them flank the
+ * slot pill.
+ *
+ * This is the opposite way round from how the panel first shipped, where the
+ * points sat on the outer edges and the two names met in the middle. The
+ * names were the half being squeezed there, and the comment that used to sit
+ * here described the arrangement backwards. */
+.gd-side-theirs .gd-side-top {
   flex-direction: row-reverse;
 }
 
 .gd-side-mine {
+  text-align: left;
+}
+
+.gd-side-theirs {
   text-align: right;
+}
+
+/* Sent last in order rather than moved in the markup, because the two halves
+ * lay their rows out in opposite directions: last puts it against the slot on
+ * both sides, where moving it in the DOM would reach the slot on one side and
+ * the outer edge on the other. */
+.gd-state {
+  order: 1;
 }
 
 .gd-name {
@@ -195,4 +217,88 @@
   .gd-detail {
     font-size: 0.75rem;
   }
+}
+
+/* ── Where a starter is in their game ────────────────────────────────────── */
+
+/* A dot beside the name rather than colour on the name itself: the row already
+ * carries a position pill and two numbers, and tinting the text would fight
+ * the muted/strong distinction the points column uses. */
+.gd-state {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: hsl(var(--foreground) / 0.25);
+  /* The row baselines its text; a dot has none, so it centres instead. The
+   * spacing comes from the row's own gap, which keeps it on the correct side
+   * when my half of the panel mirrors its order. */
+  align-self: center;
+}
+
+/* Green for a game that is done, amber for one being played. The two states
+ * worth telling apart at a glance get the two colours everyone already reads
+ * that way, which leaves the rest to be drawn rather than coloured. */
+.gd-state-done {
+  background: hsl(142 69% 42%);
+}
+
+/* The only one that moves, because it is the only row whose number is still
+ * changing. Respects a reduced-motion preference below. */
+.gd-state-live {
+  background: hsl(43 96% 50%);
+  box-shadow: 0 0 0 2px hsl(43 96% 50% / 0.3);
+  animation: gd-state-pulse 1.8s ease-in-out infinite;
+}
+
+.gd-state-pre {
+  background: transparent;
+  border: 1.5px solid hsl(var(--foreground) / 0.45);
+}
+
+/* Left in the lineup through a bye, and a game called off. Neither will ever
+ * be played, so neither takes one of the two live colours: grey for the one
+ * the manager chose and red for the one nobody did. Amber used to mark a bye
+ * and now means "being played", which those two must not be mistaken for. */
+.gd-state-bye {
+  background: hsl(var(--foreground) / 0.35);
+}
+
+.gd-state-off {
+  background: hsl(0 72% 48%);
+}
+
+@keyframes gd-state-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px hsl(43 96% 50% / 0.3); }
+  50% { box-shadow: 0 0 0 5px hsl(43 96% 50% / 0.05); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gd-state-live {
+    animation: none;
+  }
+}
+
+/* ── The panel's footer ──────────────────────────────────────────────────── */
+
+.gd-detail-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.gd-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.6875rem;
+  color: hsl(var(--foreground) / 0.6);
+}
+
+.gd-legend-item {
+  display: flex;
+  align-items: center;
 }

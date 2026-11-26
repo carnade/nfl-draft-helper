@@ -1,4 +1,11 @@
-import { finalOutcome, remainingForStarter } from "./gamedayOutcome";
+import {
+  finalOutcome,
+  gameState,
+  gameStatesByTeam,
+  recordLabel,
+  remainingForStarter,
+  starterState,
+} from "./gamedayOutcome";
 
 const done = (over = {}) => ({
   hasOpponent: true,
@@ -86,5 +93,120 @@ describe("remainingForStarter", () => {
     expect(remainingForStarter({ team: "SEA", teamsPlaying: new Set() })).toBe(1);
     expect(remainingForStarter({ team: "SEA" })).toBe(1);
     expect(remainingForStarter()).toBe(1);
+  });
+});
+
+// ── Where a starter is in their game ────────────────────────────────────────
+
+describe("gameState", () => {
+  it("reads the three states a slate is watched for", () => {
+    expect(gameState("pre_game", {})).toBe("pre");
+    expect(gameState("in_game", { quarter_num: 2, time_remaining: "07:12" })).toBe("live");
+    expect(gameState("complete", {})).toBe("done");
+  });
+
+  it("trusts is_over over whatever the status says", () => {
+    expect(gameState("in_game", { is_over: true })).toBe("done");
+  });
+
+  it("tells a game at its first snap from one not kicked off", () => {
+    // The clock cannot: both read as a full hour remaining, which is why this
+    // goes by status instead.
+    const firstSnap = { quarter_num: 1, time_remaining: "15:00" };
+    expect(gameState("in_game", firstSnap)).toBe("live");
+    expect(gameState("pre_game", firstSnap)).toBe("pre");
+  });
+
+  it("keeps a called-off game out of all three", () => {
+    for (const status of ["canceled", "postponed", "suspended"]) {
+      expect(gameState(status, {})).toBe("off");
+    }
+  });
+
+  it("errs towards live for a status it has not met", () => {
+    // Going quiet during a game is worse than a pulse on a finished one.
+    expect(gameState("second_half", {})).toBe("live");
+  });
+
+  it("does not call an absent status live", () => {
+    expect(gameState(undefined, {})).toBe("pre");
+    expect(gameState(null, null)).toBe("pre");
+  });
+});
+
+describe("gameStatesByTeam", () => {
+  const games = [
+    { status: "complete", metadata: { home_team: "DET", away_team: "CHI" } },
+    { status: "in_game", metadata: { home_team: "DAL", away_team: "PHI" } },
+    { status: "pre_game", metadata: { home_team: "BAL", away_team: "CIN" } },
+  ];
+
+  it("gives both sides of a game the same state", () => {
+    const states = gameStatesByTeam(games);
+    expect(states.DET).toBe("done");
+    expect(states.CHI).toBe("done");
+    expect(states.DAL).toBe("live");
+    expect(states.PHI).toBe("live");
+    expect(states.BAL).toBe("pre");
+  });
+
+  it("is empty rather than wrong when nothing loaded", () => {
+    expect(gameStatesByTeam([])).toEqual({});
+    expect(gameStatesByTeam()).toEqual({});
+  });
+
+  it("skips a game with no teams on it", () => {
+    expect(gameStatesByTeam([{ status: "in_game", metadata: {} }])).toEqual({});
+  });
+});
+
+describe("starterState", () => {
+  const playing = new Set(["DET", "CHI", "DAL"]);
+  const states = { DET: "done", DAL: "live" };
+
+  it("reports the state of the game the starter is in", () => {
+    expect(starterState({ team: "DET", teamsPlaying: playing, gameStates: states })).toBe("done");
+    expect(starterState({ team: "DAL", teamsPlaying: playing, gameStates: states })).toBe("live");
+  });
+
+  it("calls a team with a game but no status yet pending", () => {
+    expect(starterState({ team: "CHI", teamsPlaying: playing, gameStates: states })).toBe("pre");
+  });
+
+  it("names a starter left in through their bye", () => {
+    // Neither played nor waiting. remainingForStarter calls this finished,
+    // because for scoring it is; for reading a lineup it deserves its own word.
+    expect(starterState({ team: "NYJ", teamsPlaying: playing, gameStates: states })).toBe("bye");
+  });
+
+  it("is null rather than a guess when the schedule did not load", () => {
+    // Colouring every row the same wrong colour is worse than colouring none.
+    expect(starterState({ team: "DET", teamsPlaying: new Set(), gameStates: {} })).toBeNull();
+    expect(starterState({ team: "DET" })).toBeNull();
+  });
+
+  it("is null for an empty slot", () => {
+    expect(starterState({ team: null, teamsPlaying: playing, gameStates: states })).toBeNull();
+  });
+});
+
+describe("recordLabel", () => {
+  it("reads as a record does", () => {
+    expect(recordLabel({ wins: 6, losses: 5, ties: 0 })).toBe("6-5");
+  });
+
+  it("shows ties only when there are some", () => {
+    expect(recordLabel({ wins: 6, losses: 4, ties: 1 })).toBe("6-4-1");
+    expect(recordLabel({ wins: 6, losses: 5 })).toBe("6-5");
+  });
+
+  it("keeps a nought, which is a record rather than an absence", () => {
+    expect(recordLabel({ wins: 0, losses: 11, ties: 0 })).toBe("0-11");
+  });
+
+  it("is null when the record is not known", () => {
+    expect(recordLabel(null)).toBeNull();
+    expect(recordLabel({})).toBeNull();
+    expect(recordLabel({ wins: 6 })).toBeNull();
   });
 });

@@ -59,3 +59,71 @@ export function remainingForStarter({ team, teamsPlaying, gameClocks = {} } = {}
   if (team && team in gameClocks) return gameClocks[team];
   return 1;
 }
+
+// ── Where a starter is in their game ────────────────────────────────────────
+//
+// The clock fraction above answers "how much is left", which is what the live
+// projection needs. It cannot answer "has this one played yet", because a game
+// at its first snap and a game not yet kicked off both read as a full hour
+// remaining — and those are the two states most worth telling apart while
+// watching a slate.
+//
+// So this reads the status Sleeper sends rather than the clock derived from it.
+
+// What Sleeper calls a game nobody is playing. Anything else is live, so an
+// unfamiliar value errs towards "in progress" rather than claiming a result.
+const FINISHED_STATUSES = new Set(["complete", "post_game"]);
+const CALLED_OFF_STATUSES = new Set(["canceled", "postponed", "suspended"]);
+
+/** One game's state, from the `scores` payload. */
+export function gameState(status, metadata) {
+  if (FINISHED_STATUSES.has(status) || metadata?.is_over) return "done";
+  if (CALLED_OFF_STATUSES.has(status)) return "off";
+  if (status === "pre_game") return "pre";
+  // No status at all is not a game in progress; it is a game we know nothing
+  // about, and saying "live" would put a pulse on a row that has none.
+  return status ? "live" : "pre";
+}
+
+/** team → state, for every game in the week. */
+export function gameStatesByTeam(games = []) {
+  const byTeam = {};
+  for (const game of games) {
+    const state = gameState(game?.status, game?.metadata);
+    for (const side of ["home_team", "away_team"]) {
+      const team = game?.metadata?.[side];
+      if (team) byTeam[team] = state;
+    }
+  }
+  return byTeam;
+}
+
+/**
+ * Where this starter stands: "done", "live", "pre", "bye", or null if unknown.
+ *
+ * A starter whose team has no game this week is on a bye — somebody left them
+ * in the lineup — which is neither played nor waiting, and is the one case
+ * worth naming separately. It mirrors remainingForStarter above, which calls
+ * the same case finished because for scoring purposes it is.
+ *
+ * Null rather than a guess when the schedule did not load, so the panel can
+ * show nothing instead of colouring every row the same wrong colour.
+ */
+export function starterState({ team, teamsPlaying, gameStates = {} } = {}) {
+  const knowSchedule = teamsPlaying instanceof Set && teamsPlaying.size > 0;
+  if (!team) return null;
+  if (knowSchedule && !teamsPlaying.has(team)) return "bye";
+  if (team in gameStates) return gameStates[team];
+  return knowSchedule ? "pre" : null;
+}
+
+/** A team's record as it reads on a card: "6-5", or "6-5-1" when it matters. */
+export function recordLabel(settings) {
+  const wins = Number(settings?.wins);
+  const losses = Number(settings?.losses);
+  if (!Number.isFinite(wins) || !Number.isFinite(losses)) return null;
+  const ties = Number(settings?.ties);
+  return Number.isFinite(ties) && ties > 0
+    ? `${wins}-${losses}-${ties}`
+    : `${wins}-${losses}`;
+}

@@ -27,6 +27,44 @@ function fmt(value) {
  * opponent's against theirs, so the two point columns sit either side of the
  * label rather than drifting to the outer edges of the panel.
  */
+// What each state is called where it is read, and how it is drawn.
+//
+// A dot beside the name rather than colour on the name itself: these rows
+// already carry a position pill and two numbers, and colouring the text would
+// fight the muted/strong distinction the points column uses. The dot also
+// gives the title somewhere to hang, so the colours do not have to be learnt.
+//
+// "live" pulses; nothing else does. A pulse is the one thing on this panel
+// that says "this number is still moving".
+const LEGEND_LABEL = {
+  done: "played",
+  live: "playing",
+  pre: "to come",
+  bye: "on a bye",
+  off: "called off",
+};
+
+const STATE_TITLE = {
+  done: "Game finished",
+  live: "Playing now",
+  pre: "Not kicked off yet",
+  bye: "No game this week — left in the lineup",
+  off: "Game called off",
+};
+
+export function PlayState({ state }) {
+  // Null when the schedule did not load. Better to show nothing than to
+  // colour every row the same wrong colour.
+  if (!state) return null;
+  return (
+    <span
+      className={`gd-state gd-state-${state}`}
+      title={STATE_TITLE[state] || state}
+      aria-label={STATE_TITLE[state] || state}
+    />
+  );
+}
+
 export function SidePlayer({ row, stats, showStatLine, align }) {
   if (!row || !row.id) {
     return (
@@ -41,6 +79,7 @@ export function SidePlayer({ row, stats, showStatLine, align }) {
   return (
     <div className={`gd-side gd-side-${align}`}>
       <div className="gd-side-top">
+        <PlayState state={row.state} />
         <span className="gd-name" title={row.team ? `${row.name} · ${row.team}` : row.name}>
           {row.name}
         </span>
@@ -155,14 +194,32 @@ function MatchupDetail({
         />
       ))}
 
-      <button
-        type="button"
-        className="gd-statline-toggle"
-        onClick={onToggleStatLines}
-        aria-pressed={showStatLines}
-      >
-        {showStatLines ? "Hide stat lines" : "Show stat lines"}
-      </button>
+      <div className="gd-detail-foot">
+        {/* A key, because three shades of dot are not self-explanatory the
+            first time. Only the states actually on screen, so a slate with
+            nothing live does not advertise a colour it is not using. */}
+        <div className="gd-legend">
+          {["done", "live", "pre", "bye", "off"]
+            .filter((state) =>
+              [...detail.mine, ...detail.theirs].some((row) => row?.state === state)
+            )
+            .map((state) => (
+              <span className="gd-legend-item" key={state}>
+                <PlayState state={state} />
+                {LEGEND_LABEL[state]}
+              </span>
+            ))}
+        </div>
+
+        <button
+          type="button"
+          className="gd-statline-toggle"
+          onClick={onToggleStatLines}
+          aria-pressed={showStatLines}
+        >
+          {showStatLines ? "Hide stat lines" : "Show stat lines"}
+        </button>
+      </div>
     </div>
   );
 }
