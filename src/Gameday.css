@@ -703,14 +703,31 @@ body.dark .pct-as-wash .pct-gold {
   gap: 4px;
 }
 
-/* A team's record, inline on the label line under the score. Deliberately on
- * that line rather than a line of its own: the cards are already as tall as
- * they want to be, and three characters cost nothing there. */
+/* The record and the played count share a line of their own under the name.
+ *
+ * They started out on the name's line, which did not work: the label is a
+ * single ellipsised line and a seven-character username no longer fitted
+ * beside them — about five characters was the limit. The cards have the
+ * horizontal room on a line of their own, and one short row costs less than
+ * truncating every name in the grid. */
+.gameday-score-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  margin-top: 2px;
+  font-size: 0.68rem;
+  color: hsl(var(--muted-foreground));
+  font-variant-numeric: tabular-nums;
+}
+
 .gd-record {
-  margin-left: 0.3rem;
   padding: 0 0.25rem;
   border-radius: 3px;
   background: hsl(var(--foreground) / 0.08);
-  font-variant-numeric: tabular-nums;
   font-weight: 600;
+}
+
+.gd-played {
+  opacity: 0.85;
 }

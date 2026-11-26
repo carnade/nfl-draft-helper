@@ -44,7 +44,7 @@ export default function Changelog() {
       date: "2026-11-26",
       title: "Records on the Gameday cards, and who is actually playing",
       items: [
-        "Each side of a Gameday matchup now shows its record beside the name under the score \u2014 6-5, or 6-4-1 when a tie is in there. On the line that was already present, so the cards are no taller than they were.",
+        "Each side of a Gameday matchup now shows its record under the name \u2014 6-5, or 6-4-1 when a tie is in there \u2014 on a short line of its own along with how many of its starters have finished playing. It tried to share the name\u2019s line first, which left room for about five characters of a username, so the name keeps that line to itself.",
         "Open a matchup and every starter carries a small marker: filled for a game that has finished, a quietly pulsing green for one being played right now, an outline for one still to come. A player left in the lineup through their bye gets his own marker too, since that is neither of the three.",
         "A key appears under the lineup naming only the states actually on screen, so a morning with nothing live does not explain a colour it is not using.",
         "Hovering any marker says it in words, and so does a screen reader \u2014 the colour is not the only thing carrying the meaning.",

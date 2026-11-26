@@ -1105,15 +1105,21 @@ export default function Gameday() {
                       max {matchup.myMax.toFixed(2)}
                     </div>
                   )}
-                  <div className="gameday-score-label">
-                    You
-                    {matchup.myRecord && (
-                      <span className="gd-record" title="Record this season">
-                        {matchup.myRecord}
-                      </span>
-                    )}
-                    {matchup.myStarters > 0 && ` · ${matchup.myPlayed}/${matchup.myStarters}`}
-                  </div>
+                  <div className="gameday-score-label">You</div>
+                  {(matchup.myRecord || matchup.myStarters > 0) && (
+                    <div className="gameday-score-meta">
+                      {matchup.myRecord && (
+                        <span className="gd-record" title="Record this season">
+                          {matchup.myRecord}
+                        </span>
+                      )}
+                      {matchup.myStarters > 0 && (
+                        <span className="gd-played" title="Starters whose games have finished">
+                          {matchup.myPlayed}/{matchup.myStarters}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="gameday-vs">vs</div>
                 <div className="gameday-score opponent">
@@ -1133,15 +1139,23 @@ export default function Gameday() {
                       max {matchup.oppMax.toFixed(2)}
                     </div>
                   )}
-                  <div className="gameday-score-label">
+                  <div className="gameday-score-label" title={matchup.oppName}>
                     {matchup.oppName}
-                    {matchup.oppRecord && (
-                      <span className="gd-record" title="Record this season">
-                        {matchup.oppRecord}
-                      </span>
-                    )}
-                    {matchup.oppStarters > 0 && ` · ${matchup.oppPlayed}/${matchup.oppStarters}`}
                   </div>
+                  {(matchup.oppRecord || matchup.oppStarters > 0) && (
+                    <div className="gameday-score-meta">
+                      {matchup.oppRecord && (
+                        <span className="gd-record" title="Record this season">
+                          {matchup.oppRecord}
+                        </span>
+                      )}
+                      {matchup.oppStarters > 0 && (
+                        <span className="gd-played" title="Starters whose games have finished">
+                          {matchup.oppPlayed}/{matchup.oppStarters}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
