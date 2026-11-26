@@ -214,15 +214,18 @@
   align-self: center;
 }
 
+/* Green for a game that is done, amber for one being played. The two states
+ * worth telling apart at a glance get the two colours everyone already reads
+ * that way, which leaves the rest to be drawn rather than coloured. */
 .gd-state-done {
-  background: hsl(var(--foreground) / 0.3);
+  background: hsl(142 69% 42%);
 }
 
 /* The only one that moves, because it is the only row whose number is still
  * changing. Respects a reduced-motion preference below. */
 .gd-state-live {
-  background: hsl(142 69% 42%);
-  box-shadow: 0 0 0 2px hsl(142 69% 42% / 0.25);
+  background: hsl(43 96% 50%);
+  box-shadow: 0 0 0 2px hsl(43 96% 50% / 0.3);
   animation: gd-state-pulse 1.8s ease-in-out infinite;
 }
 
@@ -231,8 +234,12 @@
   border: 1.5px solid hsl(var(--foreground) / 0.45);
 }
 
+/* Left in the lineup through a bye, and a game called off. Neither will ever
+ * be played, so neither takes one of the two live colours: grey for the one
+ * the manager chose and red for the one nobody did. Amber used to mark a bye
+ * and now means "being played", which those two must not be mistaken for. */
 .gd-state-bye {
-  background: hsl(38 92% 50%);
+  background: hsl(var(--foreground) / 0.35);
 }
 
 .gd-state-off {
@@ -240,8 +247,8 @@
 }
 
 @keyframes gd-state-pulse {
-  0%, 100% { box-shadow: 0 0 0 2px hsl(142 69% 42% / 0.25); }
-  50% { box-shadow: 0 0 0 4px hsl(142 69% 42% / 0.08); }
+  0%, 100% { box-shadow: 0 0 0 2px hsl(43 96% 50% / 0.3); }
+  50% { box-shadow: 0 0 0 5px hsl(43 96% 50% / 0.05); }
 }
 
 @media (prefers-reduced-motion: reduce) {
